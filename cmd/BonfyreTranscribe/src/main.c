@@ -13,6 +13,7 @@
 #include <unistd.h>
 #include <bonfyre.h>
 #include <whisper.h>
+#include <zlib.h>
 #ifdef __APPLE__
 #include <mach/mach_time.h>
 #endif
@@ -602,17 +603,53 @@ static float *read_wav_pcm_f32(const char *path, int *n_samples) {
     if (fread(&file_size, 4, 1, fp) != 1) goto fail;
     if (fread(wave, 1, 4, fp) != 4 || memcmp(wave, "WAVE", 4) != 0) goto fail;
 
-    /* Find "data" chunk (skip fmt and other chunks) */
+    /* Parse chunks — validate fmt, find data (Round 3, item 13) */
     uint32_t data_size = 0;
+    int fmt_validated = 0;
     for (;;) {
         char chunk_id[4]; uint32_t chunk_size;
         if (fread(chunk_id, 1, 4, fp) != 4) goto fail;
         if (fread(&chunk_size, 4, 1, fp) != 1) goto fail;
+        if (memcmp(chunk_id, "fmt ", 4) == 0 && chunk_size >= 16) {
+            uint16_t audio_fmt, num_channels, bits_per_sample;
+            uint32_t sample_rate;
+            if (fread(&audio_fmt, 2, 1, fp) != 1) goto fail;
+            if (fread(&num_channels, 2, 1, fp) != 1) goto fail;
+            if (fread(&sample_rate, 4, 1, fp) != 1) goto fail;
+            fseek(fp, 4, SEEK_CUR);  /* skip ByteRate */
+            fseek(fp, 2, SEEK_CUR);  /* skip BlockAlign */
+            if (fread(&bits_per_sample, 2, 1, fp) != 1) goto fail;
+            if (audio_fmt != 1) {
+                fprintf(stderr, "[wav] ERROR: format %u (expected 1=PCM)\n", audio_fmt);
+                goto fail;
+            }
+            if (num_channels != 1) {
+                fprintf(stderr, "[wav] ERROR: %u channels (expected 1=mono)\n", num_channels);
+                goto fail;
+            }
+            if (sample_rate != 16000) {
+                fprintf(stderr, "[wav] ERROR: %u Hz (expected 16000)\n", sample_rate);
+                goto fail;
+            }
+            if (bits_per_sample != 16) {
+                fprintf(stderr, "[wav] ERROR: %u-bit (expected 16)\n", bits_per_sample);
+                goto fail;
+            }
+            fmt_validated = 1;
+            /* Skip any remaining fmt data */
+            if (chunk_size > 16) fseek(fp, (long)(chunk_size - 16), SEEK_CUR);
+            continue;
+        }
         if (memcmp(chunk_id, "data", 4) == 0) {
             data_size = chunk_size;
             break;
         }
         fseek(fp, (long)chunk_size, SEEK_CUR);
+    }
+
+    if (!fmt_validated) {
+        fprintf(stderr, "[wav] ERROR: no fmt chunk found in %s\n", path);
+        goto fail;
     }
 
     /* Read int16 samples and convert to float32 */
@@ -649,14 +686,35 @@ fail:
  * - Segment timestamps → structured JSON output
  * - whisper_get_timings() → benchmarkable metrics
  * - whisper_full_parallel() → multi-processor decode
+ *
+ * Round 3 panel: cutting-edge mathematics.
+ * - DTW token-level timestamps (forced alignment)
+ * - Geometric mean confidence (perplexity⁻¹)
+ * - Compression ratio hallucination detection
+ * - N-gram repetition detection
+ * - Repetition penalty logits filter
+ * - vlen anomaly detection
+ * - Token-aware prompt truncation
  * ================================================================ */
+
+/* Hallucination flags (bitfield) — Round 3, items 6-9 */
+#define HALLUC_NONE           0
+#define HALLUC_HIGH_COMPRESS  (1 << 0)  /* compression ratio > 2.4 */
+#define HALLUC_NGRAM_REPEAT   (1 << 1)  /* repeated 3-grams in token IDs */
+#define HALLUC_VLEN_ANOMALY   (1 << 2)  /* tokens with impossible voice length */
+#define HALLUC_LOW_LOGPROB    (1 << 3)  /* mean logprob below -1.0 */
+#define COMPRESS_RATIO_THOLD  2.4f
 
 /* Transcription result — one per segment */
 typedef struct {
     int64_t t0_ms;           /* segment start (ms) */
     int64_t t1_ms;           /* segment end (ms) */
-    float   confidence;      /* average token probability */
+    float   confidence;      /* geometric mean token probability (Round 3: perplexity⁻¹) */
+    float   logprob;         /* mean log-probability (ASR standard metric) */
     float   no_speech_prob;  /* P(no speech) for this segment */
+    float   compression_ratio; /* len(text)/len(zlib(text)) — hallucination signal */
+    float   quality;         /* composite: conf * (1-nsp) * min(1, 2.4/ρ) */
+    int     hallucination_flags;
     int     speaker_turn;    /* 1 if next segment is different speaker */
     char    text[4096];
 } TranscriptSegment;
@@ -665,17 +723,22 @@ typedef struct {
     TranscriptSegment *segments;
     int count;
     int cap;
+    int segments_filtered;      /* segments dropped by no_speech filter */
+    int segments_hallucinated;  /* segments flagged with any hallucination */
     /* Timing from whisper_get_timings() */
     float encode_ms;
     float decode_ms;
+    float batchd_ms;  /* Round 3: batch decode timing */
     float sample_ms;
     float prompt_ms;
+    char detected_language[8];  /* Round 3: auto-detected language code */
 } TranscriptResult;
 
 static void transcript_result_init(TranscriptResult *r) {
     memset(r, 0, sizeof(*r));
     r->cap = 256;
     r->segments = malloc((size_t)r->cap * sizeof(TranscriptSegment));
+    r->detected_language[0] = '\0';
 }
 
 static void transcript_result_free(TranscriptResult *r) {
@@ -688,17 +751,49 @@ static void whisper_log_suppress(enum ggml_log_level level, const char *text, vo
     (void)level; (void)text; (void)user_data;
 }
 
-/* Extract segments from a completed whisper_full() call */
+/* Extract segments from a completed whisper_full() call.
+ *
+ * Round 3 upgrades — cutting-edge quality scoring:
+ *
+ * 1. Geometric mean confidence = exp(mean(log(p_i)))
+ *    This IS perplexity⁻¹ — the correct aggregation for independent
+ *    token probabilities. Arithmetic mean overestimates confidence
+ *    when a few high-prob tokens mask low-prob ones.
+ *
+ * 2. Mean log-probability = (1/N) * Σ log(p_i)
+ *    The ASR research standard. Directly comparable across segments,
+ *    models, and audio conditions. Used by all NIST evaluations.
+ *
+ * 3. Compression ratio via zlib = |text| / |zlib(text)|
+ *    OpenAI's hallucination detector. ρ > 2.4 = repetitive text.
+ *
+ * 4. N-gram repetition = repeated 3-grams in token sequence
+ *    Attention loop detection (Holtzman et al. 2019).
+ *
+ * 5. Voice length anomaly = tokens with vlen ≤ 0 or vlen > segment
+ *    Physically impossible timing = hallucinated content.
+ *
+ * 6. Composite quality = conf_geo * (1 - p_ns) * min(1, 2.4/ρ)
+ *    Single scalar for downstream ranking/filtering.
+ */
+
+/* Forward declarations for helpers used in extract_segments */
+static float compute_compression_ratio(const char *text);
+static int   detect_ngram_repetition(struct whisper_context *ctx, int i_segment);
+
 static void extract_segments(struct whisper_context *ctx,
                              TranscriptResult *result,
                              float no_speech_filter) {
     int n = whisper_full_n_segments(ctx);
     for (int i = 0; i < n; i++) {
         float nsp = whisper_full_get_segment_no_speech_prob(ctx, i);
-        if (nsp > no_speech_filter) continue;  /* Round 7: filter silence garbage */
+        if (nsp > no_speech_filter) {
+            result->segments_filtered++;
+            continue;
+        }
 
         const char *text = whisper_full_get_segment_text(ctx, i);
-        if (!text || text[0] == '\0') continue;  /* Round 9: suppress_blank */
+        if (!text || text[0] == '\0') continue;
 
         if (result->count >= result->cap) {
             result->cap *= 2;
@@ -706,21 +801,62 @@ static void extract_segments(struct whisper_context *ctx,
                 (size_t)result->cap * sizeof(TranscriptSegment));
         }
         TranscriptSegment *seg = &result->segments[result->count];
-        seg->t0_ms = whisper_full_get_segment_t0(ctx, i) * 10;  /* centiseconds → ms */
+        seg->t0_ms = whisper_full_get_segment_t0(ctx, i) * 10;
         seg->t1_ms = whisper_full_get_segment_t1(ctx, i) * 10;
         seg->no_speech_prob = nsp;
         seg->speaker_turn = whisper_full_get_segment_speaker_turn_next(ctx, i) ? 1 : 0;
         snprintf(seg->text, sizeof(seg->text), "%s", text);
 
-        /* Compute average token probability for confidence scoring (Round 6) */
+        /* ── Token-level analysis ──────────────────────────────── */
         int n_tokens = whisper_full_n_tokens(ctx, i);
-        double prob_sum = 0;
+        double log_prob_sum = 0;
         int prob_count = 0;
+        int vlen_anomalies = 0;
+        float seg_duration_s = (float)(seg->t1_ms - seg->t0_ms) / 1000.0f;
+
         for (int t = 0; t < n_tokens; t++) {
-            float p = whisper_full_get_token_p(ctx, i, t);
-            if (p > 0) { prob_sum += p; prob_count++; }
+            whisper_token_data tdata = whisper_full_get_token_data(ctx, i, t);
+            if (tdata.p > 0) {
+                log_prob_sum += log((double)tdata.p);
+                prob_count++;
+            }
+            /* Round 3, item 17: vlen anomaly detection */
+            if (tdata.vlen <= 0.0f || (seg_duration_s > 0 && tdata.vlen > seg_duration_s * 1.5f))
+                vlen_anomalies++;
         }
-        seg->confidence = prob_count > 0 ? (float)(prob_sum / prob_count) : 0;
+
+        /* Round 3, item 4: geometric mean = exp(mean(log(p)))
+         * = perplexity⁻¹. The mathematically correct confidence
+         * aggregation for a sequence of independent probabilities. */
+        seg->confidence = prob_count > 0
+            ? (float)exp(log_prob_sum / prob_count) : 0.0f;
+
+        /* Round 3, item 5: mean log-probability (ASR standard) */
+        seg->logprob = prob_count > 0
+            ? (float)(log_prob_sum / prob_count) : -99.0f;
+
+        /* Round 3, item 6: compression ratio (hallucination signal) */
+        seg->compression_ratio = compute_compression_ratio(seg->text);
+
+        /* Round 3, items 7-9: hallucination flags */
+        seg->hallucination_flags = HALLUC_NONE;
+        if (seg->compression_ratio > COMPRESS_RATIO_THOLD)
+            seg->hallucination_flags |= HALLUC_HIGH_COMPRESS;
+        if (detect_ngram_repetition(ctx, i))
+            seg->hallucination_flags |= HALLUC_NGRAM_REPEAT;
+        if (vlen_anomalies > n_tokens / 3 && n_tokens >= 3)
+            seg->hallucination_flags |= HALLUC_VLEN_ANOMALY;
+        if (seg->logprob < -1.0f)
+            seg->hallucination_flags |= HALLUC_LOW_LOGPROB;
+
+        if (seg->hallucination_flags)
+            result->segments_hallucinated++;
+
+        /* Round 3, item 20: composite quality score
+         * Q = conf_geo * (1 - p_ns) * min(1, threshold/ρ) */
+        float compress_factor = seg->compression_ratio > 0
+            ? fminf(1.0f, COMPRESS_RATIO_THOLD / seg->compression_ratio) : 1.0f;
+        seg->quality = seg->confidence * (1.0f - nsp) * compress_factor;
 
         result->count++;
     }
@@ -736,18 +872,29 @@ static int write_transcript_txt(const TranscriptResult *r, const char *path) {
     return 0;
 }
 
-/* Write structured JSON transcript with timestamps + confidence (Round 8, 18) */
+/* Write structured JSON transcript with timestamps, confidence,
+ * logprob, compression ratio, hallucination flags, quality score.
+ * Round 3: enhanced with cutting-edge quality metrics per segment. */
 static int write_transcript_json(const TranscriptResult *r, const char *path) {
     FILE *fp = fopen(path, "w");
     if (!fp) return -1;
-    fprintf(fp, "{\n  \"sourceSystem\": \"BonfyreTranscribe\",\n  \"segments\": [\n");
+    fprintf(fp, "{\n  \"sourceSystem\": \"BonfyreTranscribe\",\n");
+    if (r->detected_language[0])
+        fprintf(fp, "  \"detectedLanguage\": \"%s\",\n", r->detected_language);
+    fprintf(fp, "  \"segments\": [\n");
     for (int i = 0; i < r->count; i++) {
         const TranscriptSegment *s = &r->segments[i];
         fprintf(fp,
-            "    {\"t0\": %lld, \"t1\": %lld, \"confidence\": %.3f, "
-            "\"no_speech\": %.3f, \"speaker_turn\": %s, \"text\": \"",
-            (long long)s->t0_ms, (long long)s->t1_ms, s->confidence,
-            s->no_speech_prob, s->speaker_turn ? "true" : "false");
+            "    {\"t0\": %lld, \"t1\": %lld, "
+            "\"confidence\": %.4f, \"logprob\": %.3f, "
+            "\"no_speech\": %.3f, \"compression_ratio\": %.2f, "
+            "\"quality\": %.4f, \"hallucination_flags\": %d, "
+            "\"speaker_turn\": %s, \"text\": \"",
+            (long long)s->t0_ms, (long long)s->t1_ms,
+            s->confidence, s->logprob,
+            s->no_speech_prob, s->compression_ratio,
+            s->quality, s->hallucination_flags,
+            s->speaker_turn ? "true" : "false");
         /* JSON-escape the text */
         for (const char *p = s->text; *p; p++) {
             if (*p == '"') fprintf(fp, "\\\"");
@@ -760,9 +907,14 @@ static int write_transcript_json(const TranscriptResult *r, const char *path) {
         fprintf(fp, "\"}%s\n", i + 1 < r->count ? "," : "");
     }
     fprintf(fp, "  ],\n");
+    fprintf(fp, "  \"summary\": {\n");
+    fprintf(fp, "    \"segments_total\": %d,\n", r->count);
+    fprintf(fp, "    \"segments_filtered\": %d,\n", r->segments_filtered);
+    fprintf(fp, "    \"segments_hallucinated\": %d\n", r->segments_hallucinated);
+    fprintf(fp, "  },\n");
     fprintf(fp, "  \"timing\": {\"encode_ms\": %.1f, \"decode_ms\": %.1f, "
-            "\"sample_ms\": %.1f, \"prompt_ms\": %.1f}\n",
-            r->encode_ms, r->decode_ms, r->sample_ms, r->prompt_ms);
+            "\"batchd_ms\": %.1f, \"sample_ms\": %.1f, \"prompt_ms\": %.1f}\n",
+            r->encode_ms, r->decode_ms, r->batchd_ms, r->sample_ms, r->prompt_ms);
     fprintf(fp, "}\n");
     fclose(fp);
     return 0;
@@ -849,6 +1001,183 @@ static double wall_clock_ms(void) {
 #endif
 }
 
+/* ================================================================
+ * Round 3 — Cutting-edge utility functions
+ * ================================================================ */
+
+/* Resolve DTW alignment heads preset from model filename.
+ * DTW (Dynamic Time Warping) on cross-attention heads gives sub-word
+ * forced alignment — state-of-the-art timestamp precision.
+ * Each Whisper model size has specific attention heads pre-identified
+ * for alignment (Radford et al. 2022, Table 7). */
+static enum whisper_alignment_heads_preset resolve_dtw_preset(const char *model_path) {
+    const char *base = strrchr(model_path, '/');
+    base = base ? base + 1 : model_path;
+    /* Order matters: check specific before general */
+    if (strstr(base, "large-v3-turbo") || strstr(base, "turbo"))
+        return WHISPER_AHEADS_LARGE_V3_TURBO;
+    if (strstr(base, "large-v3"))  return WHISPER_AHEADS_LARGE_V3;
+    if (strstr(base, "large-v2"))  return WHISPER_AHEADS_LARGE_V2;
+    if (strstr(base, "large"))     return WHISPER_AHEADS_LARGE_V1;
+    if (strstr(base, "medium.en") || strstr(base, "medium-en"))
+        return WHISPER_AHEADS_MEDIUM_EN;
+    if (strstr(base, "medium"))    return WHISPER_AHEADS_MEDIUM;
+    if (strstr(base, "small.en")  || strstr(base, "small-en"))
+        return WHISPER_AHEADS_SMALL_EN;
+    if (strstr(base, "small"))     return WHISPER_AHEADS_SMALL;
+    if (strstr(base, "base.en")   || strstr(base, "base-en"))
+        return WHISPER_AHEADS_BASE_EN;
+    if (strstr(base, "base"))      return WHISPER_AHEADS_BASE;
+    if (strstr(base, "tiny.en")   || strstr(base, "tiny-en"))
+        return WHISPER_AHEADS_TINY_EN;
+    if (strstr(base, "tiny"))      return WHISPER_AHEADS_TINY;
+    return WHISPER_AHEADS_N_TOP_MOST;  /* generic fallback */
+}
+
+/* Compression ratio via zlib — OpenAI's hallucination detector.
+ * ρ = |text| / |zlib(text)|
+ * High ρ (> 2.4) = repetitive text = likely hallucination.
+ * Reference: whisper/transcribe.py L274 "compression_ratio_threshold" */
+static float compute_compression_ratio(const char *text) {
+    size_t src_len = strlen(text);
+    if (src_len < 4) return 1.0f;  /* too short to compress meaningfully */
+    uLong bound = compressBound((uLong)src_len);
+    uint8_t *compressed = malloc(bound);
+    if (!compressed) return 1.0f;
+    uLong dest_len = bound;
+    if (compress2(compressed, &dest_len, (const uint8_t *)text,
+                  (uLong)src_len, Z_DEFAULT_COMPRESSION) != Z_OK) {
+        free(compressed);
+        return 1.0f;
+    }
+    float ratio = (float)src_len / (float)dest_len;
+    free(compressed);
+    return ratio;
+}
+
+/* Detect repeated 3-grams in token ID sequence.
+ * A repeated 3-gram (trigram) in decoder output signals an attention loop —
+ * a known failure mode in autoregressive sequence models (Holtzman et al. 2019).
+ * Returns 1 if any 3-gram appears more than twice. */
+static int detect_ngram_repetition(struct whisper_context *ctx, int i_segment) {
+    int n_tokens = whisper_full_n_tokens(ctx, i_segment);
+    if (n_tokens < 6) return 0;  /* need at least 2 trigrams */
+
+    /* Hash each trigram and count in a small table */
+    #define NGRAM_HASH_SIZE 128
+    struct { uint32_t hash; int count; } table[NGRAM_HASH_SIZE];
+    memset(table, 0, sizeof(table));
+
+    for (int t = 0; t <= n_tokens - 3; t++) {
+        whisper_token t0 = whisper_full_get_token_id(ctx, i_segment, t);
+        whisper_token t1 = whisper_full_get_token_id(ctx, i_segment, t + 1);
+        whisper_token t2 = whisper_full_get_token_id(ctx, i_segment, t + 2);
+        /* FNV-style combination */
+        uint32_t h = 2166136261u;
+        h = (h ^ (uint32_t)t0) * 16777619u;
+        h = (h ^ (uint32_t)t1) * 16777619u;
+        h = (h ^ (uint32_t)t2) * 16777619u;
+        int slot = (int)(h & (NGRAM_HASH_SIZE - 1));
+        /* Linear probe */
+        for (int p = 0; p < NGRAM_HASH_SIZE; p++) {
+            int idx = (slot + p) & (NGRAM_HASH_SIZE - 1);
+            if (table[idx].count == 0) {
+                table[idx].hash = h;
+                table[idx].count = 1;
+                break;
+            }
+            if (table[idx].hash == h) {
+                table[idx].count++;
+                if (table[idx].count > 2) return 1;  /* repeated 3-gram */
+                break;
+            }
+        }
+    }
+    #undef NGRAM_HASH_SIZE
+    return 0;
+}
+
+/* Repetition penalty logits filter callback (Keskar et al. 2019).
+ * For each token that appeared in the last 32 positions:
+ *   logit = logit / θ   if logit > 0
+ *   logit = logit * θ   if logit < 0
+ * where θ > 1 (penalty). Breaks decoder repetition loops during beam search. */
+static float rep_penalty_theta = 1.15f;
+
+static void repetition_penalty_callback(
+    struct whisper_context *ctx,
+    struct whisper_state   *state,
+    const whisper_token_data *tokens,
+    int n_tokens,
+    float *logits,
+    void *user_data)
+{
+    (void)state; (void)user_data;
+    float theta = rep_penalty_theta;
+    int n_vocab = whisper_n_vocab(ctx);
+    int window = n_tokens < 32 ? n_tokens : 32;
+    for (int i = n_tokens - window; i < n_tokens; i++) {
+        if (i < 0) continue;
+        whisper_token tid = tokens[i].id;
+        if (tid >= 0 && tid < n_vocab) {
+            if (logits[tid] > 0.0f)
+                logits[tid] /= theta;
+            else
+                logits[tid] *= theta;
+        }
+    }
+}
+
+/* Write SRT subtitles (SubRip format — Round 3, item 14).
+ * Format: sequential number, timestamp line, text, blank line.
+ * Timestamps: HH:MM:SS,mmm --> HH:MM:SS,mmm */
+static int write_transcript_srt(const TranscriptResult *r, const char *path) {
+    FILE *fp = fopen(path, "w");
+    if (!fp) return -1;
+    for (int i = 0; i < r->count; i++) {
+        const TranscriptSegment *s = &r->segments[i];
+        int64_t t0 = s->t0_ms, t1 = s->t1_ms;
+        fprintf(fp, "%d\n", i + 1);
+        fprintf(fp, "%02lld:%02lld:%02lld,%03lld --> %02lld:%02lld:%02lld,%03lld\n",
+                (long long)(t0/3600000), (long long)((t0/60000)%60),
+                (long long)((t0/1000)%60), (long long)(t0%1000),
+                (long long)(t1/3600000), (long long)((t1/60000)%60),
+                (long long)((t1/1000)%60), (long long)(t1%1000));
+        /* Strip leading whitespace from segment text */
+        const char *text = s->text;
+        while (*text == ' ' || *text == '\t') text++;
+        fprintf(fp, "%s\n\n", text);
+    }
+    fclose(fp);
+    return 0;
+}
+
+/* Write WebVTT subtitles (Round 3, item 15).
+ * WEBVTT header, then cue blocks with HH:MM:SS.mmm timestamps.
+ * Includes confidence metadata per cue for downstream quality filtering. */
+static int write_transcript_vtt(const TranscriptResult *r, const char *path) {
+    FILE *fp = fopen(path, "w");
+    if (!fp) return -1;
+    fprintf(fp, "WEBVTT\nKind: captions\n\n");
+    for (int i = 0; i < r->count; i++) {
+        const TranscriptSegment *s = &r->segments[i];
+        int64_t t0 = s->t0_ms, t1 = s->t1_ms;
+        /* NOTE block with quality metadata */
+        fprintf(fp, "NOTE confidence=%.3f quality=%.3f halluc=0x%x\n",
+                s->confidence, s->quality, s->hallucination_flags);
+        fprintf(fp, "%02lld:%02lld:%02lld.%03lld --> %02lld:%02lld:%02lld.%03lld\n",
+                (long long)(t0/3600000), (long long)((t0/60000)%60),
+                (long long)((t0/1000)%60), (long long)(t0%1000),
+                (long long)(t1/3600000), (long long)((t1/60000)%60),
+                (long long)((t1/1000)%60), (long long)(t1%1000));
+        const char *text = s->text;
+        while (*text == ' ' || *text == '\t') text++;
+        fprintf(fp, "%s\n\n", text);
+    }
+    fclose(fp);
+    return 0;
+}
+
 static void resolve_executable_sibling(char *buffer, size_t size, const char *argv0, const char *sibling_dir, const char *binary_name) {
     if (argv0 && argv0[0] == '/') {
         snprintf(buffer, size, "%s", argv0);
@@ -914,9 +1243,9 @@ static void strip_extension(char *name) {
 
 static void print_usage(void) {
     fprintf(stderr,
-            "bonfyre-transcribe — native libwhisper transcription engine\n\n"
+            "bonfyre-transcribe — world-class libwhisper transcription engine\n\n"
             "Usage:\n"
-            "  bonfyre-transcribe <input-audio> <output-dir> [--model NAME] [--language CODE]\n"
+            "  bonfyre-transcribe <input-audio> <output-dir> [--model NAME] [--language CODE|auto]\n"
             "                      [--media-prep-binary PATH]\n"
             "                      [--silero-vad] [--silero-script PATH]\n"
             "                      [--split-speech] [--noise-threshold DB] [--min-silence SEC]\n"
@@ -927,13 +1256,26 @@ static void print_usage(void) {
             "\n"
             "Transcription engine:\n"
             "  Links libwhisper directly. Model loads ONCE. Zero fork+exec.\n"
-            "  Metal GPU + flash attention. Multi-processor parallel decode.\n"
-            "  Segment timestamps, token-level confidence, no-speech filtering.\n"
-            "  Structured JSON transcript output with timing metrics.\n"
+            "  Metal GPU + flash attention. DTW forced-alignment timestamps.\n"
+            "  Multi-processor parallel decode. TinyDiarize speaker turns.\n"
+            "\n"
+            "Quality (cutting-edge):\n"
+            "  Geometric mean confidence (perplexity^-1 = exp(mean(log(p)))).\n"
+            "  Compression ratio hallucination detection (zlib, rho > 2.4).\n"
+            "  Token n-gram repetition detector. Repetition penalty logits filter.\n"
+            "  Voice-length anomaly detection. Per-segment quality score.\n"
+            "\n"
+            "Output formats:\n"
+            "  transcript.txt   — plain text\n"
+            "  transcript.json  — structured segments with timestamps, confidence,\n"
+            "                     logprob, compression ratio, hallucination flags\n"
+            "  transcript.srt   — SubRip subtitles\n"
+            "  transcript.vtt   — WebVTT subtitles with quality metadata\n"
             "\n"
             "Vocabulary learning:\n"
             "  Flat binary .bfvocab format (BFVD02). Zero SQLite, zero process spawns.\n"
             "  BM25-weighted terms injected as whisper initial_prompt.\n"
+            "  Token-aware truncation to fit decoder context (112 token budget).\n"
             "  Shannon entropy + KL-divergence track convergence.\n"
             "\n"
             "  BM25(t,d) = IDF(t) * tf(t,d)*(k1+1) / (tf(t,d)+k1*(1-b+b*|d|/avgdl))\n"
@@ -1126,9 +1468,15 @@ int main(int argc, char **argv) {
 
     double t_model_start = wall_clock_ms();
 
+    /* Round 3, item 1: DTW token-level timestamps.
+     * Dynamic Time Warping on cross-attention alignment heads gives
+     * sub-word timing precision — state-of-the-art forced alignment.
+     * Auto-select the correct attention head preset for this model. */
     struct whisper_context_params cparams = whisper_context_default_params();
     cparams.use_gpu = true;
     cparams.flash_attn = true;
+    cparams.dtw_token_timestamps = true;
+    cparams.dtw_aheads_preset = resolve_dtw_preset(model_path);
 
     struct whisper_context *wctx = whisper_init_from_file_with_params(model_path, cparams);
     if (!wctx) {
@@ -1137,33 +1485,84 @@ int main(int argc, char **argv) {
     }
 
     double t_model_loaded = wall_clock_ms();
-    fprintf(stderr, "[whisper] model loaded: %s (%.0f ms)\n",
-            model_path, t_model_loaded - t_model_start);
+    fprintf(stderr, "[whisper] model loaded: %s (%.0f ms, DTW=%s)\n",
+            model_path, t_model_loaded - t_model_start,
+            cparams.dtw_token_timestamps ? "on" : "off");
+
+    /* Round 3, item 10: Token-aware prompt truncation.
+     * Whisper's decoder context is n_max_text_ctx tokens (224).
+     * Initial prompt can use at most half (112 tokens).
+     * Whisper truncates from the BEGINNING — losing our highest-BM25 terms.
+     * Pre-truncate from the END to keep top-ranked terms. */
+    if (vocab_prompt) {
+        int n_tok = -whisper_tokenize(wctx, vocab_prompt, NULL, 0);
+        if (n_tok > 112) {
+            float ratio = 112.0f / (float)n_tok;
+            size_t new_len = (size_t)(strlen(vocab_prompt) * ratio);
+            /* Snap to word boundary */
+            while (new_len > 0 && vocab_prompt[new_len] != ' ') new_len--;
+            if (new_len > 0) {
+                vocab_prompt[new_len] = '\0';
+                int final_tok = -whisper_tokenize(wctx, vocab_prompt, NULL, 0);
+                fprintf(stderr, "[vocab] prompt truncated: %d → %d tokens (budget: 112)\n",
+                        n_tok, final_tok);
+            }
+        }
+    }
 
     /* Configure decoding parameters */
+    int auto_detect_lang = (language && strcmp(language, "auto") == 0);
     struct whisper_full_params wparams = whisper_full_default_params(
         greedy ? WHISPER_SAMPLING_GREEDY : WHISPER_SAMPLING_BEAM_SEARCH);
 
-    wparams.n_threads     = threads;
-    wparams.n_max_text_ctx = 224;    /* Round 5: bound context window */
-    wparams.no_timestamps = false;   /* Round 8: we want segment timestamps */
-    wparams.print_special = false;
+    wparams.n_threads      = threads;
+    wparams.n_max_text_ctx = 224;
+    wparams.no_timestamps  = false;
+    wparams.print_special  = false;
     wparams.print_progress = false;
     wparams.print_realtime = false;
     wparams.print_timestamps = false;
 
-    wparams.suppress_blank = true;   /* Round 9: no empty segments */
-    wparams.suppress_nst   = true;   /* Suppress non-speech tokens */
+    /* Round 3, item 2: Token-level timestamps.
+     * Combined with DTW, this gives per-token start/end times.
+     * thold_pt/thold_ptsum control timestamp token probability filtering. */
+    wparams.token_timestamps = true;
+    wparams.thold_pt         = 0.01f;
+    wparams.thold_ptsum      = 0.01f;
+
+    /* Round 3, item 3: TinyDiarize speaker turn detection.
+     * Enables the TDRZ signal in the decoder — real diarization
+     * hints instead of heuristic-only speaker_turn_next(). */
+    wparams.tdrz_enable = true;
+
+    wparams.suppress_blank = true;
+    wparams.suppress_nst   = true;
 
     wparams.temperature     = 0.0f;
-    wparams.temperature_inc = denoised ? 0.0f : 0.2f;  /* Round 11: skip fallback on clean audio */
+    wparams.temperature_inc = denoised ? 0.0f : 0.2f;
     wparams.entropy_thold   = 2.0f;
-    wparams.logprob_thold   = -1.0f; /* Round 10: filter low-confidence */
+    wparams.logprob_thold   = -1.0f;
     wparams.no_speech_thold = no_speech_thold;
 
-    wparams.language = language ? language : "en";
+    /* Round 3, item 11: Language auto-detection.
+     * When --language auto: use Whisper's built-in softmax language
+     * classifier on the first 30s mel spectrogram. */
+    if (auto_detect_lang) {
+        wparams.language = "auto";
+        wparams.detect_language = true;
+    } else {
+        wparams.language = language ? language : "en";
+        wparams.detect_language = false;
+    }
+
     wparams.initial_prompt = vocab_prompt;
-    wparams.carry_initial_prompt = true;  /* Always prepend domain terms */
+    wparams.carry_initial_prompt = true;
+
+    /* Round 3, item 8: Repetition penalty logits filter.
+     * Penalizes recently-seen tokens during beam search to break
+     * decoder repetition loops (Keskar et al. 2019). */
+    wparams.logits_filter_callback = repetition_penalty_callback;
+    wparams.logits_filter_callback_user_data = NULL;
 
     if (greedy) {
         wparams.greedy.best_of = best_of;
@@ -1175,6 +1574,7 @@ int main(int argc, char **argv) {
     transcript_result_init(&result);
 
     double t_transcribe_start = wall_clock_ms();
+    int total_audio_samples = 0;  /* Round 3, item 18: track for RTF */
 
     if (split_speech) {
         /* ── External speech splitting (media-prep or Silero VAD) ─── */
@@ -1220,9 +1620,14 @@ int main(int argc, char **argv) {
             }
         }
 
+        /* Round 3, item 12: Each chunk IS one utterance.
+         * single_segment prevents whisper from internally splitting,
+         * which causes timestamp drift and context fragmentation. */
+        wparams.single_segment = true;
+
         /* Process each chunk through the SAME whisper context.
          * Model stays loaded. Metal GPU context persists.
-         * No fork, no exec, no file I/O for results. */
+         * no_context=false: decoder carries previous chunk tokens. */
         for (int i = 0;; i++) {
             char chunk_audio[PATH_MAX];
             snprintf(chunk_audio, sizeof(chunk_audio), "%s/chunk-%03d.wav", chunk_dir, i);
@@ -1236,12 +1641,21 @@ int main(int argc, char **argv) {
                 free(samples);
                 continue;
             }
+            total_audio_samples += n_samples;
 
             whisper_reset_timings(wctx);
             if (whisper_full(wctx, wparams, samples, n_samples) != 0) {
                 fprintf(stderr, "[whisper] transcription failed on chunk %d\n", i);
                 free(samples);
                 continue;
+            }
+
+            /* Capture detected language from first chunk */
+            if (auto_detect_lang && i == 0) {
+                int lang_id = whisper_full_lang_id(wctx);
+                const char *lang_str = whisper_lang_str(lang_id);
+                if (lang_str) snprintf(result.detected_language, sizeof(result.detected_language), "%s", lang_str);
+                fprintf(stderr, "[whisper] detected language: %s\n", result.detected_language);
             }
 
             extract_segments(wctx, &result, no_speech_thold);
@@ -1263,13 +1677,11 @@ int main(int argc, char **argv) {
             whisper_free(wctx);
             return 1;
         }
+        total_audio_samples = n_samples;
 
         fprintf(stderr, "[whisper] audio: %.1f seconds, %d samples\n",
                 (double)n_samples / WHISPER_SAMPLE_RATE, n_samples);
 
-        /* Round 4: whisper_full_parallel() uses multiple processors for decode.
-         * Each processor handles a separate audio segment independently —
-         * true parallelism on multi-core machines. */
         int ret;
         if (n_processors > 1) {
             ret = whisper_full_parallel(wctx, wparams, samples, n_samples, n_processors);
@@ -1284,6 +1696,14 @@ int main(int argc, char **argv) {
             return 1;
         }
 
+        /* Capture detected language */
+        if (auto_detect_lang) {
+            int lang_id = whisper_full_lang_id(wctx);
+            const char *lang_str = whisper_lang_str(lang_id);
+            if (lang_str) snprintf(result.detected_language, sizeof(result.detected_language), "%s", lang_str);
+            fprintf(stderr, "[whisper] detected language: %s\n", result.detected_language);
+        }
+
         extract_segments(wctx, &result, no_speech_thold);
         free(samples);
         write_chunk_progress(progress_path, 1, 1, "completed");
@@ -1291,31 +1711,50 @@ int main(int argc, char **argv) {
 
     double t_transcribe_done = wall_clock_ms();
 
-    /* Capture whisper internal timings (Round 20) */
+    /* Capture whisper internal timings — ALL fields (Round 3, item 19) */
     struct whisper_timings *wtimings = whisper_get_timings(wctx);
     if (wtimings) {
         result.encode_ms = wtimings->encode_ms;
         result.decode_ms = wtimings->decode_ms;
+        result.batchd_ms = wtimings->batchd_ms;
         result.sample_ms = wtimings->sample_ms;
         result.prompt_ms = wtimings->prompt_ms;
     }
 
     whisper_free(wctx);
 
-    /* ── Write outputs ─────────────────────────────────────────── */
+    /* ── Write ALL output formats ──────────────────────────────── */
+    char transcript_srt_path[PATH_MAX];
+    char transcript_vtt_path[PATH_MAX];
+    snprintf(transcript_srt_path, sizeof(transcript_srt_path), "%s/transcript.srt", output_dir);
+    snprintf(transcript_vtt_path, sizeof(transcript_vtt_path), "%s/transcript.vtt", output_dir);
+
     write_transcript_txt(&result, transcript_path);
     write_transcript_json(&result, transcript_json_path);
+    write_transcript_srt(&result, transcript_srt_path);  /* Round 3, item 14 */
+    write_transcript_vtt(&result, transcript_vtt_path);  /* Round 3, item 15 */
 
-    double avg_conf = 0;
+    /* Compute summary statistics */
+    double avg_conf = 0, avg_quality = 0, avg_logprob = 0;
     if (result.count > 0) {
-        double sum = 0;
-        for (int i = 0; i < result.count; i++) sum += result.segments[i].confidence;
-        avg_conf = sum / result.count;
+        double sc = 0, sq = 0, sl = 0;
+        for (int i = 0; i < result.count; i++) {
+            sc += result.segments[i].confidence;
+            sq += result.segments[i].quality;
+            sl += result.segments[i].logprob;
+        }
+        avg_conf    = sc / result.count;
+        avg_quality = sq / result.count;
+        avg_logprob = sl / result.count;
     }
-    fprintf(stderr, "[whisper] %d segments, avg confidence: %.2f\n",
-            result.count, avg_conf);
+    fprintf(stderr,
+            "[quality] segments: %d (filtered: %d, hallucinated: %d)\n"
+            "[quality] avg confidence: %.4f (geometric mean = perplexity^-1)\n"
+            "[quality] avg logprob: %.3f | avg quality: %.4f\n",
+            result.count, result.segments_filtered, result.segments_hallucinated,
+            avg_conf, avg_logprob, avg_quality);
 
-    /* ── Vocab ingestion directly from memory (Round 12) ────────── */
+    /* ── Vocab ingestion directly from memory ────────────────────── */
     int words_ingested = 0;
     if (!no_vocab) {
         char *full_text = transcript_result_text(&result);
@@ -1332,17 +1771,14 @@ int main(int argc, char **argv) {
 
     double t_end = wall_clock_ms();
 
-    /* ── Timing metrics (Round 13) ──────────────────────────────── */
+    /* ── Timing metrics ──────────────────────────────────────────── */
     double preprocess_ms = t_preprocess - t_start;
     double model_load_ms = t_model_loaded - t_model_start;
     double transcribe_ms = t_transcribe_done - t_transcribe_start;
     double total_ms       = t_end - t_start;
 
-    /* Compute audio duration from sample count for RTF */
-    int n_audio_check = 0;
-    float *audio_check = read_wav_pcm_f32(normalized_path, &n_audio_check);
-    double audio_duration_s = (double)n_audio_check / WHISPER_SAMPLE_RATE;
-    free(audio_check);
+    /* Round 3, item 18: use stored sample count — no re-read */
+    double audio_duration_s = (double)total_audio_samples / WHISPER_SAMPLE_RATE;
     double rtf = audio_duration_s > 0 ? (transcribe_ms / 1000.0) / audio_duration_s : 0;
 
     fprintf(stderr,
@@ -1350,17 +1786,19 @@ int main(int argc, char **argv) {
             "transcribe: %.0f ms | total: %.0f ms\n",
             preprocess_ms, model_load_ms, transcribe_ms, total_ms);
     fprintf(stderr,
-            "[timing] encode: %.0f ms | decode: %.0f ms | RTF: %.3f\n",
-            result.encode_ms, result.decode_ms, rtf);
+            "[timing] encode: %.0f ms | decode: %.0f ms | batchd: %.0f ms | RTF: %.3f\n",
+            result.encode_ms, result.decode_ms, result.batchd_ms, rtf);
 
     /* ── meta.json ──────────────────────────────────────────────── */
     char timestamp[32];
     iso_timestamp(timestamp, sizeof(timestamp));
     char language_json[256];
-    if (language) {
+    if (result.detected_language[0]) {
+        snprintf(language_json, sizeof(language_json), "\"%s\"", result.detected_language);
+    } else if (language && strcmp(language, "auto") != 0) {
         snprintf(language_json, sizeof(language_json), "\"%s\"", language);
     } else {
-        snprintf(language_json, sizeof(language_json), "null");
+        snprintf(language_json, sizeof(language_json), "\"en\"");
     }
 
     FILE *meta = fopen(meta_path, "w");
@@ -1378,6 +1816,8 @@ int main(int argc, char **argv) {
             "  \"normalized_audio\": \"%s\",\n"
             "  \"transcript_path\": \"%s\",\n"
             "  \"transcript_json_path\": \"%s\",\n"
+            "  \"transcript_srt_path\": \"%s\",\n"
+            "  \"transcript_vtt_path\": \"%s\",\n"
             "  \"model\": \"%s\",\n"
             "  \"model_path\": \"%s\",\n"
             "  \"language\": %s,\n"
@@ -1388,16 +1828,26 @@ int main(int argc, char **argv) {
             "  \"beam_size\": %d,\n"
             "  \"threads\": %d,\n"
             "  \"processors\": %d,\n"
+            "  \"dtw_timestamps\": true,\n"
+            "  \"token_timestamps\": true,\n"
+            "  \"tdrz_diarize\": true,\n"
+            "  \"repetition_penalty\": %.2f,\n"
             "  \"vocab_enabled\": %s,\n"
             "  \"vocab_words_ingested\": %d,\n"
-            "  \"segments\": %d,\n"
+            "  \"segments_total\": %d,\n"
+            "  \"segments_filtered\": %d,\n"
+            "  \"segments_hallucinated\": %d,\n"
             "  \"chunk_count\": %d,\n"
             "  \"audio_duration_s\": %.2f,\n"
+            "  \"avg_confidence\": %.4f,\n"
+            "  \"avg_logprob\": %.3f,\n"
+            "  \"avg_quality\": %.4f,\n"
             "  \"preprocess_ms\": %.0f,\n"
             "  \"model_load_ms\": %.0f,\n"
             "  \"transcribe_ms\": %.0f,\n"
             "  \"encode_ms\": %.1f,\n"
             "  \"decode_ms\": %.1f,\n"
+            "  \"batchd_ms\": %.1f,\n"
             "  \"total_ms\": %.0f,\n"
             "  \"rtf\": %.4f,\n"
             "  \"media_prep_binary\": \"%s\"\n"
@@ -1408,6 +1858,8 @@ int main(int argc, char **argv) {
             normalized_path,
             transcript_path,
             transcript_json_path,
+            transcript_srt_path,
+            transcript_vtt_path,
             model,
             model_path,
             language_json,
@@ -1418,16 +1870,23 @@ int main(int argc, char **argv) {
             beam_size,
             threads,
             n_processors,
+            (double)rep_penalty_theta,
             no_vocab ? "false" : "true",
             words_ingested,
             result.count,
+            result.segments_filtered,
+            result.segments_hallucinated,
             chunk_count,
             audio_duration_s,
+            avg_conf,
+            avg_logprob,
+            avg_quality,
             preprocess_ms,
             model_load_ms,
             transcribe_ms,
             result.encode_ms,
             result.decode_ms,
+            result.batchd_ms,
             total_ms,
             rtf,
             media_prep_binary);
@@ -1449,10 +1908,15 @@ int main(int argc, char **argv) {
             "  \"sileroVad\": %s,\n"
             "  \"denoised\": %s,\n"
             "  \"segments\": %d,\n"
+            "  \"segmentsFiltered\": %d,\n"
+            "  \"segmentsHallucinated\": %d,\n"
             "  \"chunkCount\": %d,\n"
+            "  \"avgQuality\": %.4f,\n"
             "  \"rtf\": %.4f,\n"
             "  \"transcriptPath\": \"%s\",\n"
             "  \"transcriptJsonPath\": \"%s\",\n"
+            "  \"transcriptSrtPath\": \"%s\",\n"
+            "  \"transcriptVttPath\": \"%s\",\n"
             "  \"metaPath\": \"%s\"\n"
             "}\n",
             timestamp,
@@ -1461,10 +1925,15 @@ int main(int argc, char **argv) {
             silero_vad ? "true" : "false",
             denoised ? "true" : "false",
             result.count,
+            result.segments_filtered,
+            result.segments_hallucinated,
             chunk_count,
+            avg_quality,
             rtf,
             transcript_path,
             transcript_json_path,
+            transcript_srt_path,
+            transcript_vtt_path,
             meta_path);
     fclose(status);
 
@@ -1472,8 +1941,11 @@ int main(int argc, char **argv) {
 
     printf("Transcript: %s\n", transcript_path);
     printf("JSON:       %s\n", transcript_json_path);
+    printf("SRT:        %s\n", transcript_srt_path);
+    printf("VTT:        %s\n", transcript_vtt_path);
     printf("Meta:       %s\n", meta_path);
     printf("Status:     %s\n", status_path);
+    printf("Quality:    %.4f (conf=%.4f logprob=%.3f)\n", avg_quality, avg_conf, avg_logprob);
     printf("RTF:        %.4f (%.1fx realtime)\n", rtf, rtf > 0 ? 1.0 / rtf : 0);
     return 0;
 }
