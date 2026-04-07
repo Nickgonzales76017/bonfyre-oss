@@ -840,107 +840,208 @@ footer a:hover { color: var(--text); }
     </div>
     <p class="subtitle">Real end-user applications powered by Bonfyre binaries. Each runs a hybrid architecture: WASM client-side preview + GitHub Actions server-side pipeline. Drag-and-drop a file, watch it process.</p>
 
-    <div class="apps-grid">
+    <div class="tabs" role="tablist" aria-label="Apps tabs" style="margin-bottom:12px;">
+      <button class="tab active" data-target="tab-all" aria-selected="true">All Apps</button>
+      <button class="tab" data-target="tab-creators">Creator Starter Kit</button>
+    </div>
+
+    <div id="tab-all" class="tab-content">
+      <div class="apps-grid">
       <a href="https://nickgonzales76017.github.io/pages-shift-handoff/" class="app-card">
         <div class="app-name">Shift Handoff Board</div>
         <div class="app-desc">Voice memos become structured shift handoff cards with status tracking.</div>
         <span class="app-pipeline">brief &rarr; proof &rarr; offer &rarr; pack</span>
       </a>
+      <details class="app-details">
+        <summary>Details</summary>
+        <p>Pipeline: brief → proof → offer → pack. Try demo: <a href="https://nickgonzales76017.github.io/pages-shift-handoff/">open</a></p>
+      </details>
       <a href="https://nickgonzales76017.github.io/pages-memory-atlas/" class="app-card">
         <div class="app-name">Memory Atlas</div>
         <div class="app-desc">Voice notes transcribed and placed on an interactive timeline.</div>
         <span class="app-pipeline">transcribe &rarr; brief &rarr; embed &rarr; render</span>
       </a>
+      <details class="app-details">
+        <summary>Details</summary>
+        <p>Pipeline: transcribe → brief → embed → render. Try demo: <a href="https://nickgonzales76017.github.io/pages-memory-atlas/">open</a></p>
+      </details>
       <a href="https://nickgonzales76017.github.io/pages-freelancer-evidence/" class="app-card">
         <div class="app-name">Freelancer Evidence Vault</div>
         <div class="app-desc">Client calls become timestamped invoices and proof-of-work records.</div>
         <span class="app-pipeline">transcribe &rarr; brief &rarr; proof &rarr; pack</span>
       </a>
+      <details class="app-details">
+        <summary>Details</summary>
+        <p>Pipeline: transcribe → brief → proof → pack. Try demo: <a href="https://nickgonzales76017.github.io/pages-freelancer-evidence/">open</a></p>
+      </details>
       <a href="https://nickgonzales76017.github.io/pages-customer-voice/" class="app-card">
         <div class="app-name">Customer Voice Board</div>
         <div class="app-desc">Customer interviews distilled into a searchable insight dashboard.</div>
         <span class="app-pipeline">transcribe &rarr; tone &rarr; tag &rarr; embed</span>
       </a>
+      <details class="app-details">
+        <summary>Details</summary>
+        <p>Pipeline: transcribe → tone → tag → embed. Try demo: <a href="https://nickgonzales76017.github.io/pages-customer-voice/">open</a></p>
+      </details>
       <a href="https://nickgonzales76017.github.io/pages-family-history/" class="app-card">
         <div class="app-name">Family History Museum</div>
         <div class="app-desc">Family recordings organized into a browsable oral history museum.</div>
         <span class="app-pipeline">transcribe &rarr; brief &rarr; render</span>
       </a>
+      <details class="app-details">
+        <summary>Details</summary>
+        <p>Pipeline: transcribe → brief → render. Try demo: <a href="https://nickgonzales76017.github.io/pages-family-history/">open</a></p>
+      </details>
       <a href="https://nickgonzales76017.github.io/pages-podcast-plant/" class="app-card">
         <div class="app-name">Podcast Plant</div>
         <div class="app-desc">Raw audio becomes a published podcast site with RSS feed.</div>
         <span class="app-pipeline">media-prep &rarr; transcribe &rarr; brief &rarr; emit</span>
       </a>
+      <details class="app-details">
+        <summary>Details</summary>
+        <p>Pipeline: media-prep → transcribe → brief → emit. Try demo: <a href="https://nickgonzales76017.github.io/pages-podcast-plant/">open</a></p>
+      </details>
       <a href="https://nickgonzales76017.github.io/pages-postmortem-atlas/" class="app-card">
         <div class="app-name">Postmortem Atlas</div>
         <div class="app-desc">War room recordings become searchable postmortem archives.</div>
         <span class="app-pipeline">transcribe &rarr; tag &rarr; embed &rarr; render</span>
       </a>
+      <details class="app-details">
+        <summary>Details</summary>
+        <p>Pipeline: transcribe → tag → embed → render. Try demo: <a href="https://nickgonzales76017.github.io/pages-postmortem-atlas/">open</a></p>
+      </details>
       <a href="https://nickgonzales76017.github.io/pages-explain-repo/" class="app-card">
         <div class="app-name">Explain This Repo</div>
         <div class="app-desc">Source code analyzed and transformed into an onboarding guide.</div>
         <span class="app-pipeline">ingest &rarr; canon &rarr; brief &rarr; render</span>
       </a>
+      <details class="app-details">
+        <summary>Details</summary>
+        <p>Pipeline: ingest → canon → brief → render. Try demo: <a href="https://nickgonzales76017.github.io/pages-explain-repo/">open</a></p>
+      </details>
       <a href="https://nickgonzales76017.github.io/pages-town-box/" class="app-card">
         <div class="app-name">Town Box</div>
         <div class="app-desc">Civic OS — meeting recordings become public-facing town dashboards.</div>
         <span class="app-pipeline">transcribe &rarr; brief &rarr; tag &rarr; render</span>
       </a>
+      <details class="app-details">
+        <summary>Details</summary>
+        <p>Pipeline: transcribe → brief → tag → render. Try demo: <a href="https://nickgonzales76017.github.io/pages-town-box/">open</a></p>
+      </details>
       <a href="https://nickgonzales76017.github.io/pages-grant-evidence/" class="app-card">
         <div class="app-name">Grant Evidence Pack</div>
         <div class="app-desc">Stories and interviews packaged into grant-ready evidence bundles.</div>
         <span class="app-pipeline">transcribe &rarr; proof &rarr; pack &rarr; emit</span>
       </a>
+      <details class="app-details">
+        <summary>Details</summary>
+        <p>Pipeline: transcribe → proof → pack → emit. Try demo: <a href="https://nickgonzales76017.github.io/pages-grant-evidence/">open</a></p>
+      </details>
       <a href="https://nickgonzales76017.github.io/pages-micro-consulting/" class="app-card">
         <div class="app-name">Micro-Consulting Storefront</div>
         <div class="app-desc">Package and meter consulting engagements with dynamic pricing.</div>
         <span class="app-pipeline">offer &rarr; meter &rarr; pack</span>
       </a>
+      <details class="app-details">
+        <summary>Details</summary>
+        <p>Pipeline: offer → meter → pack. Try demo: <a href="https://nickgonzales76017.github.io/pages-micro-consulting/">open</a></p>
+      </details>
       <a href="https://nickgonzales76017.github.io/pages-legal-prep/" class="app-card">
         <div class="app-name">Personal Legal Prep Binder</div>
         <div class="app-desc">Documents scored, tagged, and packed into legal-ready binders.</div>
         <span class="app-pipeline">proof &rarr; tag &rarr; pack</span>
       </a>
+      <details class="app-details">
+        <summary>Details</summary>
+        <p>Pipeline: proof → tag → pack. Try demo: <a href="https://nickgonzales76017.github.io/pages-legal-prep/">open</a></p>
+      </details>
       <a href="https://nickgonzales76017.github.io/pages-oss-cockpit/" class="app-card">
         <div class="app-name">OSS Maintainer Cockpit</div>
         <div class="app-desc">Ingest issues and PRs into a searchable embedded knowledge base.</div>
         <span class="app-pipeline">ingest &rarr; tag &rarr; embed</span>
       </a>
+      <details class="app-details">
+        <summary>Details</summary>
+        <p>Pipeline: ingest → tag → embed. Try demo: <a href="https://nickgonzales76017.github.io/pages-oss-cockpit/">open</a></p>
+      </details>
       <a href="https://nickgonzales76017.github.io/pages-release-radio/" class="app-card">
         <div class="app-name">Release-Note Radio</div>
         <div class="app-desc">Changelogs narrated into audio and published as an HTML + RSS site.</div>
         <span class="app-pipeline">narrate &rarr; render &rarr; emit</span>
       </a>
+      <details class="app-details">
+        <summary>Details</summary>
+        <p>Pipeline: narrate → render → emit. Try demo: <a href="https://nickgonzales76017.github.io/pages-release-radio/">open</a></p>
+      </details>
       <a href="https://nickgonzales76017.github.io/pages-async-standup/" class="app-card">
         <div class="app-name">Async Standup Newspaper</div>
         <div class="app-desc">Voice standups analyzed for tone and rendered as a daily newspaper.</div>
         <span class="app-pipeline">tone &rarr; render</span>
       </a>
+      <details class="app-details">
+        <summary>Details</summary>
+        <p>Pipeline: tone → render. Try demo: <a href="https://nickgonzales76017.github.io/pages-async-standup/">open</a></p>
+      </details>
       <a href="https://nickgonzales76017.github.io/pages-competitive-intel/" class="app-card">
         <div class="app-name">Competitive Intelligence Scrapbook</div>
         <div class="app-desc">Market data embedded and searchable in a vector-powered intel database.</div>
         <span class="app-pipeline">embed &rarr; vec &rarr; index</span>
       </a>
+      <details class="app-details">
+        <summary>Details</summary>
+        <p>Pipeline: embed → vec → index. Try demo: <a href="https://nickgonzales76017.github.io/pages-competitive-intel/">open</a></p>
+      </details>
       <a href="https://nickgonzales76017.github.io/pages-sales-distiller/" class="app-card">
         <div class="app-name">Sales Call Distiller</div>
         <div class="app-desc">Sales calls analyzed for tone, clipped, tagged, and embedded for search.</div>
         <span class="app-pipeline">tone &rarr; clips &rarr; tag &rarr; embed</span>
       </a>
+      <details class="app-details">
+        <summary>Details</summary>
+        <p>Pipeline: tone → clips → tag → embed. Try demo: <a href="https://nickgonzales76017.github.io/pages-sales-distiller/">open</a></p>
+      </details>
       <a href="https://nickgonzales76017.github.io/pages-procurement-memory/" class="app-card">
         <div class="app-name">Procurement Memory Site</div>
         <div class="app-desc">Procurement docs embedded into a vector-searchable ledger.</div>
         <span class="app-pipeline">embed &rarr; vec &rarr; ledger</span>
       </a>
+      <details class="app-details">
+        <summary>Details</summary>
+        <p>Pipeline: embed → vec → ledger. Try demo: <a href="https://nickgonzales76017.github.io/pages-procurement-memory/">open</a></p>
+      </details>
       <a href="https://nickgonzales76017.github.io/pages-museum-exhibit/" class="app-card">
         <div class="app-name">Museum Exhibit Builder</div>
         <div class="app-desc">Audio clips rendered into interactive museum exhibit pages.</div>
         <span class="app-pipeline">clips &rarr; render</span>
       </a>
+      <details class="app-details">
+        <summary>Details</summary>
+        <p>Pipeline: clips → render. Try demo: <a href="https://nickgonzales76017.github.io/pages-museum-exhibit/">open</a></p>
+      </details>
       <a href="https://nickgonzales76017.github.io/pages-local-archive/" class="app-card">
         <div class="app-name">Local Archive Explorer</div>
         <div class="app-desc">Documents embedded and indexed into a searchable local archive.</div>
         <span class="app-pipeline">embed &rarr; vec &rarr; index</span>
       </a>
+      <details class="app-details">
+        <summary>Details</summary>
+        <p>Pipeline: embed → vec → index. Try demo: <a href="https://nickgonzales76017.github.io/pages-local-archive/">open</a></p>
+      </details>
+      </div>
+    </div>
+
+    <div id="tab-creators" class="tab-content" style="display:none">
+      <div class="container" style="padding:12px 0 0 0;">
+        <h3>Creator Starter Kit</h3>
+        <p class="subtitle">Fork the starter kit, drop audio, and publish — includes a ready-made GitHub Actions pipeline and demo pages.</p>
+        <p><a class="btn btn-primary" href="/../Projects/bonfyre-creator-starter/">Open Starter Kit (local)</a>
+        <a class="btn btn-outline" href="https://github.com/Nickgonzales76017/bonfyre">Fork &amp; Customize on GitHub</a></p>
+        <ul>
+          <li>1-click demo: drop audio → transcribe → brief → publish</li>
+          <li>Includes a small JS preview (WASM) and process.yml for Actions</li>
+          <li>Docs: Quickstart + FAQ + example content</li>
+        </ul>
+      </div>
     </div>
 
     <p style="text-align:center; margin-top:32px; color:var(--text-dim); font-size:0.9rem;">
@@ -980,4 +1081,25 @@ footer a:hover { color: var(--text); }
 </footer>
 
 </body>
+<script>
+// Tabs behavior
+document.addEventListener('DOMContentLoaded', function(){
+  var tabs = document.querySelectorAll('.tab');
+  tabs.forEach(function(t){
+    t.addEventListener('click', function(){
+      tabs.forEach(function(x){ x.classList.remove('active'); x.setAttribute('aria-selected','false'); });
+      t.classList.add('active'); t.setAttribute('aria-selected','true');
+      var target = t.dataset.target;
+      document.querySelectorAll('.tab-content').forEach(function(c){ c.style.display = (c.id===target)?'block':'none'; });
+    });
+  });
+});
+
+// Optional: keep <details> native behavior; add small polyfill for keyboard
+document.addEventListener('keyup', function(e){
+  if(e.key==='Escape'){
+    document.querySelectorAll('details[open]').forEach(function(d){ d.removeAttribute('open'); });
+  }
+});
+</script>
 </html>
