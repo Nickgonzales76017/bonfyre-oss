@@ -358,6 +358,66 @@ footer {
 footer a { color: var(--text-dim); }
 footer a:hover { color: var(--text); }
 
+/* Live apps grid */
+.apps-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+}
+.app-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 20px;
+  transition: border-color 0.15s, transform 0.15s;
+  text-decoration: none;
+  display: block;
+}
+.app-card:hover {
+  border-color: var(--accent);
+  transform: translateY(-2px);
+  text-decoration: none;
+}
+.app-card .app-name {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 6px;
+}
+.app-card .app-desc {
+  font-size: 0.85rem;
+  color: var(--text-dim);
+  margin-bottom: 10px;
+  line-height: 1.4;
+}
+.app-card .app-pipeline {
+  font-family: var(--mono);
+  font-size: 0.75rem;
+  color: var(--accent);
+  background: var(--bg);
+  padding: 4px 8px;
+  border-radius: 4px;
+  display: inline-block;
+}
+.app-card .app-link {
+  font-size: 0.8rem;
+  color: var(--blue);
+  margin-top: 8px;
+  display: block;
+}
+.apps-header {
+  display: flex;
+  align-items: baseline;
+  gap: 16px;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+.apps-header .count {
+  font-size: 0.85rem;
+  color: var(--green);
+  font-weight: 600;
+}
+
 /* Responsive */
 @media (max-width: 640px) {
   .hero h1 { font-size: 2.2rem; }
@@ -366,6 +426,7 @@ footer a:hover { color: var(--text); }
   section { padding: 40px 0; }
   .layer { flex-direction: column; gap: 4px; }
   .killer-card .ratio { font-size: 1.8rem; }
+  .apps-grid { grid-template-columns: 1fr; }
 }
 </style>
 </head>
@@ -400,6 +461,10 @@ footer a:hover { color: var(--text); }
         <span class="num">69</span>
         <span class="label">Tests Passing</span>
       </div>
+      <div class="hero-stat">
+        <span class="num">20</span>
+        <span class="label"><a href="#apps" style="color:inherit;text-decoration:none">Live Apps</a></span>
+      </div>
     </div>
     <div class="install-box">
       <code>git clone https://github.com/Nickgonzales76017/bonfyre.git && cd bonfyre && make</code>
@@ -410,6 +475,9 @@ footer a:hover { color: var(--text); }
       </a>
       <a href="#vs-competition" class="btn btn-outline">
         See what it replaces ↓
+      </a>
+      <a href="#apps" class="btn btn-outline">
+        20 live apps ↓
       </a>
     </div>
   </div>
@@ -759,6 +827,125 @@ footer a:hover { color: var(--text); }
     <p style="color:var(--text-dim);font-size:0.9rem;">
       <strong>Requirements:</strong> C11 compiler (gcc or clang), SQLite3 dev headers, zlib.
       <strong>Optional:</strong> ONNX Runtime (for embed), FreeSWITCH (for tel).
+    </p>
+  </div>
+</section>
+
+<!-- Live Apps -->
+<section id="apps">
+  <div class="container">
+    <div class="apps-header">
+      <h2>Live Apps</h2>
+      <span class="count">20 apps running on GitHub Pages</span>
+    </div>
+    <p class="subtitle">Real end-user applications powered by Bonfyre binaries. Each runs a hybrid architecture: WASM client-side preview + GitHub Actions server-side pipeline. Drag-and-drop a file, watch it process.</p>
+
+    <div class="apps-grid">
+      <a href="https://nickgonzales76017.github.io/pages-shift-handoff/" class="app-card">
+        <div class="app-name">Shift Handoff Board</div>
+        <div class="app-desc">Voice memos become structured shift handoff cards with status tracking.</div>
+        <span class="app-pipeline">brief &rarr; proof &rarr; offer &rarr; pack</span>
+      </a>
+      <a href="https://nickgonzales76017.github.io/pages-memory-atlas/" class="app-card">
+        <div class="app-name">Memory Atlas</div>
+        <div class="app-desc">Voice notes transcribed and placed on an interactive timeline.</div>
+        <span class="app-pipeline">transcribe &rarr; brief &rarr; embed &rarr; render</span>
+      </a>
+      <a href="https://nickgonzales76017.github.io/pages-freelancer-evidence/" class="app-card">
+        <div class="app-name">Freelancer Evidence Vault</div>
+        <div class="app-desc">Client calls become timestamped invoices and proof-of-work records.</div>
+        <span class="app-pipeline">transcribe &rarr; brief &rarr; proof &rarr; pack</span>
+      </a>
+      <a href="https://nickgonzales76017.github.io/pages-customer-voice/" class="app-card">
+        <div class="app-name">Customer Voice Board</div>
+        <div class="app-desc">Customer interviews distilled into a searchable insight dashboard.</div>
+        <span class="app-pipeline">transcribe &rarr; tone &rarr; tag &rarr; embed</span>
+      </a>
+      <a href="https://nickgonzales76017.github.io/pages-family-history/" class="app-card">
+        <div class="app-name">Family History Museum</div>
+        <div class="app-desc">Family recordings organized into a browsable oral history museum.</div>
+        <span class="app-pipeline">transcribe &rarr; brief &rarr; render</span>
+      </a>
+      <a href="https://nickgonzales76017.github.io/pages-podcast-plant/" class="app-card">
+        <div class="app-name">Podcast Plant</div>
+        <div class="app-desc">Raw audio becomes a published podcast site with RSS feed.</div>
+        <span class="app-pipeline">media-prep &rarr; transcribe &rarr; brief &rarr; emit</span>
+      </a>
+      <a href="https://nickgonzales76017.github.io/pages-postmortem-atlas/" class="app-card">
+        <div class="app-name">Postmortem Atlas</div>
+        <div class="app-desc">War room recordings become searchable postmortem archives.</div>
+        <span class="app-pipeline">transcribe &rarr; tag &rarr; embed &rarr; render</span>
+      </a>
+      <a href="https://nickgonzales76017.github.io/pages-explain-repo/" class="app-card">
+        <div class="app-name">Explain This Repo</div>
+        <div class="app-desc">Source code analyzed and transformed into an onboarding guide.</div>
+        <span class="app-pipeline">ingest &rarr; canon &rarr; brief &rarr; render</span>
+      </a>
+      <a href="https://nickgonzales76017.github.io/pages-town-box/" class="app-card">
+        <div class="app-name">Town Box</div>
+        <div class="app-desc">Civic OS — meeting recordings become public-facing town dashboards.</div>
+        <span class="app-pipeline">transcribe &rarr; brief &rarr; tag &rarr; render</span>
+      </a>
+      <a href="https://nickgonzales76017.github.io/pages-grant-evidence/" class="app-card">
+        <div class="app-name">Grant Evidence Pack</div>
+        <div class="app-desc">Stories and interviews packaged into grant-ready evidence bundles.</div>
+        <span class="app-pipeline">transcribe &rarr; proof &rarr; pack &rarr; emit</span>
+      </a>
+      <a href="https://nickgonzales76017.github.io/pages-micro-consulting/" class="app-card">
+        <div class="app-name">Micro-Consulting Storefront</div>
+        <div class="app-desc">Package and meter consulting engagements with dynamic pricing.</div>
+        <span class="app-pipeline">offer &rarr; meter &rarr; pack</span>
+      </a>
+      <a href="https://nickgonzales76017.github.io/pages-legal-prep/" class="app-card">
+        <div class="app-name">Personal Legal Prep Binder</div>
+        <div class="app-desc">Documents scored, tagged, and packed into legal-ready binders.</div>
+        <span class="app-pipeline">proof &rarr; tag &rarr; pack</span>
+      </a>
+      <a href="https://nickgonzales76017.github.io/pages-oss-cockpit/" class="app-card">
+        <div class="app-name">OSS Maintainer Cockpit</div>
+        <div class="app-desc">Ingest issues and PRs into a searchable embedded knowledge base.</div>
+        <span class="app-pipeline">ingest &rarr; tag &rarr; embed</span>
+      </a>
+      <a href="https://nickgonzales76017.github.io/pages-release-radio/" class="app-card">
+        <div class="app-name">Release-Note Radio</div>
+        <div class="app-desc">Changelogs narrated into audio and published as an HTML + RSS site.</div>
+        <span class="app-pipeline">narrate &rarr; render &rarr; emit</span>
+      </a>
+      <a href="https://nickgonzales76017.github.io/pages-async-standup/" class="app-card">
+        <div class="app-name">Async Standup Newspaper</div>
+        <div class="app-desc">Voice standups analyzed for tone and rendered as a daily newspaper.</div>
+        <span class="app-pipeline">tone &rarr; render</span>
+      </a>
+      <a href="https://nickgonzales76017.github.io/pages-competitive-intel/" class="app-card">
+        <div class="app-name">Competitive Intelligence Scrapbook</div>
+        <div class="app-desc">Market data embedded and searchable in a vector-powered intel database.</div>
+        <span class="app-pipeline">embed &rarr; vec &rarr; index</span>
+      </a>
+      <a href="https://nickgonzales76017.github.io/pages-sales-distiller/" class="app-card">
+        <div class="app-name">Sales Call Distiller</div>
+        <div class="app-desc">Sales calls analyzed for tone, clipped, tagged, and embedded for search.</div>
+        <span class="app-pipeline">tone &rarr; clips &rarr; tag &rarr; embed</span>
+      </a>
+      <a href="https://nickgonzales76017.github.io/pages-procurement-memory/" class="app-card">
+        <div class="app-name">Procurement Memory Site</div>
+        <div class="app-desc">Procurement docs embedded into a vector-searchable ledger.</div>
+        <span class="app-pipeline">embed &rarr; vec &rarr; ledger</span>
+      </a>
+      <a href="https://nickgonzales76017.github.io/pages-museum-exhibit/" class="app-card">
+        <div class="app-name">Museum Exhibit Builder</div>
+        <div class="app-desc">Audio clips rendered into interactive museum exhibit pages.</div>
+        <span class="app-pipeline">clips &rarr; render</span>
+      </a>
+      <a href="https://nickgonzales76017.github.io/pages-local-archive/" class="app-card">
+        <div class="app-name">Local Archive Explorer</div>
+        <div class="app-desc">Documents embedded and indexed into a searchable local archive.</div>
+        <span class="app-pipeline">embed &rarr; vec &rarr; index</span>
+      </a>
+    </div>
+
+    <p style="text-align:center; margin-top:32px; color:var(--text-dim); font-size:0.9rem;">
+      Every app uses the same pattern: <strong>Git hooks</strong> run Bonfyre pipelines on commit.
+      <strong>GitHub Actions</strong> process server-side. <strong>22 KB WASM</strong> module gives instant client-side previews.
     </p>
   </div>
 </section>
