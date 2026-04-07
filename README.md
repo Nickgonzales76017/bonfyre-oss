@@ -1,13 +1,13 @@
 <p align="center">
   <h1 align="center">🔥 Bonfyre</h1>
   <p align="center">
-    <strong>38 static C binaries. 1.6 MB total. A complete backend platform.</strong>
+    <strong>46 static C binaries. Pure C11. A complete backend platform.</strong>
   </p>
   <p align="center">
     <a href="#install">Install</a> ·
     <a href="#use-cases">Use Cases</a> ·
     <a href="#benchmarks">Benchmarks</a> ·
-    <a href="#all-38-binaries">All 38 binaries</a> ·
+    <a href="#all-46-binaries">All 46 binaries</a> ·
     <a href="#docs">Docs</a> ·
     <a href="#contributing">Contributing</a>
   </p>
@@ -19,7 +19,7 @@
 git clone https://github.com/Nickgonzales76017/bonfyre.git && cd bonfyre && make
 ```
 
-That builds 38 binaries. Total disk: **~1.6 MB**. No Node.js. No Python. No Docker. No npm. Just C and SQLite.
+That builds 46 binaries. No Node.js. No Python. No Docker. No npm. Just C11 and SQLite.
 
 ---
 
@@ -151,7 +151,7 @@ MIT licensed. Embed it anywhere — your app, your library, your product. Like S
 ```bash
 git clone https://github.com/Nickgonzales76017/bonfyre.git
 cd bonfyre
-make            # builds all 38 binaries + liblambda-tensors
+make            # builds all 46 binaries + libbonfyre + liblambda-tensors
 make install    # copies to ~/.local/bin (or PREFIX=/usr/local make install)
 ```
 
@@ -208,7 +208,44 @@ npm install bonfyre
 | BonfyrePipeline (3,000 artifacts) | 2.36 MB |
 | BonfyreCMS idle | 15 MB |
 
-## All 38 binaries
+## Performance
+
+### Pure C — 93% of binaries are zero-dependency native C11
+
+BonfyreEmbed and BonfyreVec were rewritten from Python subprocess wrappers to pure C:
+
+| Component | Before | After |
+|---|---|---|
+| BonfyreEmbed | Python subprocess → ONNX | **ONNX Runtime C API** + BERT WordPiece tokenizer in C |
+| BonfyreVec | Python subprocess → sqlite-vec | **SQLite C API** + vec0 extension loaded natively |
+| Build flags | `-O2` | **`-O3 -march=native -flto=auto`** |
+
+### P0 optimizations (shipped)
+
+| Optimization | Impact | Details |
+|---|---|---|
+| ONNX multi-threading | **3–4× inference speed** | `SetIntraOpNumThreads` → CPU count (was hardcoded `1`) |
+| Binary vector format (VECF) | **4.2× smaller**, zero parse overhead | Raw float32 with magic header; eliminates 384 `strtof()` calls |
+| `-O3 -march=native -flto=auto` | **10–30% across all binaries** | Auto-vectorization, LTO inlining, native ISA |
+| `ORT_ENABLE_ALL` graph optimization | Additional inference gains | Was `ORT_ENABLE_BASIC` |
+
+**Measured:** 187% CPU utilization (multi-core ONNX), 25% faster wall time on embeddings.
+
+### Binary vector format (VECF)
+
+BonfyreEmbed can output raw float32 vectors instead of JSON:
+
+```bash
+bonfyre-embed --text input.txt --out embedding.vecf --output-format binary
+# 1.5 KB binary vs 6.4 KB JSON — auto-detected by bonfyre-vec search
+```
+
+| Format | Size (384-dim) | Parse time |
+|---|---|---|
+| JSON | 6.4 KB | 384 × `strtof()` ≈ 384K cycles |
+| **VECF binary** | **1.5 KB** | `fread()` ≈ **< 1K cycles** |
+
+## All 46 binaries
 
 ### Infrastructure
 
@@ -247,7 +284,16 @@ npm install bonfyre
 | `bonfyre-proof` | 34 KB | Quality scoring + review |
 | `bonfyre-pack` | 33 KB | Deliverable packaging (ZIP + manifest) |
 | `bonfyre-compress` | 33 KB | File compression (zstd, async) |
-| `bonfyre-embed` | 34 KB | Text embeddings (ONNX) |
+| `bonfyre-embed` | 34 KB | Text embeddings (ONNX Runtime C API, BERT WordPiece tokenizer) |
+| `bonfyre-vec` | 34 KB | Local vector search (sqlite-vec, pure C) |
+| `bonfyre-segment` | 33 KB | Speaker segmentation |
+| `bonfyre-speechloop` | 33 KB | Live speech loop |
+| `bonfyre-clips` | 33 KB | Audio clip extraction |
+| `bonfyre-tone` | 33 KB | Tone/sentiment analysis (openSMILE) |
+| `bonfyre-tag` | 33 KB | Topic tagging (fastText) |
+| `bonfyre-canon` | 34 KB | Canonical artifact format (tree-sitter) |
+| `bonfyre-query` | 33 KB | Artifact query engine |
+| `bonfyre-repurpose` | 33 KB | Content repurposing |
 | `bonfyre-emit` | 33 KB | Multi-format output (pandoc: HTML/PDF/EPUB/RSS) |
 | `bonfyre-render` | 33 KB | Template rendering |
 | `bonfyre-distribute` | 33 KB | Distribution + messaging (email, Slack, webhooks) |

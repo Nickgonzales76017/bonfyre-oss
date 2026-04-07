@@ -77,9 +77,35 @@ BonfyreCMS (299 KB binary) benchmarked in-process:
 | Infrastructure | 7 | ~529 KB |
 | Orchestration | 5 | ~183 KB |
 | Audio pipeline | 18 | ~607 KB |
-| Monetization | 7 | ~253 KB |
-| Library | 1 | 41 KB |
-| **Total** | **38 + 1 lib** | **~1.6 MB** |
+| Category | Count | Notes |
+|---|---|---|
+| Infrastructure | 7 | CMS, API, Auth, Index, Graph, Runtime, Hash |
+| Orchestration | 5 | Pipeline, CLI, Queue, Sync, Stitch |
+| Audio pipeline | 26 | Ingest through delivery, Embed, Vec, Canon |
+| Monetization | 7 | Offer, Gate, Meter, Ledger, Finance, Outreach, Pay |
+| Library | 2 | liblambda-tensors + libbonfyre |
+| **Total** | **46 + 2 libs** | **93% pure C11** |
+
+## Embedding & vector search (BonfyreEmbed + BonfyreVec)
+
+BonfyreEmbed: ONNX Runtime C API, BERT WordPiece tokenizer in C, mean pooling + L2 normalize.
+BonfyreVec: SQLite C API + sqlite-vec extension, no Python.
+
+### ONNX inference (all-MiniLM-L6-v2, 384-dim, Apple M-series)
+
+| Configuration | Wall time | CPU utilization |
+|---|---|---|
+| Single-threaded (`intra_op=1`, `ORT_ENABLE_BASIC`) | 304 ms | 119% |
+| **Multi-threaded (`intra_op=ncpu`, `ORT_ENABLE_ALL`)** | **227 ms** | **187%** |
+
+### Vector output format
+
+| Format | Size (384-dim) | Parse overhead |
+|---|---|---|
+| JSON (`{"vector": [...]}`) | 6.4 KB | 384 × `strtof()` ≈ 0.1 ms |
+| **VECF binary (raw float32)** | **1.5 KB** | **`fread()` < 0.001 ms** |
+
+For batch ingestion of 10K embeddings: JSON parse = ~1 second; VECF binary = ~10 ms.
 
 ## Comparison: Bonfyre CMS vs Strapi
 
