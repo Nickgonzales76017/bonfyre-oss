@@ -20,19 +20,11 @@
 #include <sys/wait.h>
 #include <time.h>
 #include <unistd.h>
+#include <bonfyre.h>
 
 /* ── helpers ─────────────────────────────────────────────────── */
 
-static int ensure_dir(const char *path) {
-    char tmp[PATH_MAX]; size_t len = strlen(path);
-    if (len == 0 || len >= sizeof(tmp)) return 1;
-    memcpy(tmp, path, len + 1);
-    for (size_t i = 1; i < len; i++) {
-        if (tmp[i] == '/') { tmp[i] = '\0'; mkdir(tmp, 0755); tmp[i] = '/'; }
-    }
-    mkdir(tmp, 0755);
-    return 0;
-}
+static int ensure_dir(const char *path) { return bf_ensure_dir(path); }
 
 static void iso_ts(char *buf, size_t sz) {
     time_t t = time(NULL); struct tm tm; gmtime_r(&t, &tm);

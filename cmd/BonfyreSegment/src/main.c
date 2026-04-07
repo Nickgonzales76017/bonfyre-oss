@@ -24,24 +24,11 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <time.h>
+#include <bonfyre.h>
 
 /* ── Utilities ────────────────────────────────────────────────────── */
 
-static int ensure_dir(const char *path) {
-    char tmp[PATH_MAX];
-    size_t len = strlen(path);
-    if (len == 0 || len >= sizeof(tmp)) return 1;
-    snprintf(tmp, sizeof(tmp), "%s", path);
-    for (size_t i = 1; i < len; i++) {
-        if (tmp[i] == '/') {
-            tmp[i] = '\0';
-            if (mkdir(tmp, 0755) != 0 && errno != EEXIST) return 1;
-            tmp[i] = '/';
-        }
-    }
-    if (mkdir(tmp, 0755) != 0 && errno != EEXIST) return 1;
-    return 0;
-}
+static int ensure_dir(const char *path) { return bf_ensure_dir(path); }
 
 static void iso_timestamp(char *buf, size_t sz) {
     time_t now = time(NULL);
@@ -51,20 +38,7 @@ static void iso_timestamp(char *buf, size_t sz) {
 }
 
 static char *read_file_contents(const char *path) {
-    FILE *fp = fopen(path, "rb");
-    if (!fp) return NULL;
-    fseek(fp, 0, SEEK_END);
-    long sz = ftell(fp);
-    if (sz < 0) { fclose(fp); return NULL; }
-    rewind(fp);
-    char *buf = malloc((size_t)sz + 1);
-    if (!buf) { fclose(fp); return NULL; }
-    if (sz > 0 && fread(buf, 1, (size_t)sz, fp) != (size_t)sz) {
-        free(buf); fclose(fp); return NULL;
-    }
-    buf[sz] = '\0';
-    fclose(fp);
-    return buf;
+    return bf_read_file(path, NULL);
 }
 
 /* ── Whisper JSON segment parser ──────────────────────────────────── */

@@ -22,22 +22,14 @@
 #include <time.h>
 #include <unistd.h>
 #include <tree_sitter/api.h>
+#include <bonfyre.h>
 
 /* ── external parsers (linked at build time) ─────────────────── */
 extern const TSLanguage *tree_sitter_json(void);
 
 /* ── helpers ─────────────────────────────────────────────────── */
 
-static int ensure_dir(const char *path) {
-    char tmp[PATH_MAX]; size_t len = strlen(path);
-    if (len == 0 || len >= sizeof(tmp)) return 1;
-    memcpy(tmp, path, len + 1);
-    for (size_t i = 1; i < len; i++) {
-        if (tmp[i] == '/') { tmp[i] = '\0'; mkdir(tmp, 0755); tmp[i] = '/'; }
-    }
-    mkdir(tmp, 0755);
-    return 0;
-}
+static int ensure_dir(const char *path) { return bf_ensure_dir(path); }
 
 static void iso_ts(char *buf, size_t sz) {
     time_t t = time(NULL); struct tm tm; gmtime_r(&t, &tm);
@@ -45,19 +37,7 @@ static void iso_ts(char *buf, size_t sz) {
 }
 
 static char *read_file_contents(const char *path, size_t *out_len) {
-    FILE *f = fopen(path, "rb");
-    if (!f) return NULL;
-    fseek(f, 0, SEEK_END);
-    long sz = ftell(f);
-    fseek(f, 0, SEEK_SET);
-    if (sz < 0) { fclose(f); return NULL; }
-    char *buf = malloc((size_t)sz + 1);
-    if (!buf) { fclose(f); return NULL; }
-    size_t rd = fread(buf, 1, (size_t)sz, f);
-    fclose(f);
-    buf[rd] = '\0';
-    if (out_len) *out_len = rd;
-    return buf;
+    return bf_read_file(path, out_len);
 }
 
 /* ── structural hash (FNV-1a) ────────────────────────────────── */

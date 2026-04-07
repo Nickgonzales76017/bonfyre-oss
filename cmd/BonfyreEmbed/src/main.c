@@ -18,6 +18,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <dirent.h>
 #include <sys/stat.h>
 #include <onnxruntime_c_api.h>
 #include <sqlite3.h>
@@ -294,10 +295,22 @@ static int resolve_onnx_path(const char *model_dir, char *out, size_t out_sz) {
     if (_s) { fprintf(stderr, "[embed] ORT: %s\n", api->GetErrorMessage(_s)); api->ReleaseStatus(_s); goto ort_fail; } \
 } while(0)
 
-static int run_onnx_embed(const Vocab *vocab, const char *text,
-                           const char *model_dir, float **out_vec, int *out_dims) {
-    const OrtApi *api = OrtGetApiBase()->GetApi(ORT_API_VERSION);
-    if (!api) return -1;
+/* ── ONNX Runtime session (reusable for batch) ──────────────── */
+
+typedef struct {
+    const OrtApi   *api;
+    OrtEnv         *env;
+    OrtSession     *session;
+    OrtSessionOptions *opts;
+    OrtMemoryInfo  *mem;
+    int             hidden_dims;  /* filled after first inference */
+} OrtContext;
+
+static int ort_session_open(OrtContext *ctx, const char *model_dir) {
+    memset(ctx, 0, sizeof(*ctx));
+    ctx->api = OrtGetApiBase()->GetApi(ORT_API_VERSION);
+    if (!ctx->api) return -1;
+    const OrtApi *api = ctx->api;
 
     char model_path[PATH_MAX];
     if (resolve_onnx_path(model_dir, model_path, sizeof(model_path)) != 0) {
@@ -305,7 +318,38 @@ static int run_onnx_embed(const Vocab *vocab, const char *text,
         return -1;
     }
 
-    /* Tokenize */
+    ORT_CHECK(api->CreateEnv(ORT_LOGGING_LEVEL_WARNING, "bonfyre-embed", &ctx->env));
+    ORT_CHECK(api->CreateSessionOptions(&ctx->opts));
+    api->SetIntraOpNumThreads(ctx->opts, get_cpu_count());
+    api->SetSessionGraphOptimizationLevel(ctx->opts, ORT_ENABLE_ALL);
+    ORT_CHECK(api->CreateSession(ctx->env, model_path, ctx->opts, &ctx->session));
+    ORT_CHECK(api->CreateCpuMemoryInfo(OrtArenaAllocator, OrtMemTypeDefault, &ctx->mem));
+    return 0;
+
+ort_fail:
+    if (ctx->mem) api->ReleaseMemoryInfo(ctx->mem);
+    if (ctx->session) api->ReleaseSession(ctx->session);
+    if (ctx->opts) api->ReleaseSessionOptions(ctx->opts);
+    if (ctx->env) api->ReleaseEnv(ctx->env);
+    memset(ctx, 0, sizeof(*ctx));
+    return -1;
+}
+
+static void ort_session_close(OrtContext *ctx) {
+    if (!ctx->api) return;
+    const OrtApi *api = ctx->api;
+    if (ctx->mem) api->ReleaseMemoryInfo(ctx->mem);
+    if (ctx->session) api->ReleaseSession(ctx->session);
+    if (ctx->opts) api->ReleaseSessionOptions(ctx->opts);
+    if (ctx->env) api->ReleaseEnv(ctx->env);
+    memset(ctx, 0, sizeof(*ctx));
+}
+
+/* Embed a single text using an open session.  Caller frees *out_vec. */
+static int ort_embed_text(OrtContext *ctx, const Vocab *vocab,
+                           const char *text, float **out_vec, int *out_dims) {
+    const OrtApi *api = ctx->api;
+
     WordList words = bert_pre_tokenize(text);
     int input_ids[MAX_SEQ_LEN] = {0};
     int attn_mask[MAX_SEQ_LEN] = {0};
@@ -320,30 +364,17 @@ static int run_onnx_embed(const Vocab *vocab, const char *text,
         ids64[i] = input_ids[i]; mask64[i] = attn_mask[i]; types64[i] = 0;
     }
 
-    OrtEnv *env = NULL;
-    OrtSession *session = NULL;
-    OrtSessionOptions *opts = NULL;
-    OrtMemoryInfo *mem = NULL;
     OrtValue *t_ids = NULL, *t_mask = NULL, *t_types = NULL, *output = NULL;
-
-    ORT_CHECK(api->CreateEnv(ORT_LOGGING_LEVEL_WARNING, "bonfyre-embed", &env));
-    ORT_CHECK(api->CreateSessionOptions(&opts));
-    api->SetIntraOpNumThreads(opts, get_cpu_count());
-    api->SetSessionGraphOptimizationLevel(opts, ORT_ENABLE_ALL);
-    ORT_CHECK(api->CreateSession(env, model_path, opts, &session));
-    ORT_CHECK(api->CreateCpuMemoryInfo(OrtArenaAllocator, OrtMemTypeDefault, &mem));
-
     int64_t shape[2] = {1, MAX_SEQ_LEN};
-    ORT_CHECK(api->CreateTensorWithDataAsOrtValue(mem, ids64, sizeof(ids64), shape, 2, ONNX_TENSOR_ELEMENT_DATA_TYPE_INT64, &t_ids));
-    ORT_CHECK(api->CreateTensorWithDataAsOrtValue(mem, mask64, sizeof(mask64), shape, 2, ONNX_TENSOR_ELEMENT_DATA_TYPE_INT64, &t_mask));
-    ORT_CHECK(api->CreateTensorWithDataAsOrtValue(mem, types64, sizeof(types64), shape, 2, ONNX_TENSOR_ELEMENT_DATA_TYPE_INT64, &t_types));
+    ORT_CHECK(api->CreateTensorWithDataAsOrtValue(ctx->mem, ids64, sizeof(ids64), shape, 2, ONNX_TENSOR_ELEMENT_DATA_TYPE_INT64, &t_ids));
+    ORT_CHECK(api->CreateTensorWithDataAsOrtValue(ctx->mem, mask64, sizeof(mask64), shape, 2, ONNX_TENSOR_ELEMENT_DATA_TYPE_INT64, &t_mask));
+    ORT_CHECK(api->CreateTensorWithDataAsOrtValue(ctx->mem, types64, sizeof(types64), shape, 2, ONNX_TENSOR_ELEMENT_DATA_TYPE_INT64, &t_types));
 
     const char *in_names[] = {"input_ids", "attention_mask", "token_type_ids"};
     const char *out_names[] = {"last_hidden_state"};
     const OrtValue *inputs[] = {t_ids, t_mask, t_types};
-    ORT_CHECK(api->Run(session, NULL, in_names, inputs, 3, out_names, 1, &output));
+    ORT_CHECK(api->Run(ctx->session, NULL, in_names, inputs, 3, out_names, 1, &output));
 
-    /* Extract shape */
     OrtTensorTypeAndShapeInfo *info = NULL;
     api->GetTensorTypeAndShape(output, &info);
     size_t ndims; api->GetDimensionsCount(info, &ndims);
@@ -351,11 +382,11 @@ static int run_onnx_embed(const Vocab *vocab, const char *text,
     api->ReleaseTensorTypeAndShapeInfo(info);
     int hidden = (int)oshape[ndims - 1];
     *out_dims = hidden;
+    ctx->hidden_dims = hidden;
 
     float *raw = NULL;
     api->GetTensorMutableData(output, (void **)&raw);
 
-    /* Mean pooling */
     float *embedding = calloc((size_t)hidden, sizeof(float));
     float mask_sum = 0;
     for (int t = 0; t < MAX_SEQ_LEN; t++) {
@@ -367,7 +398,6 @@ static int run_onnx_embed(const Vocab *vocab, const char *text,
     if (mask_sum > 0)
         for (int d = 0; d < hidden; d++) embedding[d] /= mask_sum;
 
-    /* L2 normalize */
     double norm = 0.0;
     for (int d = 0; d < hidden; d++) norm += (double)embedding[d] * embedding[d];
     norm = sqrt(norm);
@@ -378,19 +408,23 @@ static int run_onnx_embed(const Vocab *vocab, const char *text,
 
     api->ReleaseValue(output);
     api->ReleaseValue(t_ids); api->ReleaseValue(t_mask); api->ReleaseValue(t_types);
-    api->ReleaseMemoryInfo(mem);
-    api->ReleaseSession(session); api->ReleaseSessionOptions(opts); api->ReleaseEnv(env);
     return 0;
 
 ort_fail:
     if (t_ids) api->ReleaseValue(t_ids);
     if (t_mask) api->ReleaseValue(t_mask);
     if (t_types) api->ReleaseValue(t_types);
-    if (mem) api->ReleaseMemoryInfo(mem);
-    if (session) api->ReleaseSession(session);
-    if (opts) api->ReleaseSessionOptions(opts);
-    if (env) api->ReleaseEnv(env);
     return -1;
+}
+
+/* Backward-compat wrapper: open session, embed, close */
+static int run_onnx_embed(const Vocab *vocab, const char *text,
+                           const char *model_dir, float **out_vec, int *out_dims) {
+    OrtContext ctx;
+    if (ort_session_open(&ctx, model_dir) != 0) return -1;
+    int rc = ort_embed_text(&ctx, vocab, text, out_vec, out_dims);
+    ort_session_close(&ctx);
+    return rc;
 }
 
 #undef ORT_CHECK
@@ -606,14 +640,17 @@ static void usage(void) {
         "Usage: bonfyre-embed --text <path> --out <path> "
         "[--backend onnx|hash] [--model <name>] [--dims <n>] "
         "[--output-format json|binary] [--insert-db <db>] [--doc-id <id>] "
-        "[--meta-out <path>] [--dry-run]\n");
+        "[--input-dir <dir>] [--meta-out <path>] [--dry-run]\n"
+        "\n"
+        "  --input-dir <dir>  Batch mode: embed all .txt files in <dir>\n"
+        "                     (loads model once, amortizes startup)\n");
 }
 
 int main(int argc, char **argv) {
     const char *text_path = NULL, *out_path = NULL, *meta_out = NULL;
     const char *model = "all-MiniLM-L6-v2", *backend = "onnx";
     const char *output_fmt = "json";
-    const char *insert_db = NULL, *doc_id = NULL;
+    const char *insert_db = NULL, *doc_id = NULL, *input_dir = NULL;
     int dims = 384, dry_run = 0;
 
     for (int i = 1; i < argc; i++) {
@@ -626,9 +663,111 @@ int main(int argc, char **argv) {
         else if (strcmp(argv[i], "--output-format") == 0 && i+1 < argc) output_fmt = argv[++i];
         else if (strcmp(argv[i], "--insert-db") == 0 && i+1 < argc) insert_db = argv[++i];
         else if (strcmp(argv[i], "--doc-id") == 0 && i+1 < argc) doc_id = argv[++i];
+        else if (strcmp(argv[i], "--input-dir") == 0 && i+1 < argc) input_dir = argv[++i];
         else if (strcmp(argv[i], "--dry-run") == 0) dry_run = 1;
         else { usage(); return 1; }
     }
+
+    /* ── Batch mode: --input-dir ──────────────────────────── */
+    if (input_dir) {
+        if (!out_path && !insert_db) { usage(); return 1; }
+        DIR *d = opendir(input_dir);
+        if (!d) { fprintf(stderr, "Cannot open directory: %s\n", input_dir); return 2; }
+
+        /* Collect .txt files */
+        struct dirent *ent;
+        char **files = NULL;
+        int nfiles = 0, fcap = 0;
+        while ((ent = readdir(d)) != NULL) {
+            size_t nlen = strlen(ent->d_name);
+            if (nlen < 5 || strcmp(ent->d_name + nlen - 4, ".txt") != 0) continue;
+            if (nfiles == fcap) { fcap = fcap ? fcap * 2 : 64; files = realloc(files, sizeof(char *) * (size_t)fcap); }
+            char fp[PATH_MAX];
+            snprintf(fp, sizeof(fp), "%s/%s", input_dir, ent->d_name);
+            files[nfiles++] = strdup(fp);
+        }
+        closedir(d);
+
+        if (nfiles == 0) { fprintf(stderr, "[embed] No .txt files in %s\n", input_dir); free(files); return 0; }
+        fprintf(stderr, "[embed] Batch mode: %d files in %s\n", nfiles, input_dir);
+
+        if (dry_run) {
+            for (int i = 0; i < nfiles; i++) { printf("Would embed: %s\n", files[i]); free(files[i]); }
+            free(files); return 0;
+        }
+
+        /* Load model ONCE */
+        const char *mdir = resolve_model_dir(model);
+        fprintf(stderr, "[embed] backend=onnx-native  model=%s\n", mdir);
+        char vpath[PATH_MAX];
+        snprintf(vpath, sizeof(vpath), "%s/vocab.txt", mdir);
+        Vocab vocab = {0};
+        int use_onnx = (strcmp(backend, "onnx") == 0 && vocab_load(&vocab, vpath) == 0);
+        OrtContext ort_ctx = {0};
+        if (use_onnx && ort_session_open(&ort_ctx, mdir) != 0) use_onnx = 0;
+
+        if (out_path) ensure_dir(out_path);
+
+        int ok = 0, fail = 0;
+        for (int fi = 0; fi < nfiles; fi++) {
+            size_t tlen = 0;
+            char *text = read_file_contents(files[fi], &tlen);
+            if (!text) { fprintf(stderr, "[embed] Skip (unreadable): %s\n", files[fi]); fail++; continue; }
+
+            float *embedding = NULL;
+            int edims = dims;
+            const char *bl = NULL;
+
+            if (use_onnx) {
+                if (ort_embed_text(&ort_ctx, &vocab, text, &embedding, &edims) == 0)
+                    bl = "onnx-runtime-native";
+            }
+            if (!embedding) {
+                TokenList toks = normalize_tokens(text);
+                embedding = build_hash_embedding(&toks, edims);
+                token_list_free(&toks);
+                bl = "hashed-token-native";
+            }
+            free(text);
+            if (!embedding) { fail++; free(files[fi]); continue; }
+
+            /* Derive doc-id from filename */
+            const char *base = strrchr(files[fi], '/');
+            base = base ? base + 1 : files[fi];
+            char fid[PATH_MAX];
+            snprintf(fid, sizeof(fid), "%s", base);
+            char *dot = strrchr(fid, '.'); if (dot) *dot = '\0';
+
+            if (insert_db) {
+                char *ft = read_file_contents(files[fi], NULL);
+                insert_into_vec_db(insert_db, fid, ft ? ft : "", embedding, edims);
+                free(ft);
+            }
+            if (out_path) {
+                char opath[PATH_MAX];
+                if (strcmp(output_fmt, "binary") == 0)
+                    snprintf(opath, sizeof(opath), "%s/%s.vecf", out_path, fid);
+                else
+                    snprintf(opath, sizeof(opath), "%s/%s.json", out_path, fid);
+                if (strcmp(output_fmt, "binary") == 0)
+                    write_vector_binary(opath, embedding, edims);
+                else
+                    write_vector_json(opath, embedding, edims, bl);
+            }
+
+            free(embedding);
+            free(files[fi]);
+            ok++;
+            fprintf(stderr, "  [%d/%d] %s  (%d dims, %s)\n", ok + fail, nfiles, fid, edims, bl);
+        }
+
+        if (use_onnx) { ort_session_close(&ort_ctx); vocab_free(&vocab); }
+        free(files);
+        printf("Batch complete: %d/%d succeeded\n", ok, ok + fail);
+        return fail > 0 ? 1 : 0;
+    }
+
+    /* ── Single-file mode ─────────────────────────────────── */
     if (!text_path || (!out_path && !insert_db) || dims <= 0) { usage(); return 1; }
 
     if (dry_run) {

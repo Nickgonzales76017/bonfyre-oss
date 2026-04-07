@@ -131,6 +131,38 @@ bonfyre-embed --text doc.txt --insert-db my.db --backend onnx
 
 For batch ingestion of 10K embeddings: JSON parse = ~1 second; VECF binary = ~10 ms.
 
+### SIMD cosine similarity (P2)
+
+BonfyreVec hand-rolled NEON (ARM) cosine for exact search and pairwise comparison:
+
+| Mode | Backend | Use case |
+|---|---|---|
+| `search` (default) | sqlite-vec ANN | Fast approximate nearest neighbors |
+| `search --exact` | **NEON SIMD cosine** | Brute-force exact scan, no approximation |
+| `compare <id1> <id2>` | **NEON SIMD cosine** | Pairwise similarity between stored vectors |
+
+Self-match: cosine = 1.00000000, distance = 0.00000000.
+
+### Batch embedding (P2)
+
+`--input-dir` loads the ONNX model once and embeds N files in a single session:
+
+| Mode | 3 files | Model loads |
+|---|---|---|
+| 3 × `bonfyre-embed --text` | ~1.8 s | 3 |
+| **`bonfyre-embed --input-dir`** | **~0.9 s** | **1** |
+
+### libbonfyre shared runtime (P2)
+
+8 binaries refactored from duplicated utility functions to shared `libbonfyre.a`:
+
+| Function | Before | After |
+|---|---|---|
+| `ensure_dir` | 8 copies (~13 LOC each) | **`bf_ensure_dir()` — single implementation** |
+| `read_file_contents` | 4 copies (~12 LOC each) | **`bf_read_file()` — single implementation** |
+
+Binaries: Repurpose, Segment, Clips, SpeechLoop, Tone, Canon, Query, Tag.
+
 ## Comparison: Bonfyre CMS vs Strapi
 
 | Metric | Strapi | Bonfyre CMS |

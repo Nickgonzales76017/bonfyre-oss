@@ -8,6 +8,8 @@
  *   bonfyre-vec init <db>                          → create vector table
  *   bonfyre-vec insert <db> <embeddings.json>      → bulk insert vectors
  *   bonfyre-vec search <db> <query-embedding.json> [--top N]  → nearest neighbors
+ *   bonfyre-vec search <db> <query.json> --exact [--top N]    → exact SIMD cosine
+ *   bonfyre-vec compare <db> <id1> <id2>           → pairwise cosine similarity
  *   bonfyre-vec count <db>                         → row count
  */
 #include <errno.h>
@@ -18,7 +20,11 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <time.h>
+#include <math.h>
 #include <sqlite3.h>
+#ifdef __ARM_NEON
+#include <arm_neon.h>
+#endif
 
 #define VEC_DIMS 384
 #define VECF_MAGIC 0x46434556u  /* "VECF" little-endian */
@@ -78,6 +84,63 @@ static int load_vec_ext(sqlite3 *db) {
         sqlite3_free(err);
         return -1;
     }
+    return 0;
+}
+
+/* ── SIMD cosine similarity ──────────────────────────────────── */
+
+static float cosine_similarity(const float *a, const float *b, int n) {
+#ifdef __ARM_NEON
+    float32x4_t s_ab = vdupq_n_f32(0), s_aa = vdupq_n_f32(0), s_bb = vdupq_n_f32(0);
+    int i = 0;
+    for (; i + 4 <= n; i += 4) {
+        float32x4_t va = vld1q_f32(a + i), vb = vld1q_f32(b + i);
+        s_ab = vfmaq_f32(s_ab, va, vb);
+        s_aa = vfmaq_f32(s_aa, va, va);
+        s_bb = vfmaq_f32(s_bb, vb, vb);
+    }
+    float dot = vaddvq_f32(s_ab), na = vaddvq_f32(s_aa), nb = vaddvq_f32(s_bb);
+    for (; i < n; i++) { dot += a[i]*b[i]; na += a[i]*a[i]; nb += b[i]*b[i]; }
+#else
+    float dot = 0, na = 0, nb = 0;
+    for (int i = 0; i < n; i++) { dot += a[i]*b[i]; na += a[i]*a[i]; nb += b[i]*b[i]; }
+#endif
+    float denom = sqrtf(na) * sqrtf(nb);
+    return denom > 0.0f ? dot / denom : 0.0f;
+}
+
+/* Read a vector blob from vec_artifacts by ID */
+static int read_vec_from_db(sqlite3 *db, const char *id, float *out, int max_dims) {
+    sqlite3_stmt *stmt = NULL;
+    int rc = sqlite3_prepare_v2(db,
+        "SELECT embedding FROM vec_artifacts WHERE id = ?", -1, &stmt, NULL);
+    if (rc != SQLITE_OK) return 0;
+    sqlite3_bind_text(stmt, 1, id, -1, SQLITE_TRANSIENT);
+    int dims = 0;
+    if (sqlite3_step(stmt) == SQLITE_ROW) {
+        const void *blob = sqlite3_column_blob(stmt, 0);
+        int bytes = sqlite3_column_bytes(stmt, 0);
+        dims = bytes / (int)sizeof(float);
+        if (dims > max_dims) dims = max_dims;
+        if (blob) memcpy(out, blob, (size_t)dims * sizeof(float));
+    }
+    sqlite3_finalize(stmt);
+    return dims;
+}
+
+/* Result struct for exact search */
+typedef struct {
+    char id[256];
+    float score;
+    char source[512];
+    char type[128];
+} VecResult;
+
+static int cmp_results_desc(const void *a, const void *b) {
+    float sa = ((const VecResult *)a)->score;
+    float sb = ((const VecResult *)b)->score;
+    if (sb > sa) return 1;
+    if (sb < sa) return -1;
     return 0;
 }
 
@@ -426,23 +489,152 @@ static int cmd_count(const char *db_path) {
     return 0;
 }
 
+/* ── compare: pairwise SIMD cosine ──────────────────────────── */
+
+static int cmd_compare(const char *db_path, const char *id1, const char *id2) {
+    sqlite3 *db = NULL;
+    if (sqlite3_open(db_path, &db) != SQLITE_OK) {
+        fprintf(stderr, "[vec] Cannot open DB: %s\n", sqlite3_errmsg(db));
+        return 1;
+    }
+    sqlite3_enable_load_extension(db, 1);
+    if (load_vec_ext(db) != 0) { sqlite3_close(db); return 1; }
+
+    float v1[VEC_DIMS], v2[VEC_DIMS];
+    int d1 = read_vec_from_db(db, id1, v1, VEC_DIMS);
+    int d2 = read_vec_from_db(db, id2, v2, VEC_DIMS);
+    sqlite3_close(db);
+
+    if (d1 == 0) { fprintf(stderr, "[vec] No vector for '%s'\n", id1); return 1; }
+    if (d2 == 0) { fprintf(stderr, "[vec] No vector for '%s'\n", id2); return 1; }
+    if (d1 != d2) { fprintf(stderr, "[vec] Dimension mismatch: %d vs %d\n", d1, d2); return 1; }
+
+    float sim = cosine_similarity(v1, v2, d1);
+    printf("{\"id1\":\"%s\",\"id2\":\"%s\",\"cosine_similarity\":%.8f,"
+           "\"distance\":%.8f,\"dims\":%d}\n",
+           id1, id2, sim, 1.0f - sim, d1);
+    return 0;
+}
+
+/* ── exact search: brute-force SIMD cosine scan ─────────────── */
+
+static int cmd_search_exact(const char *db_path, const char *query_file, int top_k) {
+    fprintf(stderr, "[vec] Exact SIMD cosine search %s (top %d)\n", db_path, top_k);
+
+    float query_vec[VEC_DIMS];
+    int dims = 0;
+
+    if (is_vecf_file(query_file)) {
+        dims = read_vector_binary(query_file, query_vec, VEC_DIMS);
+        if (dims > 0) fprintf(stderr, "[vec] Read %d dims from VECF binary\n", dims);
+    }
+    if (dims == 0) {
+        FILE *f = fopen(query_file, "rb");
+        if (!f) { fprintf(stderr, "[vec] Cannot open %s\n", query_file); return 1; }
+        fseek(f, 0, SEEK_END); long sz = ftell(f); fseek(f, 0, SEEK_SET);
+        char *json = malloc((size_t)sz + 1);
+        if (!json) { fclose(f); return 1; }
+        fread(json, 1, (size_t)sz, f); json[sz] = '\0'; fclose(f);
+        dims = json_parse_float_array(json, "embedding", query_vec, VEC_DIMS);
+        if (dims == 0) dims = json_parse_float_array(json, "vector", query_vec, VEC_DIMS);
+        free(json);
+    }
+    if (dims == 0) { fprintf(stderr, "[vec] No embedding in %s\n", query_file); return 1; }
+
+    sqlite3 *db = NULL;
+    if (sqlite3_open(db_path, &db) != SQLITE_OK) {
+        fprintf(stderr, "[vec] Cannot open DB: %s\n", sqlite3_errmsg(db));
+        return 1;
+    }
+    sqlite3_enable_load_extension(db, 1);
+    if (load_vec_ext(db) != 0) { sqlite3_close(db); return 1; }
+
+    /* Count vectors for allocation */
+    int total = 0;
+    sqlite3_stmt *cnt = NULL;
+    if (sqlite3_prepare_v2(db, "SELECT count(*) FROM vec_artifacts", -1, &cnt, NULL) == SQLITE_OK) {
+        if (sqlite3_step(cnt) == SQLITE_ROW) total = sqlite3_column_int(cnt, 0);
+        sqlite3_finalize(cnt);
+    }
+    if (total == 0) {
+        printf("{\"results\":[],\"query_file\":\"%s\",\"top_k\":%d,\"mode\":\"exact-simd\"}\n",
+               query_file, top_k);
+        sqlite3_close(db); return 0;
+    }
+
+    VecResult *results = calloc((size_t)total, sizeof(VecResult));
+    if (!results) { sqlite3_close(db); return 1; }
+
+    sqlite3_stmt *stmt = NULL;
+    sqlite3_prepare_v2(db,
+        "SELECT v.id, v.embedding, a.source, a.type "
+        "FROM vec_artifacts v LEFT JOIN artifacts a ON v.id = a.id",
+        -1, &stmt, NULL);
+
+    int count = 0;
+    while (sqlite3_step(stmt) == SQLITE_ROW && count < total) {
+        const char *id = (const char *)sqlite3_column_text(stmt, 0);
+        const void *blob = sqlite3_column_blob(stmt, 1);
+        int bytes = sqlite3_column_bytes(stmt, 1);
+        const char *src = (const char *)sqlite3_column_text(stmt, 2);
+        const char *typ = (const char *)sqlite3_column_text(stmt, 3);
+
+        int vdims = bytes / (int)sizeof(float);
+        if (vdims != dims || !blob) continue;
+
+        VecResult *r = &results[count++];
+        snprintf(r->id, sizeof(r->id), "%s", id ? id : "");
+        r->score = cosine_similarity(query_vec, (const float *)blob, dims);
+        snprintf(r->source, sizeof(r->source), "%s", src ? src : "");
+        snprintf(r->type, sizeof(r->type), "%s", typ ? typ : "");
+    }
+    sqlite3_finalize(stmt);
+    sqlite3_close(db);
+
+    qsort(results, (size_t)count, sizeof(VecResult), cmp_results_desc);
+
+    int show = count < top_k ? count : top_k;
+    printf("{\n  \"results\": [\n");
+    for (int i = 0; i < show; i++) {
+        if (i > 0) printf(",\n");
+        printf("    {\"id\":\"%s\",\"cosine_similarity\":%.8f,"
+               "\"distance\":%.8f,\"source\":\"%s\",\"type\":\"%s\"}",
+               results[i].id, results[i].score, 1.0f - results[i].score,
+               results[i].source, results[i].type);
+    }
+    printf("\n  ],\n  \"query_file\": \"%s\",\n  \"top_k\": %d,"
+           "\n  \"mode\": \"exact-simd\",\n  \"scanned\": %d\n}\n",
+           query_file, top_k, count);
+
+    free(results);
+    return 0;
+}
+
 /* ── main ───────────────────────────────────────────────────── */
 
 static void print_usage(void) {
     fprintf(stderr,
-        "bonfyre-vec — local vector search (sqlite-vec, pure C)\n\n"
+        "bonfyre-vec — local vector search (sqlite-vec, pure C, SIMD cosine)\n\n"
         "Usage:\n"
         "  bonfyre-vec init <db>\n"
         "  bonfyre-vec insert <db> <embeddings.json>\n"
         "  bonfyre-vec search <db> <query.json> [--top N]\n"
+        "  bonfyre-vec search <db> <query.json> --exact [--top N]\n"
+        "  bonfyre-vec compare <db> <id1> <id2>\n"
         "  bonfyre-vec count <db>\n"
         "  bonfyre-vec status\n");
 }
 
 int main(int argc, char **argv) {
     if (argc >= 2 && strcmp(argv[1], "status") == 0) {
-        printf("{\"binary\":\"bonfyre-vec\",\"status\":\"ok\",\"version\":\"2.0.0\","
-               "\"backend\":\"sqlite-vec-native\"}\n");
+        printf("{\"binary\":\"bonfyre-vec\",\"status\":\"ok\",\"version\":\"3.0.0\","
+               "\"backend\":\"sqlite-vec-native\",\"simd\":\""
+#ifdef __ARM_NEON
+               "neon"
+#else
+               "scalar"
+#endif
+               "\"}\n");
         return 0;
     }
 
@@ -457,12 +649,18 @@ int main(int argc, char **argv) {
         return cmd_insert(argv[2], argv[3]);
     } else if (strcmp(cmd, "search") == 0) {
         if (argc < 4) { print_usage(); return 1; }
-        int top_k = 10;
+        int top_k = 10, exact = 0;
         for (int i = 4; i < argc; i++) {
             if (strcmp(argv[i], "--top") == 0 && i + 1 < argc)
                 top_k = atoi(argv[++i]);
+            else if (strcmp(argv[i], "--exact") == 0)
+                exact = 1;
         }
-        return cmd_search(argv[2], argv[3], top_k);
+        return exact ? cmd_search_exact(argv[2], argv[3], top_k)
+                     : cmd_search(argv[2], argv[3], top_k);
+    } else if (strcmp(cmd, "compare") == 0) {
+        if (argc < 5) { print_usage(); return 1; }
+        return cmd_compare(argv[2], argv[3], argv[4]);
     } else if (strcmp(cmd, "count") == 0) {
         return cmd_count(argv[2]);
     }

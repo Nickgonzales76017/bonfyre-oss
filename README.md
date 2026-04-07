@@ -250,6 +250,25 @@ bonfyre-vec insert my.db doc.vecf --doc-id doc
 bonfyre-embed --text doc.txt --insert-db my.db --backend onnx
 ```
 
+### P2 optimizations (shipped)
+
+| Optimization | Impact | Details |
+|---|---|---|
+| SIMD cosine similarity | **NEON (ARM) + scalar fallback** | `bonfyre-vec compare` + `--exact` brute-force search; bypasses sqlite-vec ANN |
+| Batch embedding mode | **Single model load for N files** | `--input-dir` amortizes ONNX session startup across directory of .txt files |
+| libbonfyre shared runtime | **8 binaries refactored** | Replaces duplicated `ensure_dir` + `read_file_contents` with `bf_ensure_dir` / `bf_read_file` |
+
+```bash
+# Batch embed a directory (one model load)
+bonfyre-embed --input-dir corpus/ --insert-db vectors.db --backend onnx
+
+# Exact SIMD cosine search (bypasses ANN approximation)
+bonfyre-vec search vectors.db query.vecf --exact
+
+# Pairwise similarity between two documents
+bonfyre-vec compare vectors.db doc1 doc2
+```
+
 ### Binary vector format (VECF)
 
 BonfyreEmbed can output raw float32 vectors instead of JSON:
@@ -303,8 +322,8 @@ bonfyre-embed --text input.txt --out embedding.vecf --output-format binary
 | `bonfyre-proof` | 34 KB | Quality scoring + review |
 | `bonfyre-pack` | 33 KB | Deliverable packaging (ZIP + manifest) |
 | `bonfyre-compress` | 33 KB | File compression (zstd, async) |
-| `bonfyre-embed` | 34 KB | Text embeddings (ONNX Runtime C API, trie tokenizer, `--insert-db` inline vec insertion) |
-| `bonfyre-vec` | 34 KB | Local vector search (sqlite-vec, pure C) |
+| `bonfyre-embed` | 34 KB | Text embeddings (ONNX Runtime C API, trie tokenizer, `--insert-db`, `--input-dir` batch) |
+| `bonfyre-vec` | 34 KB | Local vector search (sqlite-vec, SIMD cosine, `--exact`, `compare`) |
 | `bonfyre-segment` | 33 KB | Speaker segmentation |
 | `bonfyre-speechloop` | 33 KB | Live speech loop |
 | `bonfyre-clips` | 33 KB | Audio clip extraction |
