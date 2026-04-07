@@ -330,6 +330,20 @@ const BfOperator BF_OPERATORS[] = {
         .layer = "transform",
         .group = "transform"
     },
+    {
+        .name = "repurpose",
+        .binary = "bonfyre-repurpose",
+        .description = "Brief → social media formats (tweets, LinkedIn, carousel, YouTube, newsletter)",
+        .input_types = {"brief", NULL},
+        .output_types = {"social-content", NULL},
+        .input_count = 1,
+        .output_count = 1,
+        .flags = BF_OP_PURE | BF_OP_CACHEABLE | BF_OP_IDEMPOTENT,
+        .exactness = BF_EXACT_BYTE,
+        .version = "1.0.0",
+        .layer = "transform",
+        .group = "transform"
+    },
 
     /* ================================================================
      * SURFACE — product-facing, stateful services
