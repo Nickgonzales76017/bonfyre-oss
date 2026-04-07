@@ -1,0 +1,46 @@
+<!--
+  BonfyreTel — FreeSWITCH Dialplan Extension
+  
+  Drop this file into /etc/freeswitch/dialplan/default/ (or your
+  FreeSWITCH conf/dialplan/default/ directory).
+
+  What it does:
+    1. Answers all inbound calls
+    2. Plays a short beep/greeting
+    3. Records the caller to a timestamped .wav file
+    4. On hangup, the ESL event triggers bonfyre-tel → bonfyre-pipeline
+
+  Adjust the <condition field="destination_number"> regex to match
+  your DID numbers from your SIP trunk provider.
+-->
+
+<include>
+  <!-- ── Inbound calls: answer + record ──────────────────────────── -->
+  <extension name="bonfyre-inbound-record">
+    <!--
+      Match all inbound calls. Narrow this regex to your DID(s):
+        <condition field="destination_number" expression="^(15551234567)$">
+    -->
+    <condition field="destination_number" expression="^(.+)$">
+      <action application="answer"/>
+      <action application="sleep" data="500"/>
+
+      <!-- Optional greeting (TTS or playback) -->
+      <!-- <action application="playback" data="ivr/ivr-welcome.wav"/> -->
+
+      <!-- Record to timestamped file. ESL gets notified on completion. -->
+      <action application="set" data="record_file_path=$${recordings_dir}/${caller_id_number}_${strftime(%Y%m%d_%H%M%S)}.wav"/>
+      <action application="record" data="${record_file_path} 120 200 5"/>
+
+      <!-- Park after recording (or hang up) -->
+      <action application="hangup"/>
+    </condition>
+  </extension>
+
+  <!-- ── Outbound calls (originated by bonfyre-tel call) ─────────── -->
+  <extension name="bonfyre-outbound">
+    <condition field="context" expression="^bonfyre-outbound$">
+      <action application="bridge" data="sofia/external/${destination_number}@${default_provider}"/>
+    </condition>
+  </extension>
+</include>

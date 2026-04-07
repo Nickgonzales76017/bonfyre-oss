@@ -674,6 +674,20 @@ const BfOperator BF_OPERATORS[] = {
         .layer = "value",
         .group = "package"
     },
+    {
+        .name = "tel",
+        .binary = "bonfyre-tel",
+        .description = "Telephony adapter (FreeSWITCH ESL — voice, SMS, MMS)",
+        .input_types = {"audio-raw", "text-plain", NULL},
+        .output_types = {"transcript", "delivery-receipt", NULL},
+        .input_count = 2,
+        .output_count = 2,
+        .flags = BF_OP_STATEFUL | BF_OP_STREAMING,
+        .exactness = BF_EXACT_CANON,
+        .version = "1.0.0",
+        .layer = "surface",
+        .group = "ingest"
+    },
 };
 
 const int BF_OPERATOR_COUNT = sizeof(BF_OPERATORS) / sizeof(BF_OPERATORS[0]);

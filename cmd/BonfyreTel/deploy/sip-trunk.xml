@@ -1,0 +1,36 @@
+<!--
+  BonfyreTel — FreeSWITCH SIP Profile for commodity trunk
+  
+  Drop into /etc/freeswitch/sip_profiles/external/ (or equivalent).
+  
+  Replace the placeholder values with your SIP trunk credentials
+  from Telnyx, Bandwidth, VoIP.ms, or any standards-compliant provider.
+-->
+
+<include>
+  <gateway name="bonfyre-trunk">
+    <!--
+      SIP trunk credentials — get these from your provider dashboard.
+      Telnyx: Connection > SIP Trunk > Credentials
+      Bandwidth: Sub-account > SIP Credentials
+    -->
+    <param name="username"  value="YOUR_SIP_USERNAME"/>
+    <param name="password"  value="YOUR_SIP_PASSWORD"/>
+    <param name="realm"     value="sip.provider.com"/>
+    <param name="proxy"     value="sip.provider.com"/>
+
+    <!-- Registration (most trunks need this) -->
+    <param name="register"       value="true"/>
+    <param name="register-transport" value="udp"/>
+
+    <!-- Caller ID — set to your DID -->
+    <param name="caller-id-in-from" value="true"/>
+
+    <!-- Codecs: G.711 µ-law is universal; add G.722 for wideband -->
+    <param name="codec-prefs" value="PCMU,PCMA,G722"/>
+
+    <!-- Keep-alive -->
+    <param name="ping"      value="30"/>
+    <param name="ping-max"  value="3"/>
+  </gateway>
+</include>
