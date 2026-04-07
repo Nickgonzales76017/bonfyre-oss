@@ -13,6 +13,7 @@
 #include <unistd.h>
 #include <bonfyre.h>
 #include <whisper.h>
+#include <ggml-backend.h>
 #include <zlib.h>
 #ifdef __APPLE__
 #include <mach/mach_time.h>
@@ -1468,13 +1469,21 @@ int main(int argc, char **argv) {
 
     double t_model_start = wall_clock_ms();
 
+    /* ggml 0.9.11+ uses dynamic backend plugins (Metal, CPU, BLAS).
+     * Must load them before any whisper context init. */
+    ggml_backend_load_all();
+
     /* Round 3, item 1: DTW token-level timestamps.
      * Dynamic Time Warping on cross-attention alignment heads gives
      * sub-word timing precision — state-of-the-art forced alignment.
-     * Auto-select the correct attention head preset for this model. */
+     * Auto-select the correct attention head preset for this model.
+     *
+     * DTW requires the full cross-attention matrix, so flash_attn
+     * is disabled when DTW is active (whisper silently disables DTW
+     * if flash_attn is on — we want DTW, not flash). */
     struct whisper_context_params cparams = whisper_context_default_params();
     cparams.use_gpu = true;
-    cparams.flash_attn = true;
+    cparams.flash_attn = false;  /* incompatible with DTW */
     cparams.dtw_token_timestamps = true;
     cparams.dtw_aheads_preset = resolve_dtw_preset(model_path);
 

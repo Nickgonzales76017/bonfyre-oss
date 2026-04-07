@@ -104,8 +104,8 @@ for creator_dir in "$OUTPUT_DIR"/*/; do
     mkdir -p "$demo_dir"
 
     # ── Step 1: bonfyre-transcribe <audio> <output-dir> ──
-    # Outputs: demo/transcribe/normalized.txt (plain text)
-    transcript_txt="$demo_dir/transcribe/normalized.txt"
+    # Outputs: demo/transcribe/transcript.txt (plain text)
+    transcript_txt="$demo_dir/transcribe/transcript.txt"
     if [[ ! -f "$transcript_txt" ]]; then
       echo "  [1/8] bonfyre-transcribe..."
       "$BIN_DIR/bonfyre-transcribe" "$audio" "$demo_dir/transcribe" \
