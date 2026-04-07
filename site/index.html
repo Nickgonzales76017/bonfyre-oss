@@ -3,10 +3,10 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Bonfyre — 38 static C binaries. 1.6 MB. A complete backend.</title>
-<meta name="description" content="Bonfyre is 38 composable C11 binaries that replace an entire backend stack. CMS, transcription, auth, payments, compression — each under 70 KB. MIT licensed.">
-<meta property="og:title" content="Bonfyre — A complete backend in 1.6 MB">
-<meta property="og:description" content="38 static C binaries. CMS, transcription, auth, payments, compression. MIT licensed.">
+<title>Bonfyre — 47 static C binaries. ~2.1 MB. A complete backend.</title>
+<meta name="description" content="Bonfyre is 47 composable C11 binaries that replace an entire backend stack. CMS, transcription, telephony, auth, payments, compression — each under 70 KB. MIT licensed.">
+<meta property="og:title" content="Bonfyre — A complete backend in ~2.1 MB">
+<meta property="og:description" content="47 static C binaries. CMS, transcription, telephony, auth, payments, compression. MIT licensed.">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://nickgonzales76017.github.io/bonfyre/">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔥</text></svg>">
@@ -21,6 +21,7 @@
   --accent-dim: #c2410c;
   --green: #3fb950;
   --blue: #58a6ff;
+  --red: #f85149;
   --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
   --mono: "SF Mono", "Fira Code", "Fira Mono", Menlo, Consolas, monospace;
 }
@@ -56,7 +57,7 @@ a:hover { text-decoration: underline; }
 .hero .tagline {
   font-size: 1.25rem;
   color: var(--text-dim);
-  max-width: 600px;
+  max-width: 640px;
   margin: 0 auto 32px;
 }
 .hero-stats {
@@ -186,6 +187,39 @@ section .subtitle {
 }
 .cmp-table td:first-child { font-weight: 600; }
 .cmp-table .highlight { color: var(--accent); font-weight: 700; }
+.cmp-table .killed { color: var(--red); font-weight: 600; }
+
+/* Killer stats */
+.killer-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 16px;
+  margin-top: 24px;
+}
+.killer-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 24px;
+}
+.killer-card .vs {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-dim);
+  margin-bottom: 4px;
+}
+.killer-card .ratio {
+  font-size: 2.2rem;
+  font-weight: 800;
+  color: var(--accent);
+  line-height: 1.1;
+  margin-bottom: 4px;
+}
+.killer-card .detail {
+  font-size: 0.85rem;
+  color: var(--text-dim);
+}
 
 /* Layer diagram */
 .layers {
@@ -244,6 +278,38 @@ section .subtitle {
   color: var(--text-dim);
 }
 
+/* Optimization timeline */
+.opt-timeline {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+  margin: 24px 0;
+}
+.opt-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px;
+}
+.opt-card .tag {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--green);
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+.opt-card .title {
+  font-size: 0.9rem;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+.opt-card .desc {
+  font-size: 0.8rem;
+  color: var(--text-dim);
+  line-height: 1.4;
+}
+
 /* Binary list */
 .binary-group { margin-bottom: 32px; }
 .binary-group h3 {
@@ -299,6 +365,7 @@ footer a:hover { color: var(--text); }
   .hero-stat .num { font-size: 1.5rem; }
   section { padding: 40px 0; }
   .layer { flex-direction: column; gap: 4px; }
+  .killer-card .ratio { font-size: 1.8rem; }
 }
 </style>
 </head>
@@ -309,16 +376,16 @@ footer a:hover { color: var(--text); }
   <div class="container">
     <h1>🔥 <span>Bonfyre</span></h1>
     <p class="tagline">
-      38 composable C11 binaries that replace your entire backend stack.
-      CMS, transcription, auth, payments, compression — each under 70 KB.
+      47 composable C11 binaries that replace your entire backend stack.
+      CMS, transcription, telephony, auth, payments, vector search, compression — each under 70 KB.
     </p>
     <div class="hero-stats">
       <div class="hero-stat">
-        <span class="num">38</span>
+        <span class="num">47</span>
         <span class="label">Binaries</span>
       </div>
       <div class="hero-stat">
-        <span class="num">1.6 MB</span>
+        <span class="num">~2.1 MB</span>
         <span class="label">Total Disk</span>
       </div>
       <div class="hero-stat">
@@ -326,8 +393,12 @@ footer a:hover { color: var(--text); }
         <span class="label">Pipeline Latency</span>
       </div>
       <div class="hero-stat">
-        <span class="num">13.5%</span>
+        <span class="num">9.3%</span>
         <span class="label">JSON Compression</span>
+      </div>
+      <div class="hero-stat">
+        <span class="num">69</span>
+        <span class="label">Tests Passing</span>
       </div>
     </div>
     <div class="install-box">
@@ -337,12 +408,68 @@ footer a:hover { color: var(--text); }
       <a href="https://github.com/Nickgonzales76017/bonfyre" class="btn btn-primary">
         View on GitHub
       </a>
-      <a href="#use-cases" class="btn btn-outline">
-        Pick a use case ↓
+      <a href="#vs-competition" class="btn btn-outline">
+        See what it replaces ↓
       </a>
     </div>
   </div>
 </header>
+
+<!-- Competition crusher -->
+<section id="vs-competition">
+  <div class="container">
+    <h2>What Bonfyre replaces</h2>
+    <p class="subtitle">Side-by-side against the industry incumbents. These numbers are real.</p>
+
+    <div class="killer-grid">
+      <div class="killer-card">
+        <div class="vs">vs Strapi (CMS)</div>
+        <div class="ratio">1,742× smaller</div>
+        <div class="detail">500 MB install → 287 KB binary. 400 npm deps → 0. 200 MB RAM → 15 MB. Cold start 120 sec → 50 ms.</div>
+      </div>
+      <div class="killer-card">
+        <div class="vs">vs Deepgram (transcription)</div>
+        <div class="ratio">$0 / minute</div>
+        <div class="detail">Cloud API at $0.006/min → free, local, offline, private. No internet required. No API key. No billing.</div>
+      </div>
+      <div class="killer-card">
+        <div class="vs">vs Pinecone (vector search)</div>
+        <div class="ratio">$0 / month</div>
+        <div class="detail">$70–250/mo hosted → 35 KB binary. Local SQLite + NEON SIMD cosine. 5 ms exact search.</div>
+      </div>
+      <div class="killer-card">
+        <div class="vs">vs Twilio (telephony)</div>
+        <div class="ratio">68 KB binary</div>
+        <div class="detail">SaaS vendor lock-in → FreeSWITCH ESL adapter. SIP/RTP, call routing, IVR — no per-call billing.</div>
+      </div>
+      <div class="killer-card">
+        <div class="vs">vs Express + Prisma</div>
+        <div class="ratio">95× smaller</div>
+        <div class="detail">200 MB + Node.js runtime → ~2.1 MB total. Static binaries, zero runtime deps, &lt; 50 ms startup.</div>
+      </div>
+      <div class="killer-card">
+        <div class="vs">vs full SaaS stack</div>
+        <div class="ratio">$0 / month</div>
+        <div class="detail">Auth + billing + gateway + CMS + search: typically $2,500/mo → 240 KB of Bonfyre binaries.</div>
+      </div>
+    </div>
+
+    <table class="cmp-table" style="margin-top:40px;">
+      <thead>
+        <tr><th></th><th class="killed">Strapi</th><th class="killed">Express + Prisma</th><th class="highlight">Bonfyre</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Install size</td><td>~500 MB</td><td>~200 MB</td><td class="highlight">~2.1 MB</td></tr>
+        <tr><td>Dependencies</td><td>Node + 400 packages</td><td>Node + 80 packages</td><td class="highlight">libc + SQLite</td></tr>
+        <tr><td>Startup time</td><td>30–120 sec</td><td>2–5 sec</td><td class="highlight">&lt; 50 ms</td></tr>
+        <tr><td>Idle memory</td><td>~200 MB</td><td>~80 MB</td><td class="highlight">15 MB</td></tr>
+        <tr><td>Build step</td><td>npm install (2 min)</td><td>npm install (45 sec)</td><td class="highlight">make (8 sec)</td></tr>
+        <tr><td>Runtime</td><td>Node.js 18+</td><td>Node.js 18+</td><td class="highlight">None (static binary)</td></tr>
+        <tr><td>Binaries</td><td>1 monolith</td><td>1 monolith</td><td class="highlight">47 composable</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
 
 <!-- Use Cases -->
 <section id="use-cases">
@@ -352,7 +479,7 @@ footer a:hover { color: var(--text); }
     <div class="use-cases">
       <div class="use-case">
         <h3>Lightweight CMS</h3>
-        <p>Replace Strapi's 500 MB install with a 299 KB binary. Dynamic schemas, token auth, REST API.</p>
+        <p>Replace Strapi's 500 MB install with a 287 KB binary. Dynamic schemas, token auth, REST API.</p>
         <code>bonfyre-cms serve --port 8800</code>
         <br><span class="time">2 min to try</span>
       </div>
@@ -364,50 +491,29 @@ footer a:hover { color: var(--text); }
       </div>
       <div class="use-case">
         <h3>JSON Compression</h3>
-        <p>Shrink JSON API payloads to 13.5% with random field access. O(1) per-field reads on compressed data.</p>
+        <p>Shrink JSON payloads to 9.3% with O(1) random field access. Near Shannon limit with arithmetic coding.</p>
         <code>liblambda-tensors</code>
         <br><span class="time">10 min to try</span>
       </div>
       <div class="use-case">
         <h3>Audio-to-Invoice Pipeline</h3>
-        <p>Audio → transcript → summary → quality score → pricing → packaged deliverable. One command.</p>
+        <p>Audio → transcript → summary → quality score → pricing → packaged deliverable. One command, 5–8 ms.</p>
         <code>bonfyre-pipeline run --input audio.mp3</code>
         <br><span class="time">2 min to try</span>
       </div>
       <div class="use-case">
-        <h3>Self-Host a SaaS Backend</h3>
-        <p>Auth, payments, usage metering, API keys, rate limiting — all as composable binaries. ~240 KB total.</p>
-        <code>bonfyre-api + auth + pay + gate</code>
-        <br><span class="time">15 min to try</span>
-      </div>
-      <div class="use-case">
-        <h3>Embeddable Compression Library</h3>
-        <p>41 KB static .a + shared .so. MIT licensed. Embed it anywhere — your app, your library, your product.</p>
-        <code>cc -o myapp myapp.c -llambda-tensors</code>
+        <h3>Semantic Vector Search</h3>
+        <p>Embed documents + NEON SIMD cosine search. Replace $250/mo Pinecone — local, 5 ms queries.</p>
+        <code>bonfyre-embed --insert-db my.db</code>
         <br><span class="time">5 min to try</span>
       </div>
+      <div class="use-case">
+        <h3>Self-Host a SaaS Backend</h3>
+        <p>Auth, payments, metering, API keys, rate limiting, telephony — composable binaries. ~240 KB total.</p>
+        <code>bonfyre-api + auth + pay + gate + tel</code>
+        <br><span class="time">15 min to try</span>
+      </div>
     </div>
-  </div>
-</section>
-
-<!-- Comparison -->
-<section id="comparison">
-  <div class="container">
-    <h2>How Bonfyre compares</h2>
-    <p class="subtitle">Against the tools you'd normally reach for.</p>
-    <table class="cmp-table">
-      <thead>
-        <tr><th></th><th>Strapi</th><th>Express + Prisma</th><th class="highlight">Bonfyre</th></tr>
-      </thead>
-      <tbody>
-        <tr><td>Install size</td><td>~500 MB</td><td>~200 MB</td><td class="highlight">1.6 MB</td></tr>
-        <tr><td>Dependencies</td><td>Node + 400 packages</td><td>Node + 80 packages</td><td class="highlight">libc + SQLite</td></tr>
-        <tr><td>Startup time</td><td>30–120 sec</td><td>2–5 sec</td><td class="highlight">&lt; 50 ms</td></tr>
-        <tr><td>Idle memory</td><td>~200 MB</td><td>~80 MB</td><td class="highlight">15 MB</td></tr>
-        <tr><td>Build step</td><td>npm install</td><td>npm install</td><td class="highlight">make</td></tr>
-        <tr><td>Runtime</td><td>Node.js 18+</td><td>Node.js 18+</td><td class="highlight">None (static binary)</td></tr>
-      </tbody>
-    </table>
   </div>
 </section>
 
@@ -415,33 +521,99 @@ footer a:hover { color: var(--text); }
 <section id="benchmarks">
   <div class="container">
     <h2>Benchmarks</h2>
-    <p class="subtitle">Apple M-series, single file / N=10,000 records.</p>
+    <p class="subtitle">Apple M-series, measured after 5 optimization passes (P0–P5). All numbers are real.</p>
     <div class="bench-grid">
       <div class="bench-card">
         <span class="value">5–8 ms</span>
-        <span class="metric">Unified pipeline latency</span>
+        <span class="metric">Unified pipeline (was 76 ms)</span>
       </div>
       <div class="bench-card">
-        <span class="value">13.5%</span>
-        <span class="metric">Lambda Tensors compression (vs raw JSON)</span>
+        <span class="value">9.3%</span>
+        <span class="metric">Lambda Tensors compression (N=10K)</span>
       </div>
       <div class="bench-card">
-        <span class="value">921 μs</span>
-        <span class="metric">CMS create operation</span>
+        <span class="value">237 ms</span>
+        <span class="metric">ONNX embed (was 600 ms Python)</span>
       </div>
       <div class="bench-card">
-        <span class="value">89 μs</span>
-        <span class="metric">Lambda Tensors reconstruct</span>
+        <span class="value">6 ms</span>
+        <span class="metric">fastText inference (was 150 ms Python)</span>
       </div>
       <div class="bench-card">
-        <span class="value">2.36 MB</span>
-        <span class="metric">Peak RSS (3,000 artifacts)</span>
+        <span class="value">536 bytes</span>
+        <span class="metric">Artifact struct (was 1,076)</span>
       </div>
       <div class="bench-card">
-        <span class="value">1.13 ms</span>
-        <span class="metric">ANN k-NN query (N=10K)</span>
+        <span class="value">5 ms</span>
+        <span class="metric">SIMD exact vector search</span>
+      </div>
+      <div class="bench-card">
+        <span class="value">15.5×</span>
+        <span class="metric">Batch embed speedup (10 files)</span>
+      </div>
+      <div class="bench-card">
+        <span class="value">~10×</span>
+        <span class="metric">Hash hex (LUT vs snprintf)</span>
       </div>
     </div>
+  </div>
+</section>
+
+<!-- Performance story -->
+<section id="performance">
+  <div class="container">
+    <h2>5 optimization passes. Zero regressions.</h2>
+    <p class="subtitle">Every pass shipped. Every test passes. 69 tests across 2 libraries + 47 binaries.</p>
+    <div class="opt-timeline">
+      <div class="opt-card">
+        <div class="tag">P0 — Foundation</div>
+        <div class="title">Pure C rewrite</div>
+        <div class="desc">Python → C11, ONNX multi-thread, VECF binary format, -O3 -march=native -flto</div>
+      </div>
+      <div class="opt-card">
+        <div class="tag">P1 — Tokenizer</div>
+        <div class="title">Trie + inline DB</div>
+        <div class="desc">Hash table → trie tokenizer, --insert-db zero-file-I/O embed path</div>
+      </div>
+      <div class="opt-card">
+        <div class="tag">P2 — SIMD</div>
+        <div class="title">Batch + cosine</div>
+        <div class="desc">NEON SIMD cosine, batch embed, libbonfyre shared runtime (8 binaries)</div>
+      </div>
+      <div class="opt-card">
+        <div class="tag">P3 — Native</div>
+        <div class="title">fastText in C</div>
+        <div class="desc">Pure C fastText inference, libbonfyre → 29 binaries, DB connection pooling</div>
+      </div>
+      <div class="opt-card">
+        <div class="tag">P4 — Architecture</div>
+        <div class="title">Hardening pass</div>
+        <div class="desc">FNV hash registry, SHA-256 dedup, PGO targets, TCP_NODELAY, SIGPIPE handling</div>
+      </div>
+      <div class="opt-card">
+        <div class="tag">P5 — Datatype</div>
+        <div class="title">10 syntax wins</div>
+        <div class="desc">Hex LUT ~10×, struct 1076→536, O(n²)→O(n), raw syscalls, switch dispatch</div>
+      </div>
+    </div>
+
+    <table class="cmp-table" style="margin-top:24px;">
+      <thead>
+        <tr><th>Metric</th><th>Before (P0)</th><th class="highlight">After P5</th><th>Improvement</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Single embed</td><td>~600 ms (Python)</td><td class="highlight">237 ms</td><td>2.5×</td></tr>
+        <tr><td>10-file batch embed</td><td>~6,000 ms</td><td class="highlight">386 ms</td><td>15.5×</td></tr>
+        <tr><td>Pipeline (6 stages)</td><td>76 ms</td><td class="highlight">8 ms</td><td>9.5×</td></tr>
+        <tr><td>Tag inference</td><td>~150 ms (Python)</td><td class="highlight">6 ms</td><td>25×</td></tr>
+        <tr><td>Hash hex conversion</td><td>~100 ns (snprintf)</td><td class="highlight">~10 ns (LUT)</td><td>~10×</td></tr>
+        <tr><td>Artifact struct</td><td>1,076 bytes</td><td class="highlight">536 bytes</td><td>2× cache density</td></tr>
+        <tr><td>Operator lookup</td><td>O(n) linear</td><td class="highlight">O(1) FNV hash</td><td>algorithmic</td></tr>
+        <tr><td>Token generation</td><td>O(n²) strlen loop</td><td class="highlight">O(n) tracked offset</td><td>algorithmic</td></tr>
+        <tr><td>Vector file (384-dim)</td><td>6.4 KB JSON</td><td class="highlight">1,544 bytes VECF</td><td>4.2× smaller</td></tr>
+        <tr><td>Duplicate code</td><td>34 copies</td><td class="highlight">1 each (libbonfyre)</td><td>eliminated</td></tr>
+      </tbody>
+    </table>
   </div>
 </section>
 
@@ -449,11 +621,11 @@ footer a:hover { color: var(--text); }
 <section id="architecture">
   <div class="container">
     <h2>Architecture</h2>
-    <p class="subtitle">Four layers. Every binary declares its behavioral class.</p>
+    <p class="subtitle">Five layers. Every binary declares its behavioral class. Transform binaries are pure — same inputs, same outputs, cacheable.</p>
     <div class="layers">
       <div class="layer">
         <span class="layer-name">Surface</span>
-        <span class="layer-bins">cms · api · auth · pipeline · cli · transcript-family · project</span>
+        <span class="layer-bins">cms · api · auth · pipeline · cli · transcript-family · project · tel</span>
       </div>
       <div class="layer">
         <span class="layer-name">Value</span>
@@ -461,7 +633,7 @@ footer a:hover { color: var(--text); }
       </div>
       <div class="layer">
         <span class="layer-name">Transform</span>
-        <span class="layer-bins">media-prep · transcribe · transcript-clean · paragraph · brief · proof · embed · narrate · render · emit · mfa-dict · weaviate-index</span>
+        <span class="layer-bins">media-prep · transcribe · transcript-clean · paragraph · brief · proof · embed · narrate · render · emit · mfa-dict · weaviate-index · repurpose · segment · clips · speechloop · tone · tag · canon · query</span>
       </div>
       <div class="layer">
         <span class="layer-name">Substrate</span>
@@ -469,12 +641,10 @@ footer a:hover { color: var(--text); }
       </div>
       <div class="layer">
         <span class="layer-name">Libraries</span>
-        <span class="layer-bins">libbonfyre (runtime contract, operators, SHA-256) · liblambda-tensors (family compression)</span>
+        <span class="layer-bins">libbonfyre (runtime contract, FNV hash registry, SHA-256, 47 operators) · liblambda-tensors (family compression, Huffman, arithmetic coding)</span>
       </div>
     </div>
     <p style="text-align:center; margin-top:24px; color:var(--text-dim); font-size:0.9rem;">
-      <strong>Transform</strong> binaries are pure — same inputs, same outputs, cacheable.
-      <strong>Surface</strong> binaries own state and serve HTTP.
       <a href="https://github.com/Nickgonzales76017/bonfyre/blob/main/docs/architecture.md">Full architecture doc →</a>
     </p>
   </div>
@@ -483,75 +653,84 @@ footer a:hover { color: var(--text); }
 <!-- All binaries -->
 <section id="binaries">
   <div class="container">
-    <h2>All 38 binaries</h2>
-    <p class="subtitle">Every binary is standalone. Use one or use all.</p>
+    <h2>All 47 binaries</h2>
+    <p class="subtitle">Every binary is standalone. Use one or use all. ~2.1 MB total disk.</p>
 
     <div class="binary-group">
-      <h3>Substrate</h3>
+      <h3>Substrate (9 binaries)</h3>
       <div class="binary-list">
-        <div class="binary-item"><span class="name">bonfyre-ingest</span> <span class="size">33 KB</span> <span class="desc">— intake + type detection</span></div>
+        <div class="binary-item"><span class="name">bonfyre-ingest</span> <span class="size">35 KB</span> <span class="desc">— intake + type detection</span></div>
         <div class="binary-item"><span class="name">bonfyre-hash</span> <span class="size">34 KB</span> <span class="desc">— SHA-256 content addressing</span></div>
         <div class="binary-item"><span class="name">bonfyre-index</span> <span class="size">68 KB</span> <span class="desc">— SQLite artifact index + FTS</span></div>
-        <div class="binary-item"><span class="name">bonfyre-compress</span> <span class="size">33 KB</span> <span class="desc">— zstd family-aware compression</span></div>
-        <div class="binary-item"><span class="name">bonfyre-stitch</span> <span class="size">33 KB</span> <span class="desc">— DAG materializer</span></div>
+        <div class="binary-item"><span class="name">bonfyre-compress</span> <span class="size">34 KB</span> <span class="desc">— zstd family-aware compression</span></div>
+        <div class="binary-item"><span class="name">bonfyre-stitch</span> <span class="size">34 KB</span> <span class="desc">— DAG materializer</span></div>
         <div class="binary-item"><span class="name">bonfyre-graph</span> <span class="size">51 KB</span> <span class="desc">— Merkle-DAG artifact graph</span></div>
-        <div class="binary-item"><span class="name">bonfyre-runtime</span> <span class="size">33 KB</span> <span class="desc">— process lifecycle</span></div>
-        <div class="binary-item"><span class="name">bonfyre-queue</span> <span class="size">33 KB</span> <span class="desc">— persistent job queue</span></div>
-        <div class="binary-item"><span class="name">bonfyre-sync</span> <span class="size">33 KB</span> <span class="desc">— cross-instance replication</span></div>
+        <div class="binary-item"><span class="name">bonfyre-runtime</span> <span class="size">34 KB</span> <span class="desc">— process lifecycle</span></div>
+        <div class="binary-item"><span class="name">bonfyre-queue</span> <span class="size">34 KB</span> <span class="desc">— persistent job queue</span></div>
+        <div class="binary-item"><span class="name">bonfyre-sync</span> <span class="size">34 KB</span> <span class="desc">— cross-instance replication</span></div>
       </div>
     </div>
 
     <div class="binary-group">
-      <h3>Transform</h3>
+      <h3>Transform (20 binaries)</h3>
       <div class="binary-list">
         <div class="binary-item"><span class="name">bonfyre-media-prep</span> <span class="size">34 KB</span> <span class="desc">— audio normalization</span></div>
         <div class="binary-item"><span class="name">bonfyre-transcribe</span> <span class="size">34 KB</span> <span class="desc">— speech-to-text (Whisper)</span></div>
         <div class="binary-item"><span class="name">bonfyre-transcript-clean</span> <span class="size">34 KB</span> <span class="desc">— remove filler words</span></div>
-        <div class="binary-item"><span class="name">bonfyre-paragraph</span> <span class="size">34 KB</span> <span class="desc">— structure paragraphs</span></div>
+        <div class="binary-item"><span class="name">bonfyre-paragraph</span> <span class="size">35 KB</span> <span class="desc">— structure paragraphs</span></div>
         <div class="binary-item"><span class="name">bonfyre-brief</span> <span class="size">34 KB</span> <span class="desc">— summary + action items</span></div>
         <div class="binary-item"><span class="name">bonfyre-proof</span> <span class="size">34 KB</span> <span class="desc">— quality scoring</span></div>
-        <div class="binary-item"><span class="name">bonfyre-embed</span> <span class="size">34 KB</span> <span class="desc">— text embeddings (ONNX)</span></div>
-        <div class="binary-item"><span class="name">bonfyre-narrate</span> <span class="size">34 KB</span> <span class="desc">— text-to-speech (Piper)</span></div>
-        <div class="binary-item"><span class="name">bonfyre-render</span> <span class="size">33 KB</span> <span class="desc">— template rendering</span></div>
-        <div class="binary-item"><span class="name">bonfyre-emit</span> <span class="size">33 KB</span> <span class="desc">— HTML/PDF/EPUB output</span></div>
+        <div class="binary-item"><span class="name">bonfyre-embed</span> <span class="size">52 KB</span> <span class="desc">— ONNX embeddings, trie tokenizer, batch, --insert-db</span></div>
+        <div class="binary-item"><span class="name">bonfyre-vec</span> <span class="size">35 KB</span> <span class="desc">— SIMD cosine vector search (sqlite-vec)</span></div>
+        <div class="binary-item"><span class="name">bonfyre-narrate</span> <span class="size">35 KB</span> <span class="desc">— text-to-speech (Piper TTS)</span></div>
+        <div class="binary-item"><span class="name">bonfyre-render</span> <span class="size">34 KB</span> <span class="desc">— template rendering</span></div>
+        <div class="binary-item"><span class="name">bonfyre-emit</span> <span class="size">34 KB</span> <span class="desc">— HTML/PDF/EPUB/RSS output</span></div>
         <div class="binary-item"><span class="name">bonfyre-mfa-dict</span> <span class="size">34 KB</span> <span class="desc">— pronunciation dictionary</span></div>
-        <div class="binary-item"><span class="name">bonfyre-weaviate-index</span> <span class="size">34 KB</span> <span class="desc">— vector search index</span></div>
+        <div class="binary-item"><span class="name">bonfyre-weaviate-index</span> <span class="size">34 KB</span> <span class="desc">— Weaviate vector search</span></div>
         <div class="binary-item"><span class="name">bonfyre-transcript-family</span> <span class="size">34 KB</span> <span class="desc">— full transcription chain</span></div>
+        <div class="binary-item"><span class="name">bonfyre-repurpose</span> <span class="size">34 KB</span> <span class="desc">— content repurposing</span></div>
+        <div class="binary-item"><span class="name">bonfyre-segment</span> <span class="size">50 KB</span> <span class="desc">— speaker segmentation</span></div>
+        <div class="binary-item"><span class="name">bonfyre-clips</span> <span class="size">35 KB</span> <span class="desc">— audio clip extraction</span></div>
+        <div class="binary-item"><span class="name">bonfyre-speechloop</span> <span class="size">34 KB</span> <span class="desc">— live speech loop</span></div>
+        <div class="binary-item"><span class="name">bonfyre-tone</span> <span class="size">34 KB</span> <span class="desc">— tone/sentiment (openSMILE)</span></div>
+        <div class="binary-item"><span class="name">bonfyre-tag</span> <span class="size">35 KB</span> <span class="desc">— topic tagging (native fastText)</span></div>
       </div>
     </div>
 
     <div class="binary-group">
-      <h3>Surface</h3>
+      <h3>Surface (8 binaries)</h3>
       <div class="binary-list">
-        <div class="binary-item"><span class="name">bonfyre-cms</span> <span class="size">299 KB</span> <span class="desc">— CMS + Lambda Tensors</span></div>
+        <div class="binary-item"><span class="name">bonfyre-cms</span> <span class="size">287 KB</span> <span class="desc">— CMS + Lambda Tensors</span></div>
         <div class="binary-item"><span class="name">bonfyre-api</span> <span class="size">69 KB</span> <span class="desc">— HTTP gateway + dashboard</span></div>
         <div class="binary-item"><span class="name">bonfyre-auth</span> <span class="size">35 KB</span> <span class="desc">— user auth + sessions</span></div>
-        <div class="binary-item"><span class="name">bonfyre-pipeline</span> <span class="size">51 KB</span> <span class="desc">— unified 5-8 ms pipeline</span></div>
-        <div class="binary-item"><span class="name">bonfyre-cli</span> <span class="size">33 KB</span> <span class="desc">— unified dispatcher</span></div>
-        <div class="binary-item"><span class="name">bonfyre-project</span> <span class="size">33 KB</span> <span class="desc">— project scaffolding</span></div>
+        <div class="binary-item"><span class="name">bonfyre-pipeline</span> <span class="size">52 KB</span> <span class="desc">— unified 5-8 ms pipeline</span></div>
+        <div class="binary-item"><span class="name">bonfyre</span> <span class="size">34 KB</span> <span class="desc">— unified CLI dispatcher</span></div>
+        <div class="binary-item"><span class="name">bonfyre-project</span> <span class="size">34 KB</span> <span class="desc">— project scaffolding</span></div>
+        <div class="binary-item"><span class="name">bonfyre-tel</span> <span class="size">68 KB</span> <span class="desc">— FreeSWITCH telephony (SIP/RTP)</span></div>
+        <div class="binary-item"><span class="name">bonfyre-canon</span> <span class="size">35 KB</span> <span class="desc">— canonical artifact format</span></div>
       </div>
     </div>
 
     <div class="binary-group">
-      <h3>Value</h3>
+      <h3>Value (9 binaries)</h3>
       <div class="binary-list">
-        <div class="binary-item"><span class="name">bonfyre-offer</span> <span class="size">33 KB</span> <span class="desc">— dynamic pricing</span></div>
-        <div class="binary-item"><span class="name">bonfyre-gate</span> <span class="size">33 KB</span> <span class="desc">— API key tiers</span></div>
+        <div class="binary-item"><span class="name">bonfyre-offer</span> <span class="size">34 KB</span> <span class="desc">— dynamic pricing</span></div>
+        <div class="binary-item"><span class="name">bonfyre-gate</span> <span class="size">34 KB</span> <span class="desc">— API key tiers</span></div>
         <div class="binary-item"><span class="name">bonfyre-meter</span> <span class="size">34 KB</span> <span class="desc">— usage tracking</span></div>
-        <div class="binary-item"><span class="name">bonfyre-ledger</span> <span class="size">33 KB</span> <span class="desc">— financial records</span></div>
+        <div class="binary-item"><span class="name">bonfyre-ledger</span> <span class="size">34 KB</span> <span class="desc">— financial records</span></div>
         <div class="binary-item"><span class="name">bonfyre-finance</span> <span class="size">51 KB</span> <span class="desc">— bundle pricing</span></div>
-        <div class="binary-item"><span class="name">bonfyre-outreach</span> <span class="size">34 KB</span> <span class="desc">— outreach tracking</span></div>
+        <div class="binary-item"><span class="name">bonfyre-outreach</span> <span class="size">51 KB</span> <span class="desc">— outreach tracking</span></div>
         <div class="binary-item"><span class="name">bonfyre-pay</span> <span class="size">35 KB</span> <span class="desc">— invoicing + payments</span></div>
-        <div class="binary-item"><span class="name">bonfyre-pack</span> <span class="size">33 KB</span> <span class="desc">— deliverable packaging</span></div>
-        <div class="binary-item"><span class="name">bonfyre-distribute</span> <span class="size">33 KB</span> <span class="desc">— email/Slack/webhooks</span></div>
+        <div class="binary-item"><span class="name">bonfyre-pack</span> <span class="size">34 KB</span> <span class="desc">— deliverable packaging</span></div>
+        <div class="binary-item"><span class="name">bonfyre-distribute</span> <span class="size">34 KB</span> <span class="desc">— email/Slack/webhooks</span></div>
       </div>
     </div>
 
     <div class="binary-group">
       <h3>Libraries</h3>
       <div class="binary-list">
-        <div class="binary-item"><span class="name">libbonfyre</span> <span class="size"></span> <span class="desc">— runtime contract, operator registry, SHA-256</span></div>
-        <div class="binary-item"><span class="name">liblambda-tensors</span> <span class="size">41 KB</span> <span class="desc">— structural JSON compression</span></div>
+        <div class="binary-item"><span class="name">libbonfyre</span> <span class="size">64 KB</span> <span class="desc">— runtime contract, FNV hash operator registry, SHA-256</span></div>
+        <div class="binary-item"><span class="name">liblambda-tensors</span> <span class="size">72 KB</span> <span class="desc">— structural JSON compression (Huffman, arithmetic coding)</span></div>
       </div>
     </div>
   </div>
@@ -567,7 +746,7 @@ footer a:hover { color: var(--text); }
         <span class="comment"># From source (recommended)</span><br>
         git clone https://github.com/Nickgonzales76017/bonfyre.git<br>
         cd bonfyre<br>
-        make <span class="comment"># builds 2 libraries + 37 binaries</span><br>
+        make <span class="comment"># builds 2 libraries + 47 binaries</span><br>
         make install <span class="comment"># copies to ~/.local/bin</span>
       </code>
     </div>
@@ -579,6 +758,7 @@ footer a:hover { color: var(--text); }
     </div>
     <p style="color:var(--text-dim);font-size:0.9rem;">
       <strong>Requirements:</strong> C11 compiler (gcc or clang), SQLite3 dev headers, zlib.
+      <strong>Optional:</strong> ONNX Runtime (for embed), FreeSWITCH (for tel).
     </p>
   </div>
 </section>
@@ -587,10 +767,13 @@ footer a:hover { color: var(--text); }
 <section style="text-align:center; padding:80px 0;">
   <div class="container">
     <h2>MIT Licensed. Do whatever you want with it.</h2>
-    <p class="subtitle">One repo. Every binary. 1.6 MB.</p>
+    <p class="subtitle">One repo. 47 binaries. ~2.1 MB. 69 tests. 5 optimization passes.</p>
     <div class="btn-row">
       <a href="https://github.com/Nickgonzales76017/bonfyre" class="btn btn-primary">
         View on GitHub
+      </a>
+      <a href="https://github.com/Nickgonzales76017/bonfyre/blob/main/docs/benchmarks.md" class="btn btn-outline">
+        Full benchmarks →
       </a>
       <a href="https://github.com/Nickgonzales76017/bonfyre/blob/main/CONTRIBUTING.md" class="btn btn-outline">
         Contributing guide

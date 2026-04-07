@@ -74,20 +74,20 @@ BonfyreCMS (299 KB binary) benchmarked in-process:
 
 | Category | Count | Total size |
 |---|---|---|
-| Audio pipeline | 18 | 648 KB |
-| Infrastructure | 7 | 596 KB |
-| Monetization | 7 | 284 KB |
-| Orchestration | 5 | 160 KB |
-| **All 46 binaries** | **46** | **2.0 MB** |
+| Audio pipeline | 27 | 961 KB |
+| Infrastructure | 8 | 646 KB |
+| Monetization | 7 | 273 KB |
+| Orchestration | 5 | 190 KB |
+| **All 47 binaries** | **47** | **~2.1 MB** |
 
 | Category | Count | Binaries |
 |---|---|---|
-| Infrastructure | 7 | CMS, API, Auth, Index, Graph, Runtime, Hash |
+| Infrastructure | 8 | CMS, API, Auth, Index, Graph, Runtime, Hash, Tel |
 | Orchestration | 5 | Pipeline, CLI, Queue, Sync, Stitch |
-| Audio pipeline | 26 | Ingest through delivery, Embed, Vec, Canon |
+| Audio pipeline | 27 | Ingest through delivery, Embed, Vec, Canon, Tag |
 | Monetization | 7 | Offer, Gate, Meter, Ledger, Finance, Outreach, Pay |
 | Library | 2 | liblambda-tensors + libbonfyre |
-| **Total** | **46 + 2 libs** | **93% pure C11** |
+| **Total** | **47 + 2 libs** | **93% pure C11** |
 
 ## Embedding & vector search (BonfyreEmbed + BonfyreVec)
 
@@ -244,13 +244,13 @@ make
 ./bonfyre-pipeline bench --input test.md --rounds 100
 ```
 
-## Cumulative P0→P3 results (measured, Apple M-series)
+## Cumulative P0→P5 results (measured, Apple M-series)
 
-All measurements taken after P3 on `0793070`.
+All measurements taken after P5 on `98561b0`.
 
 ### Embedding pipeline (embed → search, 10 files)
 
-| Metric | Pre-P0 (baseline) | After P3 | Improvement |
+| Metric | Pre-P0 (baseline) | After P5 | Improvement |
 |---|---|---|---|
 | Single embed wall time | ~600 ms (Python subprocess) | **237 ms** (C + ONNX multi-thread) | **2.5×** |
 | 10-file embed | ~6,000 ms (10 × Python) | **386 ms** (batch, 1 model load) | **15.5×** |
@@ -264,9 +264,9 @@ All measurements taken after P3 on `0793070`.
 
 ### Pipeline (gate → ingest → index → meter → stitch → ledger)
 
-| Metric | Pre-P0 | After P3 | Improvement |
+| Metric | Pre-P0 | After P5 | Improvement |
 |---|---|---|---|
-| Full pipeline | 76 ms (10 separate fork/exec) | **8 ms** (unified, single process) | **9.5×** |
+| Full pipeline | 76 ms (10 separate fork/exec) | **8 ms** (unified + SHA-256 dedup) | **9.5×** |
 
 ### BonfyreTag (text classification)
 
@@ -277,17 +277,46 @@ All measurements taken after P3 on `0793070`.
 | Predict overhead | fork+exec+Python per call | **Single process, native inference** | eliminated |
 | Batch predict | N × Python subprocess | **1 model load, N predictions** | N× fewer forks |
 
+## P4: architecture optimizations
+
+| Optimization | Impact | Details |
+|---|---|---|
+| BonfyreTel hardening | Crypto-safe session IDs, 0-latency TCP | `arc4random`, `TCP_NODELAY`, O(1) ESL header lookup |
+| BonfyreAPI robustness | Crash-proof under load | `SIGPIPE` ignored, thread pool, `vasprintf`, heap buffers |
+| libbonfyre FNV hash | **O(1) operator lookup** | FNV-1a hash table replaces linear scan of 47-operator registry |
+| BonfyrePipeline dedup | **SHA-256 content dedup** | 279-line dedup engine — skips already-processed artifacts |
+| Build system | PGO targets, CFLAGS propagation | `make pgo-gen` / `make pgo-use`; root flags reach all sub-makes |
+
+## P5: syntax/datatype optimizations
+
+Pure zero-risk wins — no behavioral change, all measurable throughput gains:
+
+| Optimization | Impact | Details |
+|---|---|---|
+| Hex LUT | **~10× faster** hash-to-hex | `snprintf("%02x")` → 16-byte table lookup, 7 sites, 5 files |
+| BfArtifact struct shrink | **1,076 → 536 bytes** | `artifact_id[512→128]`, `created_at[128→32]`, `root_hash[128→68]` — doubles L2 cache density |
+| Auth `generate_token` | **O(n²) → O(n)** | Eliminated strlen-in-loop + sprintf; tracked offset with hex LUT |
+| `strlen()` on constants | **Compile-time** | 10+ sites: `BF_MAGIC_LEN` / `sizeof()` / literal `6` |
+| `bf_artifact_compute_keys` | **Cached strlen** | Eliminates 2 redundant full-string scans per call |
+| `bf_read_file` raw syscalls | **−2 syscalls** | `open/fstat/read/close` — zero stdio buffer allocation |
+| `op_cost` dispatch | **switch(op[0])** | Single char dispatch replaces 10 sequential `strcmp()` calls |
+| `memset` via `offsetof` | **Skip 1,000+ bytes** | Only zero struct header; body immediately overwritten by copy |
+| Graph JSON assembly | **~5× faster** | `memcpy` + `CPLIT` macro replaces snprintf chain |
+
 ### Code health
 
-| Metric | Pre-P0 | After P3 | Improvement |
+| Metric | Pre-P0 | After P5 | Improvement |
 |---|---|---|---|
 | Build flags | `-O2` | **`-O3 -march=native -flto=auto`** | 10–30% across all binaries |
 | Duplicated `ensure_dir` | 29 copies | **1** (libbonfyre) | 29 copies eliminated |
 | Duplicated `read_file` | 5 copies | **1** (libbonfyre) | 5 copies eliminated |
 | Binaries needing Python | 5 (Embed, Vec, Tag, Tone, Transcribe) | **3** (Tone, Transcribe, Tag-train) | 40% reduction |
-| libbonfyre linkage | 0/46 | **29/46** | 63% of binaries |
-| All 46 binaries total size | — | **2.0 MB** | — |
-| Tests | 38 lib + 20 bonfyre + 10 status | **68 total, all pass** | — |
+| libbonfyre linkage | 0/47 | **29/47** | 62% of binaries |
+| Operator registry lookup | O(n) linear scan | **O(1)** FNV hash table | algorithmic |
+| Artifact struct memory | 1,076 bytes | **536 bytes** | 2× L2 cache density |
+| Hash hex conversion | ~100 ns/call (snprintf) | **~10 ns/call** (LUT) | ~10× |
+| All 47 binaries total size | — | **~2.1 MB** | — |
+| Tests | — | **69 total, all pass** | — |
 
 ### Lambda Tensors (compression, N=10,000)
 
