@@ -7,7 +7,7 @@ LIBDIR  = $(PREFIX)/lib
 INCDIR  = $(PREFIX)/include
 
 CC     ?= cc
-CFLAGS ?= -O2 -Wall -Wextra -std=c11
+CFLAGS ?= -O3 -march=native -flto=auto -Wall -Wextra -std=c11
 
 # Every directory under cmd/ with a Makefile
 BINARIES := $(sort $(dir $(wildcard cmd/*/Makefile)))

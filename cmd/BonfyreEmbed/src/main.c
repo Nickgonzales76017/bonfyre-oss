@@ -21,6 +21,23 @@
 #include <sys/stat.h>
 #include <onnxruntime_c_api.h>
 
+/* portable CPU count (macOS + Linux) */
+#ifdef __APPLE__
+extern int sysctlbyname(const char *, void *, size_t *, void *, size_t);
+#endif
+static int get_cpu_count(void) {
+#ifdef __APPLE__
+    int count = 0;
+    size_t len = sizeof(count);
+    if (sysctlbyname("hw.ncpu", &count, &len, NULL, 0) == 0 && count > 0)
+        return count;
+#elif defined(_SC_NPROCESSORS_ONLN)
+    long n = sysconf(_SC_NPROCESSORS_ONLN);
+    if (n > 0) return (int)n;
+#endif
+    return 4;
+}
+
 #define MAX_SEQ_LEN  128
 #define VOCAB_CAP    32000
 #define MAX_WORD_LEN 200
@@ -272,8 +289,8 @@ static int run_onnx_embed(const Vocab *vocab, const char *text,
 
     ORT_CHECK(api->CreateEnv(ORT_LOGGING_LEVEL_WARNING, "bonfyre-embed", &env));
     ORT_CHECK(api->CreateSessionOptions(&opts));
-    api->SetIntraOpNumThreads(opts, 1);
-    api->SetSessionGraphOptimizationLevel(opts, ORT_ENABLE_BASIC);
+    api->SetIntraOpNumThreads(opts, get_cpu_count());
+    api->SetSessionGraphOptimizationLevel(opts, ORT_ENABLE_ALL);
     ORT_CHECK(api->CreateSession(env, model_path, opts, &session));
     ORT_CHECK(api->CreateCpuMemoryInfo(OrtArenaAllocator, OrtMemTypeDefault, &mem));
 
@@ -394,6 +411,20 @@ static float *build_hash_embedding(const TokenList *tokens, int dims) {
 
 /* ── output writers ─────────────────────────────────────────── */
 
+#define VECF_MAGIC 0x46434556u  /* "VECF" little-endian */
+
+static int write_vector_binary(const char *path, const float *vec, int dims) {
+    FILE *out = fopen(path, "wb");
+    if (!out) return 1;
+    uint32_t magic = VECF_MAGIC;
+    uint32_t d = (uint32_t)dims;
+    fwrite(&magic, 4, 1, out);
+    fwrite(&d, 4, 1, out);
+    fwrite(vec, sizeof(float), (size_t)dims, out);
+    fclose(out);
+    return 0;
+}
+
 static int write_vector_json(const char *path, const float *vec, int dims,
                               const char *backend) {
     FILE *out = fopen(path, "w");
@@ -452,12 +483,13 @@ static void usage(void) {
     fprintf(stderr,
         "Usage: bonfyre-embed --text <path> --out <path> "
         "[--backend onnx|hash] [--model <name>] [--dims <n>] "
-        "[--meta-out <path>] [--dry-run]\n");
+        "[--output-format json|binary] [--meta-out <path>] [--dry-run]\n");
 }
 
 int main(int argc, char **argv) {
     const char *text_path = NULL, *out_path = NULL, *meta_out = NULL;
     const char *model = "all-MiniLM-L6-v2", *backend = "onnx";
+    const char *output_fmt = "json";
     int dims = 384, dry_run = 0;
 
     for (int i = 1; i < argc; i++) {
@@ -467,6 +499,7 @@ int main(int argc, char **argv) {
         else if (strcmp(argv[i], "--model") == 0 && i+1 < argc) model = argv[++i];
         else if (strcmp(argv[i], "--dims") == 0 && i+1 < argc) dims = atoi(argv[++i]);
         else if (strcmp(argv[i], "--backend") == 0 && i+1 < argc) backend = argv[++i];
+        else if (strcmp(argv[i], "--output-format") == 0 && i+1 < argc) output_fmt = argv[++i];
         else if (strcmp(argv[i], "--dry-run") == 0) dry_run = 1;
         else { usage(); return 1; }
     }
@@ -538,14 +571,24 @@ int main(int argc, char **argv) {
     TokenList mt = {0};
     if (t2) { mt = normalize_tokens(t2); free(t2); }
 
-    if (write_vector_json(out_path, embedding, dims, backend_label) != 0 ||
+    /* Write vector (binary or JSON) */
+    int write_ok;
+    const char *fmt_label;
+    if (strcmp(output_fmt, "binary") == 0) {
+        write_ok = write_vector_binary(out_path, embedding, dims);
+        fmt_label = "binary";
+    } else {
+        write_ok = write_vector_json(out_path, embedding, dims, backend_label);
+        fmt_label = "json";
+    }
+    if (write_ok != 0 ||
         write_meta_json(meta_out, text_path, out_path, dims, model, mt.count, backend_label) != 0 ||
         write_status_json(status_path, out_path, meta_out, backend_label) != 0) {
         free(embedding); token_list_free(&mt);
         return 1;
     }
 
-    printf("Wrote embedding to %s  [%d dims, %s]\n", out_path, dims, backend_label);
+    printf("Wrote embedding to %s  [%d dims, %s, %s]\n", out_path, dims, backend_label, fmt_label);
     printf("Wrote metadata to %s\n", meta_out);
     free(embedding); token_list_free(&mt);
     return 0;

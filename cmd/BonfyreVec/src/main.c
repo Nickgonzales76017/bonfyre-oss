@@ -12,6 +12,7 @@
  */
 #include <errno.h>
 #include <limits.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -20,6 +21,30 @@
 #include <sqlite3.h>
 
 #define VEC_DIMS 384
+#define VECF_MAGIC 0x46434556u  /* "VECF" little-endian */
+
+/* ── binary vector reader (VECF format) ─────────────────────── */
+
+static int read_vector_binary(const char *path, float *out, int max_dims) {
+    FILE *f = fopen(path, "rb");
+    if (!f) return 0;
+    uint32_t magic, d;
+    if (fread(&magic, 4, 1, f) != 1 || magic != VECF_MAGIC) { fclose(f); return 0; }
+    if (fread(&d, 4, 1, f) != 1 || (int)d > max_dims || d == 0) { fclose(f); return 0; }
+    size_t rd = fread(out, sizeof(float), (size_t)d, f);
+    fclose(f);
+    return (int)rd;
+}
+
+/* detect VECF magic in first 4 bytes */
+static int is_vecf_file(const char *path) {
+    FILE *f = fopen(path, "rb");
+    if (!f) return 0;
+    uint32_t magic;
+    int ok = (fread(&magic, 4, 1, f) == 1 && magic == VECF_MAGIC);
+    fclose(f);
+    return ok;
+}
 
 /* ── sqlite-vec extension resolution ─────────────────────────── */
 
@@ -295,27 +320,35 @@ static int cmd_insert(const char *db_path, const char *json_path) {
     return 0;
 }
 
-static int cmd_search(const char *db_path, const char *query_json, int top_k) {
+static int cmd_search(const char *db_path, const char *query_file, int top_k) {
     fprintf(stderr, "[vec] Searching %s (top %d)\n", db_path, top_k);
 
-    FILE *f = fopen(query_json, "rb");
-    if (!f) { fprintf(stderr, "[vec] Cannot open %s\n", query_json); return 1; }
-    fseek(f, 0, SEEK_END);
-    long sz = ftell(f);
-    fseek(f, 0, SEEK_SET);
-    char *json = malloc((size_t)sz + 1);
-    if (!json) { fclose(f); return 1; }
-    fread(json, 1, (size_t)sz, f);
-    json[sz] = '\0';
-    fclose(f);
-
     float query_vec[VEC_DIMS];
-    int dims = json_parse_float_array(json, "embedding", query_vec, VEC_DIMS);
-    if (dims == 0) dims = json_parse_float_array(json, "vector", query_vec, VEC_DIMS);
-    free(json);
+    int dims = 0;
+
+    /* Try VECF binary first, then JSON */
+    if (is_vecf_file(query_file)) {
+        dims = read_vector_binary(query_file, query_vec, VEC_DIMS);
+        if (dims > 0) fprintf(stderr, "[vec] Read %d dims from VECF binary\n", dims);
+    }
+    if (dims == 0) {
+        FILE *f = fopen(query_file, "rb");
+        if (!f) { fprintf(stderr, "[vec] Cannot open %s\n", query_file); return 1; }
+        fseek(f, 0, SEEK_END);
+        long sz = ftell(f);
+        fseek(f, 0, SEEK_SET);
+        char *json = malloc((size_t)sz + 1);
+        if (!json) { fclose(f); return 1; }
+        fread(json, 1, (size_t)sz, f);
+        json[sz] = '\0';
+        fclose(f);
+        dims = json_parse_float_array(json, "embedding", query_vec, VEC_DIMS);
+        if (dims == 0) dims = json_parse_float_array(json, "vector", query_vec, VEC_DIMS);
+        free(json);
+    }
 
     if (dims == 0) {
-        fprintf(stderr, "[vec] No embedding found in %s\n", query_json);
+        fprintf(stderr, "[vec] No embedding found in %s\n", query_file);
         return 1;
     }
 
@@ -359,7 +392,7 @@ static int cmd_search(const char *db_path, const char *query_json, int top_k) {
                rid ? rid : "", dist,
                src ? src : "", typ ? typ : "", txt ? txt : "");
     }
-    printf("\n  ],\n  \"query_file\": \"%s\",\n  \"top_k\": %d\n}\n", query_json, top_k);
+    printf("\n  ],\n  \"query_file\": \"%s\",\n  \"top_k\": %d\n}\n", query_file, top_k);
 
     sqlite3_finalize(stmt);
     sqlite3_close(db);

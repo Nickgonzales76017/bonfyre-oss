@@ -1,5 +1,5 @@
-CC=cc
-CFLAGS=-O2 -Wall -Wextra -std=c11
+CC ?= cc
+CFLAGS ?= -O2 -Wall -Wextra -std=c11
 
 all: bonfyre-proof
 
