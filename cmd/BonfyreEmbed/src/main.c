@@ -20,6 +20,7 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <onnxruntime_c_api.h>
+#include <sqlite3.h>
 
 /* portable CPU count (macOS + Linux) */
 #ifdef __APPLE__
@@ -76,71 +77,117 @@ static char *read_file_contents(const char *path, size_t *out_len) {
     return buf;
 }
 
-/* ── BERT WordPiece tokenizer ───────────────────────────────── */
+/* ── BERT WordPiece tokenizer (trie-based) ──────────────────── */
+
+/*
+ * Trie with 128-wide children (ASCII).  Each node stores a vocab ID
+ * if the path from root to that node is a complete token (-1 otherwise).
+ * Gives O(token_length) lookup — single traversal vs hash-table's
+ * shrinking-substring probes.
+ */
+#define TRIE_ALPHA 128    /* ASCII range */
+
+typedef struct TrieNode {
+    int id;               /* vocab token ID, or -1 */
+    int children[TRIE_ALPHA];  /* index into pool, 0 = no child */
+} TrieNode;
+
+typedef struct {
+    TrieNode *pool;
+    int count;
+    int cap;
+} Trie;
+
+static void trie_init(Trie *t) {
+    t->cap = 256 * 1024;
+    t->pool = calloc((size_t)t->cap, sizeof(TrieNode));
+    t->count = 1;  /* node 0 is root */
+    t->pool[0].id = -1;
+    memset(t->pool[0].children, 0, sizeof(t->pool[0].children));
+}
+
+static void trie_insert(Trie *t, const char *key, int id) {
+    int node = 0;
+    for (const unsigned char *p = (const unsigned char *)key; *p; p++) {
+        int c = (*p < TRIE_ALPHA) ? *p : 0;
+        if (t->pool[node].children[c] == 0) {
+            if (t->count >= t->cap) {
+                t->cap *= 2;
+                t->pool = realloc(t->pool, (size_t)t->cap * sizeof(TrieNode));
+            }
+            int nn = t->count++;
+            t->pool[nn].id = -1;
+            memset(t->pool[nn].children, 0, sizeof(t->pool[nn].children));
+            t->pool[node].children[c] = nn;
+        }
+        node = t->pool[node].children[c];
+    }
+    t->pool[node].id = id;
+}
+
+/* Walk trie, return longest-match vocab ID.  Sets *match_len. */
+static int trie_longest_match(const Trie *t, const char *s, size_t len,
+                               size_t *match_len) {
+    int node = 0;
+    int best_id = -1;
+    size_t best_len = 0;
+    for (size_t i = 0; i < len; i++) {
+        int c = (unsigned char)s[i];
+        if (c >= TRIE_ALPHA || t->pool[node].children[c] == 0) break;
+        node = t->pool[node].children[c];
+        if (t->pool[node].id >= 0) {
+            best_id = t->pool[node].id;
+            best_len = i + 1;
+        }
+    }
+    *match_len = best_len;
+    return best_id;
+}
+
+static void trie_free(Trie *t) { free(t->pool); }
 
 typedef struct {
     char **tokens;
     int count;
-    int *ht_ids;
-    char **ht_keys;
-    int ht_cap;
+    Trie trie;       /* main vocab trie */
+    Trie sub_trie;   /* ## subword trie — keys WITHOUT the ## prefix */
 } Vocab;
-
-static unsigned int vocab_hash(const char *s) {
-    unsigned int h = 5381;
-    while (*s) { h = h * 33 + (unsigned char)*s; s++; }
-    return h;
-}
-
-static int vocab_lookup(const Vocab *v, const char *token) {
-    unsigned int h = vocab_hash(token) % (unsigned int)v->ht_cap;
-    for (int i = 0; i < v->ht_cap; i++) {
-        int idx = (int)((h + (unsigned int)i) % (unsigned int)v->ht_cap);
-        if (v->ht_ids[idx] < 0) return -1;
-        if (strcmp(v->ht_keys[idx], token) == 0) return v->ht_ids[idx];
-    }
-    return -1;
-}
-
-static void vocab_insert(Vocab *v, const char *key, int id) {
-    unsigned int h = vocab_hash(key) % (unsigned int)v->ht_cap;
-    for (int i = 0; i < v->ht_cap; i++) {
-        int idx = (int)((h + (unsigned int)i) % (unsigned int)v->ht_cap);
-        if (v->ht_ids[idx] < 0) {
-            v->ht_keys[idx] = v->tokens[id];
-            v->ht_ids[idx] = id;
-            return;
-        }
-    }
-}
 
 static int vocab_load(Vocab *v, const char *path) {
     FILE *f = fopen(path, "r");
     if (!f) return -1;
-    v->ht_cap = VOCAB_CAP * 3;
-    v->ht_ids = malloc(sizeof(int) * (size_t)v->ht_cap);
-    v->ht_keys = calloc((size_t)v->ht_cap, sizeof(char *));
     v->tokens = malloc(sizeof(char *) * VOCAB_CAP);
     v->count = 0;
-    for (int i = 0; i < v->ht_cap; i++) v->ht_ids[i] = -1;
+    trie_init(&v->trie);
+    trie_init(&v->sub_trie);
     char line[512];
     while (fgets(line, sizeof(line), f) && v->count < VOCAB_CAP) {
         size_t len = strlen(line);
         while (len > 0 && (line[len-1] == '\n' || line[len-1] == '\r')) len--;
         line[len] = '\0';
         v->tokens[v->count] = strdup(line);
-        vocab_insert(v, line, v->count);
+        trie_insert(&v->trie, line, v->count);
+        /* For ## subwords, also insert without the prefix for faster lookup */
+        if (len > 2 && line[0] == '#' && line[1] == '#')
+            trie_insert(&v->sub_trie, line + 2, v->count);
         v->count++;
     }
     fclose(f);
     return 0;
 }
 
+static int vocab_lookup(const Vocab *v, const char *token) {
+    size_t mlen;
+    size_t tlen = strlen(token);
+    int id = trie_longest_match(&v->trie, token, tlen, &mlen);
+    return (mlen == tlen) ? id : -1;
+}
+
 static void vocab_free(Vocab *v) {
     for (int i = 0; i < v->count; i++) free(v->tokens[i]);
     free(v->tokens);
-    free(v->ht_ids);
-    free(v->ht_keys);
+    trie_free(&v->trie);
+    trie_free(&v->sub_trie);
 }
 
 /* BERT pre-tokenizer: split on whitespace + punctuation, lowercase */
@@ -181,7 +228,7 @@ static WordList bert_pre_tokenize(const char *text) {
     return wl;
 }
 
-/* WordPiece: greedy longest-match */
+/* WordPiece: greedy longest-match via trie (O(word_len) per word) */
 static int wordpiece_encode(const Vocab *vocab, const WordList *words,
                             int *ids, int *attn, int max_len,
                             int cls_id, int sep_id, int unk_id) {
@@ -195,27 +242,19 @@ static int wordpiece_encode(const Vocab *vocab, const WordList *words,
         int is_bad = 0;
 
         while (start < wlen && pos < max_len - 1) {
-            size_t end = wlen;
-            int found = -1;
-            while (end > start) {
-                char sub[MAX_WORD_LEN + 4];
-                size_t slen = end - start;
-                if (slen > MAX_WORD_LEN) slen = MAX_WORD_LEN;
-                if (start > 0) {
-                    sub[0] = '#'; sub[1] = '#';
-                    memcpy(sub + 2, word + start, slen);
-                    sub[2 + slen] = '\0';
-                } else {
-                    memcpy(sub, word + start, slen);
-                    sub[slen] = '\0';
-                }
-                found = vocab_lookup(vocab, sub);
-                if (found >= 0) break;
-                end--;
+            size_t mlen = 0;
+            int found;
+            if (start == 0) {
+                /* First piece: look up in main trie */
+                found = trie_longest_match(&vocab->trie, word, wlen, &mlen);
+            } else {
+                /* Continuation: look up in sub_trie (keys without ##) */
+                found = trie_longest_match(&vocab->sub_trie,
+                                            word + start, wlen - start, &mlen);
             }
-            if (found < 0) { is_bad = 1; break; }
+            if (found < 0 || mlen == 0) { is_bad = 1; break; }
             ids[pos] = found; attn[pos] = 1; pos++;
-            start = end;
+            start += mlen;
         }
         if (is_bad && pos < max_len - 1) {
             ids[pos] = unk_id; attn[pos] = 1; pos++;
@@ -409,6 +448,89 @@ static float *build_hash_embedding(const TokenList *tokens, int dims) {
     return vector;
 }
 
+/* ── inline sqlite-vec insertion (--insert-db) ──────────────── */
+
+static const char *resolve_vec_ext(void) {
+    const char *env = getenv("BONFYRE_VEC_EXT");
+    if (env && env[0]) return env;
+    static const char *paths[] = {
+        "/Users/nickgonzales/Library/Python/3.9/lib/python/site-packages/sqlite_vec/vec0",
+        "/opt/homebrew/lib/sqlite_vec/vec0",
+        "/usr/local/lib/sqlite_vec/vec0",
+        NULL
+    };
+    struct stat st2;
+    for (int i = 0; paths[i]; i++) {
+        char buf[PATH_MAX];
+        snprintf(buf, sizeof(buf), "%s.dylib", paths[i]);
+        if (stat(buf, &st2) == 0) return paths[i];
+        snprintf(buf, sizeof(buf), "%s.so", paths[i]);
+        if (stat(buf, &st2) == 0) return paths[i];
+    }
+    return "vec0";
+}
+
+static int insert_into_vec_db(const char *db_path, const char *doc_id,
+                               const char *text, const float *embedding,
+                               int dims) {
+    sqlite3 *db = NULL;
+    if (sqlite3_open(db_path, &db) != SQLITE_OK) {
+        fprintf(stderr, "[embed] Cannot open DB: %s\n", sqlite3_errmsg(db));
+        return -1;
+    }
+    sqlite3_enable_load_extension(db, 1);
+    const char *ext = resolve_vec_ext();
+    char *err = NULL;
+    if (sqlite3_load_extension(db, ext, NULL, &err) != SQLITE_OK) {
+        fprintf(stderr, "[embed] Failed to load sqlite-vec: %s\n", err ? err : "unknown");
+        sqlite3_free(err);
+        sqlite3_close(db);
+        return -1;
+    }
+
+    /* Ensure tables exist */
+    char create_vec[256];
+    snprintf(create_vec, sizeof(create_vec),
+        "CREATE VIRTUAL TABLE IF NOT EXISTS vec_artifacts USING vec0("
+        "  id TEXT PRIMARY KEY, embedding float[%d])", dims);
+    sqlite3_exec(db,
+        "CREATE TABLE IF NOT EXISTS artifacts("
+        "  id TEXT PRIMARY KEY, source TEXT, type TEXT, text TEXT,"
+        "  metadata TEXT, created_at TEXT)", NULL, NULL, NULL);
+    sqlite3_exec(db, create_vec, NULL, NULL, NULL);
+
+    sqlite3_exec(db, "BEGIN", NULL, NULL, NULL);
+
+    /* Insert metadata */
+    sqlite3_stmt *meta = NULL;
+    sqlite3_prepare_v2(db,
+        "INSERT OR REPLACE INTO artifacts(id, source, type, text, metadata, created_at) "
+        "VALUES (?, 'BonfyreEmbed', 'embedding', ?, '{}', datetime('now'))",
+        -1, &meta, NULL);
+    if (meta) {
+        sqlite3_bind_text(meta, 1, doc_id, -1, SQLITE_TRANSIENT);
+        sqlite3_bind_text(meta, 2, text, -1, SQLITE_TRANSIENT);
+        sqlite3_step(meta);
+        sqlite3_finalize(meta);
+    }
+
+    /* Insert vector */
+    sqlite3_stmt *vec = NULL;
+    sqlite3_prepare_v2(db,
+        "INSERT OR REPLACE INTO vec_artifacts(id, embedding) VALUES (?, ?)",
+        -1, &vec, NULL);
+    if (vec) {
+        sqlite3_bind_text(vec, 1, doc_id, -1, SQLITE_TRANSIENT);
+        sqlite3_bind_blob(vec, 2, embedding, dims * (int)sizeof(float), SQLITE_TRANSIENT);
+        sqlite3_step(vec);
+        sqlite3_finalize(vec);
+    }
+
+    sqlite3_exec(db, "COMMIT", NULL, NULL, NULL);
+    sqlite3_close(db);
+    return 0;
+}
+
 /* ── output writers ─────────────────────────────────────────── */
 
 #define VECF_MAGIC 0x46434556u  /* "VECF" little-endian */
@@ -483,13 +605,15 @@ static void usage(void) {
     fprintf(stderr,
         "Usage: bonfyre-embed --text <path> --out <path> "
         "[--backend onnx|hash] [--model <name>] [--dims <n>] "
-        "[--output-format json|binary] [--meta-out <path>] [--dry-run]\n");
+        "[--output-format json|binary] [--insert-db <db>] [--doc-id <id>] "
+        "[--meta-out <path>] [--dry-run]\n");
 }
 
 int main(int argc, char **argv) {
     const char *text_path = NULL, *out_path = NULL, *meta_out = NULL;
     const char *model = "all-MiniLM-L6-v2", *backend = "onnx";
     const char *output_fmt = "json";
+    const char *insert_db = NULL, *doc_id = NULL;
     int dims = 384, dry_run = 0;
 
     for (int i = 1; i < argc; i++) {
@@ -500,14 +624,16 @@ int main(int argc, char **argv) {
         else if (strcmp(argv[i], "--dims") == 0 && i+1 < argc) dims = atoi(argv[++i]);
         else if (strcmp(argv[i], "--backend") == 0 && i+1 < argc) backend = argv[++i];
         else if (strcmp(argv[i], "--output-format") == 0 && i+1 < argc) output_fmt = argv[++i];
+        else if (strcmp(argv[i], "--insert-db") == 0 && i+1 < argc) insert_db = argv[++i];
+        else if (strcmp(argv[i], "--doc-id") == 0 && i+1 < argc) doc_id = argv[++i];
         else if (strcmp(argv[i], "--dry-run") == 0) dry_run = 1;
         else { usage(); return 1; }
     }
-    if (!text_path || !out_path || dims <= 0) { usage(); return 1; }
+    if (!text_path || (!out_path && !insert_db) || dims <= 0) { usage(); return 1; }
 
     if (dry_run) {
         printf("Would embed: %s -> %s  [%s, %s, %d dims]\n",
-               text_path, out_path, backend, model, dims);
+               text_path, out_path ? out_path : insert_db, backend, model, dims);
         return 0;
     }
 
@@ -515,18 +641,22 @@ int main(int argc, char **argv) {
     char *text = read_file_contents(text_path, &text_len);
     if (!text) { fprintf(stderr, "Missing text file: %s\n", text_path); return 2; }
 
-    /* Output directory */
-    char out_dir[PATH_MAX];
-    strncpy(out_dir, out_path, sizeof(out_dir) - 1);
-    out_dir[sizeof(out_dir) - 1] = '\0';
-    char *sl = strrchr(out_dir, '/');
-    if (sl) { *sl = '\0'; if (out_dir[0]) ensure_dir(out_dir); }
+    /* Output directory (only if writing files) */
+    char out_dir[PATH_MAX] = "";
+    if (out_path) {
+        strncpy(out_dir, out_path, sizeof(out_dir) - 1);
+        out_dir[sizeof(out_dir) - 1] = '\0';
+        char *sl = strrchr(out_dir, '/');
+        if (sl) { *sl = '\0'; if (out_dir[0]) ensure_dir(out_dir); }
+    }
 
-    char default_meta[PATH_MAX];
-    if (!meta_out) { snprintf(default_meta, sizeof(default_meta), "%s.json", out_path); meta_out = default_meta; }
-    char status_path[PATH_MAX];
-    snprintf(status_path, sizeof(status_path), "%s/status.json",
-             (sl && out_dir[0]) ? out_dir : ".");
+    char default_meta[PATH_MAX] = "";
+    char status_path[PATH_MAX] = "";
+    if (out_path) {
+        if (!meta_out) { snprintf(default_meta, sizeof(default_meta), "%s.json", out_path); meta_out = default_meta; }
+        snprintf(status_path, sizeof(status_path), "%s/status.json",
+                 (out_dir[0]) ? out_dir : ".");
+    }
 
     float *embedding = NULL;
     const char *backend_label = NULL;
@@ -566,30 +696,56 @@ int main(int argc, char **argv) {
     free(text);
     if (!embedding) { fprintf(stderr, "Embedding failed\n"); return 1; }
 
-    /* Token count for metadata */
-    char *t2 = read_file_contents(text_path, NULL);
-    TokenList mt = {0};
-    if (t2) { mt = normalize_tokens(t2); free(t2); }
-
-    /* Write vector (binary or JSON) */
-    int write_ok;
-    const char *fmt_label;
-    if (strcmp(output_fmt, "binary") == 0) {
-        write_ok = write_vector_binary(out_path, embedding, dims);
-        fmt_label = "binary";
-    } else {
-        write_ok = write_vector_json(out_path, embedding, dims, backend_label);
-        fmt_label = "json";
+    /* Inline insert to sqlite-vec DB (skip file I/O entirely) */
+    if (insert_db) {
+        /* Auto-generate doc-id from text filename if not provided */
+        char auto_id[PATH_MAX];
+        if (!doc_id) {
+            const char *base = strrchr(text_path, '/');
+            base = base ? base + 1 : text_path;
+            snprintf(auto_id, sizeof(auto_id), "%s", base);
+            char *dot = strrchr(auto_id, '.');
+            if (dot) *dot = '\0';
+            doc_id = auto_id;
+        }
+        char *t_text = read_file_contents(text_path, NULL);
+        if (insert_into_vec_db(insert_db, doc_id, t_text ? t_text : "", embedding, dims) != 0) {
+            free(t_text); free(embedding);
+            return 1;
+        }
+        printf("Inserted %s into %s  [%d dims, %s]\n", doc_id, insert_db, dims, backend_label);
+        free(t_text);
     }
-    if (write_ok != 0 ||
-        write_meta_json(meta_out, text_path, out_path, dims, model, mt.count, backend_label) != 0 ||
-        write_status_json(status_path, out_path, meta_out, backend_label) != 0) {
-        free(embedding); token_list_free(&mt);
-        return 1;
+
+    /* Write files (unless insert-db-only mode) */
+    if (out_path) {
+        /* Token count for metadata */
+        char *t2 = read_file_contents(text_path, NULL);
+        TokenList mt = {0};
+        if (t2) { mt = normalize_tokens(t2); free(t2); }
+
+        /* Write vector (binary or JSON) */
+        int write_ok;
+        const char *fmt_label;
+        if (strcmp(output_fmt, "binary") == 0) {
+            write_ok = write_vector_binary(out_path, embedding, dims);
+            fmt_label = "binary";
+        } else {
+            write_ok = write_vector_json(out_path, embedding, dims, backend_label);
+            fmt_label = "json";
+        }
+        if (write_ok != 0 ||
+            write_meta_json(meta_out, text_path, out_path, dims, model, mt.count, backend_label) != 0 ||
+            write_status_json(status_path, out_path, meta_out, backend_label) != 0) {
+            free(embedding); token_list_free(&mt);
+            return 1;
+        }
+
+        printf("Wrote embedding to %s  [%d dims, %s, %s]\n", out_path, dims, backend_label, fmt_label);
+        printf("Wrote metadata to %s\n", meta_out);
+        token_list_free(&mt);
     }
 
-    printf("Wrote embedding to %s  [%d dims, %s, %s]\n", out_path, dims, backend_label, fmt_label);
-    printf("Wrote metadata to %s\n", meta_out);
-    free(embedding); token_list_free(&mt);
+    free(embedding);
     return 0;
 }
