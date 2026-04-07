@@ -1,5 +1,5 @@
 # Bonfyre — top-level Makefile
-# Builds all 38 binaries + liblambda-tensors library
+# Builds all 38 binaries + liblambda-tensors + libbonfyre runtime
 
 PREFIX ?= $(HOME)/.local
 BINDIR  = $(PREFIX)/bin
@@ -12,14 +12,16 @@ CFLAGS ?= -O2 -Wall -Wextra -std=c11
 # Every directory under cmd/ with a Makefile
 BINARIES := $(sort $(dir $(wildcard cmd/*/Makefile)))
 
-.PHONY: all lib binaries clean install test help
+.PHONY: all lib binaries clean install test help sanitize fuzz
 
 all: lib binaries
 
-# ── Library ──────────────────────────────────────────────────
+# ── Libraries ────────────────────────────────────────────────
 lib:
 	@echo "=== Building liblambda-tensors ==="
 	$(MAKE) -C lib/liblambda-tensors CC="$(CC)"
+	@echo "=== Building libbonfyre ==="
+	$(MAKE) -C lib/libbonfyre CC="$(CC)"
 
 # ── Binaries ─────────────────────────────────────────────────
 binaries: lib
@@ -50,11 +52,14 @@ install: all
 	@cp lib/liblambda-tensors/liblambda-tensors.a $(LIBDIR)/ 2>/dev/null || true
 	@cp lib/liblambda-tensors/liblambda-tensors.so $(LIBDIR)/ 2>/dev/null || true
 	@cp lib/liblambda-tensors/include/lambda_tensors.h $(INCDIR)/ 2>/dev/null || true
+	@cp lib/libbonfyre/libbonfyre.a $(LIBDIR)/ 2>/dev/null || true
+	@cp lib/libbonfyre/include/bonfyre.h $(INCDIR)/ 2>/dev/null || true
 	@echo "Done. Ensure $(BINDIR) is in your PATH."
 
 # ── Clean ────────────────────────────────────────────────────
 clean:
 	$(MAKE) -C lib/liblambda-tensors clean
+	$(MAKE) -C lib/libbonfyre clean
 	@for dir in $(BINARIES); do \
 		$(MAKE) -C $$dir clean 2>/dev/null || true; \
 	done
@@ -64,6 +69,7 @@ clean:
 test: all
 	@echo "=== Running tests ==="
 	$(MAKE) -C lib/liblambda-tensors test || true
+	$(MAKE) -C lib/libbonfyre test || true
 	@pass=0; \
 	for dir in $(BINARIES); do \
 		for bin in "$$dir"/bonfyre-*; do \
@@ -76,13 +82,28 @@ test: all
 	done; \
 	echo "=== $$pass binaries passed status check ==="
 
+# ── Security hardening ───────────────────────────────────────
+# Address Sanitizer: catches buffer overflows, use-after-free, leaks
+sanitize:
+	@echo "=== Building with AddressSanitizer + UndefinedBehaviorSanitizer ==="
+	$(MAKE) -C lib/liblambda-tensors clean
+	$(MAKE) -C lib/liblambda-tensors CC="$(CC)" CFLAGS="-g -fsanitize=address,undefined -fno-omit-frame-pointer -std=c11"
+	$(MAKE) -C lib/libbonfyre clean
+	$(MAKE) -C lib/libbonfyre CC="$(CC)" CFLAGS="-g -fsanitize=address,undefined -fno-omit-frame-pointer -std=c11"
+	@for dir in $(BINARIES); do \
+		$(MAKE) -C $$dir CC="$(CC)" CFLAGS="-g -fsanitize=address,undefined -fno-omit-frame-pointer -std=c11" \
+			LDFLAGS="-fsanitize=address,undefined" 2>/dev/null || true; \
+	done
+	@echo "=== Sanitizer build done. Run binaries to detect memory errors. ==="
+
 # ── Help ─────────────────────────────────────────────────────
 help:
-	@echo "Bonfyre — 38 static C binaries, 1.6 MB total"
+	@echo "Bonfyre — 38 static C binaries + 2 libraries, ~1.6 MB total"
 	@echo ""
 	@echo "  make           Build everything"
-	@echo "  make lib       Build liblambda-tensors only"
+	@echo "  make lib       Build liblambda-tensors + libbonfyre"
 	@echo "  make install   Install to PREFIX (default: ~/.local)"
 	@echo "  make clean     Remove all build artifacts"
-	@echo "  make test      Run basic smoke tests"
+	@echo "  make test      Run all test suites"
+	@echo "  make sanitize  Rebuild with ASan + UBSan for testing"
 	@echo "  make help      This message"
