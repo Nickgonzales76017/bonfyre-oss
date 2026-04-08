@@ -1,13 +1,13 @@
 <p align="center">
   <h1 align="center">🔥 Bonfyre</h1>
   <p align="center">
-    <strong>47 static C binaries. Pure C11. A complete backend platform.</strong>
+    <strong>48 static C binaries. Pure C11. A complete backend platform.</strong>
   </p>
   <p align="center">
     <a href="#install">Install</a> ·
     <a href="#use-cases">Use Cases</a> ·
     <a href="#benchmarks">Benchmarks</a> ·
-    <a href="#all-47-binaries">All 47 binaries</a> ·
+    <a href="#all-48-binaries">All 48 binaries</a> ·
     <a href="#docs">Docs</a> ·
     <a href="#contributing">Contributing</a>
   </p>
@@ -19,7 +19,7 @@
 git clone https://github.com/Nickgonzales76017/bonfyre.git && cd bonfyre && make
 ```
 
-That builds 47 binaries. No Node.js. No Python. No Docker. No npm. Just C11 and SQLite.
+That builds 48 binaries. No Node.js. No Python. No Docker. No npm. Just C11 and SQLite.
 
 ---
 
@@ -62,14 +62,16 @@ bonfyre-brief generate transcript.json --out summary.md     # → executive summ
 
 Everything runs on your machine. No OpenAI key. No internet. No per-minute billing.
 
-**HCP v3.1** — quad-channel spectral refinement (acoustic + morphological + bigram + trigram semantic), KIEL-CC Kalman innovation, E-T Gate audio-text verification, formant anchoring, and context-seeded constrained re-decode. Pushes Whisper quality to **0.999** on base and **0.997** on tiny — within 0.1% of each other. Nine-layer hallucination detection. Multi-model support (tiny/base/small/medium/large). Model-agnostic universal API. [Open-source (MIT)](https://github.com/Nickgonzales76017/hcp-whisper).
+**HCP v3.2** — quad-channel spectral refinement (acoustic + morphological + bigram + trigram semantic), KIEL-CC Kalman innovation, E-T Gate audio-text verification, formant anchoring, morphological logit bias (active decoder constraint), and context-seeded constrained re-decode. Unified FFT pass cuts audio analysis overhead 86%. Pushes Whisper quality to **0.999** on base and **0.997** on tiny. Nine-layer hallucination detection. Multi-model support (tiny/base/small/medium/large). 6 quantization options (q4_0/q4_1/q5_0/q5_k/q8_0/fp16). [Open-source (MIT)](https://github.com/Nickgonzales76017/hcp-whisper).
 
-| | Deepgram | OpenAI Whisper API | **Bonfyre + HCP v3.1** |
+Drop-in OpenAI replacement: `bonfyre-proxy serve --port 8787` — set `OPENAI_API_BASE=http://localhost:8787` and existing code works unchanged.
+
+| | Deepgram | OpenAI Whisper API | **Bonfyre + HCP v3.2** |
 |---|---|---|
 | Cost | $0.006/min | $0.006/min | **$0/min** |
 | Quality | ~0.85–0.90 | ~0.87 (base) | **0.999** (base) / **0.997** (tiny) |
-| Hallucination detection | None | None | **9-layer** |
-| Overhead | N/A | N/A | **<5% of decode** |
+| Hallucination detection | None | None | **9-layer + morphological logit bias** |
+| Overhead | N/A | N/A | **<1% of decode (unified FFT)** |
 | Privacy | Cloud | Cloud | **100% local** |
 
 **[Full pipeline guide →](docs/pipeline.md)**
@@ -161,7 +163,7 @@ MIT licensed. Embed it anywhere — your app, your library, your product. Like S
 ```bash
 git clone https://github.com/Nickgonzales76017/bonfyre.git
 cd bonfyre
-make            # builds all 47 binaries + libbonfyre + liblambda-tensors
+make            # builds all 48 binaries + libbonfyre + liblambda-tensors
 make install    # copies to ~/.local/bin (or PREFIX=/usr/local make install)
 ```
 
@@ -330,7 +332,7 @@ Architecture-level hardening across all binaries:
 |---|---|---|
 | BonfyreTel hardening | **Crypto-safe session IDs, 0-latency TCP** | `arc4random` replaces `rand()`, `TCP_NODELAY` on all sockets, scan_offset O(1) ESL header lookup |
 | BonfyreAPI robustness | **Crash-proof under load** | `SIGPIPE` ignored, pre-spawned thread pool, `vasprintf` safe formatting, heap buffers for large requests |
-| libbonfyre FNV hash | **O(1) operator lookup** | FNV-1a hash table replaces linear scan of 47-operator registry |
+| libbonfyre FNV hash | **O(1) operator lookup** | FNV-1a hash table replaces linear scan of 48-operator registry |
 | BonfyrePipeline dedup | **SHA-256 content dedup** | 279-line dedup engine — skips already-processed artifacts in pipelines |
 | Build system | **PGO targets, CFLAGS propagation** | `make pgo-gen` / `make pgo-use` for profile-guided optimization; root flags reach all sub-makes |
 
@@ -367,7 +369,7 @@ Pure syntax/datatype wins — zero behavioral change, massive throughput gains:
 | Operator registry lookup | O(n) linear scan | **O(1)** (FNV hash table) | algorithmic |
 | Duplicated utility code | 34 copies across binaries | **1 each** (libbonfyre) | eliminated |
 | Binaries needing Python | 5 | **3** | 40% reduction |
-| All 47 binaries disk | — | **~2.1 MB total** | — |
+| All 48 binaries disk | — | **~2.1 MB total** | — |
 | Test suite | — | **69 tests, all pass** | — |
 
 ## Examples
@@ -389,7 +391,7 @@ cd bonfyre-example-semantic-search
 ./setup.sh && ./run.sh
 ```
 
-## All 47 binaries
+## All 48 binaries
 
 ### Infrastructure
 
@@ -398,6 +400,7 @@ cd bonfyre-example-semantic-search
 | `bonfyre-cms` | 299 KB | Content management system with Lambda Tensors compression |
 | `bonfyre-api` | 69 KB | HTTP gateway, file upload, job management, static server |
 | `bonfyre-auth` | 35 KB | User signup/login, session tokens, SHA-256 passwords |
+| `bonfyre-proxy` | 53 KB | OpenAI-compatible API shim (drop-in replacement for /v1/audio/transcriptions, /v1/chat/completions) |
 | `bonfyre-index` | 68 KB | SQLite artifact index + full-text search |
 | `bonfyre-graph` | 51 KB | Merkle-DAG artifact graph, SHA-256 content addressing |
 | `bonfyre-runtime` | 33 KB | Runtime environment, process lifecycle |

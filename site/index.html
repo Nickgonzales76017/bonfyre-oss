@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Bonfyre — 47 static C binaries. ~2.1 MB. A complete backend.</title>
-<meta name="description" content="Bonfyre is 47 composable C11 binaries that replace an entire backend stack. CMS, transcription, telephony, auth, payments, compression — each under 70 KB. MIT licensed.">
+<title>Bonfyre — 48 static C binaries. ~2.1 MB. A complete backend.</title>
+<meta name="description" content="Bonfyre is 48 composable C11 binaries that replace an entire backend stack. CMS, transcription, telephony, auth, payments, compression — each under 70 KB. MIT licensed.">
 <meta property="og:title" content="Bonfyre — A complete backend in ~2.1 MB">
 <meta property="og:description" content="47 static C binaries. CMS, transcription, telephony, auth, payments, compression. MIT licensed.">
 <meta property="og:type" content="website">
@@ -733,12 +733,12 @@ footer a:hover { color: var(--text); }
   <div class="container">
     <h1>🔥 <span>Bonfyre</span></h1>
     <p class="tagline">
-      47 composable C11 binaries that replace your entire backend stack.
+      48 composable C11 binaries that replace your entire backend stack.
       CMS, transcription, telephony, auth, payments, vector search, compression — each under 70 KB.
     </p>
     <div class="hero-stats">
       <div class="hero-stat">
-        <span class="num">47</span>
+        <span class="num">48</span>
         <span class="label">Binaries</span>
       </div>
       <div class="hero-stat">
@@ -906,7 +906,7 @@ footer a:hover { color: var(--text); }
         <tr><td>Idle memory</td><td>~200 MB</td><td>~80 MB</td><td class="highlight">15 MB</td></tr>
         <tr><td>Build step</td><td>npm install (2 min)</td><td>npm install (45 sec)</td><td class="highlight">make (8 sec)</td></tr>
         <tr><td>Runtime</td><td>Node.js 18+</td><td>Node.js 18+</td><td class="highlight">None (static binary)</td></tr>
-        <tr><td>Binaries</td><td>1 monolith</td><td>1 monolith</td><td class="highlight">47 composable</td></tr>
+        <tr><td>Binaries</td><td>1 monolith</td><td>1 monolith</td><td class="highlight">48 composable</td></tr>
       </tbody>
     </table>
   </div>
@@ -953,6 +953,12 @@ footer a:hover { color: var(--text); }
         <p>Auth, payments, metering, API keys, rate limiting, telephony — composable binaries. ~240 KB total.</p>
         <code>bonfyre-api + auth + pay + gate + tel</code>
         <br><span class="time">15 min to try</span>
+      </div>
+      <div class="use-case">
+        <h3>OpenAI-Compatible API</h3>
+        <p>Drop-in replacement for OpenAI endpoints. Set OPENAI_API_BASE=http://localhost:8787 and existing code just works — transcription via HCP, completions via bonfyre-brief. 53 KB binary, localhost only.</p>
+        <code>bonfyre-proxy serve --port 8787</code>
+        <br><span class="time">1 min to try</span>
       </div>
     </div>
   </div>
@@ -1094,7 +1100,7 @@ footer a:hover { color: var(--text); }
       <div class="wp-sprawl-col clean">
         <h4>Bonfyre</h4>
         <ul>
-          <li>47 binaries &mdash; $0/month</li>
+          <li>48 binaries &mdash; $0/month</li>
           <li>~2.1 MB total on disk</li>
           <li>Auth + billing + metering</li>
           <li>Local transcription</li>
@@ -1604,7 +1610,7 @@ footer a:hover { color: var(--text); }
 <section id="architecture">
   <div class="container">
     <h2>Architecture</h2>
-    <p class="subtitle">47 separate binaries. Not a monolith. Not a framework. Each is a standalone Unix process.</p>
+    <p class="subtitle">48 separate binaries. Not a monolith. Not a framework. Each is a standalone Unix process.</p>
 
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;margin-bottom:36px">
       <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:20px">
@@ -1650,7 +1656,7 @@ footer a:hover { color: var(--text); }
     <div class="layers">
       <div class="layer">
         <span class="layer-name">Surface</span>
-        <span class="layer-bins">cms · api · auth · pipeline · cli · transcript-family · project · tel</span>
+        <span class="layer-bins">cms · api · auth · pipeline · cli · transcript-family · project · tel · proxy</span>
       </div>
       <div class="layer">
         <span class="layer-name">Value</span>
@@ -1678,7 +1684,7 @@ footer a:hover { color: var(--text); }
 <!-- All binaries -->
 <section id="binaries">
   <div class="container">
-    <h2>All 47 binaries</h2>
+    <h2>All 48 binaries</h2>
     <p class="subtitle">Every binary is standalone. Use one or use all. ~2.1 MB total disk.</p>
 
     <div class="binary-group">
@@ -1723,7 +1729,7 @@ footer a:hover { color: var(--text); }
     </div>
 
     <div class="binary-group">
-      <h3>Surface (8 binaries)</h3>
+      <h3>Surface (9 binaries)</h3>
       <div class="binary-list">
         <div class="binary-item"><span class="name">bonfyre-cms</span> <span class="size">287 KB</span> <span class="desc">— CMS + Lambda Tensors</span></div>
         <div class="binary-item"><span class="name">bonfyre-api</span> <span class="size">69 KB</span> <span class="desc">— HTTP gateway + dashboard</span></div>
@@ -1733,6 +1739,7 @@ footer a:hover { color: var(--text); }
         <div class="binary-item"><span class="name">bonfyre-project</span> <span class="size">34 KB</span> <span class="desc">— project scaffolding</span></div>
         <div class="binary-item"><span class="name">bonfyre-tel</span> <span class="size">68 KB</span> <span class="desc">— FreeSWITCH telephony (SIP/RTP)</span></div>
         <div class="binary-item"><span class="name">bonfyre-canon</span> <span class="size">35 KB</span> <span class="desc">— canonical artifact format</span></div>
+        <div class="binary-item"><span class="name">bonfyre-proxy</span> <span class="size">53 KB</span> <span class="desc">— OpenAI-compatible API shim (drop-in replacement)</span></div>
       </div>
     </div>
 
@@ -1932,7 +1939,7 @@ footer a:hover { color: var(--text); }
 <section style="text-align:center; padding:80px 0;">
   <div class="container">
     <h2>MIT Licensed. Do whatever you want with it.</h2>
-    <p class="subtitle">One repo. 47 binaries. ~2.1 MB. 167 tests. 5 optimization passes.</p>
+    <p class="subtitle">One repo. 48 binaries. ~2.1 MB. 167 tests. 5 optimization passes.</p>
     <div class="btn-row">
       <a href="https://github.com/Nickgonzales76017/bonfyre" class="btn btn-primary">
         ⭐ Star on GitHub
