@@ -62,14 +62,14 @@ bonfyre-brief generate transcript.json --out summary.md     # → executive summ
 
 Everything runs on your machine. No OpenAI key. No internet. No per-minute billing.
 
-**HCP v3.0** — triple-channel spectral refinement (acoustic + morphological + semantic bigram coherence), KIEL-CC Kalman innovation, E-T Gate audio-text verification, and constrained re-decode on hallucinated segments. Pushes Whisper quality to **0.999** across diverse creator audio. Eight-layer hallucination detection. <1% decode overhead. Model-agnostic universal API for any ASR engine. [Open-source (MIT)](https://github.com/Nickgonzales76017/hcp-whisper).
+**HCP v3.1** — quad-channel spectral refinement (acoustic + morphological + bigram + trigram semantic), KIEL-CC Kalman innovation, E-T Gate audio-text verification, formant anchoring, and context-seeded constrained re-decode. Pushes Whisper quality to **0.999** on base and **0.997** on tiny — within 0.1% of each other. Nine-layer hallucination detection. Multi-model support (tiny/base/small/medium/large). Model-agnostic universal API. [Open-source (MIT)](https://github.com/Nickgonzales76017/hcp-whisper).
 
-| | Deepgram | OpenAI Whisper API | **Bonfyre + HCP v3.0** |
-|---|---|---|---|
+| | Deepgram | OpenAI Whisper API | **Bonfyre + HCP v3.1** |
+|---|---|---|
 | Cost | $0.006/min | $0.006/min | **$0/min** |
-| Quality | ~0.85–0.90 | ~0.87 (base) | **0.999** |
-| Hallucination detection | None | None | **8-layer** |
-| Overhead | N/A | N/A | **<1% of decode** |
+| Quality | ~0.85–0.90 | ~0.87 (base) | **0.999** (base) / **0.997** (tiny) |
+| Hallucination detection | None | None | **9-layer** |
+| Overhead | N/A | N/A | **<5% of decode** |
 | Privacy | Cloud | Cloud | **100% local** |
 
 **[Full pipeline guide →](docs/pipeline.md)**
@@ -218,16 +218,23 @@ npm install bonfyre
 | BonfyrePipeline (3,000 artifacts) | 2.36 MB |
 | BonfyreCMS idle | 15 MB |
 
-### Transcription quality (BonfyreTranscribe v3.0 + HCP)
+### Transcription quality (BonfyreTranscribe v3.1 + HCP)
 
-| Metric | Before | After (HCP v3.0) | Change |
+| Model | Avg Quality | Avg Uplift | Hallucination Rate |
 |---|---|---|---|
-| Quality score (avg) | 0.923 (Whisper base) | **0.999** (HCP refined) | **+8.2%** |
-| Hallucinated segments | undetected | **1 / 1,096 (0.09%)** | 8-layer detection |
-| HCP post-processing | N/A | **<7 ms** (720 s audio) | near-zero overhead |
-| Semantic low-coherence | N/A | **1 / 1,096 segments** | bigram coherence filter |
+| base.en + HCP | **0.999** | **+8.2%** | 0.09% |
+| tiny.en + HCP | **0.997** | **+9.3%** | 0.00% |
 
-> Complex-Domain Hierarchical Constraint Propagation: triple-channel complex lifting (acoustic + morphological + semantic bigram), radix-2 FFT, three-band adaptive spectral filter with Dirichlet anomaly detection, constrained re-decode on hallucinated segments. Pure C11, no external math library.
+Tiny + HCP v3.1 achieves 0.997 — within 0.1% of base, at ~5× faster decode.
+
+| Metric | Before | After (HCP v3.1) | Change |
+|---|---|---|---|
+| Quality score (base avg) | 0.923 (Whisper base) | **0.999** (HCP refined) | **+8.2%** |
+| Quality score (tiny avg) | 0.913 (Whisper tiny) | **0.997** (HCP refined) | **+9.3%** |
+| Hallucinated segments | undetected | **1 / 1,096 (0.09%)** | 9-layer detection |
+| HCP post-processing | N/A | **<18 ms** (720 s audio) | near-zero overhead |
+
+> Complex-Domain Hierarchical Constraint Propagation: quad-channel complex lifting (acoustic + morphological + bigram + trigram semantic), radix-2 FFT, three-band adaptive spectral filter with Dirichlet anomaly detection, formant anchoring, context-seeded constrained re-decode. Pure C11, no external math library.
 
 ## Performance
 

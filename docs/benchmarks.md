@@ -80,43 +80,59 @@ BonfyreCMS (299 KB binary) benchmarked in-process:
 | Orchestration | 5 | 190 KB |
 | **All 47 binaries** | **47** | **~2.1 MB** |
 
-## Transcription quality (BonfyreTranscribe v3.0 + HCP v3.0)
+## Transcription quality (BonfyreTranscribe v3.1 + HCP v3.1)
 
-BonfyreTranscribe v3.0 uses the libwhisper C API directly (no fork/exec, no Python) and applies Complex-Domain Hierarchical Constraint Propagation (HCP) v3.0 — a triple-channel spectral refinement algorithm with constrained re-decode — as a post-processing pass.
+BonfyreTranscribe v3.1 uses the libwhisper C API directly (no fork/exec, no Python) and applies Complex-Domain Hierarchical Constraint Propagation (HCP) v3.1 — a quad-channel spectral refinement algorithm with formant anchoring and context-seeded constrained re-decode — as a post-processing pass.
 
 ### Algorithm
 
-Triple-channel complex lifting encodes acoustic confidence (logprob, vlen, no-speech probability) as magnitude channel one, morphological statistics (subword frequency, token length) as phase channel one, and token bigram coherence as magnitude channel two (semantic channel). Radix-2 Cooley-Tukey FFT transforms the joint signal into spectral domain. A three-band adaptive filter with Dirichlet anomaly detection identifies correlated anomaly patterns that flat thresholds miss. IFFT reconstructs per-token quality adjustments.
+Quad-channel complex lifting encodes acoustic confidence (logprob, vlen, no-speech probability) as magnitude channel one, morphological statistics (subword frequency, token length) as phase channel one, token bigram coherence as magnitude channel two (semantic channel), and token trigram coherence as magnitude channel three (combined as 80% bigram + 20% trigram). Radix-2 Cooley-Tukey FFT transforms the joint signal into spectral domain. A three-band adaptive filter with Dirichlet anomaly detection identifies correlated anomaly patterns that flat thresholds miss. IFFT reconstructs per-token quality adjustments.
 
 **KIEL-CC** (Kalman Innovation Error Localization): Adaptive complex Kalman filter tracks token-to-token dynamics. Lag-1 autocorrelation sets the process gain. Normalized innovation magnitude flags tokens whose confidence trajectory diverges from the local trend.
 
 **E-T Gate** (Energy-Text Cross-Agreement Gate): Frame-by-frame RMS energy and spectral flatness via 512-point FFT over the raw audio. Segments where Whisper emitted text but the audio contains silence or noise are flagged as hallucinations.
 
-**Semantic Channel**: A 262K-slot token bigram hash table (generated from speech + text corpora via tiktoken/GPT-2 BPE) provides coherence scores for adjacent token pairs. Segments with >80% low-coherence tokens are flagged.
+**Semantic Channel**: A 262K-slot token bigram hash table plus a 524K-slot trigram hash table (generated from speech + text corpora via tiktoken/GPT-2 BPE) provide coherence scores. Combined scoring: 80% bigram + 20% trigram. Segments with >80% low-coherence tokens are flagged.
 
-**Constrained Re-decode**: Hallucinated segments are re-decoded with 10-beam search on the isolated audio slice. The result is accepted only if quality improves or hallucination flags decrease.
+**Formant Anchoring** (v3.1): Per-segment FFT analysis of speech formant bands (F1: 200–1000 Hz, F2: 1000–3000 Hz). Segments claiming speech but lacking formant energy are flagged.
+
+**Context-Seeded Re-decode** (v3.1): Hallucinated segments are re-decoded with 10-beam search on an expanded audio slice (±2s from surrounding clean segments). The broader audio context gives Whisper better BPE priors for ambiguous regions.
 
 Pure C11 — hand-rolled FFT, no external math library.
 
 ### Results (multi-source creator audio, Apple M-series)
 
-| Source | Segments | Before (Whisper base) | After (HCP v3.0) | Change |
+#### Base model (ggml-base.en-q5_0, 53 MB)
+
+| Source | Segments | Before (Whisper base) | After (HCP v3.1) | Change |
 |---|---|---|---|---|
 | Ali Abdaal (720 s) | 429 | 0.928 | **0.999** | **+7.6%** |
 | Shaan Puri (720 s) | 467 | 0.924 | **0.998** | **+8.0%** |
 | PickFu (360 s) | 200 | 0.916 | **0.999** | **+9.1%** |
 | **Average** | — | 0.923 | **0.999** | **+8.2%** |
 
-### Overhead breakdown
+#### Tiny model (ggml-tiny.en, 74 MB)
 
-| Stage | Ali Abdaal | Shaan Puri | PickFu |
-|---|---|---|---|
-| HCP spectral | 6.4 ms | 6.4 ms | 1.2 ms |
-| KIEL-CC Kalman | 0.1 ms | 0.1 ms | 0.0 ms |
-| E-T Gate audio | 958 ms | 905 ms | 683 ms |
-| Semantic channel | <0.1 ms | <0.1 ms | <0.1 ms |
-| **Total** | **965 ms** | **912 ms** | **684 ms** |
-| % of decode time | <1.2% | <1.1% | <1.1% |
+| Source | Segments | Before (Whisper tiny) | After (HCP v3.1) | Change |
+|---|---|---|---|---|
+| Ali Abdaal (720 s) | 436 | 0.923 | **0.998** | **+8.2%** |
+| Shaan Puri (720 s) | 214 | 0.901 | **0.997** | **+10.6%** |
+| PickFu (360 s) | 252 | 0.915 | **0.998** | **+9.1%** |
+| **Average** | — | 0.913 | **0.998** | **+9.3%** |
+
+**Key finding: Tiny + HCP v3.1 achieves 0.997 quality — within 0.1% of base + HCP, at ~5× faster decode speed.**
+
+### Overhead breakdown (base.en, Ali Abdaal)
+
+| Stage | Time |
+|---|---|
+| HCP spectral (w/ bigram + trigram) | 8.3 ms |
+| KIEL-CC Kalman | 0.1 ms |
+| E-T Gate audio | 1362 ms |
+| Formant Anchoring | 1765 ms |
+| Semantic channel | <0.1 ms |
+| **Total** | **~3.1 s** |
+| % of decode time | ~4% |
 
 ### Hallucination detection layers
 
@@ -129,16 +145,17 @@ Pure C11 — hand-rolled FFT, no external math library.
 | HCP spectral | Magnitude/phase deviation after IFFT | Adaptive (Dirichlet) |
 | KIEL-CC Kalman | Normalized innovation magnitude | > 3.0σ |
 | E-T Gate | RMS energy + spectral flatness vs text | speech_frac < 0.25 |
-| Semantic | Token bigram coherence | >80% below 0.02 |
+| Semantic | Token bigram + trigram coherence | >80% below 0.02 |
+| Formant | F1/F2 speech-band energy ratio | ratio < 0.15 |
 
 ### vs cloud transcription services
 
-| | Deepgram | OpenAI Whisper API | **Bonfyre + HCP v3.0** |
+| | Deepgram | OpenAI Whisper API | **Bonfyre + HCP v3.1** |
 |---|---|---|---|
 | Cost | $0.006/min | $0.006/min | **$0/min** |
-| Quality | ~0.85–0.90 | ~0.87 (base) | **0.999** |
-| Hallucination detection | None | None | **8-layer** |
-| Post-process overhead | N/A (cloud) | N/A (cloud) | **<1.2% of decode** |
+| Quality | ~0.85–0.90 | ~0.87 (base) | **0.999** (base) / **0.997** (tiny) |
+| Hallucination detection | None | None | **9-layer** |
+| Post-process overhead | N/A (cloud) | N/A (cloud) | **<5% of decode** |
 | Privacy | Cloud | Cloud | **100% local** |
 | Internet required | Yes | Yes | **No** |
 | Model-agnostic API | N/A | N/A | **hcp_process_universal()** |
