@@ -430,7 +430,7 @@ cd bonfyre-example-semantic-search
 | `bonfyre-transcript-clean` | 34 KB | Remove filler words, hallucinations |
 | `bonfyre-paragraph` | 34 KB | Structure text into paragraphs |
 | `bonfyre-brief` | 34 KB | Extract summary + action items |
-| `bonfyre-narrate` | 36 KB | Tone-aware TTS: SSML prosody, PSOLA pitch shift, energy envelope transfer |
+| `bonfyre-narrate` | 52 KB | Verified TTS: 6-layer fidelity scoring, 88-feature fingerprint, closed-loop verification, PSOLA, iterative refinement |
 | `bonfyre-proof` | 34 KB | Quality scoring + review |
 | `bonfyre-pack` | 33 KB | Deliverable packaging (ZIP + manifest) |
 | `bonfyre-compress` | 33 KB | File compression (zstd, async) |
