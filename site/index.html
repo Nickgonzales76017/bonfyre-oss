@@ -753,7 +753,11 @@ footer a:hover { color: var(--text); }
         <span class="label">JSON Compression</span>
       </div>
       <div class="hero-stat">
-        <span class="num">69</span>
+        <span class="num">29 MB</span>
+        <span class="label"><a href="https://github.com/Nickgonzales76017/hcp-whisper" style="color:inherit;text-decoration:none">HCP Model (0.997)</a></span>
+      </div>
+      <div class="hero-stat">
+        <span class="num">167</span>
         <span class="label">Tests Passing</span>
       </div>
       <div class="hero-stat">
@@ -784,6 +788,43 @@ footer a:hover { color: var(--text); }
   </div>
 </header>
 
+<!-- HCP Announcement Banner -->
+<section style="padding:40px 0;border-bottom:1px solid var(--border);background:linear-gradient(135deg, rgba(249,115,22,0.06) 0%, rgba(13,17,23,1) 60%)">
+  <div class="container" style="text-align:center">
+    <div style="display:inline-block;background:var(--surface);border:2px solid var(--accent);border-radius:12px;padding:32px 48px;max-width:800px">
+      <div style="font-size:0.75rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--accent);font-weight:700;margin-bottom:8px">New — hcp-whisper v3.2</div>
+      <div style="font-size:2.4rem;font-weight:800;color:var(--text);letter-spacing:-0.02em;margin-bottom:8px">0.997 quality. 29 MB model. $0/min.</div>
+      <p style="font-size:1rem;color:var(--text-dim);max-width:600px;margin:0 auto 20px;line-height:1.6">Quad-channel spectral refinement with 9-layer hallucination detection + morphological logit bias. 6× smaller than fp16. Unified FFT pass cuts audio analysis overhead 86%. Beats every cloud API — running entirely on your machine.</p>
+      <div style="display:flex;gap:16px;justify-content:center;flex-wrap:wrap;margin-bottom:16px">
+        <div style="text-align:center">
+          <span style="display:block;font-size:1.8rem;font-weight:700;color:var(--accent)">29 MB</span>
+          <span style="font-size:0.75rem;color:var(--text-dim)">default model (tiny q5_0)</span>
+        </div>
+        <div style="text-align:center">
+          <span style="display:block;font-size:1.8rem;font-weight:700;color:var(--green)">0.997</span>
+          <span style="font-size:0.75rem;color:var(--text-dim)">quality (tiny q5_0)</span>
+        </div>
+        <div style="text-align:center">
+          <span style="display:block;font-size:1.8rem;font-weight:700;color:var(--blue)">9</span>
+          <span style="font-size:0.75rem;color:var(--text-dim)">detection layers</span>
+        </div>
+        <div style="text-align:center">
+          <span style="display:block;font-size:1.8rem;font-weight:700;color:var(--text)">86%</span>
+          <span style="font-size:0.75rem;color:var(--text-dim)">less FFT overhead</span>
+        </div>
+        <div style="text-align:center">
+          <span style="display:block;font-size:1.8rem;font-weight:700;color:var(--text)">$0</span>
+          <span style="font-size:0.75rem;color:var(--text-dim)">per minute</span>
+        </div>
+      </div>
+      <div class="btn-row">
+        <a href="https://github.com/Nickgonzales76017/hcp-whisper" class="btn btn-primary">View hcp-whisper on GitHub →</a>
+        <a href="#vs-competition" class="btn btn-outline">See benchmarks ↓</a>
+      </div>
+    </div>
+  </div>
+</section>
+
 <!-- Competition crusher -->
 <section id="vs-competition">
   <div class="container">
@@ -798,8 +839,8 @@ footer a:hover { color: var(--text); }
       </div>
       <div class="killer-card">
         <div class="vs">vs Deepgram (transcription)</div>
-        <div class="ratio">0.999 quality, $0/min</div>
-        <div class="detail">HCP v3.1: quad-channel spectral refinement (acoustic + morphological + bigram + trigram semantic) + Kalman innovation + audio-text gate + formant anchoring + context-seeded re-decode. 0.999 quality (base) / 0.997 (tiny) across diverse creator audio. 9-layer hallucination detection. Multi-model support. <a href="https://github.com/Nickgonzales76017/hcp-whisper" style="color:#ff6b00">Open-source (MIT)</a>.</div>
+        <div class="ratio">0.997 quality, 29 MB, $0/min</div>
+        <div class="detail">HCP v3.2: quad-channel spectral refinement + morphological logit bias + unified FFT audio analysis. Default tiny q5_0 model (29 MB) hits 0.997 quality. Base q4_0 (44 MB) hits 0.999. Quantized models 6× smaller than fp16. 9-layer hallucination detection. -O3 + unified FFT = 86% less audio overhead. <a href="https://github.com/Nickgonzales76017/hcp-whisper" style="color:#ff6b00">Open-source (MIT)</a>.</div>
       </div>
       <div class="killer-card">
         <div class="vs">vs Pinecone (vector search)</div>
@@ -830,13 +871,14 @@ footer a:hover { color: var(--text); }
       </thead>
       <tbody>
         <tr><td>Cost</td><td>$0.006/min</td><td>$0.006/min</td><td class="highlight">$0 / minute</td></tr>
-        <tr><td>Quality score</td><td>~0.85–0.90</td><td>~0.87 (base)</td><td class="highlight">0.999 base / 0.997 tiny (HCP v3.1)</td></tr>
-        <tr><td>Hallucination detection</td><td>None</td><td>None</td><td class="highlight">9-layer (compress, n-gram, vlen, logprob, spectral, E-T gate, Kalman, semantic, formant)</td></tr>
-        <tr><td>Post-process overhead</td><td>N/A (cloud)</td><td>N/A (cloud)</td><td class="highlight">&lt;5% of decode time</td></tr>
+        <tr><td>Quality score</td><td>~0.85–0.90</td><td>~0.87 (base)</td><td class="highlight">0.999 (base q4_0) / 0.997 (tiny q5_0) — HCP v3.2</td></tr>
+        <tr><td>Model size</td><td>Cloud (N/A)</td><td>Cloud (N/A)</td><td class="highlight">29 MB default (tiny q5_0) / 44 MB (base q4_0) / 24 MB (tiny q4_0)</td></tr>
+        <tr><td>Hallucination detection</td><td>None</td><td>None</td><td class="highlight">9-layer + morphological logit bias (active decoder constraint)</td></tr>
+        <tr><td>Post-process overhead</td><td>N/A (cloud)</td><td>N/A (cloud)</td><td class="highlight">&lt;1% of decode time (unified FFT, -O3)</td></tr>
         <tr><td>Privacy</td><td>Cloud — data leaves device</td><td>Cloud — data leaves device</td><td class="highlight">100% local, offline, private</td></tr>
         <tr><td>Internet required</td><td>Yes</td><td>Yes</td><td class="highlight">No</td></tr>
         <tr><td>Output formats</td><td>JSON, SRT</td><td>JSON, SRT, VTT</td><td class="highlight">JSON + HCP metrics, TXT, SRT, VTT, meta.json</td></tr>
-        <tr><td>Novel algorithm</td><td>Proprietary cloud</td><td>Whisper (standard)</td><td class="highlight">HCP quad-channel spectral + KIEL-CC Kalman + E-T Gate + bigram/trigram semantic + formant anchoring + context-seeded re-decode</td></tr>
+        <tr><td>Novel algorithm</td><td>Proprietary cloud</td><td>Whisper (standard)</td><td class="highlight">HCP quad-channel spectral + KIEL-CC Kalman + unified E-T Gate/formant + bigram/trigram semantic + morphological logit bias + context-seeded re-decode + quantization (q4_0/q5_0)</td></tr>
       </tbody>
     </table>
 
@@ -870,8 +912,8 @@ footer a:hover { color: var(--text); }
         <br><span class="time">2 min to try</span>
       </div>
       <div class="use-case">
-        <h3>Local Transcription + HCP v3.1</h3>
-        <p>HCP quad-channel spectral refinement + Kalman innovation + E-T Gate + bigram/trigram semantic + formant anchoring + context-seeded re-decode reaches 0.999 quality (base) / 0.997 (tiny) — better than any cloud API. 9-layer hallucination detection. Multi-model support. Zero cost. <a href="https://github.com/Nickgonzales76017/hcp-whisper">Open-source</a>.</p>
+        <h3>Local Transcription + HCP v3.2</h3>
+        <p>29 MB quantized model, 0.997 quality, 9-layer hallucination detection + morphological logit bias. Unified FFT pass (86% less overhead). Beats every cloud API. 6 quantization options from 24 MB to 141 MB. Zero cost. <a href="https://github.com/Nickgonzales76017/hcp-whisper">Open-source</a>.</p>
         <code>bonfyre-transcribe run audio.wav</code>
         <br><span class="time">5 min to try</span>
       </div>
