@@ -153,12 +153,24 @@ static int sentence_score(const char *text, int total_docs) {
         "decision", "learned", "traction", "focus", "strategy", "validation",
         "founder", "operator", "pain", "channel", "segment", "growth",
         "insight", "opportunity", "challenge", "solution", "result",
-        "metric", "data", "evidence", "pattern", "trend", NULL
+        "metric", "data", "evidence", "pattern", "trend",
+        "important", "key", "reason", "example", "research", "study",
+        "explains", "discovered", "method", "approach", "benefit",
+        "concept", "principle", "idea", "point", "argument", "claim",
+        "experience", "lesson", "mistake", "advice", "recommend",
+        "habit", "routine", "system", "process", "step", "rule", NULL
     };
     static const char *action_words[] = {
         "should", "need to", "must", "next", "plan", "test", "focus", "send",
         "build", "validate", "launch", "review", "write", "ship", "consider",
-        "evaluate", "implement", "schedule", "prioritize", "follow up", NULL
+        "evaluate", "implement", "schedule", "prioritize", "follow up",
+        "try", "start", "stop", "avoid", "practice", "remember", NULL
+    };
+    static const char *outro_words[] = {
+        "thanks for watching", "see you", "subscribe", "like and subscribe",
+        "leave a comment", "hit the bell", "next video", "bye",
+        "thanks for listening", "see ya", "check out", "link in",
+        "follow me", "follow us", "smash that", NULL
     };
     int score = 0;
     size_t len = strlen(text);
@@ -174,12 +186,17 @@ static int sentence_score(const char *text, int total_docs) {
     if (strchr(text, '$') || strstr(text, "percent") || strstr(text, "%")) score += 2;
 
     /* Filler / low-quality penalties */
-    if (strstr(text, "I think") || strstr(text, "yeah") || strstr(text, "you know")) score -= 2;
+    if (strstr(text, "I think") || strstr(text, "i think")) score -= 2;
+    if (strstr(text, "yeah") || strstr(text, "Yeah")) score -= 2;
+    if (strstr(text, "you know") || strstr(text, "You know")) score -= 2;
     if (strstr(text, "um ") || strstr(text, "uh ") || strstr(text, "hmm")) score -= 1;
+
+    /* Outro / boilerplate penalty */
+    if (contains_any(text, outro_words)) score -= 5;
 
     /* TF-IDF bonus: sentences with rare/distinctive terms score higher */
     double idf = tfidf_score(text, total_docs);
-    score += (int)(idf * 3.0); /* scale TF-IDF contribution */
+    score += (int)(idf * 2.0); /* scale TF-IDF contribution */
 
     return score;
 }
@@ -323,6 +340,14 @@ int main(int argc, char **argv) {
     build_idf(sentences, count);
     for (int i = 0; i < count; i++) {
         sentences[i].score = sentence_score(sentences[i].text, count);
+        /* Position penalty: first 10% and last 10% of sentences are
+         * typically intro/outro fluff. Penalize them. */
+        if (count > 10) {
+            int tenth = count / 10;
+            if (tenth < 1) tenth = 1;
+            if (i < tenth || i >= count - tenth)
+                sentences[i].score -= 2;
+        }
     }
 
     char brief_path[PATH_MAX];

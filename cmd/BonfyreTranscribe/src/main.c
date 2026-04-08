@@ -845,7 +845,7 @@ static void extract_segments(struct whisper_context *ctx,
             seg->hallucination_flags |= HALLUC_HIGH_COMPRESS;
         if (detect_ngram_repetition(ctx, i))
             seg->hallucination_flags |= HALLUC_NGRAM_REPEAT;
-        if (vlen_anomalies > n_tokens / 3 && n_tokens >= 3)
+        if (vlen_anomalies > n_tokens * 2 / 3 && n_tokens >= 4)
             seg->hallucination_flags |= HALLUC_VLEN_ANOMALY;
         if (seg->logprob < -1.0f)
             seg->hallucination_flags |= HALLUC_LOW_LOGPROB;

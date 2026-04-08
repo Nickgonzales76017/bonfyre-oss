@@ -61,6 +61,15 @@ typedef struct {
     int8_t  type;   /* 0=word, 1=label */
 } FtEntry;
 
+/* Huffman tree node for hierarchical softmax */
+typedef struct {
+    int32_t parent;
+    int32_t left;
+    int32_t right;
+    int64_t count;
+    int     binary;  /* 1 = left child, 0 = right child */
+} HsNode;
+
 typedef struct {
     FtArgs   args;
     /* dictionary */
@@ -73,17 +82,24 @@ typedef struct {
     int32_t  word2id_sz;
     /* matrices */
     float   *input;       /* (nwords + bucket) × dim */
-    float   *output;      /* nlabels × dim */
+    float   *output;      /* internal_nodes × dim (for HS) or nlabels × dim */
     int64_t  input_rows;
     int64_t  output_rows;
     /* label index (into entries) */
     int32_t *label_ids;   /* nlabels indices into entries[] */
+    /* hierarchical softmax tree */
+    int       loss_type;  /* 1=hs, 2=ns, 3=softmax */
+    HsNode   *tree;       /* 2*nlabels-1 nodes */
+    int32_t **paths;      /* path from each label to root */
+    int      **codes;     /* binary codes along each path */
+    int       *path_lens; /* length of each path */
 } FtModel;
 
 static uint32_t ft_hash(const char *str, size_t len) {
+    /* fastText FNV-1a: XOR with int8_t (signed char) cast for consistency */
     uint32_t h = FT_HASH_SEED;
     for (size_t i = 0; i < len; i++) {
-        h ^= (uint32_t)(unsigned char)str[i];
+        h ^= (uint32_t)(int8_t)str[i];
         h *= 16777619u;
     }
     return h;
@@ -131,8 +147,8 @@ static int ft_model_load(FtModel *m, const char *path) {
     if (fread(&m->nlabels, 4, 1, f) != 1) goto fail;
     if (fread(&m->ntokens, 8, 1, f) != 1) goto fail;
 
-    int8_t pruneidx_size = 0;
-    if (version >= 12) { if (fread(&pruneidx_size, 1, 1, f) != 1) goto fail; }
+    int64_t pruneidx_size = 0;
+    if (version >= 12) { if (fread(&pruneidx_size, 8, 1, f) != 1) goto fail; }
 
     if (m->dict_size <= 0 || m->dict_size > 50000000) goto fail;
     m->entries = calloc((size_t)m->dict_size, sizeof(FtEntry));
@@ -153,7 +169,7 @@ static int ft_model_load(FtModel *m, const char *path) {
 
     /* Read pruning index (skip) */
     if (pruneidx_size > 0) {
-        for (int8_t i = 0; i < pruneidx_size; i++) {
+        for (int64_t i = 0; i < pruneidx_size; i++) {
             int32_t k; int32_t v;
             if (fread(&k, 4, 1, f) != 1 || fread(&v, 4, 1, f) != 1) goto fail;
         }
@@ -207,8 +223,10 @@ static int ft_model_load(FtModel *m, const char *path) {
     if (fread(m->output, sizeof(float), (size_t)(om * on), f) != (size_t)(om * on)) goto fail;
 
     fclose(f);
-    fprintf(stderr, "[tag] Loaded model: %d words, %d labels, dim=%d, bucket=%d\n",
-            m->nwords, m->nlabels, m->args.dim, m->args.bucket);
+    m->loss_type = m->args.loss;  /* 1=hs, 2=ns, 3=softmax */
+    m->tree = NULL; m->paths = NULL; m->codes = NULL; m->path_lens = NULL;
+    fprintf(stderr, "[tag] Loaded model: %d words, %d labels, dim=%d, bucket=%d, loss=%d\n",
+            m->nwords, m->nlabels, m->args.dim, m->args.bucket, m->loss_type);
     return 0;
 
 fail:
@@ -226,7 +244,82 @@ static void ft_model_free(FtModel *m) {
     free(m->label_ids);
     free(m->input);
     free(m->output);
+    if (m->paths) {
+        for (int32_t i = 0; i < m->nlabels; i++) { free(m->paths[i]); free(m->codes[i]); }
+        free(m->paths); free(m->codes); free(m->path_lens);
+    }
+    free(m->tree);
     memset(m, 0, sizeof(*m));
+}
+
+/* ── Hierarchical softmax (Huffman tree) ─────────────────────── */
+
+static int ft_build_hs_tree(FtModel *m) {
+    int32_t osz = m->nlabels;
+    int32_t tree_sz = 2 * osz - 1;
+    m->tree = calloc((size_t)tree_sz, sizeof(HsNode));
+    if (!m->tree) return -1;
+
+    /* Initialize nodes */
+    for (int32_t i = 0; i < tree_sz; i++) {
+        m->tree[i].parent = -1;
+        m->tree[i].left = -1;
+        m->tree[i].right = -1;
+        m->tree[i].count = (int64_t)1e15;
+        m->tree[i].binary = 0;
+    }
+    /* Leaf nodes: labels sorted by decreasing count in dictionary */
+    for (int32_t i = 0; i < osz; i++) {
+        m->tree[i].count = m->entries[m->label_ids[i]].count;
+    }
+
+    /* Build Huffman tree (identical to fastText's buildTree) */
+    int32_t leaf = osz - 1;
+    int32_t node = osz;
+    for (int32_t i = osz; i < tree_sz; i++) {
+        int32_t mini[2] = {0, 0};
+        for (int j = 0; j < 2; j++) {
+            if (leaf >= 0 && m->tree[leaf].count < m->tree[node].count) {
+                mini[j] = leaf--;
+            } else {
+                mini[j] = node++;
+            }
+        }
+        m->tree[i].left = mini[0];
+        m->tree[i].right = mini[1];
+        m->tree[i].count = m->tree[mini[0]].count + m->tree[mini[1]].count;
+        m->tree[mini[0]].parent = i;
+        m->tree[mini[1]].parent = i;
+        m->tree[mini[0]].binary = 1;  /* left = true */
+        m->tree[mini[1]].binary = 0;  /* right = false */
+    }
+
+    /* Compute path & code for each label (leaf → root) */
+    m->paths = calloc((size_t)osz, sizeof(int32_t *));
+    m->codes = calloc((size_t)osz, sizeof(int *));
+    m->path_lens = calloc((size_t)osz, sizeof(int));
+    if (!m->paths || !m->codes || !m->path_lens) return -1;
+
+    for (int32_t i = 0; i < osz; i++) {
+        /* Count path length */
+        int len = 0;
+        int32_t j = i;
+        while (m->tree[j].parent != -1) { len++; j = m->tree[j].parent; }
+        m->path_lens[i] = len;
+        m->paths[i] = malloc(sizeof(int32_t) * (size_t)len);
+        m->codes[i] = malloc(sizeof(int) * (size_t)len);
+        if (!m->paths[i] || !m->codes[i]) return -1;
+
+        j = i;
+        for (int k = 0; k < len; k++) {
+            m->paths[i][k] = m->tree[j].parent - osz;  /* output matrix row */
+            m->codes[i][k] = m->tree[j].binary;
+            j = m->tree[j].parent;
+        }
+    }
+
+    fprintf(stderr, "[tag] Built Huffman tree: %d labels, %d nodes\n", osz, tree_sz);
+    return 0;
 }
 
 /* ── fastText inference ──────────────────────────────────────── */
@@ -267,17 +360,13 @@ static int ft_predict(const FtModel *m, const char *text, int top_k,
     float *hidden = calloc((size_t)dim, sizeof(float));
     if (!hidden) return -1;
 
-    /* Tokenize: split on whitespace, lowercase */
+    /* Tokenize: split on whitespace (no lowercase — match fastText) */
     size_t tlen = strlen(text);
     char *tmp = malloc(tlen + 1);
     if (!tmp) { free(hidden); return -1; }
     memcpy(tmp, text, tlen + 1);
 
-    /* Lowercase */
-    for (size_t i = 0; i < tlen; i++)
-        tmp[i] = (char)tolower((unsigned char)tmp[i]);
-
-    int32_t *ids = malloc(sizeof(int32_t) * (tlen + 1) * 20);  /* generous cap */
+    int32_t *ids = malloc(sizeof(int32_t) * (tlen + 1) * 20);
     if (!ids) { free(tmp); free(hidden); return -1; }
     int nids = 0;
     int id_cap = (int)((tlen + 1) * 20);
@@ -289,10 +378,8 @@ static int ft_predict(const FtModel *m, const char *text, int top_k,
         size_t toklen = strlen(tok);
         int32_t wid = ft_dict_find(m, tok, toklen);
         if (wid >= 0 && m->entries[wid].type == 0) {
-            /* word found: add word vector index */
             if (nids < id_cap) ids[nids++] = wid;
         }
-        /* Add subword ngrams regardless */
         if (m->args.maxn > 0) {
             ft_add_ngrams(m, tok, ids, &nids, id_cap);
         }
@@ -314,36 +401,67 @@ static int ft_predict(const FtModel *m, const char *text, int top_k,
     for (int d = 0; d < dim; d++) hidden[d] *= inv;
     free(ids);
 
-    /* Multiply by output matrix: score[l] = output[l] · hidden */
-    int nl = (int)m->output_rows;
-    if (nl > m->nlabels) nl = m->nlabels;
-    FtPred *preds = malloc(sizeof(FtPred) * (size_t)nl);
-    if (!preds) { free(hidden); return -1; }
+    if (m->loss_type == 1 && m->tree) {
+        /* Hierarchical softmax: compute log-probability for each label
+         * by traversing the Huffman tree path. */
+        int nl = m->nlabels;
+        FtPred *preds = malloc(sizeof(FtPred) * (size_t)nl);
+        if (!preds) { free(hidden); return -1; }
 
-    for (int l = 0; l < nl; l++) {
-        const float *ov = m->output + (int64_t)l * dim;
-        float dot = 0;
-        for (int d = 0; d < dim; d++) dot += ov[d] * hidden[d];
-        preds[l].label_idx = l;
-        preds[l].score = dot;
+        for (int l = 0; l < nl; l++) {
+            double log_prob = 0.0;
+            for (int k = 0; k < m->path_lens[l]; k++) {
+                int32_t node_row = m->paths[l][k];
+                if (node_row < 0 || node_row >= m->output_rows) continue;
+                const float *ov = m->output + (int64_t)node_row * dim;
+                float dot = 0;
+                for (int d = 0; d < dim; d++) dot += ov[d] * hidden[d];
+                float s = 1.0f / (1.0f + expf(-dot));  /* sigmoid */
+                if (m->codes[l][k]) {
+                    log_prob += log(1.0 - (double)s + 1e-10);
+                } else {
+                    log_prob += log((double)s + 1e-10);
+                }
+            }
+            preds[l].label_idx = l;
+            preds[l].score = (float)exp(log_prob);
+        }
+        free(hidden);
+
+        qsort(preds, (size_t)nl, sizeof(FtPred), ft_pred_cmp);
+        *nout = (top_k < nl) ? top_k : nl;
+        memcpy(out, preds, sizeof(FtPred) * (size_t)*nout);
+        free(preds);
+    } else {
+        /* Standard softmax */
+        int nl = (int)m->output_rows;
+        if (nl > m->nlabels) nl = m->nlabels;
+        FtPred *preds = malloc(sizeof(FtPred) * (size_t)nl);
+        if (!preds) { free(hidden); return -1; }
+
+        for (int l = 0; l < nl; l++) {
+            const float *ov = m->output + (int64_t)l * dim;
+            float dot = 0;
+            for (int d = 0; d < dim; d++) dot += ov[d] * hidden[d];
+            preds[l].label_idx = l;
+            preds[l].score = dot;
+        }
+        free(hidden);
+
+        float maxs = preds[0].score;
+        for (int l = 1; l < nl; l++) if (preds[l].score > maxs) maxs = preds[l].score;
+        float sum = 0;
+        for (int l = 0; l < nl; l++) {
+            preds[l].score = expf(preds[l].score - maxs);
+            sum += preds[l].score;
+        }
+        if (sum > 0) for (int l = 0; l < nl; l++) preds[l].score /= sum;
+
+        qsort(preds, (size_t)nl, sizeof(FtPred), ft_pred_cmp);
+        *nout = (top_k < nl) ? top_k : nl;
+        memcpy(out, preds, sizeof(FtPred) * (size_t)*nout);
+        free(preds);
     }
-    free(hidden);
-
-    /* Softmax */
-    float maxs = preds[0].score;
-    for (int l = 1; l < nl; l++) if (preds[l].score > maxs) maxs = preds[l].score;
-    float sum = 0;
-    for (int l = 0; l < nl; l++) {
-        preds[l].score = expf(preds[l].score - maxs);
-        sum += preds[l].score;
-    }
-    if (sum > 0) for (int l = 0; l < nl; l++) preds[l].score /= sum;
-
-    /* Top-k */
-    qsort(preds, (size_t)nl, sizeof(FtPred), ft_pred_cmp);
-    *nout = (top_k < nl) ? top_k : nl;
-    memcpy(out, preds, sizeof(FtPred) * (size_t)*nout);
-    free(preds);
     return 0;
 }
 
@@ -548,6 +666,10 @@ static int cmd_detect_lang(const char *text_file, const char *out_dir) {
 
     FtModel lang_model;
     if (ft_model_load(&lang_model, model_path) != 0) return 1;
+    if (lang_model.loss_type == 1 && ft_build_hs_tree(&lang_model) != 0) {
+        fprintf(stderr, "[tag] Failed to build HS tree\n");
+        ft_model_free(&lang_model); return 1;
+    }
 
     ensure_dir(out_dir);
     char json_out[PATH_MAX];
@@ -691,6 +813,9 @@ int main(int argc, char **argv) {
         }
         FtModel model;
         if (ft_model_load(&model, model_path) != 0) return 1;
+        if (model.loss_type == 1 && ft_build_hs_tree(&model) != 0) {
+            ft_model_free(&model); return 1;
+        }
         int rc = cmd_predict(model_path, text, out, top_k, &model);
         ft_model_free(&model);
         return rc;
@@ -699,6 +824,9 @@ int main(int argc, char **argv) {
         const char *model_path = argv[2];
         FtModel model;
         if (ft_model_load(&model, model_path) != 0) return 1;
+        if (model.loss_type == 1 && ft_build_hs_tree(&model) != 0) {
+            ft_model_free(&model); return 1;
+        }
         int rc = cmd_batch(model_path, argv[3], (argc > 4) ? argv[4] : "output", &model);
         ft_model_free(&model);
         return rc;

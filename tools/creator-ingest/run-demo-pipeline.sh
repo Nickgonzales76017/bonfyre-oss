@@ -109,7 +109,9 @@ for creator_dir in "$OUTPUT_DIR"/*/; do
     if [[ ! -f "$transcript_txt" ]]; then
       echo "  [1/8] bonfyre-transcribe..."
       "$BIN_DIR/bonfyre-transcribe" "$audio" "$demo_dir/transcribe" \
-        --media-prep-binary "$BIN_DIR/bonfyre-media-prep" 2>&1 | tail -5 || {
+        --media-prep-binary "$BIN_DIR/bonfyre-media-prep" \
+        --beam-size 5 \
+        --processors "$(sysctl -n hw.ncpu)" 2>&1 | tail -5 || {
         echo "  WARN: bonfyre-transcribe failed"
         transcript_txt=""
       }
