@@ -44,3 +44,4 @@ dist/
 outputs-*/
 cmd/BonfyreCLI/bonfyre
 cmd/BonfyreEmbed/src/main.c.old
+site/index.html.bak

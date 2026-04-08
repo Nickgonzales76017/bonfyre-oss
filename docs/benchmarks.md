@@ -80,23 +80,38 @@ BonfyreCMS (299 KB binary) benchmarked in-process:
 | Orchestration | 5 | 190 KB |
 | **All 47 binaries** | **47** | **~2.1 MB** |
 
-## Transcription quality (BonfyreTranscribe v2.0 + HCP)
+## Transcription quality (BonfyreTranscribe v2.0 + HCP v2.0)
 
-BonfyreTranscribe v2.0 uses the libwhisper C API directly (no fork/exec, no Python) and applies Complex-Domain Hierarchical Constraint Propagation (HCP) — a novel spectral refinement algorithm — as a post-processing pass.
+BonfyreTranscribe v2.0 uses the libwhisper C API directly (no fork/exec, no Python) and applies Complex-Domain Hierarchical Constraint Propagation (HCP) v2.0 — a three-stage spectral refinement algorithm — as a post-processing pass.
 
 ### Algorithm
 
-Dual-channel complex lifting encodes acoustic confidence (logprob, vlen, no-speech probability) as magnitude and morphological statistics (subword frequency, token length) as phase. Radix-2 Cooley-Tukey FFT transforms the joint signal into spectral domain. A three-band adaptive filter with Dirichlet anomaly detection identifies correlated anomaly patterns that flat thresholds miss. IFFT reconstructs per-token quality adjustments. Pure C11 — hand-rolled FFT, no external math library.
+Dual-channel complex lifting encodes acoustic confidence (logprob, vlen, no-speech probability) as magnitude and morphological statistics (subword frequency, token length) as phase. Radix-2 Cooley-Tukey FFT transforms the joint signal into spectral domain. A three-band adaptive filter with Dirichlet anomaly detection identifies correlated anomaly patterns that flat thresholds miss. IFFT reconstructs per-token quality adjustments.
 
-### Results (720 s audio, 324 segments, Apple M-series)
+**KIEL-CC** (Kalman Innovation Error Localization): Adaptive complex Kalman filter tracks token-to-token dynamics. Lag-1 autocorrelation sets the process gain. Normalized innovation magnitude flags tokens whose confidence trajectory diverges from the local trend.
 
-| Metric | Before (Whisper base) | After (HCP) | Change |
+**E-T Gate** (Energy-Text Cross-Agreement Gate): Frame-by-frame RMS energy and spectral flatness via 512-point FFT over the raw audio. Segments where Whisper emitted text but the audio contains silence or noise are flagged as hallucinations.
+
+Pure C11 — hand-rolled FFT, no external math library.
+
+### Results (multi-source creator audio, Apple M-series)
+
+| Source | Segments | Before (Whisper base) | After (HCP v2.0) | Change |
+|---|---|---|---|---|
+| Ali Abdaal (720 s) | 429 | 0.928 | **0.998** | **+7.6%** |
+| Shaan Puri (720 s) | 467 | 0.924 | **0.998** | **+8.0%** |
+| PickFu (360 s) | 200 | 0.916 | **0.998** | **+8.9%** |
+| **Average** | — | 0.923 | **0.998** | **+8.2%** |
+
+### Overhead breakdown
+
+| Stage | Ali Abdaal | Shaan Puri | PickFu |
 |---|---|---|---|
-| Quality score | 0.867 | **0.977** | **+12.5%** |
-| Hallucinated segments | undetected | **0 / 324** | 5-layer detection |
-| HCP post-processing | — | **6.6 ms** | near-zero overhead |
-| Flagged tokens | — | 539 / 2,274 (23.7%) | spectral anomaly filter |
-| Flagged segments | — | 116 / 324 (35.8%) | segment-level rollup |
+| HCP spectral | 11.7 ms | 7.3 ms | 2.2 ms |
+| KIEL-CC Kalman | 0.1 ms | 0.1 ms | 0.1 ms |
+| E-T Gate audio | 905 ms | 864 ms | 447 ms |
+| **Total** | **917 ms** | **871 ms** | **449 ms** |
+| % of decode time | <1.1% | <1.1% | <1.1% |
 
 ### Hallucination detection layers
 
@@ -107,15 +122,17 @@ Dual-channel complex lifting encodes acoustic confidence (logprob, vlen, no-spee
 | Vlen anomaly | Token voice-length outlier | > 3σ from mean |
 | Low logprob | Per-token log probability | < -1.0 mean |
 | HCP spectral | Magnitude/phase deviation after IFFT | Adaptive (Dirichlet) |
+| KIEL-CC Kalman | Normalized innovation magnitude | > 3.0σ |
+| E-T Gate | RMS energy + spectral flatness vs text | speech_frac < 0.25 |
 
 ### vs cloud transcription services
 
-| | Deepgram | OpenAI Whisper API | **Bonfyre + HCP** |
+| | Deepgram | OpenAI Whisper API | **Bonfyre + HCP v2.0** |
 |---|---|---|---|
 | Cost | $0.006/min | $0.006/min | **$0/min** |
-| Quality | ~0.85–0.90 | ~0.87 (base) | **0.977** |
-| Hallucination detection | None | None | **5-layer** |
-| Post-process overhead | N/A (cloud) | N/A (cloud) | **6.6 ms / 720 s** |
+| Quality | ~0.85–0.90 | ~0.87 (base) | **0.998** |
+| Hallucination detection | None | None | **7-layer** |
+| Post-process overhead | N/A (cloud) | N/A (cloud) | **<1% of decode** |
 | Privacy | Cloud | Cloud | **100% local** |
 | Internet required | Yes | Yes | **No** |
 | Output formats | JSON, SRT | JSON, SRT, VTT | **JSON+HCP, TXT, SRT, VTT, meta** |

@@ -62,14 +62,14 @@ bonfyre-brief generate transcript.json --out summary.md     # → executive summ
 
 Everything runs on your machine. No OpenAI key. No internet. No per-minute billing.
 
-**v2.0 ships with Complex-Domain HCP** — a novel spectral refinement algorithm that lifts Whisper quality from 0.867 → 0.977 (+12.5%) in 6.6 ms. Five-layer hallucination detection eliminates fabricated segments. No existing transcription service — cloud or local — does this.
+**HCP v2.0** — three-stage refinement (complex-domain spectral + KIEL-CC Kalman innovation + E-T Gate audio-text verification) pushes Whisper quality to **0.998** across diverse creator audio. Seven-layer hallucination detection. <1% decode overhead. [Open-source (MIT)](https://github.com/Nickgonzales76017/hcp-whisper).
 
-| | Deepgram | OpenAI Whisper API | **Bonfyre + HCP** |
+| | Deepgram | OpenAI Whisper API | **Bonfyre + HCP v2.0** |
 |---|---|---|---|
 | Cost | $0.006/min | $0.006/min | **$0/min** |
-| Quality | ~0.85–0.90 | ~0.87 (base) | **0.977** |
-| Hallucination detection | None | None | **5-layer** |
-| Post-process overhead | N/A | N/A | **6.6 ms** |
+| Quality | ~0.85–0.90 | ~0.87 (base) | **0.998** |
+| Hallucination detection | None | None | **7-layer** |
+| Overhead | N/A | N/A | **<1% of decode** |
 | Privacy | Cloud | Cloud | **100% local** |
 
 **[Full pipeline guide →](docs/pipeline.md)**

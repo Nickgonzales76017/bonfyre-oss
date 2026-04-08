@@ -1,0 +1,1 @@
+{"type": "language-detection", "source": "/tmp/test_en.txt", "chunks": 1, "languages": [{"language": "gn", "confidence": 0.2607, "votes": 1}, {"language": "is", "confidence": 0.1046, "votes": 1}, {"language": "sw", "confidence": 0.0769, "votes": 1}, {"language": "ta", "confidence": 0.0578, "votes": 1}, {"language": "cy", "confidence": 0.0295, "votes": 1}]}
