@@ -1,0 +1,220 @@
+name: Bonfyre Pages Runtime
+
+on:
+  workflow_call:
+    inputs:
+      app_name:
+        description: Human-readable app name for metadata and summaries.
+        required: true
+        type: string
+      input_glob:
+        description: Git pathspec used to detect newly added inputs.
+        required: false
+        default: input/**
+        type: string
+      process_script:
+        description: Repo-local script that runs the app-specific Bonfyre pipeline.
+        required: false
+        default: scripts/process-inputs.sh
+        type: string
+      deploy_path:
+        description: Directory uploaded to GitHub Pages.
+        required: false
+        default: site
+        type: string
+      artifact_name:
+        description: Name for uploaded Actions artifacts.
+        required: false
+        default: bonfyre-pages-runtime
+        type: string
+      bonfyre_repo:
+        description: Bonfyre runtime repository to clone on the runner.
+        required: false
+        default: Nickgonzales76017/bonfyre
+        type: string
+      bonfyre_ref:
+        description: Git ref to use when building Bonfyre on the runner.
+        required: false
+        default: main
+        type: string
+  workflow_dispatch:
+    inputs:
+      app_name:
+        description: Human-readable app name for metadata and summaries.
+        required: true
+        type: string
+      input_glob:
+        description: Git pathspec used to detect newly added inputs.
+        required: false
+        default: input/**
+        type: string
+      process_script:
+        description: Repo-local script that runs the app-specific Bonfyre pipeline.
+        required: false
+        default: scripts/process-inputs.sh
+        type: string
+      deploy_path:
+        description: Directory uploaded to GitHub Pages.
+        required: false
+        default: site
+        type: string
+      artifact_name:
+        description: Name for uploaded Actions artifacts.
+        required: false
+        default: bonfyre-pages-runtime
+        type: string
+      bonfyre_repo:
+        description: Bonfyre runtime repository to clone on the runner.
+        required: false
+        default: Nickgonzales76017/bonfyre
+        type: string
+      bonfyre_ref:
+        description: Git ref to use when building Bonfyre on the runner.
+        required: false
+        default: main
+        type: string
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: bonfyre-pages-${{ github.repository }}
+  cancel-in-progress: false
+
+jobs:
+  process-and-deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout app repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq libsqlite3-dev pandoc
+
+      - name: Build Bonfyre runtime
+        run: |
+          git clone --depth 1 --branch "${{ inputs.bonfyre_ref }}" \
+            "https://github.com/${{ inputs.bonfyre_repo }}.git" /tmp/bonfyre
+          cd /tmp/bonfyre
+          make -j"$(nproc)" 2>&1 | tail -3
+          sudo make install
+
+      - name: Detect changed inputs
+        id: detect
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git rev-parse HEAD~1 >/dev/null 2>&1; then
+            CHANGED="$(git diff --name-only HEAD~1 HEAD -- '${{ inputs.input_glob }}' || true)"
+          else
+            CHANGED="$(git ls-files '${{ inputs.input_glob }}' || true)"
+          fi
+
+          if [ -z "$CHANGED" ]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "changed_count=0" >> "$GITHUB_OUTPUT"
+            : > /tmp/changed_files.txt
+          else
+            printf '%s\n' "$CHANGED" > /tmp/changed_files.txt
+            COUNT="$(wc -l < /tmp/changed_files.txt | tr -d ' ')"
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+            echo "changed_count=${COUNT}" >> "$GITHUB_OUTPUT"
+            echo "Detected ${COUNT} input file(s)." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Run app-specific pipeline
+        if: steps.detect.outputs.skip != 'true'
+        env:
+          BONFYRE_APP_NAME: ${{ inputs.app_name }}
+          CHANGED_FILES_FILE: /tmp/changed_files.txt
+          DEPLOY_PATH: ${{ inputs.deploy_path }}
+        run: |
+          chmod +x "${{ inputs.process_script }}"
+          "${{ inputs.process_script }}"
+
+      - name: Emit runtime metadata
+        if: steps.detect.outputs.skip != 'true'
+        env:
+          APP_NAME: ${{ inputs.app_name }}
+          CHANGED_COUNT: ${{ steps.detect.outputs.changed_count }}
+          DEPLOY_PATH: ${{ inputs.deploy_path }}
+        run: |
+          mkdir -p "${DEPLOY_PATH}"
+          python3 <<'PY'
+          import json
+          import os
+          from datetime import datetime, timezone
+          from pathlib import Path
+
+          deploy_path = Path(os.environ["DEPLOY_PATH"])
+          changed_files = Path("/tmp/changed_files.txt").read_text().splitlines()
+
+          job = {
+              "app_name": os.environ["APP_NAME"],
+              "repository": os.environ["GITHUB_REPOSITORY"],
+              "ref": os.environ["GITHUB_REF_NAME"],
+              "sha": os.environ["GITHUB_SHA"],
+              "run_id": os.environ["GITHUB_RUN_ID"],
+              "run_attempt": os.environ["GITHUB_RUN_ATTEMPT"],
+              "changed_count": int(os.environ["CHANGED_COUNT"]),
+              "changed_files": changed_files,
+              "generated_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+          }
+
+          summary = {
+              "app_name": job["app_name"],
+              "status": "processed",
+              "changed_count": job["changed_count"],
+              "changed_files": changed_files,
+              "deploy_path": str(deploy_path),
+              "artifact_manifest": str(deploy_path / "artifact.json"),
+          }
+
+          (deploy_path / "job.json").write_text(json.dumps(job, indent=2) + "\n")
+          (deploy_path / "summary.json").write_text(json.dumps(summary, indent=2) + "\n")
+          PY
+
+      - name: Upload workflow artifacts
+        if: steps.detect.outputs.skip != 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.artifact_name }}
+          path: |
+            artifacts
+            ${{ inputs.deploy_path }}/artifact.json
+            ${{ inputs.deploy_path }}/job.json
+            ${{ inputs.deploy_path }}/summary.json
+          if-no-files-found: warn
+
+      - name: Commit generated outputs
+        if: steps.detect.outputs.skip != 'true'
+        run: |
+          git config user.name "Bonfyre Runtime"
+          git config user.email "bonfyre-bot@users.noreply.github.com"
+          git add artifacts/ "${{ inputs.deploy_path }}/"
+          git diff --cached --quiet && exit 0
+          git commit -m "[pipeline] processed ${{ steps.detect.outputs.changed_count }} file(s)"
+          git push
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+        with:
+          enablement: true
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ${{ inputs.deploy_path }}
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
