@@ -838,6 +838,41 @@ footer a:hover { color: var(--text); }
   </div>
 </section>
 
+<!-- Narrate spotlight -->
+<section id="narrate" style="padding:40px 0;border-bottom:1px solid var(--border);background:linear-gradient(90deg, rgba(13,17,23,0.98) 0%, rgba(249,115,22,0.03) 100%)">
+  <div class="container" style="max-width:900px;margin:0 auto;text-align:left">
+    <div style="display:flex;gap:20px;align-items:center;flex-wrap:wrap">
+      <div style="flex:1;min-width:280px">
+        <div style="font-size:0.75rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--accent);font-weight:700;margin-bottom:8px">New — bonfyre-narrate v3.2</div>
+        <h2 style="margin:0 0 8px;font-size:2rem;color:var(--text)">Verified, local text-to-speech with provable fidelity</h2>
+        <p style="color:var(--text-dim);line-height:1.6">`bonfyre-narrate` now ships with math-hardened DSP and a zero-dependency verification loop. Features include parabolic F0, pitch-synchronous PSOLA that preserves dynamics, per-frame energy envelope transfer, and a 28-feature acoustic fingerprint used in a 6-layer HCP verifier.</p>
+        <ul style="color:var(--text-dim);line-height:1.6;margin-top:12px">
+          <li>Closed-loop verification: extract fingerprint from output WAV and compare to source (no Python).</li>
+          <li>Improved fidelity scoring — scale-independent layer metrics and true semitone statistics.</li>
+          <li>Iterative refinement: automatically nudges prosody until target fidelity is reached.</li>
+        </ul>
+        <div style="margin-top:16px" class="btn-row">
+          <a href="https://github.com/Nickgonzales76017/bonfyre/tree/narrate/v3.2-math" class="btn btn-primary">View v3.2 branch →</a>
+          <a href="#binaries" class="btn btn-outline">See binary →</a>
+        </div>
+      </div>
+      <div style="width:300px;min-width:220px;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:16px">
+        <div style="font-size:0.9rem;font-weight:700;color:var(--accent);margin-bottom:8px">Quick metrics</div>
+        <div style="display:flex;justify-content:space-between;color:var(--text-dim);font-size:0.9rem">
+          <div>Features</div><div>28</div>
+        </div>
+        <div style="display:flex;justify-content:space-between;color:var(--text-dim);font-size:0.9rem">
+          <div>Binary</div><div>~68 KB</div>
+        </div>
+        <div style="display:flex;justify-content:space-between;color:var(--text-dim);font-size:0.9rem">
+          <div>Version</div><div>v3.2.0</div>
+        </div>
+        <div style="margin-top:12px;color:var(--text-dim);font-size:0.85rem">Try: <code>bonfyre-narrate verify output.wav source.wav</code></div>
+      </div>
+    </div>
+  </div>
+</section>
+
 <!-- Competition crusher -->
 <section id="vs-competition">
   <div class="container">
