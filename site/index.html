@@ -720,6 +720,7 @@ footer a:hover { color: var(--text); }
       <a href="#wordpress">WordPress</a>
       <a href="#recipes">Recipes</a>
       <a href="#benchmarks">Benchmarks</a>
+      <a href="#architecture">Architecture</a>
       <a href="#binaries">Binaries</a>
       <a href="#apps">Live Apps</a>
       <a href="#install">Install</a>
@@ -794,7 +795,19 @@ footer a:hover { color: var(--text); }
     <div style="display:inline-block;background:var(--surface);border:2px solid var(--accent);border-radius:12px;padding:32px 48px;max-width:800px">
       <div style="font-size:0.75rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--accent);font-weight:700;margin-bottom:8px">New — hcp-whisper v3.2</div>
       <div style="font-size:2.4rem;font-weight:800;color:var(--text);letter-spacing:-0.02em;margin-bottom:8px">0.997 quality. 29 MB model. $0/min.</div>
-      <p style="font-size:1rem;color:var(--text-dim);max-width:600px;margin:0 auto 20px;line-height:1.6">Quad-channel spectral refinement with 9-layer hallucination detection + morphological logit bias. 6× smaller than fp16. Unified FFT pass cuts audio analysis overhead 86%. Beats every cloud API — running entirely on your machine.</p>
+      <p style="font-size:1rem;color:var(--text-dim);max-width:600px;margin:0 auto 20px;line-height:1.6">Quad-channel spectral refinement with 9-layer hallucination detection + morphological logit bias. 6× smaller than fp16. Unified FFT pass cuts audio analysis overhead 86%. Runs entirely on your machine.</p>
+      <div style="text-align:left;max-width:600px;margin:0 auto 20px;font-size:0.8rem;color:var(--text-dim);line-height:1.8">
+        <strong style="color:var(--text);font-size:0.85rem">The 9 detection layers:</strong><br>
+        <span style="color:var(--green)">1.</span> Spectral continuity — power spectrum cross-correlation between frames<br>
+        <span style="color:var(--green)">2.</span> KIEL-CC Kalman — confidence-calibrated scoring with Kalman smoothing<br>
+        <span style="color:var(--green)">3.</span> E-T Gate — energy-to-transcript gating (silence ≠ speech)<br>
+        <span style="color:var(--green)">4.</span> Formant anchoring — formant frequency validation against expected ranges<br>
+        <span style="color:var(--green)">5.</span> Bigram coherence — token-level bigram log-probability check<br>
+        <span style="color:var(--green)">6.</span> Trigram coherence — token-level trigram log-probability check<br>
+        <span style="color:var(--green)">7.</span> Morphological logit bias — active decoder constraint on affix patterns<br>
+        <span style="color:var(--green)">8.</span> Repetition filter — n-gram repetition detection and suppression<br>
+        <span style="color:var(--green)">9.</span> Context-seeded re-decode — multi-pass decoding with prior context
+      </div>
       <div style="display:flex;gap:16px;justify-content:center;flex-wrap:wrap;margin-bottom:16px">
         <div style="text-align:center">
           <span style="display:block;font-size:1.8rem;font-weight:700;color:var(--accent)">29 MB</span>
@@ -913,7 +926,7 @@ footer a:hover { color: var(--text); }
       </div>
       <div class="use-case">
         <h3>Local Transcription + HCP v3.2</h3>
-        <p>29 MB quantized model, 0.997 quality, 9-layer hallucination detection + morphological logit bias. Unified FFT pass (86% less overhead). Beats every cloud API. 6 quantization options from 24 MB to 141 MB. Zero cost. <a href="https://github.com/Nickgonzales76017/hcp-whisper">Open-source</a>.</p>
+        <p>29 MB quantized model, 0.997 quality, 9-layer hallucination detection + morphological logit bias. Unified FFT pass (86% less overhead). 6 quantization options from 24 MB to 141 MB. $0/min, runs offline. <a href="https://github.com/Nickgonzales76017/hcp-whisper">Open-source (MIT)</a>.</p>
         <code>bonfyre-transcribe run audio.wav</code>
         <br><span class="time">5 min to try</span>
       </div>
@@ -1485,8 +1498,8 @@ footer a:hover { color: var(--text); }
         <span class="metric">Hash hex (LUT vs snprintf)</span>
       </div>
       <div class="bench-card">
-        <span class="value">0.999</span>
-        <span class="metric">HCP v3.1 quality (base, 3 sources avg)</span>
+        <span class="value">0.997</span>
+        <span class="metric">HCP v3.2 quality (tiny q5_0, 29 MB default)</span>
       </div>
       <div class="bench-card">
         <span class="value">9</span>
@@ -1497,6 +1510,32 @@ footer a:hover { color: var(--text); }
         <span class="metric">Hallucinated segments (0.09%)</span>
       </div>
     </div>
+
+    <h3 style="font-size:1.1rem;margin:32px 0 16px">Reproduce these numbers</h3>
+    <div class="install-box" style="max-width:100%;margin-bottom:12px;">
+      <code>
+        <span class="comment"># HCP transcription quality (tiny q5_0, 29 MB)</span><br>
+        git clone https://github.com/Nickgonzales76017/hcp-whisper.git<br>
+        cd hcp-whisper && make<br>
+        ./hcp-whisper -m models/ggml-tiny.en-q5_0.bin -f your-audio.wav --output-json<br>
+        <span class="comment"># Check quality field in output JSON — 0.997 avg across 3 sources</span>
+      </code>
+    </div>
+    <div class="install-box" style="max-width:100%;margin-bottom:12px;">
+      <code>
+        <span class="comment"># Run the full test suite (167 tests)</span><br>
+        make test <span class="comment"># hcp-whisper: 167/167 tests</span>
+      </code>
+    </div>
+    <div class="install-box" style="max-width:100%;margin-bottom:12px;">
+      <code>
+        <span class="comment"># Bonfyre pipeline (5-8 ms per stage)</span><br>
+        git clone https://github.com/Nickgonzales76017/bonfyre.git<br>
+        cd bonfyre && make<br>
+        time ./bin/bonfyre-pipeline run --input audio.wav
+      </code>
+    </div>
+    <p style="color:var(--text-dim);font-size:0.85rem;margin-top:12px">All benchmarks measured on Apple M-series. Source audio: Ali Abdaal, Shaan Puri, PickFu — publicly available creator content. Model files downloadable from Hugging Face (ggml quantized Whisper).</p>
   </div>
 </section>
 
@@ -1504,7 +1543,7 @@ footer a:hover { color: var(--text); }
 <section id="performance">
   <div class="container">
     <h2>5 optimization passes. Zero regressions.</h2>
-    <p class="subtitle">Every pass shipped. Every test passes. 69 tests across 2 libraries + 47 binaries.</p>
+    <p class="subtitle">Every pass shipped. Every test passes. 167 tests across hcp-whisper + 2 libraries + 47 binaries.</p>
     <div class="opt-timeline">
       <div class="opt-card">
         <div class="tag">P0 — Foundation</div>
@@ -1552,8 +1591,8 @@ footer a:hover { color: var(--text); }
         <tr><td>Operator lookup</td><td>O(n) linear</td><td class="highlight">O(1) FNV hash</td><td>algorithmic</td></tr>
         <tr><td>Token generation</td><td>O(n²) strlen loop</td><td class="highlight">O(n) tracked offset</td><td>algorithmic</td></tr>
         <tr><td>Vector file (384-dim)</td><td>6.4 KB JSON</td><td class="highlight">1,544 bytes VECF</td><td>4.2× smaller</td></tr>
-        <tr><td>Transcript quality</td><td>~0.92 (Whisper base)</td><td class="highlight">0.999 (HCP v3.1)</td><td>+8.2% avg</td></tr>
-        <tr><td>HCP pipeline</td><td>N/A</td><td class="highlight">spectral + KIEL-CC + E-T Gate + formant</td><td>&lt;5% overhead</td></tr>
+        <tr><td>Transcript quality</td><td>~0.92 (Whisper base)</td><td class="highlight">0.997 (HCP v3.2, tiny q5_0)</td><td>+8.4% avg</td></tr>
+        <tr><td>HCP pipeline</td><td>N/A</td><td class="highlight">spectral + KIEL-CC + E-T Gate + formant + logit bias</td><td>&lt;1% overhead (unified FFT)</td></tr>
         <tr><td>Hallucinated segments</td><td>undetected</td><td class="highlight">1 / 1,096 (0.09%)</td><td>9-layer detection</td></tr>
         <tr><td>Duplicate code</td><td>34 copies</td><td class="highlight">1 each (libbonfyre)</td><td>eliminated</td></tr>
       </tbody>
@@ -1565,7 +1604,49 @@ footer a:hover { color: var(--text); }
 <section id="architecture">
   <div class="container">
     <h2>Architecture</h2>
-    <p class="subtitle">Five layers. Every binary declares its behavioral class. Transform binaries are pure — same inputs, same outputs, cacheable.</p>
+    <p class="subtitle">47 separate binaries. Not a monolith. Not a framework. Each is a standalone Unix process.</p>
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;margin-bottom:36px">
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:20px">
+        <h3 style="font-size:0.85rem;text-transform:uppercase;letter-spacing:0.05em;color:var(--accent);margin-bottom:8px">Unix philosophy</h3>
+        <p style="font-size:0.85rem;color:var(--text-dim);line-height:1.6">Each binary does one thing. Compose them with pipes, files, or the pipeline binary. <code style="font-size:0.8rem">bonfyre-media-prep audio.wav | bonfyre-transcribe | bonfyre-brief</code></p>
+      </div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:20px">
+        <h3 style="font-size:0.85rem;text-transform:uppercase;letter-spacing:0.05em;color:var(--accent);margin-bottom:8px">Process isolation</h3>
+        <p style="font-size:0.85rem;color:var(--text-dim);line-height:1.6">Every binary runs as its own process. No shared memory. If one crashes, nothing else does. 15-minute audio files process without leaks — separate processes clean up on exit.</p>
+      </div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:20px">
+        <h3 style="font-size:0.85rem;text-transform:uppercase;letter-spacing:0.05em;color:var(--accent);margin-bottom:8px">Dynamic linking</h3>
+        <p style="font-size:0.85rem;color:var(--text-dim);line-height:1.6">Whisper via <code style="font-size:0.8rem">libwhisper</code> (Homebrew). LLM via <code style="font-size:0.8rem">llama-completion</code> as a subprocess. SQLite via system library. No static megabinary.</p>
+      </div>
+    </div>
+
+    <h3 style="font-size:1.1rem;margin-bottom:16px">Pipeline DAG</h3>
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:24px;font-family:var(--mono);font-size:0.85rem;color:var(--text);line-height:2;overflow-x:auto">
+      <span style="color:var(--text-dim)">Audio in →</span> <span style="color:var(--green)">ingest</span> <span style="color:var(--accent)">→</span> <span style="color:var(--green)">media-prep</span> <span style="color:var(--accent)">→</span> <span style="color:var(--green)">transcribe</span> <span style="color:var(--accent)">→</span> <span style="color:var(--green)">transcript-clean</span> <span style="color:var(--accent)">→</span> <span style="color:var(--green)">paragraph</span> <span style="color:var(--accent)">→</span> <span style="color:var(--green)">brief</span> <span style="color:var(--accent)">→</span> <span style="color:var(--green)">proof</span> <span style="color:var(--accent)">→</span> <span style="color:var(--green)">pack</span> <span style="color:var(--accent)">→</span> <span style="color:var(--green)">distribute</span><br>
+      <span style="color:var(--text-dim)"> &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; ↳</span> <span style="color:var(--blue)">embed</span> <span style="color:var(--accent)">→</span> <span style="color:var(--blue)">vec</span> <span style="color:var(--text-dim)">(semantic search branch)</span><br>
+      <span style="color:var(--text-dim)"> &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; ↳</span> <span style="color:var(--blue)">tag</span> + <span style="color:var(--blue)">tone</span> <span style="color:var(--text-dim)">(enrichment branch)</span><br>
+      <span style="color:var(--text-dim)"> &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; ↳</span> <span style="color:var(--blue)">render</span> <span style="color:var(--accent)">→</span> <span style="color:var(--blue)">emit</span> <span style="color:var(--text-dim)">(HTML/PDF/EPUB/RSS output)</span>
+    </div>
+
+    <h3 style="font-size:1.1rem;margin:32px 0 16px">What Bonfyre is not</h3>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;margin-bottom:32px">
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:20px">
+        <p style="font-size:0.9rem;color:var(--text);font-weight:600;margin-bottom:6px">Not an LLM runner</p>
+        <p style="font-size:0.85rem;color:var(--text-dim);line-height:1.6">Ollama, LocalAI, and LM Studio serve LLM inference. Bonfyre is a content processing pipeline — it uses models as tools inside a larger workflow, not as the product itself.</p>
+      </div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:20px">
+        <p style="font-size:0.9rem;color:var(--text);font-weight:600;margin-bottom:6px">Not a framework</p>
+        <p style="font-size:0.85rem;color:var(--text-dim);line-height:1.6">No SDK, no plugins, no config DSL. Each binary reads files or stdin, writes files or stdout. Compose them however you want — shell scripts, Makefiles, GitHub Actions.</p>
+      </div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:20px">
+        <p style="font-size:0.9rem;color:var(--text);font-weight:600;margin-bottom:6px">Not a monolith</p>
+        <p style="font-size:0.85rem;color:var(--text-dim);line-height:1.6">47 separate executables, each 34–287 KB. Use one binary for one job, or chain 10 into a pipeline. No coupling — swap, skip, or replace any stage.</p>
+      </div>
+    </div>
+
+    <h3 style="font-size:1.1rem;margin:0 0 16px">Five layers</h3>
+    <p style="color:var(--text-dim);font-size:0.9rem;margin-bottom:16px">Every binary declares its behavioral class. Transform binaries are pure — same inputs, same outputs, cacheable.</p>
     <div class="layers">
       <div class="layer">
         <span class="layer-name">Surface</span>
@@ -1851,7 +1932,7 @@ footer a:hover { color: var(--text); }
 <section style="text-align:center; padding:80px 0;">
   <div class="container">
     <h2>MIT Licensed. Do whatever you want with it.</h2>
-    <p class="subtitle">One repo. 47 binaries. ~2.1 MB. 69 tests. 5 optimization passes.</p>
+    <p class="subtitle">One repo. 47 binaries. ~2.1 MB. 167 tests. 5 optimization passes.</p>
     <div class="btn-row">
       <a href="https://github.com/Nickgonzales76017/bonfyre" class="btn btn-primary">
         ⭐ Star on GitHub
