@@ -171,6 +171,62 @@ function uniqueCount(values) {
   return new Set(values).size;
 }
 
+function classifyReadiness(appSummary) {
+  if (appSummary.approved_sources <= 0) {
+    return 'not-ready';
+  }
+  const warnings = new Set(appSummary.warnings || []);
+  if (
+    appSummary.approved_sources >= 10 &&
+    appSummary.provenance_ratio >= 0.8 &&
+    appSummary.differentiation_score >= 0.75 &&
+    warnings.size === 0
+  ) {
+    return 'ready';
+  }
+  if (
+    appSummary.differentiation_score >= 0.75 &&
+    appSummary.provenance_ratio < 0.8 &&
+    !warnings.has('state-collapse') &&
+    !warnings.has('output-collapse')
+  ) {
+    return 'technically-strong-but-provenance-thin';
+  }
+  if (
+    appSummary.differentiation_score >= 0.55 &&
+    appSummary.provenance_ratio >= 0.5 &&
+    !warnings.has('state-collapse') &&
+    !warnings.has('output-collapse')
+  ) {
+    return 'promising-but-not-client-ready';
+  }
+  return 'not-ready';
+}
+
+function nextActionForApp(appSummary) {
+  const queued = appSummary.sources
+    .filter((source) => String(source.review_status || '').toLowerCase() === 'queued')
+    .sort((left, right) => {
+      const rightScore = Number(right.signal_score || 0);
+      const leftScore = Number(left.signal_score || 0);
+      return rightScore - leftScore;
+    });
+
+  if (appSummary.warnings.includes('state-collapse') || appSummary.warnings.includes('output-collapse')) {
+    return 'Tighten domain routing so materially different sources stop collapsing to the same plan.';
+  }
+  if (appSummary.approved_sources < 10 && queued.length > 0) {
+    return `Review and approve "${queued[0].title}" next to raise provenance and corpus breadth.`;
+  }
+  if (appSummary.provenance_ratio < 0.8) {
+    return 'Replace thin reference rows with approved public-origin sources until provenance is client-safe.';
+  }
+  if (appSummary.differentiation_score < 0.75) {
+    return 'Keep stressing diverse source shapes until the planner proves stronger output differentiation.';
+  }
+  return 'Continue expanding reviewed public-source coverage while preserving the current plan quality floor.';
+}
+
 function renderMarkdown(report) {
   const lines = [];
   lines.push('# Bonfyre Reference Corpus Stress Report');
@@ -205,6 +261,8 @@ function renderMarkdown(report) {
     lines.push(`- Approved sources: ${app.approved_sources}`);
     lines.push(`- Queued sources: ${app.queued_sources}`);
     lines.push(`- Provenance-backed ratio: ${app.provenance_ratio}`);
+    lines.push(`- Readiness verdict: ${app.readiness_verdict}`);
+    lines.push(`- Next action: ${app.next_action}`);
     lines.push(`- Modes: ${Object.entries(app.mode_counts).map(([k, v]) => `${k}=${v}`).join(', ') || 'none'}`);
     lines.push(`- Warnings: ${app.warnings.length ? app.warnings.join(', ') : 'none'}`);
     lines.push('');
@@ -232,7 +290,8 @@ function renderSummaryJson(report) {
     apps_with_warnings: report.totals.apps_with_warnings,
     approved_sources: report.totals.approved_sources,
     queued_sources: report.totals.queued_sources,
-    provenance_ratio: report.totals.provenance_ratio
+    provenance_ratio: report.totals.provenance_ratio,
+    readiness_counts: report.totals.readiness_counts
   };
 }
 
@@ -269,7 +328,8 @@ function main() {
       queued_jobs: 0,
       avg_policy_score: 0,
       avg_information_gain: 0,
-      avg_latency: 0
+      avg_latency: 0,
+      readiness_counts: {}
     },
     apps: []
   };
@@ -305,6 +365,8 @@ function main() {
         unique_policy_sources: 0,
         unique_output_sets: 0,
         differentiation_score: 0,
+        readiness_verdict: '',
+        next_action: '',
         warnings: [],
         binaries: {},
         sources: []
@@ -375,6 +437,14 @@ function main() {
           title: source.title,
           public_url: source.public_url || '',
           review_status: source.review_status,
+          signal_score: Number((
+            getSignal(source, 'messy_audio') * 1.4 +
+            getSignal(source, 'jargon_density') * 1.2 +
+            getSignal(source, 'social_complexity') * 1.1 +
+            getSignal(source, 'bonfyre_fit') * 1.8 +
+            getSignal(source, 'provenance_confidence') * 1.3 +
+            getSignal(source, 'public_safety') * 1.0
+          ).toFixed(2)),
           queue_job_id: enqueue.id,
           mode: plan.mode,
           policy_source: plan.policy_source,
@@ -417,6 +487,8 @@ function main() {
       if (appSummary.source_count > 1 && appSummary.differentiation_score < 0.55) {
         appSummary.warnings.push('low-plan-differentiation');
       }
+      appSummary.readiness_verdict = classifyReadiness(appSummary);
+      appSummary.next_action = nextActionForApp(appSummary);
       report.apps.push(appSummary);
     }
   } finally {
@@ -439,6 +511,10 @@ function main() {
   report.totals.provenance_ratio = report.totals.sources
     ? Number((report.totals.approved_sources / report.totals.sources).toFixed(3))
     : 0;
+  report.totals.readiness_counts = report.apps.reduce((counts, app) => {
+    counts[app.readiness_verdict] = (counts[app.readiness_verdict] || 0) + 1;
+    return counts;
+  }, {});
 
   const queueStats = runJson(queueBin, ['stats', queueFile], 'queue stats');
   report.queue_stats = queueStats;
