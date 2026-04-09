@@ -125,7 +125,9 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          if git rev-parse HEAD~1 >/dev/null 2>&1; then
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            CHANGED="$(git ls-files '${{ inputs.input_glob }}' || true)"
+          elif git rev-parse HEAD~1 >/dev/null 2>&1; then
             CHANGED="$(git diff --name-only HEAD~1 HEAD -- '${{ inputs.input_glob }}' || true)"
           else
             CHANGED="$(git ls-files '${{ inputs.input_glob }}' || true)"
