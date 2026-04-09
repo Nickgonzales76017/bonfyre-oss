@@ -314,6 +314,27 @@ function summarizeCoverage(appSummary, app, target) {
   };
 }
 
+function buildRemediationPlan(report) {
+  return report.apps
+    .filter((app) => app.readiness_verdict !== 'ready')
+    .map((app) => ({
+      repo: app.repo,
+      title: app.title,
+      verdict: app.readiness_verdict,
+      urgency_score: Number((
+        app.coverage.source_gap * 10 +
+        app.coverage.missing_patterns.length * 5 +
+        (1 - app.provenance_ratio) * 20 +
+        (app.warnings.length ? 15 : 0)
+      ).toFixed(1)),
+      source_gap: app.coverage.source_gap,
+      missing_patterns: app.coverage.missing_patterns,
+      next_action: app.next_action,
+      next_sources: app.coverage.top_queued
+    }))
+    .sort((left, right) => right.urgency_score - left.urgency_score);
+}
+
 function renderMarkdown(report) {
   const lines = [];
   lines.push('# Bonfyre Reference Corpus Stress Report');
@@ -335,6 +356,16 @@ function renderMarkdown(report) {
   lines.push(`- Minimum accepted verdict: ${report.totals.min_accepted_verdict}`);
   lines.push(`- Publish gate: ${report.totals.publish_gate}`);
   lines.push('');
+  if (report.remediation_plan.length) {
+    lines.push('## Remediation Queue');
+    lines.push('');
+    lines.push('| App | Verdict | Urgency | Gap | Missing patterns | Next action |');
+    lines.push('|---|---|---|---|---|---|');
+    for (const item of report.remediation_plan) {
+      lines.push(`| ${item.title} | ${item.verdict} | ${item.urgency_score} | ${item.source_gap} | ${item.missing_patterns.join(', ') || 'none'} | ${item.next_action} |`);
+    }
+    lines.push('');
+  }
 
   for (const app of report.apps) {
     lines.push(`## ${app.title}`);
@@ -394,7 +425,8 @@ function renderSummaryJson(report) {
     provenance_ratio: report.totals.provenance_ratio,
     readiness_counts: report.totals.readiness_counts,
     min_accepted_verdict: report.totals.min_accepted_verdict,
-    publish_gate: report.totals.publish_gate
+    publish_gate: report.totals.publish_gate,
+    remediation_plan: report.remediation_plan
   };
 }
 
@@ -436,6 +468,7 @@ function main() {
       min_accepted_verdict: args.minVerdict,
       publish_gate: 'pass'
     },
+    remediation_plan: [],
     apps: []
   };
 
@@ -631,6 +664,7 @@ function main() {
   }, {});
   const failingApps = report.apps.filter((app) => verdictRank(app.readiness_verdict) < verdictRank(args.minVerdict));
   report.totals.publish_gate = failingApps.length ? 'fail' : 'pass';
+  report.remediation_plan = buildRemediationPlan(report);
   report.failing_apps = failingApps.map((app) => ({
     repo: app.repo,
     verdict: app.readiness_verdict,
