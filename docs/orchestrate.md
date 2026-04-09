@@ -115,11 +115,14 @@ The orchestrator keeps a compact SQLite policy store keyed by:
 
 That means Bonfyre can reuse winning boost sets without calling the model again for the same orchestration signature.
 
+If there is no exact signature hit, Bonfyre can also fall back to a proven workload-family prior when the same `input_type`, `latency_class`, and `surface` have already produced a low-regret frontier in the same objective family.
+
 Gemma is gated by the current plan itself:
 
 - low expected information gain: skip the model
 - already-high confidence: skip the model
 - known policy signature: reuse cached booster set first
+- no exact hit but proven family prior: reuse that frontier before asking the model
 
 When Gemma is called, its proposed boosters are only accepted if they pass a stability gate against the baseline plan:
 
@@ -130,6 +133,8 @@ When Gemma is called, its proposed boosters are only accepted if they pass a sta
 - reversibility cannot materially degrade
 
 Accepted model deltas surface as `mode: "gemma4-delta"`.
+
+Family-prior reuse surfaces as `mode: "family-memory"`.
 
 ## Feedback and regret
 
