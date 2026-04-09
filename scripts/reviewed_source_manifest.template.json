@@ -1,0 +1,78 @@
+{
+  "apps": [
+    {
+      "repo": "pages-town-box",
+      "slug": "town-box",
+      "title": "Town in a Box",
+      "out_path": "/ABS/PATH/TO/pages-town-box/site/demos/town-box/demo-items.json",
+      "default_outputs": ["civic summary card", "searchable record", "vector memory", "public issue trail"],
+      "why_it_matters": "Town Box becomes convincing when every record can be traced to a real public meeting or civic video.",
+      "search_intro": "Search across real public meeting records to connect hearings, updates, and recurring issues.",
+      "source_copy": "Watch the original public source, then compare how Bonfyre turns it into a civic summary, search surface, and durable public trail.",
+      "sources": [
+        {
+          "id": "salt-lake-work-session-001",
+          "title": "Salt Lake City Council Work Session",
+          "file": "Salt Lake City Council Work Session",
+          "published_at": "Public meeting recording",
+          "public_url": "https://www.youtube.com/watch?v=_mroalG8RTc",
+          "publisher": "Salt Lake City Council",
+          "license": "Public platform origin",
+          "sourceLabel": "Watch original public source",
+          "brief": "Public meeting record processed into a civic summary, searchable issue trail, and reusable town memory.",
+          "tags": ["meetings", "city council", "public works"],
+          "searchSummary": "city council, work session, public works",
+          "searchOutputs": ["searchable record", "vector memory"]
+        }
+      ]
+    },
+    {
+      "repo": "pages-shift-handoff",
+      "slug": "shift-handoff",
+      "title": "Shift Handoff",
+      "out_path": "/ABS/PATH/TO/pages-shift-handoff/site/demos/shift-handoff/demo-items.json",
+      "default_outputs": ["shift summary", "handoff board", "critical tasks"],
+      "why_it_matters": "Handoff quality is only believable when the input sounds like a real rushed workplace exchange.",
+      "search_intro": "Search across real handoff recordings to see repeated risks and recurring task patterns.",
+      "source_copy": "Open the original public source, then compare it to the handoff board Bonfyre generates.",
+      "sources": [
+        {
+          "id": "practice-nursing-handoff-001",
+          "title": "Practice Nursing Hand-Off Report #1",
+          "file": "Practice Nursing Hand-Off Report #1",
+          "published_at": "Public training video",
+          "public_url": "https://www.youtube.com/watch?v=fIABkSYOiv4",
+          "publisher": "Public training channel",
+          "license": "Public platform origin",
+          "sourceLabel": "Watch original public source",
+          "brief": "Training handoff processed into a concise board of status, next actions, and escalation points.",
+          "tags": ["handoff", "nursing", "training"]
+        }
+      ]
+    },
+    {
+      "repo": "pages-podcast-plant",
+      "slug": "podcast-plant",
+      "title": "Podcast Plant",
+      "out_path": "/ABS/PATH/TO/pages-podcast-plant/site/demos/podcast-plant/demo-items.json",
+      "default_outputs": ["show notes", "clip list", "article draft", "RSS-ready bundle"],
+      "why_it_matters": "Podcast Plant only earns trust when every episode card traces back to the public episode page or video.",
+      "search_intro": "Search across real public episodes to compare topics, clips, and publish surfaces.",
+      "source_copy": "Open the original public source, then compare it to the notes, clips, and bundle Bonfyre emits.",
+      "sources": [
+        {
+          "id": "podcast-source-001",
+          "title": "REPLACE_WITH_PUBLIC_EPISODE_TITLE",
+          "file": "REPLACE_WITH_PUBLIC_EPISODE_TITLE",
+          "published_at": "Public podcast or video episode",
+          "public_url": "https://www.youtube.com/watch?v=REPLACE_ME",
+          "publisher": "REPLACE_WITH_CHANNEL_OR_PODCAST",
+          "license": "Public platform origin",
+          "sourceLabel": "Watch original public source",
+          "brief": "Public episode processed into notes, clips, and a publish-ready bundle.",
+          "tags": ["podcast", "public source", "repurposing"]
+        }
+      ]
+    }
+  ]
+}

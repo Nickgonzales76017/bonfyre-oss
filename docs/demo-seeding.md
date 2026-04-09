@@ -57,6 +57,29 @@ It also passes through provenance fields when they exist:
 
 Those fields should point to the public origin page or channel, not to mirrored source media hosted inside the app repo.
 
+## Reviewed-Source Generator
+
+For corpora that need to pass strict provenance, use:
+
+```bash
+node scripts/generate_reference_corpora_from_sources.mjs path/to/reviewed-source-manifest.json
+```
+
+Start from:
+
+```bash
+cp scripts/reviewed_source_manifest.template.json path/to/reviewed-source-manifest.json
+```
+
+That manifest is intentionally source-first:
+
+- one reviewed public origin per record
+- public URL attached up front
+- publisher and license note attached up front
+- no mirrored source audio/video in `site/demos`
+
+This is the path that should replace synthetic placeholder corpora for the flagship apps.
+
 ## Validator
 
 Before publishing a corpus, run:
@@ -73,6 +96,11 @@ What it catches:
 - local-path provenance masquerading as origin
 - stale staged-demo copy like `seeded` or `demo dataset`
 - excessively repeated record templates that make the corpus feel fake
+
+Use the validator as the release gate:
+
+- synthetic exploration can fail locally
+- public demo publication should not pass until provenance is real
 
 ## Manifest Shape
 
