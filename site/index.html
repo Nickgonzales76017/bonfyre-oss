@@ -211,6 +211,57 @@ section .subtitle {
   font-weight: 600;
 }
 
+/* Repo graph */
+.repo-graph {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+}
+.repo-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 20px;
+}
+.repo-card h3 {
+  font-size: 1rem;
+  margin-bottom: 8px;
+  color: var(--accent);
+}
+.repo-card p {
+  font-size: 0.9rem;
+  color: var(--text-dim);
+  margin-bottom: 10px;
+}
+.repo-card code {
+  display: inline-block;
+  margin-bottom: 10px;
+  font-family: var(--mono);
+  font-size: 0.8rem;
+  background: var(--bg);
+  padding: 2px 6px;
+  border-radius: 3px;
+}
+.repo-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.repo-link {
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 10px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  font-size: 0.8rem;
+  color: var(--text);
+  text-decoration: none;
+}
+.repo-link:hover {
+  border-color: var(--accent);
+  text-decoration: none;
+}
+
 /* Comparison table */
 .cmp-table {
   width: 100%;
@@ -717,6 +768,7 @@ footer a:hover { color: var(--text); }
     <div class="nav-links" style="display:flex;gap:4px;">
       <a href="#vs-competition">Why Bonfyre</a>
       <a href="#use-cases">Use Cases</a>
+      <a href="#repo-graph">Repo Graph</a>
       <a href="#wordpress">WordPress</a>
       <a href="#recipes">Recipes</a>
       <a href="#benchmarks">Benchmarks</a>
@@ -959,6 +1011,81 @@ footer a:hover { color: var(--text); }
         <p>Drop-in replacement for OpenAI endpoints. Set OPENAI_API_BASE=http://localhost:8787 and existing code just works — transcription via HCP, completions via bonfyre-brief. 53 KB binary, localhost only.</p>
         <code>bonfyre-proxy serve --port 8787</code>
         <br><span class="time">1 min to try</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Repo Graph -->
+<section id="repo-graph">
+  <div class="container">
+    <h2>Repo Graph</h2>
+    <p class="subtitle">Bonfyre is no longer a single opaque repo. These are the public entry vectors linked from the live product surface.</p>
+    <div class="repo-graph">
+      <div class="repo-card">
+        <h3>Umbrella</h3>
+        <p>The top-level router for architecture, comparisons, and the full system story.</p>
+        <code>bonfyre</code>
+        <div class="repo-links">
+          <a class="repo-link" href="https://github.com/Nickgonzales76017/bonfyre">Open repo</a>
+        </div>
+      </div>
+      <div class="repo-card">
+        <h3>Shared Core</h3>
+        <p>Core substrate, hashing, canonicalization, compression helpers, and the shared C runtime library.</p>
+        <code>bonfyre-core</code>
+        <div class="repo-links">
+          <a class="repo-link" href="https://github.com/Nickgonzales76017/bonfyre-core">Open repo</a>
+        </div>
+      </div>
+      <div class="repo-card">
+        <h3>Intake</h3>
+        <p>Transcription, ingest, media prep, transcript cleanup, paragraphization, and transcript-family workflows.</p>
+        <code>bonfyre-intake</code>
+        <div class="repo-links">
+          <a class="repo-link" href="https://github.com/Nickgonzales76017/bonfyre-intake">Open repo</a>
+        </div>
+      </div>
+      <div class="repo-card">
+        <h3>Compression Library</h3>
+        <p>Standalone JSON compression and family-aware tensor substrate.</p>
+        <code>liblambda-tensors</code>
+        <div class="repo-links">
+          <a class="repo-link" href="https://github.com/Nickgonzales76017/liblambda-tensors">Open repo</a>
+          <a class="repo-link" href="https://github.com/Nickgonzales76017/bonfyre-core">Powered by core</a>
+        </div>
+      </div>
+      <div class="repo-card">
+        <h3>Pipeline</h3>
+        <p>The single-process pipeline surface for audio-to-invoice and other end-to-end flows.</p>
+        <code>bonfyre-pipeline</code>
+        <div class="repo-links">
+          <a class="repo-link" href="https://github.com/Nickgonzales76017/bonfyre-pipeline">Open repo</a>
+        </div>
+      </div>
+      <div class="repo-card">
+        <h3>Semantic Search</h3>
+        <p>ONNX-backed embeddings and local vector search for document workflows.</p>
+        <code>bonfyre-embed</code>
+        <div class="repo-links">
+          <a class="repo-link" href="https://github.com/Nickgonzales76017/bonfyre-embed">Open repo</a>
+        </div>
+      </div>
+      <div class="repo-card">
+        <h3>CMS</h3>
+        <p>Dynamic schemas, REST API, token auth, and compact content operations in one binary.</p>
+        <code>bonfyre-cms</code>
+        <div class="repo-links">
+          <a class="repo-link" href="https://github.com/Nickgonzales76017/bonfyre-cms">Open repo</a>
+        </div>
+      </div>
+      <div class="repo-card">
+        <h3>Telephony</h3>
+        <p>FreeSWITCH-based telephony, mock call flows, SMS/MMS, and verification without Twilio lock-in.</p>
+        <code>bonfyre-tel</code>
+        <div class="repo-links">
+          <a class="repo-link" href="https://github.com/Nickgonzales76017/bonfyre-tel">Open repo</a>
+        </div>
       </div>
     </div>
   </div>
