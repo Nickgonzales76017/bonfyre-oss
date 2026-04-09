@@ -176,6 +176,14 @@ static double domain_policy_score(BfFeedbackDomains d, BfDomainWeights w) {
         d.value * w.value;
 }
 
+static const char *policy_source_for_mode(const char *mode) {
+    if (!mode || !mode[0]) return "heuristic-baseline";
+    if (strcmp(mode, "policy-memory") == 0) return "exact-policy-memory";
+    if (strcmp(mode, "family-memory") == 0) return "family-policy-prior";
+    if (strcmp(mode, "gemma4-delta") == 0) return "stability-gated-gemma-delta";
+    return "heuristic-baseline";
+}
+
 static int json_string(const char *json, const char *key, char *dst, size_t dst_sz) {
     char needle[64];
     snprintf(needle, sizeof(needle), "\"%s\"", key);
@@ -979,10 +987,15 @@ static void maybe_call_model(const OrchestrateRequest *req, OrchestratePlan *pla
 }
 
 static void print_plan(const OrchestrateRequest *req, const OrchestratePlan *plan) {
+    BfDomainWeights w = objective_weights(req);
+    const char *family = objective_family(req);
+    const char *policy_source = policy_source_for_mode(plan->mode);
     printf("{\n");
     printf("  \"mode\": \"%s\",\n", plan->mode);
+    printf("  \"policy_source\": \"%s\",\n", policy_source);
     printf("  \"model\": \"%s\",\n", plan->model);
     printf("  \"input_type\": \"%s\",\n", req->input_type);
+    printf("  \"objective_family\": \"%s\",\n", family);
     printf("  \"objective\": \"%s\",\n", req->objective);
     printf("  \"latency_class\": \"%s\",\n", req->latency_class);
     printf("  \"surface\": \"%s\",\n", req->surface);
@@ -1016,7 +1029,22 @@ static void print_plan(const OrchestrateRequest *req, const OrchestratePlan *pla
     printf("  \"predicted_reversibility\": %.3f,\n", plan->predicted_reversibility);
     printf("  \"predicted_utility\": %.3f,\n", plan->predicted_utility);
     printf("  \"predicted_information_gain\": %.3f,\n", plan->predicted_information_gain);
-    printf("  \"predicted_policy_score\": %.3f\n", plan->predicted_policy_score);
+    printf("  \"predicted_policy_score\": %.3f,\n", plan->predicted_policy_score);
+    printf("  \"active_domain_weights\": {\n");
+    printf("    \"exec\": %.3f,\n", w.exec);
+    printf("    \"artifact\": %.3f,\n", w.artifact);
+    printf("    \"tensor\": %.3f,\n", w.tensor);
+    printf("    \"cms\": %.3f,\n", w.cms);
+    printf("    \"retrieval\": %.3f,\n", w.retrieval);
+    printf("    \"value\": %.3f\n", w.value);
+    printf("  },\n");
+    printf("  \"stability_gate\": {\n");
+    printf("    \"min_policy_gain\": %.3f,\n", 0.015);
+    printf("    \"max_latency_delta\": %.3f,\n", 0.080);
+    printf("    \"max_cost_delta\": %.3f,\n", 0.080);
+    printf("    \"max_confidence_drop\": %.3f,\n", 0.020);
+    printf("    \"max_reversibility_drop\": %.3f\n", 0.030);
+    printf("  }\n");
     printf("}\n");
 }
 

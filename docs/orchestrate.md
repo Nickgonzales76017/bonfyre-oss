@@ -63,11 +63,13 @@ export BONFYRE_ORCHESTRATE_API_KEY=...
 
 ```json
 {
-  "mode": "gemma4-assisted",
+  "mode": "gemma4-delta",
+  "policy_source": "stability-gated-gemma-delta",
   "model": "google/gemma-4-E4B",
   "selected_binaries": ["bonfyre-ingest", "bonfyre-media-prep", "bonfyre-transcribe", "bonfyre-brief"],
   "booster_binaries": ["bonfyre-narrate", "bonfyre-render", "bonfyre-emit", "bonfyre-pack"],
   "control_surfaces": ["bonfyre-render", "bonfyre-emit", "bonfyre-queue"],
+  "objective_family": "publish",
   "expected_outputs": ["normalized-audio", "transcript", "brief", "rendered-output", "formatted-output"],
   "predicted_cost": 0.452,
   "predicted_latency": 0.387,
@@ -75,7 +77,15 @@ export BONFYRE_ORCHESTRATE_API_KEY=...
   "predicted_reversibility": 0.804,
   "predicted_utility": 0.779,
   "predicted_information_gain": 0.512,
-  "predicted_policy_score": 0.603
+  "predicted_policy_score": 0.603,
+  "active_domain_weights": {
+    "exec": 0.270,
+    "artifact": 0.207,
+    "tensor": 0.108,
+    "cms": 0.216,
+    "retrieval": 0.117,
+    "value": 0.081
+  }
 }
 ```
 
@@ -203,6 +213,14 @@ The composite `policy_score` is not flat. Bonfyre now reweights domains by reque
 - fast and interactive surfaces bias toward `exec`
 
 That same objective-aware weighting is used for `predicted_policy_score`, so the planner compares paths against the right control surface for the current job instead of a universal reward curve.
+
+The plan JSON also exposes:
+
+- `policy_source`
+- `objective_family`
+- `active_domain_weights`
+
+So downstream Bonfyre surfaces can see which control layer won and what domain mix shaped the plan, without introducing a human prompt surface.
 
 ## Booster frontier
 
