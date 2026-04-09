@@ -17,6 +17,12 @@ typedef struct {
     int chunk_headers_removed;
 } CleanStats;
 
+typedef struct {
+    char *data;
+    size_t len;
+    size_t cap;
+} TextBuffer;
+
 static int ensure_dir(const char *path) { return bf_ensure_dir(path); }
 static char *read_file(const char *path, size_t *size_out) {
     FILE *in = fopen(path, "rb");
@@ -64,6 +70,96 @@ static int write_text_file(const char *path, const char *text) {
     }
     fclose(out);
     return 0;
+}
+
+static int textbuf_reserve(TextBuffer *buf, size_t extra) {
+    size_t need = buf->len + extra + 1;
+    if (need <= buf->cap) return 0;
+    size_t next = buf->cap ? buf->cap * 2 : 1024;
+    while (next < need) next *= 2;
+    char *grown = realloc(buf->data, next);
+    if (!grown) return 1;
+    buf->data = grown;
+    buf->cap = next;
+    return 0;
+}
+
+static int textbuf_append_char(TextBuffer *buf, char ch) {
+    if (textbuf_reserve(buf, 1) != 0) return 1;
+    buf->data[buf->len++] = ch;
+    buf->data[buf->len] = '\0';
+    return 0;
+}
+
+static int textbuf_append_json_string(TextBuffer *buf, const char **cursor) {
+    const char *p = *cursor;
+    if (*p != '"') return 1;
+    p++;
+    while (*p && *p != '"') {
+        if (*p == '\\') {
+            p++;
+            if (!*p) break;
+            switch (*p) {
+                case 'n': if (textbuf_append_char(buf, ' ') != 0) return 1; break;
+                case 'r': break;
+                case 't': if (textbuf_append_char(buf, ' ') != 0) return 1; break;
+                case '"': if (textbuf_append_char(buf, '"') != 0) return 1; break;
+                case '\\': if (textbuf_append_char(buf, '\\') != 0) return 1; break;
+                case '/': if (textbuf_append_char(buf, '/') != 0) return 1; break;
+                case 'u':
+                    for (int i = 0; i < 4 && p[1]; i++) p++;
+                    break;
+                default:
+                    if (textbuf_append_char(buf, *p) != 0) return 1;
+                    break;
+            }
+            p++;
+            continue;
+        }
+        if (textbuf_append_char(buf, *p) != 0) return 1;
+        p++;
+    }
+    if (*p == '"') p++;
+    *cursor = p;
+    return 0;
+}
+
+static char *extract_segment_text_json(const char *json) {
+    if (!json) return NULL;
+    const char *segments = strstr(json, "\"segments\"");
+    if (!segments) return NULL;
+    TextBuffer buf = {0};
+    const char *p = segments;
+    int found = 0;
+    while ((p = strstr(p, "\"text\"")) != NULL) {
+        const char *cursor = p + strlen("\"text\"");
+        while (*cursor && isspace((unsigned char)*cursor)) cursor++;
+        if (*cursor != ':') {
+            p = cursor;
+            continue;
+        }
+        cursor++;
+        while (*cursor && isspace((unsigned char)*cursor)) cursor++;
+        if (*cursor != '"') {
+            p = cursor;
+            continue;
+        }
+        if (found && textbuf_append_char(&buf, ' ') != 0) {
+            free(buf.data);
+            return NULL;
+        }
+        if (textbuf_append_json_string(&buf, &cursor) != 0) {
+            free(buf.data);
+            return NULL;
+        }
+        found = 1;
+        p = cursor;
+    }
+    if (!found) {
+        free(buf.data);
+        return NULL;
+    }
+    return buf.data;
 }
 
 static int write_status_file(const char *path,
@@ -421,7 +517,14 @@ int main(int argc, char **argv) {
         return 2;
     }
 
-    pass1 = remove_chunk_headers(raw_text, &stats);
+    char *working_text = raw_text;
+    char *json_text = NULL;
+    if (raw_text[0] == '{' || raw_text[0] == '[') {
+        json_text = extract_segment_text_json(raw_text);
+        if (json_text) working_text = json_text;
+    }
+
+    pass1 = remove_chunk_headers(working_text, &stats);
     pass2 = pass1 ? remove_fillers_and_repeat_words(pass1, &stats) : NULL;
     pass3 = pass2 ? remove_fixed_hallucinations(pass2, &stats) : NULL;
     cleaned = pass3 ? normalize_spacing(pass3) : NULL;
@@ -460,17 +563,18 @@ int main(int argc, char **argv) {
         status_path = status_default;
     }
 
-    changed = strcmp(raw_text, final) != 0;
+    changed = strcmp(working_text, final) != 0;
     if (write_text_file(out_path, final) != 0 ||
         write_status_file(status_path, transcript_path, out_path, changed, &stats) != 0) {
         fprintf(stderr, "Failed to write output artifacts\n");
-        free(raw_text); free(pass1); free(pass2); free(pass3); free(cleaned); free(final);
+        free(raw_text); free(json_text); free(pass1); free(pass2); free(pass3); free(cleaned); free(final);
         return 1;
     }
 
     printf("Wrote cleaned transcript to %s\n", out_path);
 
     free(raw_text);
+    free(json_text);
     free(pass1);
     free(pass2);
     free(pass3);

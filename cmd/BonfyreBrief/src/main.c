@@ -20,6 +20,12 @@ typedef struct {
     int is_action;
 } Sentence;
 
+typedef struct {
+    char *data;
+    size_t len;
+    size_t cap;
+} TextBuffer;
+
 /* ── TF-IDF vocabulary ── */
 typedef struct {
     char word[64];
@@ -46,6 +52,99 @@ static char *trim_copy(const char *src) {
     memcpy(out, src, len);
     out[len] = '\0';
     return out;
+}
+
+static int textbuf_reserve(TextBuffer *buf, size_t extra) {
+    size_t need = buf->len + extra + 1;
+    if (need <= buf->cap) return 0;
+    size_t next = buf->cap ? buf->cap * 2 : 1024;
+    while (next < need) next *= 2;
+    char *grown = realloc(buf->data, next);
+    if (!grown) return 1;
+    buf->data = grown;
+    buf->cap = next;
+    return 0;
+}
+
+static int textbuf_append_char(TextBuffer *buf, char ch) {
+    if (textbuf_reserve(buf, 1) != 0) return 1;
+    buf->data[buf->len++] = ch;
+    buf->data[buf->len] = '\0';
+    return 0;
+}
+
+static int textbuf_append_json_string(TextBuffer *buf, const char **cursor) {
+    const char *p = *cursor;
+    if (*p != '"') return 1;
+    p++;
+    while (*p && *p != '"') {
+        if (*p == '\\') {
+            p++;
+            if (!*p) break;
+            switch (*p) {
+                case 'n': if (textbuf_append_char(buf, ' ') != 0) return 1; break;
+                case 'r': break;
+                case 't': if (textbuf_append_char(buf, ' ') != 0) return 1; break;
+                case '"': if (textbuf_append_char(buf, '"') != 0) return 1; break;
+                case '\\': if (textbuf_append_char(buf, '\\') != 0) return 1; break;
+                case '/': if (textbuf_append_char(buf, '/') != 0) return 1; break;
+                case 'b': break;
+                case 'f': break;
+                case 'u':
+                    /* Keep parser tiny: skip unicode escape payload. */
+                    for (int i = 0; i < 4 && p[1]; i++) p++;
+                    break;
+                default:
+                    if (textbuf_append_char(buf, *p) != 0) return 1;
+                    break;
+            }
+            p++;
+            continue;
+        }
+        if (textbuf_append_char(buf, *p) != 0) return 1;
+        p++;
+    }
+    if (*p == '"') p++;
+    *cursor = p;
+    return 0;
+}
+
+static char *extract_segment_text_json(const char *json) {
+    if (!json) return NULL;
+    const char *segments = strstr(json, "\"segments\"");
+    if (!segments) return NULL;
+    TextBuffer buf = {0};
+    const char *p = segments;
+    int found = 0;
+    while ((p = strstr(p, "\"text\"")) != NULL) {
+        const char *cursor = p + strlen("\"text\"");
+        while (*cursor && isspace((unsigned char)*cursor)) cursor++;
+        if (*cursor != ':') {
+            p = cursor;
+            continue;
+        }
+        cursor++;
+        while (*cursor && isspace((unsigned char)*cursor)) cursor++;
+        if (*cursor != '"') {
+            p = cursor;
+            continue;
+        }
+        if (found && textbuf_append_char(&buf, ' ') != 0) {
+            free(buf.data);
+            return NULL;
+        }
+        if (textbuf_append_json_string(&buf, &cursor) != 0) {
+            free(buf.data);
+            return NULL;
+        }
+        found = 1;
+        p = cursor;
+    }
+    if (!found) {
+        free(buf.data);
+        return NULL;
+    }
+    return buf.data;
 }
 
 static void lowercase_word(const char *src, char *dst, size_t dst_sz) {
@@ -309,28 +408,23 @@ int main(int argc, char **argv) {
         return 1;
     }
 
-    FILE *in = fopen(transcript_path, "r");
-    if (!in) {
-        perror("fopen");
+    size_t input_len = 0;
+    char *input_buffer = bf_read_file(transcript_path, &input_len);
+    if (!input_buffer || input_len == 0) {
+        free(input_buffer);
+        fprintf(stderr, "Failed to read transcript: %s\n", transcript_path);
         return 1;
     }
 
-    fseek(in, 0, SEEK_END);
-    long size = ftell(in);
-    fseek(in, 0, SEEK_SET);
-    if (size <= 0) {
-        fclose(in);
-        return 1;
+    char *buffer = NULL;
+    if (input_buffer[0] == '{' || input_buffer[0] == '[') {
+        buffer = extract_segment_text_json(input_buffer);
     }
-
-    char *buffer = malloc((size_t)size + 1);
     if (!buffer) {
-        fclose(in);
-        return 1;
+        buffer = input_buffer;
+        input_buffer = NULL;
     }
-    fread(buffer, 1, (size_t)size, in);
-    buffer[size] = '\0';
-    fclose(in);
+    free(input_buffer);
 
     Sentence sentences[MAX_SENTENCES] = {0};
     int count = split_sentences(buffer, sentences, MAX_SENTENCES);
