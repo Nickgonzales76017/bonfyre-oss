@@ -165,8 +165,14 @@ It also surfaces a key implementation smell early: if many very different source
 The stress report now also emits:
 
 - app-level readiness verdicts
+- app-level readiness targets
 - one next action per app
 - an explicit publish gate outcome
+
+Those readiness targets are intentionally app-aware. For example:
+
+- podcast and release surfaces require more approved public sources and a higher provenance floor
+- civic and operational apps still need strong provenance, but can graduate earlier if Bonfyre proves sharp plan differentiation on real public-origin material
 
 To turn that into a hard Bonfyre-side release gate, run:
 

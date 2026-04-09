@@ -182,6 +182,23 @@ function uniqueCount(values) {
   return new Set(values).size;
 }
 
+function readinessTargetForRepo(repo) {
+  const name = String(repo || '');
+  if (name.includes('town-box')) {
+    return { minApprovedSources: 10, minProvenanceRatio: 0.8, minDifferentiation: 0.75, recommendedQueuedReview: 2 };
+  }
+  if (name.includes('shift-handoff')) {
+    return { minApprovedSources: 8, minProvenanceRatio: 0.8, minDifferentiation: 0.75, recommendedQueuedReview: 2 };
+  }
+  if (name.includes('podcast-plant') || name.includes('release-radio')) {
+    return { minApprovedSources: 12, minProvenanceRatio: 0.85, minDifferentiation: 0.8, recommendedQueuedReview: 3 };
+  }
+  if (name.includes('oss-cockpit') || name.includes('explain-repo') || name.includes('postmortem-atlas')) {
+    return { minApprovedSources: 10, minProvenanceRatio: 0.8, minDifferentiation: 0.8, recommendedQueuedReview: 2 };
+  }
+  return { minApprovedSources: 10, minProvenanceRatio: 0.8, minDifferentiation: 0.75, recommendedQueuedReview: 2 };
+}
+
 function verdictRank(verdict) {
   switch (String(verdict || '')) {
     case 'ready':
@@ -197,28 +214,29 @@ function verdictRank(verdict) {
 }
 
 function classifyReadiness(appSummary) {
+  const target = appSummary.readiness_target || readinessTargetForRepo(appSummary.repo);
   if (appSummary.approved_sources <= 0) {
     return 'not-ready';
   }
   const warnings = new Set(appSummary.warnings || []);
   if (
-    appSummary.approved_sources >= 10 &&
-    appSummary.provenance_ratio >= 0.8 &&
-    appSummary.differentiation_score >= 0.75 &&
+    appSummary.approved_sources >= target.minApprovedSources &&
+    appSummary.provenance_ratio >= target.minProvenanceRatio &&
+    appSummary.differentiation_score >= target.minDifferentiation &&
     warnings.size === 0
   ) {
     return 'ready';
   }
   if (
-    appSummary.differentiation_score >= 0.75 &&
-    appSummary.provenance_ratio < 0.8 &&
+    appSummary.differentiation_score >= target.minDifferentiation &&
+    appSummary.provenance_ratio < target.minProvenanceRatio &&
     !warnings.has('state-collapse') &&
     !warnings.has('output-collapse')
   ) {
     return 'technically-strong-but-provenance-thin';
   }
   if (
-    appSummary.differentiation_score >= 0.55 &&
+    appSummary.differentiation_score >= Math.max(0.55, target.minDifferentiation - 0.15) &&
     appSummary.provenance_ratio >= 0.5 &&
     !warnings.has('state-collapse') &&
     !warnings.has('output-collapse')
@@ -229,6 +247,7 @@ function classifyReadiness(appSummary) {
 }
 
 function nextActionForApp(appSummary) {
+  const target = appSummary.readiness_target || readinessTargetForRepo(appSummary.repo);
   const queued = appSummary.sources
     .filter((source) => String(source.review_status || '').toLowerCase() === 'queued')
     .sort((left, right) => {
@@ -240,13 +259,14 @@ function nextActionForApp(appSummary) {
   if (appSummary.warnings.includes('state-collapse') || appSummary.warnings.includes('output-collapse')) {
     return 'Tighten domain routing so materially different sources stop collapsing to the same plan.';
   }
-  if (appSummary.approved_sources < 10 && queued.length > 0) {
-    return `Review and approve "${queued[0].title}" next to raise provenance and corpus breadth.`;
+  if (appSummary.approved_sources < target.minApprovedSources && queued.length > 0) {
+    const titles = queued.slice(0, target.recommendedQueuedReview).map((source) => `"${source.title}"`);
+    return `Review and approve ${titles.join(' and ')} next to raise provenance and corpus breadth.`;
   }
-  if (appSummary.provenance_ratio < 0.8) {
+  if (appSummary.provenance_ratio < target.minProvenanceRatio) {
     return 'Replace thin reference rows with approved public-origin sources until provenance is client-safe.';
   }
-  if (appSummary.differentiation_score < 0.75) {
+  if (appSummary.differentiation_score < target.minDifferentiation) {
     return 'Keep stressing diverse source shapes until the planner proves stronger output differentiation.';
   }
   return 'Continue expanding reviewed public-source coverage while preserving the current plan quality floor.';
@@ -288,6 +308,7 @@ function renderMarkdown(report) {
     lines.push(`- Approved sources: ${app.approved_sources}`);
     lines.push(`- Queued sources: ${app.queued_sources}`);
     lines.push(`- Provenance-backed ratio: ${app.provenance_ratio}`);
+    lines.push(`- Readiness target: approved>=${app.readiness_target.minApprovedSources}, provenance>=${app.readiness_target.minProvenanceRatio}, differentiation>=${app.readiness_target.minDifferentiation}`);
     lines.push(`- Readiness verdict: ${app.readiness_verdict}`);
     lines.push(`- Next action: ${app.next_action}`);
     lines.push(`- Modes: ${Object.entries(app.mode_counts).map(([k, v]) => `${k}=${v}`).join(', ') || 'none'}`);
@@ -383,6 +404,7 @@ function main() {
         repo: app.repo,
         title: app.title || app.repo,
         contract,
+        readiness_target: readinessTargetForRepo(app.repo),
         source_count: sources.length,
         approved_sources: 0,
         queued_sources: 0,
