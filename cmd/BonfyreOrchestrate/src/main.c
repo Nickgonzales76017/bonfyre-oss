@@ -31,6 +31,15 @@ typedef struct {
 } BfFeedbackDomains;
 
 typedef struct {
+    double exec;
+    double artifact;
+    double tensor;
+    double cms;
+    double retrieval;
+    double value;
+} BfDomainWeights;
+
+typedef struct {
     int selected[MAX_PLAN_STEPS];
     int selected_count;
     int boosters[MAX_PLAN_STEPS];
@@ -47,6 +56,7 @@ typedef struct {
     double predicted_reversibility;
     double predicted_utility;
     double predicted_information_gain;
+    double predicted_policy_score;
 } OrchestratePlan;
 
 static const char *DEFAULT_MODEL = "google/gemma-4-E4B";
@@ -75,6 +85,15 @@ static void copy_text(char *dst, size_t dst_sz, const char *src) {
     snprintf(dst, dst_sz, "%s", src ? src : "");
 }
 
+static int icontains(const char *haystack, const char *needle) {
+    if (!haystack || !needle || !needle[0]) return 0;
+    size_t n = strlen(needle);
+    for (const char *p = haystack; *p; ++p) {
+        if (strncasecmp(p, needle, n) == 0) return 1;
+    }
+    return 0;
+}
+
 static double clamp01(double value) {
     if (value < 0.0) return 0.0;
     if (value > 1.0) return 1.0;
@@ -92,23 +111,66 @@ static BfFeedbackDomains default_domains(double quality_gain, double latency_del
     return d;
 }
 
-static double domain_policy_score(BfFeedbackDomains d) {
-    return
-        d.exec * 0.22 +
-        d.artifact * 0.18 +
-        d.tensor * 0.12 +
-        d.cms * 0.16 +
-        d.retrieval * 0.18 +
-        d.value * 0.14;
+static BfDomainWeights default_weights(void) {
+    BfDomainWeights w = {0.22, 0.18, 0.12, 0.16, 0.18, 0.14};
+    return w;
 }
 
-static int icontains(const char *haystack, const char *needle) {
-    if (!haystack || !needle || !needle[0]) return 0;
-    size_t n = strlen(needle);
-    for (const char *p = haystack; *p; ++p) {
-        if (strncasecmp(p, needle, n) == 0) return 1;
+static BfDomainWeights objective_weights(const OrchestrateRequest *req) {
+    BfDomainWeights w = default_weights();
+
+    if (icontains(req->objective, "cms") || icontains(req->surface, "cms") || icontains(req->objective, "publish")) {
+        w.cms += 0.10;
+        w.artifact += 0.05;
+        w.retrieval -= 0.05;
+        w.value -= 0.03;
     }
-    return 0;
+    if (icontains(req->objective, "search") || icontains(req->objective, "semantic") ||
+        icontains(req->objective, "retrieval") || icontains(req->objective, "memory") ||
+        icontains(req->objective, "atlas") || icontains(req->objective, "repo")) {
+        w.retrieval += 0.10;
+        w.tensor += 0.08;
+        w.cms -= 0.05;
+        w.value -= 0.03;
+    }
+    if (icontains(req->objective, "compress") || icontains(req->objective, "tensor") ||
+        icontains(req->objective, "structure")) {
+        w.tensor += 0.12;
+        w.artifact += 0.04;
+        w.exec -= 0.04;
+    }
+    if (icontains(req->objective, "sales") || icontains(req->objective, "grant") ||
+        icontains(req->objective, "procurement") || icontains(req->objective, "offer") ||
+        icontains(req->objective, "value")) {
+        w.value += 0.12;
+        w.cms += 0.04;
+        w.tensor -= 0.04;
+    }
+    if (icontains(req->latency_class, "fast") || icontains(req->latency_class, "interactive")) {
+        w.exec += 0.08;
+        w.cms -= 0.02;
+        w.value -= 0.02;
+    }
+
+    double sum = w.exec + w.artifact + w.tensor + w.cms + w.retrieval + w.value;
+    if (sum <= 0.0) return default_weights();
+    w.exec /= sum;
+    w.artifact /= sum;
+    w.tensor /= sum;
+    w.cms /= sum;
+    w.retrieval /= sum;
+    w.value /= sum;
+    return w;
+}
+
+static double domain_policy_score(BfFeedbackDomains d, BfDomainWeights w) {
+    return
+        d.exec * w.exec +
+        d.artifact * w.artifact +
+        d.tensor * w.tensor +
+        d.cms * w.cms +
+        d.retrieval * w.retrieval +
+        d.value * w.value;
 }
 
 static int json_string(const char *json, const char *key, char *dst, size_t dst_sz) {
@@ -223,7 +285,7 @@ static void collect_outputs(OrchestratePlan *plan) {
     }
 }
 
-static void compute_plan_metrics(OrchestratePlan *plan) {
+static void compute_plan_metrics(const OrchestrateRequest *req, OrchestratePlan *plan) {
     double cost = 0.0;
     double latency = 0.0;
     double confidence = 0.0;
@@ -260,6 +322,14 @@ static void compute_plan_metrics(OrchestratePlan *plan) {
     plan->predicted_reversibility = reversibility / (double)count;
     plan->predicted_utility = utility / (double)count;
     plan->predicted_information_gain = information_gain / (double)count;
+    BfFeedbackDomains as_domains;
+    as_domains.exec = clamp01(1.0 - plan->predicted_latency);
+    as_domains.artifact = clamp01(plan->predicted_reversibility);
+    as_domains.tensor = clamp01((plan->predicted_information_gain + plan->predicted_reversibility) * 0.5);
+    as_domains.cms = clamp01((plan->predicted_utility + plan->predicted_confidence) * 0.5);
+    as_domains.retrieval = clamp01((plan->predicted_information_gain + plan->predicted_utility) * 0.5);
+    as_domains.value = clamp01((plan->predicted_utility + (1.0 - plan->predicted_cost)) * 0.5);
+    plan->predicted_policy_score = domain_policy_score(as_domains, objective_weights(req));
 }
 
 static void build_signature(const OrchestrateRequest *req, char *dst, size_t dst_sz) {
@@ -323,7 +393,7 @@ static int ensure_policy_db(sqlite3 **db) {
     return 0;
 }
 
-static void import_booster_csv(OrchestratePlan *plan, const char *csv) {
+static void import_booster_csv(const OrchestrateRequest *req, OrchestratePlan *plan, const char *csv) {
     if (!csv || !csv[0]) return;
     char *copy = strdup(csv);
     if (!copy) return;
@@ -332,7 +402,7 @@ static void import_booster_csv(OrchestratePlan *plan, const char *csv) {
     }
     free(copy);
     collect_outputs(plan);
-    compute_plan_metrics(plan);
+    compute_plan_metrics(req, plan);
 }
 
 static int load_policy_memory(const OrchestrateRequest *req, OrchestratePlan *plan) {
@@ -358,8 +428,8 @@ static int load_policy_memory(const OrchestrateRequest *req, OrchestratePlan *pl
         int samples = sqlite3_column_int(stmt, 4);
         double policy_score = sqlite3_column_double(stmt, 5);
         if (csv && cached_conf >= plan->predicted_confidence &&
-            (samples < 3 || (cached_regret <= 0.15 && policy_score >= 0.45))) {
-            import_booster_csv(plan, (const char *)csv);
+            (samples < 3 || (cached_regret <= 0.15 && policy_score >= 0.25))) {
+            import_booster_csv(req, plan, (const char *)csv);
             copy_text(plan->mode, sizeof(plan->mode), "policy-memory");
             found = 1;
         }
@@ -417,7 +487,7 @@ static int command_feedback(const char *path, const char *quality_gain_text, con
     double latency_delta = atof(latency_delta_text);
     double regret = latency_delta - quality_gain;
     BfFeedbackDomains domains = default_domains(quality_gain, latency_delta);
-    double policy_score = domain_policy_score(domains);
+    double policy_score = domain_policy_score(domains, objective_weights(&req));
 
     sqlite3 *db = NULL;
     if (ensure_policy_db(&db) != 0) {
@@ -565,7 +635,7 @@ static void heuristic_plan(const OrchestrateRequest *req, OrchestratePlan *plan)
     if (!plan->surface_count) add_surface(plan, "bonfyre-runtime");
 
     collect_outputs(plan);
-    compute_plan_metrics(plan);
+    compute_plan_metrics(req, plan);
 }
 
 static void escape_json(FILE *fp, const char *text) {
@@ -623,7 +693,7 @@ static int shell_safe(const char *text) {
     return 1;
 }
 
-static void adopt_model_boosters(OrchestratePlan *plan, const char *response) {
+static void adopt_model_boosters(const OrchestrateRequest *req, OrchestratePlan *plan, const char *response) {
     if (!response) return;
     int added = 0;
     for (int i = 0; i < BF_OPERATOR_COUNT; ++i) {
@@ -635,7 +705,7 @@ static void adopt_model_boosters(OrchestratePlan *plan, const char *response) {
     }
     if (added) copy_text(plan->mode, sizeof(plan->mode), "gemma4-assisted");
     collect_outputs(plan);
-    compute_plan_metrics(plan);
+    compute_plan_metrics(req, plan);
 }
 
 static void maybe_call_model(const OrchestrateRequest *req, OrchestratePlan *plan) {
@@ -685,7 +755,7 @@ static void maybe_call_model(const OrchestrateRequest *req, OrchestratePlan *pla
     char *response = slurp(pipe);
     pclose(pipe);
     if (response) {
-        adopt_model_boosters(plan, response);
+        adopt_model_boosters(req, plan, response);
         free(response);
     }
 }
@@ -727,7 +797,8 @@ static void print_plan(const OrchestrateRequest *req, const OrchestratePlan *pla
     printf("  \"predicted_confidence\": %.3f,\n", plan->predicted_confidence);
     printf("  \"predicted_reversibility\": %.3f,\n", plan->predicted_reversibility);
     printf("  \"predicted_utility\": %.3f,\n", plan->predicted_utility);
-    printf("  \"predicted_information_gain\": %.3f\n", plan->predicted_information_gain);
+    printf("  \"predicted_information_gain\": %.3f,\n", plan->predicted_information_gain);
+    printf("  \"predicted_policy_score\": %.3f\n", plan->predicted_policy_score);
     printf("}\n");
 }
 
