@@ -134,6 +134,8 @@ You can scope that gate to flagship apps only:
 node scripts/assert_reference_readiness.mjs scripts/public_source_queue.sample.json --target 10 --min-readiness 30 --repo pages-town-box --repo pages-podcast-plant --repo pages-oss-cockpit
 ```
 
+That gate now also fails when approved sources are too weak to really stress Bonfyre. In other words, a corpus can still fail even if it has some approved links, if those sources are too clean, too low-jargon, too socially simple, or too weakly provenance-backed to prove real-world performance.
+
 ## Validator
 
 Before publishing a corpus, run:

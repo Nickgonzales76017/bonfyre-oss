@@ -17,6 +17,14 @@ function scoreSource(source) {
   return messy * 1.4 + jargon * 1.2 + social * 1.1 + fit * 1.8 + provenance * 1.3 + safety * 1.0;
 }
 
+function averageSignal(sources, key) {
+  if (!sources.length) {
+    return 0;
+  }
+  const total = sources.reduce((sum, source) => sum + Number((source.signal || {})[key] || 0), 0);
+  return total / sources.length;
+}
+
 function summarizeApp(app, targetDistinctSources) {
   const sources = Array.isArray(app.sources) ? app.sources : [];
   const approved = sources.filter((source) => String(source.review_status || '').toLowerCase() === 'approved');
@@ -26,13 +34,24 @@ function summarizeApp(app, targetDistinctSources) {
   const gap = Math.max(0, targetDistinctSources - approved.length);
   const queuedScore = queued.reduce((sum, source) => sum + scoreSource(source), 0);
   const readinessScore = Math.max(0, approved.length * 20 + Math.min(queuedScore, 40) - gap * 4);
+  const stressFloor = {
+    messy: averageSignal(approved, 'messy_audio'),
+    jargon: averageSignal(approved, 'jargon_density'),
+    social: averageSignal(approved, 'social_complexity'),
+    fit: averageSignal(approved, 'bonfyre_fit'),
+    provenance: averageSignal(approved, 'provenance_confidence'),
+    safety: averageSignal(approved, 'public_safety')
+  };
+  const maxApprovedStress = approved.reduce((max, source) => Math.max(max, scoreSource(source)), 0);
   return {
     repo: app.repo,
     approved: approved.length,
     missingUrl,
     missingPublisher,
     gap,
-    readinessScore
+    readinessScore,
+    stressFloor,
+    maxApprovedStress
   };
 }
 
@@ -41,6 +60,13 @@ function parseArgs(argv) {
     queuePath: '',
     targetDistinctSources: 10,
     minReadiness: 30,
+    minMessy: 2.5,
+    minJargon: 3.5,
+    minSocial: 3.5,
+    minFit: 4.0,
+    minProvenance: 3.5,
+    minSafety: 3.5,
+    minStressScore: 24,
     repos: []
   };
 
@@ -57,6 +83,41 @@ function parseArgs(argv) {
     }
     if (value === '--min-readiness') {
       args.minReadiness = Number(argv[index + 1] || args.minReadiness);
+      index += 1;
+      continue;
+    }
+    if (value === '--min-messy') {
+      args.minMessy = Number(argv[index + 1] || args.minMessy);
+      index += 1;
+      continue;
+    }
+    if (value === '--min-jargon') {
+      args.minJargon = Number(argv[index + 1] || args.minJargon);
+      index += 1;
+      continue;
+    }
+    if (value === '--min-social') {
+      args.minSocial = Number(argv[index + 1] || args.minSocial);
+      index += 1;
+      continue;
+    }
+    if (value === '--min-fit') {
+      args.minFit = Number(argv[index + 1] || args.minFit);
+      index += 1;
+      continue;
+    }
+    if (value === '--min-provenance') {
+      args.minProvenance = Number(argv[index + 1] || args.minProvenance);
+      index += 1;
+      continue;
+    }
+    if (value === '--min-safety') {
+      args.minSafety = Number(argv[index + 1] || args.minSafety);
+      index += 1;
+      continue;
+    }
+    if (value === '--min-stress-score') {
+      args.minStressScore = Number(argv[index + 1] || args.minStressScore);
       index += 1;
       continue;
     }
@@ -103,6 +164,29 @@ function main() {
     }
     if (summary.missingPublisher > 0) {
       failures.push(`${summary.repo}: approved_missing_publisher=${summary.missingPublisher}`);
+    }
+    if (summary.approved > 0) {
+      if (summary.stressFloor.messy < args.minMessy) {
+        failures.push(`${summary.repo}: approved_avg_messy=${summary.stressFloor.messy.toFixed(1)} below min=${args.minMessy}`);
+      }
+      if (summary.stressFloor.jargon < args.minJargon) {
+        failures.push(`${summary.repo}: approved_avg_jargon=${summary.stressFloor.jargon.toFixed(1)} below min=${args.minJargon}`);
+      }
+      if (summary.stressFloor.social < args.minSocial) {
+        failures.push(`${summary.repo}: approved_avg_social=${summary.stressFloor.social.toFixed(1)} below min=${args.minSocial}`);
+      }
+      if (summary.stressFloor.fit < args.minFit) {
+        failures.push(`${summary.repo}: approved_avg_fit=${summary.stressFloor.fit.toFixed(1)} below min=${args.minFit}`);
+      }
+      if (summary.stressFloor.provenance < args.minProvenance) {
+        failures.push(`${summary.repo}: approved_avg_provenance=${summary.stressFloor.provenance.toFixed(1)} below min=${args.minProvenance}`);
+      }
+      if (summary.stressFloor.safety < args.minSafety) {
+        failures.push(`${summary.repo}: approved_avg_safety=${summary.stressFloor.safety.toFixed(1)} below min=${args.minSafety}`);
+      }
+      if (summary.maxApprovedStress < args.minStressScore) {
+        failures.push(`${summary.repo}: approved_max_stress=${summary.maxApprovedStress.toFixed(1)} below min=${args.minStressScore}`);
+      }
     }
   }
 
