@@ -100,7 +100,26 @@
       '.bonfyre-artifact-body{font-size:.78rem;line-height:1.5;color:#e5e7eb;max-height:320px;overflow:auto;white-space:pre-wrap;}',
       '.bonfyre-artifact-body p{margin-bottom:.65rem;}',
       '.bonfyre-artifact-body h2,.bonfyre-artifact-body h3,.bonfyre-artifact-body h4{color:#f8fafc;margin:.55rem 0 .3rem;}',
-      '.bonfyre-artifact-body ul{padding-left:1rem;margin:.35rem 0 .65rem;}'
+      '.bonfyre-artifact-body ul{padding-left:1rem;margin:.35rem 0 .65rem;}',
+      '.bonfyre-dataset-overview{margin-bottom:1rem;padding:1rem;border:1px solid #223047;border-radius:12px;background:linear-gradient(180deg,#0f1520,#0b1016);}',
+      '.bonfyre-dataset-head{display:flex;justify-content:space-between;gap:1rem;flex-wrap:wrap;align-items:flex-start;margin-bottom:.75rem;}',
+      '.bonfyre-dataset-head h3{font-size:1rem;color:#f8fafc;margin-bottom:.2rem;}',
+      '.bonfyre-dataset-copy{font-size:.82rem;color:#a3a3a3;line-height:1.5;max-width:58rem;}',
+      '.bonfyre-dataset-stats{display:flex;gap:.55rem;flex-wrap:wrap;}',
+      '.bonfyre-dataset-stat{min-width:112px;padding:.65rem .75rem;border-radius:10px;border:1px solid #2f3b4b;background:#0b111a;}',
+      '.bonfyre-dataset-stat strong{display:block;color:#ff6600;font-size:1rem;margin-bottom:.18rem;}',
+      '.bonfyre-dataset-stat span{display:block;font-size:.72rem;color:#9ca3af;}',
+      '.bonfyre-dataset-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:.75rem;}',
+      '.bonfyre-dataset-panel{padding:.8rem;border-radius:10px;border:1px solid #223047;background:#0b111a;}',
+      '.bonfyre-dataset-panel h4{font-size:.78rem;letter-spacing:.08em;text-transform:uppercase;color:#93c5fd;margin-bottom:.55rem;}',
+      '.bonfyre-dataset-panel p{font-size:.78rem;color:#a3a3a3;line-height:1.5;margin-bottom:.55rem;}',
+      '.bonfyre-query-pills{display:flex;gap:.45rem;flex-wrap:wrap;}',
+      '.bonfyre-query-pill{padding:.35rem .6rem;border-radius:999px;border:1px solid #334155;background:#111827;color:#e5e7eb;font-size:.75rem;cursor:pointer;}',
+      '.bonfyre-query-pill:hover{border-color:#ff6600;color:#ff6600;}',
+      '.bonfyre-board-limit{margin:0 0 1rem;padding:.7rem .85rem;border:1px solid #223047;border-radius:10px;background:#0b111a;display:flex;justify-content:space-between;align-items:center;gap:.75rem;flex-wrap:wrap;}',
+      '.bonfyre-board-limit-copy{font-size:.78rem;color:#a3a3a3;}',
+      '.bonfyre-board-limit button{padding:.42rem .7rem;border-radius:6px;border:1px solid #38465d;background:rgba(255,255,255,.02);color:#e5e7eb;font-size:.76rem;font-weight:600;cursor:pointer;}',
+      '.bonfyre-board-limit button:hover{border-color:#ff6600;color:#ff6600;}'
     ].join('');
     document.head.appendChild(style);
   }
@@ -303,6 +322,187 @@
     return true;
   }
 
+  function collectTopTags(items) {
+    var counts = {};
+    for (var i = 0; i < items.length; i++) {
+      var tags = Array.isArray(items[i].tags) ? items[i].tags : [];
+      for (var j = 0; j < tags.length; j++) {
+        var raw = String(tags[j] || '').trim();
+        var key = normalizeToken(raw);
+        if (!key || key === 'demo' || key === 'flagged' || key === 'urgent' || key === 'all') continue;
+        counts[raw] = (counts[raw] || 0) + 1;
+      }
+    }
+    return Object.keys(counts)
+      .map(function(tag) { return { tag: tag, count: counts[tag] }; })
+      .sort(function(a, b) { return b.count - a.count; })
+      .slice(0, 8);
+  }
+
+  function buildSuggestedQueries(items, topTags) {
+    var queries = [];
+    for (var i = 0; i < topTags.length && queries.length < 4; i++) {
+      queries.push(topTags[i].tag);
+    }
+    for (var j = 0; j < items.length && queries.length < 6; j++) {
+      var summary = String(items[j].searchSummary || '').split(',')[0].trim();
+      if (summary && queries.indexOf(summary) === -1) queries.push(summary);
+    }
+    return queries.slice(0, 6);
+  }
+
+  function renderDatasetOverview(items) {
+    if (!items.length) return '';
+    var flagged = 0;
+    var outputs = {};
+    for (var i = 0; i < items.length; i++) {
+      if (items[i].flagged) flagged += 1;
+      var list = Array.isArray(items[i].outputs) ? items[i].outputs : [];
+      for (var j = 0; j < list.length; j++) outputs[list[j]] = (outputs[list[j]] || 0) + 1;
+    }
+    var topTags = collectTopTags(items);
+    var suggestions = buildSuggestedQueries(items, topTags);
+    var topOutputs = Object.keys(outputs)
+      .map(function(name) { return { name: name, count: outputs[name] }; })
+      .sort(function(a, b) { return b.count - a.count; })
+      .slice(0, 4);
+    var lead = items[0] || {};
+    return '<section class="bonfyre-dataset-overview" data-bonfyre-overview="1">' +
+      '<div class="bonfyre-dataset-head">' +
+        '<div>' +
+          '<h3>Explore The Seeded Dataset</h3>' +
+          '<div class="bonfyre-dataset-copy">' + escapeHtml(lead.whyItMatters || 'These seeded records are here to show search, reuse, and branching outputs on a real corpus, not just on one isolated demo item.') + '</div>' +
+        '</div>' +
+        '<div class="bonfyre-dataset-stats">' +
+          '<div class="bonfyre-dataset-stat"><strong>' + String(items.length) + '</strong><span>seeded records</span></div>' +
+          '<div class="bonfyre-dataset-stat"><strong>' + String(flagged) + '</strong><span>flagged or high-signal items</span></div>' +
+          '<div class="bonfyre-dataset-stat"><strong>' + String(topTags.length) + '</strong><span>repeatable themes</span></div>' +
+        '</div>' +
+      '</div>' +
+      '<div class="bonfyre-dataset-grid">' +
+        '<div class="bonfyre-dataset-panel">' +
+          '<h4>Try These Searches</h4>' +
+          '<p>Start with a repeated topic and Bonfyre will show how the same system turns many records into something searchable and reusable.</p>' +
+          '<div class="bonfyre-query-pills">' + suggestions.map(function(query) {
+            return '<button type="button" class="bonfyre-query-pill" data-demo-query="' + escapeHtml(query) + '">' + escapeHtml(query) + '</button>';
+          }).join('') + '</div>' +
+        '</div>' +
+        '<div class="bonfyre-dataset-panel">' +
+          '<h4>Recurring Themes</h4>' +
+          '<p>These are the strongest clusters in the seeded corpus right now.</p>' +
+          '<div class="bonfyre-query-pills">' + topTags.map(function(entry) {
+            return '<button type="button" class="bonfyre-query-pill" data-demo-query="' + escapeHtml(entry.tag) + '">' + escapeHtml(entry.tag) + ' · ' + String(entry.count) + '</button>';
+          }).join('') + '</div>' +
+        '</div>' +
+        '<div class="bonfyre-dataset-panel">' +
+          '<h4>What The Corpus Produces</h4>' +
+          '<p>The point is not just more files. It is more surfaces from the same underlying records.</p>' +
+          '<div class="bonfyre-query-pills">' + topOutputs.map(function(entry) {
+            return '<span class="bonfyre-query-pill" style="cursor:default;">' + escapeHtml(entry.name) + ' · ' + String(entry.count) + '</span>';
+          }).join('') + '</div>' +
+        '</div>' +
+      '</div>' +
+    '</section>';
+  }
+
+  function setSearchExperienceQuery(item, label, items, query) {
+    var nodes = ensurePreviewNodes();
+    if (!nodes) return false;
+    clearDetail(nodes);
+    nodes.panel.style.display = 'block';
+    nodes.content.textContent = String((item && item.outputNotes && item.outputNotes[label]) || 'Search across the seeded demo dataset to see why this output matters.');
+    nodes.actions.innerHTML = '';
+    nodes.searchRoot.style.display = 'block';
+    nodes.searchCopy.textContent = item.searchIntro || 'Multiple demo records make search, reuse, and compression visible instead of theoretical.';
+    nodes.searchInput.value = query || '';
+    nodes.searchResults.innerHTML = renderSearchResults(items, String(query || '').trim().toLowerCase());
+    nodes.searchInput.oninput = function() {
+      nodes.searchResults.innerHTML = renderSearchResults(items, String(nodes.searchInput.value || '').trim().toLowerCase());
+    };
+    nodes.searchResults.onclick = function(event) {
+      var button = event.target.closest('[data-demo-open]');
+      if (!button) return;
+      var targetId = button.getAttribute('data-demo-open');
+      var target = cloneItems(items).find(function(entry) { return String(entry.id) === String(targetId); });
+      if (!target) return;
+      clearDetail(nodes);
+      nodes.content.textContent = String((item && item.outputNotes && item.outputNotes[label]) || 'Search across the seeded demo dataset to see why this output matters.');
+      nodes.searchRoot.insertAdjacentHTML('afterend', buildDetailCard(target));
+    };
+    return true;
+  }
+
+  function applyBoardEnhancements(options) {
+    var container = document.getElementById('boardContent');
+    if (!container) return;
+    var items = cloneItems(options.getItems());
+    var cards = Array.prototype.slice.call(container.querySelectorAll('.card[data-item-id]'));
+    var existingOverview = container.querySelector('[data-bonfyre-overview="1"]');
+    if (!cards.length) {
+      if (existingOverview) existingOverview.remove();
+      var oldLimit = container.querySelector('[data-bonfyre-board-limit="1"]');
+      if (oldLimit) oldLimit.remove();
+      return;
+    }
+
+    var stamp = items.map(function(item) { return item && item.id; }).join('|');
+    if (!existingOverview || existingOverview.getAttribute('data-bonfyre-stamp') !== stamp) {
+      if (existingOverview) existingOverview.remove();
+      container.insertAdjacentHTML('afterbegin', renderDatasetOverview(items));
+      existingOverview = container.querySelector('[data-bonfyre-overview="1"]');
+      if (existingOverview) existingOverview.setAttribute('data-bonfyre-stamp', stamp);
+      cards = Array.prototype.slice.call(container.querySelectorAll('.card[data-item-id]'));
+    }
+
+    var limitNode = container.querySelector('[data-bonfyre-board-limit="1"]');
+    var boardKey = options.storeKey + '_expand_cards';
+    var expanded = localStorage.getItem(boardKey) === '1';
+    var visibleLimit = 24;
+    var hasOverflow = cards.length > visibleLimit;
+
+    for (var i = 0; i < cards.length; i++) {
+      cards[i].style.display = (!hasOverflow || expanded || i < visibleLimit) ? '' : 'none';
+    }
+
+    if (!hasOverflow) {
+      if (limitNode) limitNode.remove();
+      return;
+    }
+
+    var copy = expanded
+      ? 'Showing all ' + String(cards.length) + ' records in this view.'
+      : 'Showing the first ' + String(visibleLimit) + ' records so the patterns stay readable. Search or expand when you want the full corpus.';
+    var buttonLabel = expanded ? 'Show Fewer Records' : 'Show All ' + String(cards.length) + ' Records';
+
+    if (!limitNode) {
+      var overviewNode = container.querySelector('[data-bonfyre-overview="1"]');
+      var insertAfter = overviewNode || cards[0];
+      if (insertAfter) {
+        insertAfter.insertAdjacentHTML('afterend',
+          '<div class="bonfyre-board-limit" data-bonfyre-board-limit="1">' +
+            '<div class="bonfyre-board-limit-copy"></div>' +
+            '<button type="button" data-bonfyre-board-toggle="1"></button>' +
+          '</div>'
+        );
+      }
+      limitNode = container.querySelector('[data-bonfyre-board-limit="1"]');
+    }
+
+    if (limitNode) {
+      var copyNode = limitNode.querySelector('.bonfyre-board-limit-copy');
+      var buttonNode = limitNode.querySelector('[data-bonfyre-board-toggle="1"]');
+      if (copyNode) copyNode.textContent = copy;
+      if (buttonNode) {
+        buttonNode.textContent = buttonLabel;
+        buttonNode.onclick = function() {
+          var next = localStorage.getItem(boardKey) === '1' ? '0' : '1';
+          localStorage.setItem(boardKey, next);
+          applyBoardEnhancements(options);
+        };
+      }
+    }
+  }
+
   function activateMatchingFilter(rawText) {
     var text = normalizeToken(rawText);
     if (!text) return false;
@@ -458,7 +658,19 @@
 
       var filterNode = event.target.closest('.filter-item,.area-item');
       if (filterNode) {
-        setTimeout(function() { refreshCounts(options); }, 0);
+        setTimeout(function() {
+          refreshCounts(options);
+          applyBoardEnhancements(options);
+        }, 0);
+      }
+
+      var queryNode = event.target.closest('[data-demo-query]');
+      if (queryNode) {
+        event.preventDefault();
+        var query = queryNode.getAttribute('data-demo-query') || queryNode.textContent || '';
+        var queryItems = cloneItems(options.getItems());
+        var seed = queryItems[0] || {};
+        setSearchExperienceQuery(seed, (seed.searchOutputs && seed.searchOutputs[0]) || 'search', queryItems, query);
       }
     });
   }
@@ -479,6 +691,7 @@
     options.setItems(current);
     localStorage.setItem(options.storeKey, JSON.stringify(current));
     options.renderBoard();
+    applyBoardEnhancements(options);
     refreshCounts(options);
   }
 
@@ -500,6 +713,15 @@
       button.textContent = hidden ? 'Show Demo Data' : 'Clear Demo Data';
     }
 
+    var observerTarget = document.getElementById('boardContent');
+    if (observerTarget && !observerTarget.dataset.bonfyreObserverBound) {
+      observerTarget.dataset.bonfyreObserverBound = '1';
+      var observer = new MutationObserver(function() {
+        applyBoardEnhancements(options);
+      });
+      observer.observe(observerTarget, { childList: true, subtree: false });
+    }
+
     button.addEventListener('click', function() {
       hidden = !hidden;
       localStorage.setItem(hiddenKey, hidden ? '1' : '0');
@@ -509,7 +731,10 @@
 
     updateButton();
     applyDemoState(options, hidden);
-    setTimeout(function() { refreshCounts(options); }, 0);
+    setTimeout(function() {
+      refreshCounts(options);
+      applyBoardEnhancements(options);
+    }, 0);
   }
 
   global.BonfyreDemoBoot = {
