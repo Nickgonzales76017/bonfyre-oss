@@ -171,6 +171,49 @@ function uniqueCount(values) {
   return new Set(values).size;
 }
 
+function renderMarkdown(report) {
+  const lines = [];
+  lines.push('# Bonfyre Reference Corpus Stress Report');
+  lines.push('');
+  lines.push(`Generated: ${report.generated_at}`);
+  lines.push('');
+  lines.push('## Totals');
+  lines.push('');
+  lines.push(`- Apps stressed: ${report.totals.apps}`);
+  lines.push(`- Sources stressed: ${report.totals.sources}`);
+  lines.push(`- Queued Bonfyre jobs: ${report.totals.queued_jobs}`);
+  lines.push(`- Average policy score: ${report.totals.avg_policy_score}`);
+  lines.push(`- Average information gain: ${report.totals.avg_information_gain}`);
+  lines.push(`- Average latency: ${report.totals.avg_latency}`);
+  lines.push(`- Apps with warnings: ${report.totals.apps_with_warnings}`);
+  lines.push('');
+
+  for (const app of report.apps) {
+    lines.push(`## ${app.title}`);
+    lines.push('');
+    lines.push(`- Repo: \`${app.repo}\``);
+    lines.push(`- Sources stressed: ${app.source_count}`);
+    lines.push(`- Differentiation score: ${app.differentiation_score}`);
+    lines.push(`- Average policy score: ${app.avg_policy_score}`);
+    lines.push(`- Average information gain: ${app.avg_information_gain}`);
+    lines.push(`- Average latency: ${app.avg_latency}`);
+    lines.push(`- Unique state keys: ${app.unique_state_keys}`);
+    lines.push(`- Unique output sets: ${app.unique_output_sets}`);
+    lines.push(`- Modes: ${Object.entries(app.mode_counts).map(([k, v]) => `${k}=${v}`).join(', ') || 'none'}`);
+    lines.push(`- Warnings: ${app.warnings.length ? app.warnings.join(', ') : 'none'}`);
+    lines.push('');
+    lines.push('| Source | Policy | State | Notable outputs |');
+    lines.push('|---|---|---|---|');
+    for (const source of app.sources) {
+      const outputs = (source.expected_outputs || []).slice(0, 4).join(', ');
+      lines.push(`| ${source.title} | ${source.policy_source} | \`${source.state_key}\` | ${outputs} |`);
+    }
+    lines.push('');
+  }
+
+  return lines.join('\n') + '\n';
+}
+
 function main() {
   const args = parseArgs(process.argv.slice(2));
   if (!args.queuePath) {
@@ -363,6 +406,7 @@ function main() {
   const queueStats = runJson(queueBin, ['stats', queueFile], 'queue stats');
   report.queue_stats = queueStats;
   writeJson(path.join(outDir, 'reference-stress-report.json'), report);
+  fs.writeFileSync(path.join(outDir, 'reference-stress-report.md'), renderMarkdown(report), 'utf8');
   console.log(JSON.stringify(report, null, 2));
 }
 
