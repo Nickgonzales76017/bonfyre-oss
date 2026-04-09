@@ -95,6 +95,12 @@
       '.bonfyre-detail-copy{font-size:.8rem;line-height:1.5;color:#e5e7eb;margin-bottom:.6rem;}',
       '.bonfyre-detail-tags{display:flex;gap:.4rem;flex-wrap:wrap;margin-bottom:.55rem;}',
       '.bonfyre-detail-tag{font-size:.68rem;padding:.22rem .45rem;border-radius:999px;border:1px solid #334155;background:#111827;color:#cbd5e1;}',
+      '.bonfyre-source-strip{margin:.8rem 0 .2rem;padding:.7rem .8rem;border:1px solid #223047;border-radius:10px;background:#0b111a;}',
+      '.bonfyre-source-kicker{font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;color:#93c5fd;margin-bottom:.3rem;}',
+      '.bonfyre-source-copy{font-size:.78rem;line-height:1.45;color:#cbd5e1;margin-bottom:.5rem;}',
+      '.bonfyre-source-actions{display:flex;gap:.45rem;flex-wrap:wrap;}',
+      '.bonfyre-source-link{display:inline-flex;align-items:center;gap:.35rem;padding:.4rem .68rem;border-radius:999px;border:1px solid #334155;background:#111827;color:#e5e7eb;text-decoration:none;font-size:.74rem;font-weight:600;}',
+      '.bonfyre-source-link:hover{border-color:#ff6600;color:#ff6600;}',
       '.bonfyre-artifact-view{margin-top:.75rem;padding:.85rem;border:1px solid #2f3b4b;border-radius:10px;background:#0d131d;}',
       '.bonfyre-artifact-view h4{font-size:.85rem;color:#ff6600;margin-bottom:.4rem;}',
       '.bonfyre-artifact-body{font-size:.78rem;line-height:1.5;color:#e5e7eb;max-height:320px;overflow:auto;white-space:pre-wrap;}',
@@ -250,19 +256,60 @@
   }
 
   function buildDetailCard(item) {
-    var hasSource = item && (item.sourceTitle || item.sourceUrl || item.publisher || item.license);
+    var sourceStrip = buildSourceStrip(item);
     return '<div class="bonfyre-detail-card">' +
       '<h4>' + escapeHtml(item.file || 'Demo record') + '</h4>' +
       '<div class="bonfyre-detail-meta">' + escapeHtml(item.time || 'Reference corpus') + '</div>' +
-      (hasSource ? '<div class="bonfyre-detail-meta">' +
-        (item.sourceUrl ? '<a href="' + escapeHtml(item.sourceUrl) + '" target="_blank" rel="noreferrer noopener">Source</a>' : 'Source') +
-        (item.sourceTitle ? ' · ' + escapeHtml(item.sourceTitle) : '') +
-        (item.publisher ? ' · ' + escapeHtml(item.publisher) : '') +
-        (item.license ? ' · ' + escapeHtml(item.license) : '') +
-      '</div>' : '') +
+      sourceStrip +
       '<div class="bonfyre-detail-copy">' + escapeHtml(item.whyItMatters || item.brief || '') + '</div>' +
       '<div class="bonfyre-detail-tags">' + (item.tags || []).slice(0, 5).map(function(tag) {
         return '<span class="bonfyre-detail-tag">' + escapeHtml(tag) + '</span>';
+      }).join('') + '</div>' +
+    '</div>';
+  }
+
+  function getSourceLinks(item) {
+    if (!item) return [];
+    var links = [];
+    if (item.sourceUrl) {
+      links.push({
+        href: item.sourceUrl,
+        label: item.sourceLabel || 'Open source',
+        title: item.sourceTitle || '',
+        publisher: item.publisher || '',
+        license: item.license || ''
+      });
+    }
+    if (Array.isArray(item.sourceLinks)) {
+      for (var i = 0; i < item.sourceLinks.length; i++) {
+        if (item.sourceLinks[i] && item.sourceLinks[i].href) links.push(item.sourceLinks[i]);
+      }
+    }
+    return links.filter(function(link, index, arr) {
+      return arr.findIndex(function(other) {
+        return other && link && other.href === link.href && (other.label || '') === (link.label || '');
+      }) === index;
+    });
+  }
+
+  function buildSourceSummary(item) {
+    var parts = [];
+    if (item && item.sourceTitle) parts.push(item.sourceTitle);
+    if (item && item.publisher) parts.push(item.publisher);
+    if (item && item.license) parts.push(item.license);
+    return parts.join(' · ');
+  }
+
+  function buildSourceStrip(item) {
+    var links = getSourceLinks(item);
+    if (!links.length) return '';
+    var summary = buildSourceSummary(item);
+    var copy = item.sourceCopy || 'Track this card back to the recording or source file Bonfyre structured.';
+    return '<div class="bonfyre-source-strip" data-bonfyre-source-strip="1">' +
+      '<div class="bonfyre-source-kicker">Source</div>' +
+      '<div class="bonfyre-source-copy">' + escapeHtml(copy) + (summary ? ' <span style="color:#9ca3af;">' + escapeHtml(summary) + '</span>' : '') + '</div>' +
+      '<div class="bonfyre-source-actions">' + links.map(function(link) {
+        return '<a class="bonfyre-source-link" href="' + escapeHtml(link.href) + '" target="_blank" rel="noreferrer noopener">' + escapeHtml(link.label || 'Open source') + '</a>';
       }).join('') + '</div>' +
     '</div>';
   }
@@ -469,6 +516,25 @@
 
     for (var i = 0; i < cards.length; i++) {
       cards[i].style.display = (!hasOverflow || expanded || i < visibleLimit) ? '' : 'none';
+    }
+
+    for (var j = 0; j < cards.length; j++) {
+      var card = cards[j];
+      var existingSource = card.querySelector('[data-bonfyre-source-strip="1"]');
+      if (existingSource) existingSource.remove();
+      var itemId = card.getAttribute('data-item-id');
+      var item = null;
+      for (var k = 0; k < items.length; k++) {
+        if (items[k] && String(items[k].id) === String(itemId)) {
+          item = items[k];
+          break;
+        }
+      }
+      var sourceHtml = buildSourceStrip(item);
+      if (!sourceHtml) continue;
+      var meta = card.querySelector('.card-meta');
+      if (meta) meta.insertAdjacentHTML('afterend', sourceHtml);
+      else card.insertAdjacentHTML('afterbegin', sourceHtml);
     }
 
     if (!hasOverflow) {
