@@ -8,7 +8,7 @@
       "out_path": "/Users/nickgonzales/Projects/pages-podcast-plant/site/demos/podcast-plant/demo-items.json",
       "default_outputs": ["show notes", "clip list", "article draft", "RSS-ready bundle"],
       "why_it_matters": "A deep episode set makes repurposing, search, and orchestration obvious inside the app instead of sounding like a claim.",
-      "search_intro": "Search across many seeded episodes to compare topics, clips, and publish surfaces from one shared Bonfyre pipeline.",
+      "search_intro": "Search across many reference episodes to compare topics, clips, and publish surfaces from one shared Bonfyre pipeline.",
       "template": {
         "dimensions": {
           "series": ["Creator Systems", "City Makers", "Product Lines", "Local Operators", "Founder Ledger"],
@@ -21,7 +21,7 @@
         "brief": "Episode explores {topic} with a focus on {angle}. The Bonfyre path turns the same source into notes, clips, drafts, and a publish-ready bundle.",
         "tags": ["podcast", "{topic}", "{series}"],
         "searchSummary": "{series}, {topic}, {angle}",
-        "whyItMatters": "With many seeded episodes, users can feel how Bonfyre clusters topics, reuses artifacts, and branches outputs without changing the core source object.",
+        "whyItMatters": "With many reference episodes, users can feel how Bonfyre clusters topics, reuses artifacts, and branches outputs without changing the core source object.",
         "searchOutputs": ["clip list", "RSS-ready bundle"],
         "flagged_every": 11
       }
@@ -43,7 +43,7 @@
         },
         "id": "town-{place}-{issue}-{source}-{wave}",
         "file": "{place} {issue} — {source}",
-        "brief": "This {source} covers {issue} in {place}. The seeded record highlights where residents need clearer updates, which department owns the response, and how the same civic artifact should stay searchable over time.",
+        "brief": "This {source} covers {issue} in {place}. The reference record highlights where residents need clearer updates, which department owns the response, and how the same civic artifact should stay searchable over time.",
         "tags": ["meetings", "{issue}", "{place}"],
         "searchSummary": "{place}, {issue}, {source}, {wave}",
         "whyItMatters": "When the town demo has depth, users can see retrieval, memory, and issue continuity instead of one isolated summary.",
@@ -58,7 +58,7 @@
       "out_path": "/Users/nickgonzales/Projects/pages-customer-voice/site/demos/customer-voice/demo-items.json",
       "default_outputs": ["customer brief", "theme cluster", "voice memory"],
       "why_it_matters": "A broad call set is what makes theme clustering and memory actually persuasive in a customer-voice product.",
-      "search_intro": "Search across many seeded customer calls to spot recurring friction, product pull, and renewal risk patterns.",
+      "search_intro": "Search across many reference customer calls to spot recurring friction, product pull, and renewal risk patterns.",
       "template": {
         "dimensions": {
           "segment": ["enterprise", "mid-market", "agency", "education", "local government"],
@@ -83,7 +83,7 @@
       "out_path": "/Users/nickgonzales/Projects/pages-oss-cockpit/site/demos/oss-cockpit/demo-items.json",
       "default_outputs": ["triage summary", "priority tags", "semantic issue memory", "maintainer digest"],
       "why_it_matters": "Maintainer memory becomes convincing when repeated issue clusters are visible across many triage records.",
-      "search_intro": "Search across many seeded maintainer records to see repeated docs, release, and support patterns emerge.",
+      "search_intro": "Search across many reference maintainer records to see repeated docs, release, and support patterns emerge.",
       "template": {
         "dimensions": {
           "cluster": ["docs confusion", "release regressions", "setup failures", "support spillover", "CI breakage"],
@@ -108,7 +108,7 @@
       "out_path": "/Users/nickgonzales/Projects/pages-memory-atlas/site/demos/memory-atlas/demo-items.json",
       "default_outputs": ["memory note", "linked memory", "atlas search"],
       "why_it_matters": "This app only feels special when users can move through a larger web of related memories.",
-      "search_intro": "Search across many seeded memories to see recurring places, people, and events connect into an atlas.",
+      "search_intro": "Search across many reference memories to see recurring places, people, and events connect into an atlas.",
       "template": {
         "dimensions": {
           "place": ["kitchen", "porch", "train station", "school gym", "county fair"],

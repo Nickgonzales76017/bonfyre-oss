@@ -54,7 +54,7 @@ function expandTemplateSeeds(app) {
     return {
       id: interpolate(template.id || '{app}-{n}', merged),
       file: interpolate(template.file || `${app.title} {n}`, merged),
-      brief: interpolate(template.brief || app.default_brief || `${app.title} seeded record {n}.`, merged),
+      brief: interpolate(template.brief || app.default_brief || `${app.title} reference record {n}.`, merged),
       tags: pickArray(template.tags, []).map(tag => interpolate(tag, merged)),
       outputs: pickArray(template.outputs, app.default_outputs || []).map(out => interpolate(out, merged)),
       searchSummary: interpolate(template.searchSummary || '', merged),
@@ -63,7 +63,7 @@ function expandTemplateSeeds(app) {
       searchOutputs: pickArray(template.searchOutputs, []).map(out => interpolate(out, merged)),
       flagged: Boolean(template.flagged_every && ((index + 1) % Number(template.flagged_every) === 0)),
       status: template.status || 'complete',
-      time: template.time || 'Demo dataset'
+      time: template.time || 'Reference corpus'
     };
   });
 }
@@ -74,19 +74,23 @@ function buildRecord(seed, app, index) {
   const outputs = pickArray(seed.outputs, app.default_outputs || []);
   return {
     id: idBase,
-    file: seed.file || `${app.title} Seed ${index + 1}`,
-    time: seed.time || 'Demo dataset',
+    file: seed.file || `${app.title} Corpus ${index + 1}`,
+    time: seed.time || 'Reference corpus',
     status: seed.status || 'complete',
-    brief: seed.brief || app.default_brief || `${app.title} seeded record ${index + 1}.`,
+    brief: seed.brief || app.default_brief || `${app.title} reference record ${index + 1}.`,
     tags,
     flagged: Boolean(seed.flagged),
     demo: true,
     outputs,
     outputNotes: seed.outputNotes || {},
     outputLinks: seed.outputLinks || {},
+    sourceTitle: seed.sourceTitle || '',
+    sourceUrl: seed.sourceUrl || '',
+    publisher: seed.publisher || '',
+    license: seed.license || '',
     searchSummary: seed.searchSummary || `${tags.slice(0, 3).join(', ')}`,
     whyItMatters: seed.whyItMatters || app.why_it_matters || `${app.title} becomes more convincing when users can explore multiple real-looking records in-app.`,
-    searchIntro: seed.searchIntro || app.search_intro || `Search across the seeded ${app.slug} dataset to see how this app handles multiple records instead of one isolated example.`,
+    searchIntro: seed.searchIntro || app.search_intro || `Search across the ${app.slug} corpus to see how this app handles multiple records instead of one isolated example.`,
     searchOutputs: pickArray(seed.searchOutputs, outputs.slice(0, 1))
   };
 }

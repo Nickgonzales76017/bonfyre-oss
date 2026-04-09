@@ -154,7 +154,7 @@
       searchRoot.className = 'bonfyre-demo-search';
       searchRoot.innerHTML = [
         '<div class="bonfyre-demo-search-copy"></div>',
-        '<input class="bonfyre-demo-search-input" type="search" placeholder="Search this demo dataset">',
+        '<input class="bonfyre-demo-search-input" type="search" placeholder="Search this corpus">',
         '<div class="bonfyre-demo-search-results"></div>'
       ].join('');
       actions.insertAdjacentElement('afterend', searchRoot);
@@ -250,9 +250,16 @@
   }
 
   function buildDetailCard(item) {
+    var hasSource = item && (item.sourceTitle || item.sourceUrl || item.publisher || item.license);
     return '<div class="bonfyre-detail-card">' +
       '<h4>' + escapeHtml(item.file || 'Demo record') + '</h4>' +
-      '<div class="bonfyre-detail-meta">' + escapeHtml(item.time || 'Demo dataset') + '</div>' +
+      '<div class="bonfyre-detail-meta">' + escapeHtml(item.time || 'Reference corpus') + '</div>' +
+      (hasSource ? '<div class="bonfyre-detail-meta">' +
+        (item.sourceUrl ? '<a href="' + escapeHtml(item.sourceUrl) + '" target="_blank" rel="noreferrer noopener">Source</a>' : 'Source') +
+        (item.sourceTitle ? ' · ' + escapeHtml(item.sourceTitle) : '') +
+        (item.publisher ? ' · ' + escapeHtml(item.publisher) : '') +
+        (item.license ? ' · ' + escapeHtml(item.license) : '') +
+      '</div>' : '') +
       '<div class="bonfyre-detail-copy">' + escapeHtml(item.whyItMatters || item.brief || '') + '</div>' +
       '<div class="bonfyre-detail-tags">' + (item.tags || []).slice(0, 5).map(function(tag) {
         return '<span class="bonfyre-detail-tag">' + escapeHtml(tag) + '</span>';
@@ -284,11 +291,11 @@
       .filter(function(entry) { return entry.score > 0; })
       .sort(function(a, b) { return b.score - a.score; })
       .slice(0, 6);
-    if (!ranked.length) return '<div class="bonfyre-demo-search-empty">No matching demo records yet.</div>';
+    if (!ranked.length) return '<div class="bonfyre-demo-search-empty">No matching records yet.</div>';
     return ranked.map(function(entry) {
       var item = entry.item;
       return '<button type="button" class="bonfyre-demo-result" data-demo-open="' + escapeHtml(item.id) + '">' +
-        '<strong>' + escapeHtml(item.file || 'Demo item') + '</strong>' +
+        '<strong>' + escapeHtml(item.file || 'Corpus item') + '</strong>' +
         '<span>' + escapeHtml(item.searchSummary || item.brief || '') + '</span>' +
         '<em>' + escapeHtml((item.tags || []).slice(0, 3).join(' · ')) + '</em>' +
       '</button>';
@@ -300,10 +307,10 @@
     if (!nodes) return false;
     clearDetail(nodes);
     nodes.panel.style.display = 'block';
-    nodes.content.textContent = String((item && item.outputNotes && item.outputNotes[label]) || 'Search across the seeded demo dataset to see why this output matters.');
+    nodes.content.textContent = String((item && item.outputNotes && item.outputNotes[label]) || 'Search across the corpus to see why this output matters.');
     nodes.actions.innerHTML = '';
     nodes.searchRoot.style.display = 'block';
-    nodes.searchCopy.textContent = item.searchIntro || 'Multiple demo records make search, reuse, and compression visible instead of theoretical.';
+    nodes.searchCopy.textContent = item.searchIntro || 'Multiple records make search, reuse, and compression visible instead of theoretical.';
     nodes.searchInput.value = '';
     nodes.searchResults.innerHTML = renderSearchResults(items, '');
     nodes.searchInput.oninput = function() {
@@ -316,7 +323,7 @@
       var target = cloneItems(items).find(function(entry) { return String(entry.id) === String(targetId); });
       if (!target) return;
       clearDetail(nodes);
-      nodes.content.textContent = String((item && item.outputNotes && item.outputNotes[label]) || 'Search across the seeded demo dataset to see why this output matters.');
+      nodes.content.textContent = String((item && item.outputNotes && item.outputNotes[label]) || 'Search across the corpus to see why this output matters.');
       nodes.searchRoot.insertAdjacentHTML('afterend', buildDetailCard(target));
     };
     return true;
@@ -370,11 +377,11 @@
     return '<section class="bonfyre-dataset-overview" data-bonfyre-overview="1">' +
       '<div class="bonfyre-dataset-head">' +
         '<div>' +
-          '<h3>Explore The Seeded Dataset</h3>' +
-          '<div class="bonfyre-dataset-copy">' + escapeHtml(lead.whyItMatters || 'These seeded records are here to show search, reuse, and branching outputs on a real corpus, not just on one isolated demo item.') + '</div>' +
+          '<h3>Explore The Reference Corpus</h3>' +
+          '<div class="bonfyre-dataset-copy">' + escapeHtml(lead.whyItMatters || 'These reference records are here to show search, reuse, and branching outputs across a larger corpus, not just on one isolated item.') + '</div>' +
         '</div>' +
         '<div class="bonfyre-dataset-stats">' +
-          '<div class="bonfyre-dataset-stat"><strong>' + String(items.length) + '</strong><span>seeded records</span></div>' +
+          '<div class="bonfyre-dataset-stat"><strong>' + String(items.length) + '</strong><span>reference records</span></div>' +
           '<div class="bonfyre-dataset-stat"><strong>' + String(flagged) + '</strong><span>flagged or high-signal items</span></div>' +
           '<div class="bonfyre-dataset-stat"><strong>' + String(topTags.length) + '</strong><span>repeatable themes</span></div>' +
         '</div>' +
@@ -389,7 +396,7 @@
         '</div>' +
         '<div class="bonfyre-dataset-panel">' +
           '<h4>Recurring Themes</h4>' +
-          '<p>These are the strongest clusters in the seeded corpus right now.</p>' +
+          '<p>These are the strongest clusters in the corpus right now.</p>' +
           '<div class="bonfyre-query-pills">' + topTags.map(function(entry) {
             return '<button type="button" class="bonfyre-query-pill" data-demo-query="' + escapeHtml(entry.tag) + '">' + escapeHtml(entry.tag) + ' · ' + String(entry.count) + '</button>';
           }).join('') + '</div>' +
@@ -410,10 +417,10 @@
     if (!nodes) return false;
     clearDetail(nodes);
     nodes.panel.style.display = 'block';
-    nodes.content.textContent = String((item && item.outputNotes && item.outputNotes[label]) || 'Search across the seeded demo dataset to see why this output matters.');
+    nodes.content.textContent = String((item && item.outputNotes && item.outputNotes[label]) || 'Search across the corpus to see why this output matters.');
     nodes.actions.innerHTML = '';
     nodes.searchRoot.style.display = 'block';
-    nodes.searchCopy.textContent = item.searchIntro || 'Multiple demo records make search, reuse, and compression visible instead of theoretical.';
+    nodes.searchCopy.textContent = item.searchIntro || 'Multiple records make search, reuse, and compression visible instead of theoretical.';
     nodes.searchInput.value = query || '';
     nodes.searchResults.innerHTML = renderSearchResults(items, String(query || '').trim().toLowerCase());
     nodes.searchInput.oninput = function() {
@@ -426,7 +433,7 @@
       var target = cloneItems(items).find(function(entry) { return String(entry.id) === String(targetId); });
       if (!target) return;
       clearDetail(nodes);
-      nodes.content.textContent = String((item && item.outputNotes && item.outputNotes[label]) || 'Search across the seeded demo dataset to see why this output matters.');
+      nodes.content.textContent = String((item && item.outputNotes && item.outputNotes[label]) || 'Search across the corpus to see why this output matters.');
       nodes.searchRoot.insertAdjacentHTML('afterend', buildDetailCard(target));
     };
     return true;
