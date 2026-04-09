@@ -117,6 +117,8 @@ jobs:
           chmod +x /tmp/bonfyre/scripts/build-portable-runtime.sh
           /tmp/bonfyre/scripts/build-portable-runtime.sh ${{ inputs.bonfyre_targets }}
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          echo "BONFYRE_BRIEF_BINARY=$HOME/.local/bin/bonfyre-brief" >> "$GITHUB_ENV"
+          echo "BONFYRE_NARRATE_BINARY=$HOME/.local/bin/bonfyre-narrate" >> "$GITHUB_ENV"
 
       - name: Detect changed inputs
         id: detect
