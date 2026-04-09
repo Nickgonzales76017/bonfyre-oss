@@ -214,6 +214,19 @@ function renderMarkdown(report) {
   return lines.join('\n') + '\n';
 }
 
+function renderSummaryJson(report) {
+  return {
+    generated_at: report.generated_at,
+    apps: report.totals.apps,
+    sources: report.totals.sources,
+    queued_jobs: report.totals.queued_jobs,
+    avg_policy_score: report.totals.avg_policy_score,
+    avg_information_gain: report.totals.avg_information_gain,
+    avg_latency: report.totals.avg_latency,
+    apps_with_warnings: report.totals.apps_with_warnings
+  };
+}
+
 function main() {
   const args = parseArgs(process.argv.slice(2));
   if (!args.queuePath) {
@@ -228,7 +241,9 @@ function main() {
   const policyDb = args.policyDb || path.join(outDir, 'orchestrate.db');
   const queueFile = path.join(outDir, 'reference-stress.queue.tsv');
   const workDir = path.join(outDir, 'runs');
+  const artifactDir = path.join(outDir, 'artifact');
   fs.mkdirSync(workDir, { recursive: true });
+  fs.mkdirSync(artifactDir, { recursive: true });
 
   const queue = readJson(args.queuePath);
   const apps = (queue.apps || []).filter((app) => !args.repos.length || args.repos.includes(app.repo));
@@ -405,8 +420,35 @@ function main() {
 
   const queueStats = runJson(queueBin, ['stats', queueFile], 'queue stats');
   report.queue_stats = queueStats;
-  writeJson(path.join(outDir, 'reference-stress-report.json'), report);
-  fs.writeFileSync(path.join(outDir, 'reference-stress-report.md'), renderMarkdown(report), 'utf8');
+  const jsonReportPath = path.join(outDir, 'reference-stress-report.json');
+  const markdownReportPath = path.join(outDir, 'reference-stress-report.md');
+  writeJson(jsonReportPath, report);
+  fs.writeFileSync(markdownReportPath, renderMarkdown(report), 'utf8');
+
+  const artifactBriefPath = path.join(artifactDir, 'brief.md');
+  const artifactSummaryPath = path.join(artifactDir, 'summary.json');
+  fs.writeFileSync(artifactBriefPath, renderMarkdown(report), 'utf8');
+  writeJson(artifactSummaryPath, renderSummaryJson(report));
+
+  const emitBin = path.join(root, 'cmd/BonfyreEmit/bonfyre-emit');
+  if (fs.existsSync(emitBin)) {
+    try {
+      runVoid(emitBin, [artifactDir, '--format', 'bundle', '--out', artifactDir], 'emit stress bundle');
+      report.publish_artifact = {
+        artifact_dir: artifactDir,
+        bundle_dir: path.join(artifactDir, 'emit'),
+        markdown: artifactBriefPath,
+        summary_json: artifactSummaryPath
+      };
+      writeJson(jsonReportPath, report);
+    } catch (error) {
+      report.publish_artifact = {
+        artifact_dir: artifactDir,
+        error: String(error.message || error)
+      };
+      writeJson(jsonReportPath, report);
+    }
+  }
   console.log(JSON.stringify(report, null, 2));
 }
 
