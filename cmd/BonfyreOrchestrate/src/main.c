@@ -20,6 +20,10 @@ typedef struct {
     char latency_class[MAX_TEXT];
     char surface[MAX_TEXT];
     char artifact_path[256];
+    double source_messy;
+    double source_jargon;
+    double source_social;
+    double source_fit;
 } OrchestrateRequest;
 
 typedef struct {
@@ -55,6 +59,10 @@ typedef struct {
     int objective_cms;
     int artifact_local;
     int artifact_structured;
+    int source_messy;
+    int source_jargon;
+    int source_social;
+    int source_high_fit;
 } OrchestrateStateVector;
 
 typedef struct {
@@ -253,17 +261,22 @@ static OrchestrateStateVector request_state_vector(const OrchestrateRequest *req
     v.objective_cms = icontains(req->objective, "cms") || icontains(req->surface, "cms") || icontains(req->objective, "page") || icontains(req->objective, "content");
     v.artifact_local = req->artifact_path[0] && !icontains(req->artifact_path, "http://") && !icontains(req->artifact_path, "https://");
     v.artifact_structured = icontains(req->artifact_path, ".json") || icontains(req->artifact_path, ".md") || icontains(req->artifact_path, ".txt");
+    v.source_messy = req->source_messy >= 3.0;
+    v.source_jargon = req->source_jargon >= 4.0;
+    v.source_social = req->source_social >= 4.0;
+    v.source_high_fit = req->source_fit >= 4.0;
     return v;
 }
 
 static void build_state_key(const OrchestrateRequest *req, char *dst, size_t dst_sz) {
     OrchestrateStateVector v = request_state_vector(req);
-    snprintf(dst, dst_sz, "m%d%d%d-s%d%d%d-l%d%d-o%d%d%d%d-a%d%d",
+    snprintf(dst, dst_sz, "m%d%d%d-s%d%d%d-l%d%d-o%d%d%d%d-a%d%d-c%d%d%d%d",
              v.modality_audio, v.modality_artifact, v.modality_text,
              v.surface_pages, v.surface_api, v.surface_jobs,
              v.latency_interactive, v.latency_batch,
              v.objective_publish, v.objective_retrieval, v.objective_value, v.objective_cms,
-             v.artifact_local, v.artifact_structured);
+             v.artifact_local, v.artifact_structured,
+             v.source_messy, v.source_jargon, v.source_social, v.source_high_fit);
 }
 
 static int json_string(const char *json, const char *key, char *dst, size_t dst_sz) {
@@ -335,6 +348,10 @@ static int load_request(const char *path, OrchestrateRequest *req) {
     json_string(json, "latency_class", req->latency_class, sizeof(req->latency_class));
     json_string(json, "surface", req->surface, sizeof(req->surface));
     json_string(json, "artifact_path", req->artifact_path, sizeof(req->artifact_path));
+    json_double(json, "source_messy", &req->source_messy);
+    json_double(json, "source_jargon", &req->source_jargon);
+    json_double(json, "source_social", &req->source_social);
+    json_double(json, "source_fit", &req->source_fit);
     free(json);
     infer_defaults(req);
     return 0;
@@ -1125,13 +1142,23 @@ static void heuristic_plan(const OrchestrateRequest *req, OrchestratePlan *plan)
         add_selected(plan, "ingest");
         add_selected(plan, "media-prep");
         add_selected(plan, "transcribe");
-        add_selected(plan, fast ? "brief" : "transcript-clean");
-        if (fast) {
+        add_selected(plan, (fast && req->source_messy < 3.0) ? "brief" : "transcript-clean");
+        if (fast && req->source_messy < 3.0) {
             add_booster(plan, "transcript-clean");
             add_booster(plan, "paragraph");
         } else {
             add_selected(plan, "paragraph");
             add_selected(plan, "brief");
+        }
+        if (req->source_messy >= 3.0) {
+            add_selected(plan, "segment");
+        }
+        if (req->source_social >= 4.0) {
+            add_selected(plan, "tone");
+            add_booster(plan, "speechloop");
+        }
+        if (req->source_jargon >= 4.0) {
+            add_selected(plan, "tag");
         }
         add_booster(plan, "proof");
         add_booster(plan, "tag");
@@ -1162,6 +1189,9 @@ static void heuristic_plan(const OrchestrateRequest *req, OrchestratePlan *plan)
     if (icontains(req->objective, "memory") || icontains(req->objective, "search") ||
         icontains(req->objective, "semantic") || icontains(req->objective, "repo") ||
         icontains(req->objective, "civic") || icontains(req->objective, "atlas")) {
+        if (req->source_jargon >= 4.0 || req->source_fit >= 4.0) {
+            add_selected(plan, "embed");
+        }
         add_booster(plan, "embed");
         add_booster(plan, "index");
         add_booster(plan, "vec");
@@ -1180,9 +1210,14 @@ static void heuristic_plan(const OrchestrateRequest *req, OrchestratePlan *plan)
 
     if (icontains(req->objective, "shift") || icontains(req->objective, "handoff") ||
         icontains(req->objective, "live") || icontains(req->objective, "call")) {
-        add_booster(plan, "segment");
+        if (req->source_social >= 4.0) {
+            add_selected(plan, "segment");
+            add_selected(plan, "tone");
+        } else {
+            add_booster(plan, "segment");
+            add_booster(plan, "tone");
+        }
         add_booster(plan, "speechloop");
-        add_booster(plan, "tone");
     }
 
     if (icontains(req->surface, "pages")) {
@@ -1242,7 +1277,8 @@ static void write_state_vector(FILE *fp, OrchestrateStateVector v) {
             "\"surface_pages\":%s,\"surface_api\":%s,\"surface_jobs\":%s,"
             "\"latency_interactive\":%s,\"latency_batch\":%s,"
             "\"objective_publish\":%s,\"objective_retrieval\":%s,\"objective_value\":%s,\"objective_cms\":%s,"
-            "\"artifact_local\":%s,\"artifact_structured\":%s}",
+            "\"artifact_local\":%s,\"artifact_structured\":%s,"
+            "\"source_messy\":%s,\"source_jargon\":%s,\"source_social\":%s,\"source_high_fit\":%s}",
             v.modality_audio ? "true" : "false",
             v.modality_artifact ? "true" : "false",
             v.modality_text ? "true" : "false",
@@ -1256,7 +1292,11 @@ static void write_state_vector(FILE *fp, OrchestrateStateVector v) {
             v.objective_value ? "true" : "false",
             v.objective_cms ? "true" : "false",
             v.artifact_local ? "true" : "false",
-            v.artifact_structured ? "true" : "false");
+            v.artifact_structured ? "true" : "false",
+            v.source_messy ? "true" : "false",
+            v.source_jargon ? "true" : "false",
+            v.source_social ? "true" : "false",
+            v.source_high_fit ? "true" : "false");
 }
 
 static void write_baseline_frontier(FILE *fp, const OrchestratePlan *plan) {
@@ -1423,6 +1463,12 @@ static void print_plan(const OrchestrateRequest *req, const OrchestratePlan *pla
     printf("  \"objective\": \"%s\",\n", req->objective);
     printf("  \"latency_class\": \"%s\",\n", req->latency_class);
     printf("  \"surface\": \"%s\",\n", req->surface);
+    printf("  \"source_signals\": {\n");
+    printf("    \"messy_audio\": %.1f,\n", req->source_messy);
+    printf("    \"jargon_density\": %.1f,\n", req->source_jargon);
+    printf("    \"social_complexity\": %.1f,\n", req->source_social);
+    printf("    \"bonfyre_fit\": %.1f\n", req->source_fit);
+    printf("  },\n");
     printf("  \"selected_binaries\": [");
     for (int i = 0; i < plan->selected_count; ++i) {
         if (i) printf(", ");
@@ -1510,7 +1556,11 @@ static void print_plan(const OrchestrateRequest *req, const OrchestratePlan *pla
     printf("    \"objective_value\": %s,\n", sv.objective_value ? "true" : "false");
     printf("    \"objective_cms\": %s,\n", sv.objective_cms ? "true" : "false");
     printf("    \"artifact_local\": %s,\n", sv.artifact_local ? "true" : "false");
-    printf("    \"artifact_structured\": %s\n", sv.artifact_structured ? "true" : "false");
+    printf("    \"artifact_structured\": %s,\n", sv.artifact_structured ? "true" : "false");
+    printf("    \"source_messy\": %s,\n", sv.source_messy ? "true" : "false");
+    printf("    \"source_jargon\": %s,\n", sv.source_jargon ? "true" : "false");
+    printf("    \"source_social\": %s,\n", sv.source_social ? "true" : "false");
+    printf("    \"source_high_fit\": %s\n", sv.source_high_fit ? "true" : "false");
     printf("  },\n");
     printf("  \"stability_gate\": {\n");
     printf("    \"min_policy_gain\": %.3f,\n", 0.015);

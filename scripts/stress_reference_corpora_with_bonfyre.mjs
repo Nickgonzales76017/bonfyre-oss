@@ -248,7 +248,11 @@ function main() {
           reference_repo: app.repo,
           reference_title: source.title,
           reference_url: source.public_url || '',
-          reference_status: source.review_status || 'unknown'
+          reference_status: source.review_status || 'unknown',
+          source_messy: getSignal(source, 'messy_audio'),
+          source_jargon: getSignal(source, 'jargon_density'),
+          source_social: getSignal(source, 'social_complexity'),
+          source_fit: getSignal(source, 'bonfyre_fit')
         };
         writeJson(requestPath, request);
 
