@@ -196,6 +196,7 @@ static double domain_policy_score(BfFeedbackDomains d, BfDomainWeights w) {
 static const char *policy_source_for_mode(const char *mode) {
     if (!mode || !mode[0]) return "heuristic-baseline";
     if (strcmp(mode, "policy-memory") == 0) return "exact-policy-memory";
+    if (strcmp(mode, "state-memory") == 0) return "state-policy-memory";
     if (strcmp(mode, "family-memory") == 0) return "family-policy-prior";
     if (strcmp(mode, "gemma4-delta") == 0) return "stability-gated-gemma-delta";
     return "heuristic-baseline";
@@ -512,6 +513,7 @@ static int ensure_policy_db(sqlite3 **db) {
     const char *sql =
         "CREATE TABLE IF NOT EXISTS orchestration_policy ("
         "signature TEXT PRIMARY KEY,"
+        "state_key TEXT NOT NULL DEFAULT '',"
         "family TEXT NOT NULL DEFAULT 'general',"
         "input_type TEXT NOT NULL DEFAULT '',"
         "latency_class TEXT NOT NULL DEFAULT '',"
@@ -533,6 +535,7 @@ static int ensure_policy_db(sqlite3 **db) {
         "updated_at TEXT NOT NULL"
         ");";
 
+    sqlite3_exec(*db, "ALTER TABLE orchestration_policy ADD COLUMN state_key TEXT NOT NULL DEFAULT '';", NULL, NULL, NULL);
     sqlite3_exec(*db, "ALTER TABLE orchestration_policy ADD COLUMN family TEXT NOT NULL DEFAULT 'general';", NULL, NULL, NULL);
     sqlite3_exec(*db, "ALTER TABLE orchestration_policy ADD COLUMN input_type TEXT NOT NULL DEFAULT '';", NULL, NULL, NULL);
     sqlite3_exec(*db, "ALTER TABLE orchestration_policy ADD COLUMN latency_class TEXT NOT NULL DEFAULT '';", NULL, NULL, NULL);
@@ -568,7 +571,9 @@ static int load_policy_memory(const OrchestrateRequest *req, OrchestratePlan *pl
     sqlite3 *db = NULL;
     if (ensure_policy_db(&db) != 0) return 0;
     char signature[512];
+    char state_key[64];
     build_signature(req, signature, sizeof(signature));
+    build_state_key(req, state_key, sizeof(state_key));
     const char *family = objective_family(req);
 
     sqlite3_stmt *stmt = NULL;
@@ -595,6 +600,27 @@ static int load_policy_memory(const OrchestrateRequest *req, OrchestratePlan *pl
         }
     }
     sqlite3_finalize(stmt);
+    if (!found) {
+        const char *state_sql =
+            "SELECT booster_csv, predicted_confidence, avg_regret, samples, policy_score "
+            "FROM orchestration_policy "
+            "WHERE state_key = ?1 "
+            "AND samples >= 2 AND avg_regret <= 0.12 AND policy_score >= 0.30 "
+            "ORDER BY policy_score DESC, samples DESC LIMIT 1;";
+        if (sqlite3_prepare_v2(db, state_sql, -1, &stmt, NULL) == SQLITE_OK) {
+            sqlite3_bind_text(stmt, 1, state_key, -1, SQLITE_STATIC);
+            if (sqlite3_step(stmt) == SQLITE_ROW) {
+                const unsigned char *csv = sqlite3_column_text(stmt, 0);
+                double cached_conf = sqlite3_column_double(stmt, 1);
+                if (csv && cached_conf + 0.01 >= plan->predicted_confidence) {
+                    import_booster_csv(req, plan, (const char *)csv);
+                    copy_text(plan->mode, sizeof(plan->mode), "state-memory");
+                    found = 1;
+                }
+            }
+        }
+        sqlite3_finalize(stmt);
+    }
     if (!found) {
         const char *fallback_sql =
             "SELECT booster_csv, predicted_confidence, avg_regret, samples, policy_score "
@@ -627,8 +653,10 @@ static void save_policy_memory(const OrchestrateRequest *req, const OrchestrateP
     sqlite3 *db = NULL;
     if (ensure_policy_db(&db) != 0) return;
     char signature[512];
+    char state_key[64];
     char updated_at[32];
     build_signature(req, signature, sizeof(signature));
+    build_state_key(req, state_key, sizeof(state_key));
     bf_iso_timestamp(updated_at, sizeof(updated_at));
     const char *family = objective_family(req);
 
@@ -642,9 +670,10 @@ static void save_policy_memory(const OrchestrateRequest *req, const OrchestrateP
 
     sqlite3_stmt *stmt = NULL;
     const char *sql =
-        "INSERT INTO orchestration_policy(signature, family, input_type, latency_class, surface, booster_csv, predicted_confidence, predicted_information_gain, updated_at) "
-        "VALUES(?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9) "
+        "INSERT INTO orchestration_policy(signature, state_key, family, input_type, latency_class, surface, booster_csv, predicted_confidence, predicted_information_gain, updated_at) "
+        "VALUES(?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10) "
         "ON CONFLICT(signature) DO UPDATE SET "
+        "state_key=excluded.state_key, "
         "family=excluded.family, "
         "input_type=excluded.input_type, "
         "latency_class=excluded.latency_class, "
@@ -655,14 +684,15 @@ static void save_policy_memory(const OrchestrateRequest *req, const OrchestrateP
         "updated_at=excluded.updated_at;";
     if (sqlite3_prepare_v2(db, sql, -1, &stmt, NULL) == SQLITE_OK) {
         sqlite3_bind_text(stmt, 1, signature, -1, SQLITE_STATIC);
-        sqlite3_bind_text(stmt, 2, family, -1, SQLITE_STATIC);
-        sqlite3_bind_text(stmt, 3, req->input_type, -1, SQLITE_STATIC);
-        sqlite3_bind_text(stmt, 4, req->latency_class, -1, SQLITE_STATIC);
-        sqlite3_bind_text(stmt, 5, req->surface, -1, SQLITE_STATIC);
-        sqlite3_bind_text(stmt, 6, booster_csv, -1, SQLITE_STATIC);
-        sqlite3_bind_double(stmt, 7, plan->predicted_confidence);
-        sqlite3_bind_double(stmt, 8, plan->predicted_information_gain);
-        sqlite3_bind_text(stmt, 9, updated_at, -1, SQLITE_STATIC);
+        sqlite3_bind_text(stmt, 2, state_key, -1, SQLITE_STATIC);
+        sqlite3_bind_text(stmt, 3, family, -1, SQLITE_STATIC);
+        sqlite3_bind_text(stmt, 4, req->input_type, -1, SQLITE_STATIC);
+        sqlite3_bind_text(stmt, 5, req->latency_class, -1, SQLITE_STATIC);
+        sqlite3_bind_text(stmt, 6, req->surface, -1, SQLITE_STATIC);
+        sqlite3_bind_text(stmt, 7, booster_csv, -1, SQLITE_STATIC);
+        sqlite3_bind_double(stmt, 8, plan->predicted_confidence);
+        sqlite3_bind_double(stmt, 9, plan->predicted_information_gain);
+        sqlite3_bind_text(stmt, 10, updated_at, -1, SQLITE_STATIC);
         sqlite3_step(stmt);
     }
     sqlite3_finalize(stmt);
@@ -743,16 +773,19 @@ static int command_feedback(const char *path, const char *feedback_arg, const ch
     }
 
     char signature[512];
+    char state_key[64];
     char updated_at[32];
     build_signature(&req, signature, sizeof(signature));
+    build_state_key(&req, state_key, sizeof(state_key));
     bf_iso_timestamp(updated_at, sizeof(updated_at));
     const char *family = objective_family(&req);
 
     sqlite3_stmt *stmt = NULL;
     const char *sql =
-        "INSERT INTO orchestration_policy(signature, family, input_type, latency_class, surface, booster_csv, predicted_confidence, predicted_information_gain, avg_quality_gain, avg_latency_delta, avg_regret, exec_score, artifact_score, tensor_score, cms_score, retrieval_score, value_score, policy_score, samples, updated_at) "
-        "VALUES(?1, ?2, ?3, ?4, ?5, '', 0, 0, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, 1, ?16) "
+        "INSERT INTO orchestration_policy(signature, state_key, family, input_type, latency_class, surface, booster_csv, predicted_confidence, predicted_information_gain, avg_quality_gain, avg_latency_delta, avg_regret, exec_score, artifact_score, tensor_score, cms_score, retrieval_score, value_score, policy_score, samples, updated_at) "
+        "VALUES(?1, ?2, ?3, ?4, ?5, ?6, '', 0, 0, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, 1, ?17) "
         "ON CONFLICT(signature) DO UPDATE SET "
+        "state_key=excluded.state_key, "
         "family=excluded.family, "
         "input_type=excluded.input_type, "
         "latency_class=excluded.latency_class, "
@@ -775,21 +808,22 @@ static int command_feedback(const char *path, const char *feedback_arg, const ch
         return 1;
     }
     sqlite3_bind_text(stmt, 1, signature, -1, SQLITE_STATIC);
-    sqlite3_bind_text(stmt, 2, family, -1, SQLITE_STATIC);
-    sqlite3_bind_text(stmt, 3, req.input_type, -1, SQLITE_STATIC);
-    sqlite3_bind_text(stmt, 4, req.latency_class, -1, SQLITE_STATIC);
-    sqlite3_bind_text(stmt, 5, req.surface, -1, SQLITE_STATIC);
-    sqlite3_bind_double(stmt, 6, quality_gain);
-    sqlite3_bind_double(stmt, 7, latency_delta);
-    sqlite3_bind_double(stmt, 8, regret);
-    sqlite3_bind_double(stmt, 9, domains.exec);
-    sqlite3_bind_double(stmt, 10, domains.artifact);
-    sqlite3_bind_double(stmt, 11, domains.tensor);
-    sqlite3_bind_double(stmt, 12, domains.cms);
-    sqlite3_bind_double(stmt, 13, domains.retrieval);
-    sqlite3_bind_double(stmt, 14, domains.value);
-    sqlite3_bind_double(stmt, 15, policy_score);
-    sqlite3_bind_text(stmt, 16, updated_at, -1, SQLITE_STATIC);
+    sqlite3_bind_text(stmt, 2, state_key, -1, SQLITE_STATIC);
+    sqlite3_bind_text(stmt, 3, family, -1, SQLITE_STATIC);
+    sqlite3_bind_text(stmt, 4, req.input_type, -1, SQLITE_STATIC);
+    sqlite3_bind_text(stmt, 5, req.latency_class, -1, SQLITE_STATIC);
+    sqlite3_bind_text(stmt, 6, req.surface, -1, SQLITE_STATIC);
+    sqlite3_bind_double(stmt, 7, quality_gain);
+    sqlite3_bind_double(stmt, 8, latency_delta);
+    sqlite3_bind_double(stmt, 9, regret);
+    sqlite3_bind_double(stmt, 10, domains.exec);
+    sqlite3_bind_double(stmt, 11, domains.artifact);
+    sqlite3_bind_double(stmt, 12, domains.tensor);
+    sqlite3_bind_double(stmt, 13, domains.cms);
+    sqlite3_bind_double(stmt, 14, domains.retrieval);
+    sqlite3_bind_double(stmt, 15, domains.value);
+    sqlite3_bind_double(stmt, 16, policy_score);
+    sqlite3_bind_text(stmt, 17, updated_at, -1, SQLITE_STATIC);
     sqlite3_step(stmt);
     sqlite3_finalize(stmt);
     sqlite3_close(db);
