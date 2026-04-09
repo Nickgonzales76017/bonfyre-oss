@@ -37,6 +37,11 @@ on:
         required: false
         default: main
         type: string
+      bonfyre_targets:
+        description: Space-delimited Bonfyre cmd target directories to build for this app.
+        required: false
+        default: BonfyreBrief BonfyreTag BonfyreEmbed BonfyreVec BonfyreIndex BonfyreRender BonfyreEmit
+        type: string
   workflow_dispatch:
     inputs:
       app_name:
@@ -73,6 +78,11 @@ on:
         required: false
         default: main
         type: string
+      bonfyre_targets:
+        description: Space-delimited Bonfyre cmd target directories to build for this app.
+        required: false
+        default: BonfyreBrief BonfyreTag BonfyreEmbed BonfyreVec BonfyreIndex BonfyreRender BonfyreEmit
+        type: string
 
 permissions:
   contents: write
@@ -104,9 +114,9 @@ jobs:
         run: |
           git clone --depth 1 --branch "${{ inputs.bonfyre_ref }}" \
             "https://github.com/${{ inputs.bonfyre_repo }}.git" /tmp/bonfyre
-          cd /tmp/bonfyre
-          make -j"$(nproc)" 2>&1 | tail -3
-          sudo make install
+          chmod +x /tmp/bonfyre/scripts/build-portable-runtime.sh
+          /tmp/bonfyre/scripts/build-portable-runtime.sh ${{ inputs.bonfyre_targets }}
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 
       - name: Detect changed inputs
         id: detect
