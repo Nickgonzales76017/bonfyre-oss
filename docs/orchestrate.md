@@ -139,6 +139,8 @@ If there is no exact signature hit, Bonfyre can also fall back to a proven workl
 
 Between those two, Bonfyre can also reuse a frontier by exact compressed machine state when the same `state_key` has already produced a strong low-regret outcome.
 
+Bonfyre also distills those successful frontiers back into the deterministic planner as ranking priors, so repeated wins can bias booster ordering even before an exact memory hit is available.
+
 Gemma is gated by the current plan itself:
 
 - low expected information gain: skip the model
@@ -256,6 +258,16 @@ The Gemma path now uses that same compressed substrate too. When Bonfyre asks th
 - the typed operator registry
 
 So the model sees Bonfyre's machine ontology and bounded control surface rather than a loose human-style request blob.
+
+## Distillation
+
+Successful state-level and family-level frontiers now feed back into deterministic booster ranking as thin priors. That means:
+
+- exact memory reuse is still strongest
+- state and family memory still reuse directly when available
+- but even the heuristic frontier can start preferring historically successful boosters for the same machine conditions
+
+This is the first real distillation loop from policy memory back into native planning.
 
 ## Booster frontier
 

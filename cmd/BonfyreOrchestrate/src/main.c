@@ -77,6 +77,12 @@ typedef struct {
     double predicted_policy_score;
 } OrchestratePlan;
 
+typedef struct {
+    int boosters[MAX_PLAN_STEPS];
+    int count;
+    char source[24];
+} DistilledPriors;
+
 static const char *DEFAULT_MODEL = "google/gemma-4-E4B";
 static const char *DEFAULT_POLICY_DB = ".bonfyre/orchestrate.db";
 static const char *SYSTEM_PROMPT =
@@ -341,6 +347,14 @@ static void add_surface(OrchestratePlan *plan, const char *surface) {
     plan->surfaces[plan->surface_count++] = surface;
 }
 
+static int priors_contains(const DistilledPriors *priors, int op_idx) {
+    if (!priors) return 0;
+    for (int i = 0; i < priors->count; ++i) {
+        if (priors->boosters[i] == op_idx) return i + 1;
+    }
+    return 0;
+}
+
 static BfFeedbackDomains profile_domains(BfOperatorProfile profile) {
     BfFeedbackDomains d;
     d.exec = clamp01(1.0 - profile.latency);
@@ -352,7 +366,7 @@ static BfFeedbackDomains profile_domains(BfOperatorProfile profile) {
     return d;
 }
 
-static double booster_gain_score(const OrchestrateRequest *req, int op_idx) {
+static double booster_gain_score(const OrchestrateRequest *req, int op_idx, const DistilledPriors *priors) {
     BfOperatorProfile profile = bf_operator_profile(&BF_OPERATORS[op_idx]);
     BfFeedbackDomains d = profile_domains(profile);
     BfDomainWeights w = objective_weights(req);
@@ -360,10 +374,16 @@ static double booster_gain_score(const OrchestrateRequest *req, int op_idx) {
     double gain = domain_policy_score(d, w);
     double latency_penalty = fast ? 0.45 : 0.28;
     double cost_penalty = fast ? 0.25 : 0.18;
-    return gain - (profile.latency * latency_penalty) - (profile.cost * cost_penalty);
+    double prior_bonus = 0.0;
+    int rank = priors_contains(priors, op_idx);
+    if (rank > 0) {
+        prior_bonus = 0.08 - ((double)(rank - 1) * 0.01);
+        if (prior_bonus < 0.02) prior_bonus = 0.02;
+    }
+    return gain - (profile.latency * latency_penalty) - (profile.cost * cost_penalty) + prior_bonus;
 }
 
-static void rebalance_boosters(const OrchestrateRequest *req, OrchestratePlan *plan) {
+static void rebalance_boosters(const OrchestrateRequest *req, OrchestratePlan *plan, const DistilledPriors *priors) {
     if (plan->booster_count <= 1) return;
     int fast = icontains(req->latency_class, "fast") || icontains(req->latency_class, "interactive") || icontains(req->latency_class, "realtime");
     int max_boosters = fast ? 4 : 7;
@@ -372,7 +392,7 @@ static void rebalance_boosters(const OrchestrateRequest *req, OrchestratePlan *p
     }
 
     double scores[MAX_PLAN_STEPS];
-    for (int i = 0; i < plan->booster_count; ++i) scores[i] = booster_gain_score(req, plan->boosters[i]);
+    for (int i = 0; i < plan->booster_count; ++i) scores[i] = booster_gain_score(req, plan->boosters[i], priors);
 
     for (int i = 0; i < plan->booster_count - 1; ++i) {
         int best = i;
@@ -565,6 +585,76 @@ static void import_booster_csv(const OrchestrateRequest *req, OrchestratePlan *p
     free(copy);
     collect_outputs(plan);
     compute_plan_metrics(req, plan);
+}
+
+static void parse_priors_csv(DistilledPriors *priors, const char *csv, const char *source) {
+    if (!priors || !csv || !csv[0]) return;
+    memset(priors, 0, sizeof(*priors));
+    copy_text(priors->source, sizeof(priors->source), source);
+    char *copy = strdup(csv);
+    if (!copy) return;
+    for (char *save = NULL, *token = strtok_r(copy, ",", &save);
+         token && priors->count < MAX_PLAN_STEPS;
+         token = strtok_r(NULL, ",", &save)) {
+        int idx = op_index(token);
+        if (idx >= 0 && !contains_idx(priors->boosters, priors->count, idx)) {
+            priors->boosters[priors->count++] = idx;
+        }
+    }
+    free(copy);
+}
+
+static int load_distilled_priors(const OrchestrateRequest *req, DistilledPriors *priors) {
+    if (!priors) return 0;
+    memset(priors, 0, sizeof(*priors));
+    sqlite3 *db = NULL;
+    if (ensure_policy_db(&db) != 0) return 0;
+    char state_key[64];
+    build_state_key(req, state_key, sizeof(state_key));
+    const char *family = objective_family(req);
+    sqlite3_stmt *stmt = NULL;
+    int found = 0;
+
+    const char *state_sql =
+        "SELECT booster_csv FROM orchestration_policy "
+        "WHERE state_key = ?1 AND samples >= 2 AND avg_regret <= 0.12 AND policy_score >= 0.30 "
+        "ORDER BY policy_score DESC, samples DESC LIMIT 1;";
+    if (sqlite3_prepare_v2(db, state_sql, -1, &stmt, NULL) == SQLITE_OK) {
+        sqlite3_bind_text(stmt, 1, state_key, -1, SQLITE_STATIC);
+        if (sqlite3_step(stmt) == SQLITE_ROW) {
+            const unsigned char *csv = sqlite3_column_text(stmt, 0);
+            if (csv) {
+                parse_priors_csv(priors, (const char *)csv, "state");
+                found = priors->count > 0;
+            }
+        }
+    }
+    sqlite3_finalize(stmt);
+
+    if (!found) {
+        const char *family_sql =
+            "SELECT booster_csv FROM orchestration_policy "
+            "WHERE family = ?1 AND input_type = ?2 AND latency_class = ?3 AND surface = ?4 "
+            "AND samples >= 2 AND avg_regret <= 0.10 AND policy_score >= 0.35 "
+            "ORDER BY policy_score DESC, samples DESC LIMIT 1;";
+        if (sqlite3_prepare_v2(db, family_sql, -1, &stmt, NULL) == SQLITE_OK) {
+            sqlite3_bind_text(stmt, 1, family, -1, SQLITE_STATIC);
+            sqlite3_bind_text(stmt, 2, req->input_type, -1, SQLITE_STATIC);
+            sqlite3_bind_text(stmt, 3, req->latency_class, -1, SQLITE_STATIC);
+            sqlite3_bind_text(stmt, 4, req->surface, -1, SQLITE_STATIC);
+            if (sqlite3_step(stmt) == SQLITE_ROW) {
+                const unsigned char *csv = sqlite3_column_text(stmt, 0);
+                if (csv) {
+                    parse_priors_csv(priors, (const char *)csv, "family");
+                    found = priors->count > 0;
+                }
+            }
+        }
+        sqlite3_finalize(stmt);
+    }
+
+    sqlite3_close(db);
+    return found;
 }
 
 static int load_policy_memory(const OrchestrateRequest *req, OrchestratePlan *plan) {
@@ -845,6 +935,8 @@ static void init_plan(OrchestratePlan *plan, const char *model) {
 
 static void heuristic_plan(const OrchestrateRequest *req, OrchestratePlan *plan) {
     int fast = icontains(req->latency_class, "fast") || icontains(req->latency_class, "interactive") || icontains(req->latency_class, "realtime");
+    DistilledPriors priors;
+    int have_priors = load_distilled_priors(req, &priors);
 
     if (icontains(req->input_type, "audio")) {
         add_selected(plan, "ingest");
@@ -924,7 +1016,7 @@ static void heuristic_plan(const OrchestrateRequest *req, OrchestratePlan *plan)
     }
     if (!plan->surface_count) add_surface(plan, "bonfyre-runtime");
 
-    rebalance_boosters(req, plan);
+    rebalance_boosters(req, plan, have_priors ? &priors : NULL);
     collect_outputs(plan);
     compute_plan_metrics(req, plan);
 }
@@ -1060,7 +1152,9 @@ static void adopt_model_boosters(const OrchestrateRequest *req, OrchestratePlan 
         }
     }
     if (!added) return;
-    rebalance_boosters(req, &candidate);
+    DistilledPriors priors;
+    int have_priors = load_distilled_priors(req, &priors);
+    rebalance_boosters(req, &candidate, have_priors ? &priors : NULL);
     collect_outputs(&candidate);
     compute_plan_metrics(req, &candidate);
     if (!plan_stable_improvement(&baseline, &candidate)) return;
