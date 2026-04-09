@@ -52,7 +52,8 @@ static void usage(void) {
             "bonfyre-orchestrate\n\n"
             "Usage:\n"
             "  bonfyre-orchestrate status\n"
-            "  bonfyre-orchestrate plan <request.json>\n\n"
+            "  bonfyre-orchestrate plan <request.json>\n"
+            "  bonfyre-orchestrate feedback <request.json> <quality_gain> <latency_delta>\n\n"
             "Environment:\n"
             "  BONFYRE_ORCHESTRATE_ENDPOINT  OpenAI-compatible Gemma endpoint\n"
             "  BONFYRE_ORCHESTRATE_MODEL     Model name (default: google/gemma-4-E4B)\n"
@@ -257,6 +258,10 @@ static int ensure_policy_db(sqlite3 **db) {
         "booster_csv TEXT NOT NULL,"
         "predicted_confidence REAL NOT NULL,"
         "predicted_information_gain REAL NOT NULL,"
+        "avg_quality_gain REAL NOT NULL DEFAULT 0,"
+        "avg_latency_delta REAL NOT NULL DEFAULT 0,"
+        "avg_regret REAL NOT NULL DEFAULT 0,"
+        "samples INTEGER NOT NULL DEFAULT 0,"
         "updated_at TEXT NOT NULL"
         ");";
     if (sqlite3_exec(*db, sql, NULL, NULL, NULL) != SQLITE_OK) {
@@ -287,7 +292,7 @@ static int load_policy_memory(const OrchestrateRequest *req, OrchestratePlan *pl
 
     sqlite3_stmt *stmt = NULL;
     const char *sql =
-        "SELECT booster_csv, predicted_confidence, predicted_information_gain "
+        "SELECT booster_csv, predicted_confidence, predicted_information_gain, avg_regret, samples "
         "FROM orchestration_policy WHERE signature = ?1;";
     if (sqlite3_prepare_v2(db, sql, -1, &stmt, NULL) != SQLITE_OK) {
         sqlite3_close(db);
@@ -298,7 +303,9 @@ static int load_policy_memory(const OrchestrateRequest *req, OrchestratePlan *pl
     if (sqlite3_step(stmt) == SQLITE_ROW) {
         const unsigned char *csv = sqlite3_column_text(stmt, 0);
         double cached_conf = sqlite3_column_double(stmt, 1);
-        if (csv && cached_conf >= plan->predicted_confidence) {
+        double cached_regret = sqlite3_column_double(stmt, 3);
+        int samples = sqlite3_column_int(stmt, 4);
+        if (csv && cached_conf >= plan->predicted_confidence && (samples < 3 || cached_regret <= 0.15)) {
             import_booster_csv(plan, (const char *)csv);
             copy_text(plan->mode, sizeof(plan->mode), "policy-memory");
             found = 1;
@@ -344,6 +351,57 @@ static void save_policy_memory(const OrchestrateRequest *req, const OrchestrateP
     }
     sqlite3_finalize(stmt);
     sqlite3_close(db);
+}
+
+static int command_feedback(const char *path, const char *quality_gain_text, const char *latency_delta_text) {
+    OrchestrateRequest req;
+    if (load_request(path, &req) != 0) {
+        fprintf(stderr, "Failed to read request file: %s\n", path);
+        return 1;
+    }
+
+    double quality_gain = atof(quality_gain_text);
+    double latency_delta = atof(latency_delta_text);
+    double regret = latency_delta - quality_gain;
+
+    sqlite3 *db = NULL;
+    if (ensure_policy_db(&db) != 0) {
+        fprintf(stderr, "Failed to open policy db\n");
+        return 1;
+    }
+
+    char signature[512];
+    char updated_at[32];
+    build_signature(&req, signature, sizeof(signature));
+    bf_iso_timestamp(updated_at, sizeof(updated_at));
+
+    sqlite3_stmt *stmt = NULL;
+    const char *sql =
+        "INSERT INTO orchestration_policy(signature, booster_csv, predicted_confidence, predicted_information_gain, avg_quality_gain, avg_latency_delta, avg_regret, samples, updated_at) "
+        "VALUES(?1, '', 0, 0, ?2, ?3, ?4, 1, ?5) "
+        "ON CONFLICT(signature) DO UPDATE SET "
+        "avg_quality_gain=((avg_quality_gain*samples)+excluded.avg_quality_gain)/(samples+1), "
+        "avg_latency_delta=((avg_latency_delta*samples)+excluded.avg_latency_delta)/(samples+1), "
+        "avg_regret=((avg_regret*samples)+excluded.avg_regret)/(samples+1), "
+        "samples=samples+1, "
+        "updated_at=excluded.updated_at;";
+    if (sqlite3_prepare_v2(db, sql, -1, &stmt, NULL) != SQLITE_OK) {
+        sqlite3_close(db);
+        fprintf(stderr, "Failed to prepare feedback statement\n");
+        return 1;
+    }
+    sqlite3_bind_text(stmt, 1, signature, -1, SQLITE_STATIC);
+    sqlite3_bind_double(stmt, 2, quality_gain);
+    sqlite3_bind_double(stmt, 3, latency_delta);
+    sqlite3_bind_double(stmt, 4, regret);
+    sqlite3_bind_text(stmt, 5, updated_at, -1, SQLITE_STATIC);
+    sqlite3_step(stmt);
+    sqlite3_finalize(stmt);
+    sqlite3_close(db);
+
+    printf("{\"status\":\"ok\",\"signature\":\"%s\",\"quality_gain\":%.3f,\"latency_delta\":%.3f,\"regret\":%.3f}\n",
+           signature, quality_gain, latency_delta, regret);
+    return 0;
 }
 
 static void init_plan(OrchestratePlan *plan, const char *model) {
@@ -635,6 +693,7 @@ int main(int argc, char **argv) {
     }
     if (strcmp(argv[1], "status") == 0) return command_status();
     if (strcmp(argv[1], "plan") == 0 && argc >= 3) return command_plan(argv[2]);
+    if (strcmp(argv[1], "feedback") == 0 && argc >= 5) return command_feedback(argv[2], argv[3], argv[4]);
     if (strcmp(argv[1], "help") == 0 || strcmp(argv[1], "--help") == 0 || strcmp(argv[1], "-h") == 0) {
         usage();
         return 0;

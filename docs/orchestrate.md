@@ -111,3 +111,25 @@ Gemma is gated by the current plan itself:
 - low expected information gain: skip the model
 - already-high confidence: skip the model
 - known policy signature: reuse cached booster set first
+
+## Feedback and regret
+
+Bonfyre can now record simple post-run feedback:
+
+```bash
+bonfyre-orchestrate feedback request.json 0.22 0.08
+```
+
+Meaning:
+
+- `0.22` = observed quality gain
+- `0.08` = observed latency delta
+
+The orchestrator stores:
+
+- average quality gain
+- average latency delta
+- average regret
+- sample count
+
+This is the first thin evaluation loop needed for policy distillation and long-run adaptive control.
