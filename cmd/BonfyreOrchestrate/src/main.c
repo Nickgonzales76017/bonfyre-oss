@@ -75,6 +75,20 @@ typedef struct {
     double predicted_utility;
     double predicted_information_gain;
     double predicted_policy_score;
+    double baseline_cost;
+    double baseline_latency;
+    double baseline_confidence;
+    double baseline_reversibility;
+    double baseline_utility;
+    double baseline_information_gain;
+    double baseline_policy_score;
+    double uplift_policy_score;
+    double uplift_latency;
+    double uplift_cost;
+    double uplift_confidence;
+    double uplift_reversibility;
+    double uplift_utility;
+    double uplift_information_gain;
 } OrchestratePlan;
 
 typedef struct {
@@ -447,7 +461,14 @@ static void compute_plan_metrics(const OrchestrateRequest *req, OrchestratePlan 
     double reversibility = 0.0;
     double utility = 0.0;
     double information_gain = 0.0;
+    double base_cost = 0.0;
+    double base_latency = 0.0;
+    double base_confidence = 0.0;
+    double base_reversibility = 0.0;
+    double base_utility = 0.0;
+    double base_information_gain = 0.0;
     int count = 0;
+    int base_count = 0;
 
     for (int i = 0; i < plan->selected_count; ++i) {
         BfOperatorProfile profile = bf_operator_profile(&BF_OPERATORS[plan->selected[i]]);
@@ -457,7 +478,14 @@ static void compute_plan_metrics(const OrchestrateRequest *req, OrchestratePlan 
         reversibility += profile.reversibility;
         utility += profile.utility;
         information_gain += profile.information_gain;
+        base_cost += profile.cost;
+        base_latency += profile.latency;
+        base_confidence += profile.confidence;
+        base_reversibility += profile.reversibility;
+        base_utility += profile.utility;
+        base_information_gain += profile.information_gain;
         count++;
+        base_count++;
     }
     for (int i = 0; i < plan->booster_count; ++i) {
         BfOperatorProfile profile = bf_operator_profile(&BF_OPERATORS[plan->boosters[i]]);
@@ -471,12 +499,19 @@ static void compute_plan_metrics(const OrchestrateRequest *req, OrchestratePlan 
     }
 
     if (count <= 0) count = 1;
+    if (base_count <= 0) base_count = 1;
     plan->predicted_cost = cost / (double)count;
     plan->predicted_latency = latency / (double)count;
     plan->predicted_confidence = confidence / (double)count;
     plan->predicted_reversibility = reversibility / (double)count;
     plan->predicted_utility = utility / (double)count;
     plan->predicted_information_gain = information_gain / (double)count;
+    plan->baseline_cost = base_cost / (double)base_count;
+    plan->baseline_latency = base_latency / (double)base_count;
+    plan->baseline_confidence = base_confidence / (double)base_count;
+    plan->baseline_reversibility = base_reversibility / (double)base_count;
+    plan->baseline_utility = base_utility / (double)base_count;
+    plan->baseline_information_gain = base_information_gain / (double)base_count;
     BfFeedbackDomains as_domains;
     as_domains.exec = clamp01(1.0 - plan->predicted_latency);
     as_domains.artifact = clamp01(plan->predicted_reversibility);
@@ -485,6 +520,20 @@ static void compute_plan_metrics(const OrchestrateRequest *req, OrchestratePlan 
     as_domains.retrieval = clamp01((plan->predicted_information_gain + plan->predicted_utility) * 0.5);
     as_domains.value = clamp01((plan->predicted_utility + (1.0 - plan->predicted_cost)) * 0.5);
     plan->predicted_policy_score = domain_policy_score(as_domains, objective_weights(req));
+    as_domains.exec = clamp01(1.0 - plan->baseline_latency);
+    as_domains.artifact = clamp01(plan->baseline_reversibility);
+    as_domains.tensor = clamp01((plan->baseline_information_gain + plan->baseline_reversibility) * 0.5);
+    as_domains.cms = clamp01((plan->baseline_utility + plan->baseline_confidence) * 0.5);
+    as_domains.retrieval = clamp01((plan->baseline_information_gain + plan->baseline_utility) * 0.5);
+    as_domains.value = clamp01((plan->baseline_utility + (1.0 - plan->baseline_cost)) * 0.5);
+    plan->baseline_policy_score = domain_policy_score(as_domains, objective_weights(req));
+    plan->uplift_policy_score = plan->predicted_policy_score - plan->baseline_policy_score;
+    plan->uplift_latency = plan->predicted_latency - plan->baseline_latency;
+    plan->uplift_cost = plan->predicted_cost - plan->baseline_cost;
+    plan->uplift_confidence = plan->predicted_confidence - plan->baseline_confidence;
+    plan->uplift_reversibility = plan->predicted_reversibility - plan->baseline_reversibility;
+    plan->uplift_utility = plan->predicted_utility - plan->baseline_utility;
+    plan->uplift_information_gain = plan->predicted_information_gain - plan->baseline_information_gain;
 }
 
 static void build_signature(const OrchestrateRequest *req, char *dst, size_t dst_sz) {
@@ -1268,6 +1317,24 @@ static void print_plan(const OrchestrateRequest *req, const OrchestratePlan *pla
     printf("  \"predicted_utility\": %.3f,\n", plan->predicted_utility);
     printf("  \"predicted_information_gain\": %.3f,\n", plan->predicted_information_gain);
     printf("  \"predicted_policy_score\": %.3f,\n", plan->predicted_policy_score);
+    printf("  \"baseline_frontier_metrics\": {\n");
+    printf("    \"cost\": %.3f,\n", plan->baseline_cost);
+    printf("    \"latency\": %.3f,\n", plan->baseline_latency);
+    printf("    \"confidence\": %.3f,\n", plan->baseline_confidence);
+    printf("    \"reversibility\": %.3f,\n", plan->baseline_reversibility);
+    printf("    \"utility\": %.3f,\n", plan->baseline_utility);
+    printf("    \"information_gain\": %.3f,\n", plan->baseline_information_gain);
+    printf("    \"policy_score\": %.3f\n", plan->baseline_policy_score);
+    printf("  },\n");
+    printf("  \"frontier_uplift\": {\n");
+    printf("    \"policy_score\": %.3f,\n", plan->uplift_policy_score);
+    printf("    \"latency\": %.3f,\n", plan->uplift_latency);
+    printf("    \"cost\": %.3f,\n", plan->uplift_cost);
+    printf("    \"confidence\": %.3f,\n", plan->uplift_confidence);
+    printf("    \"reversibility\": %.3f,\n", plan->uplift_reversibility);
+    printf("    \"utility\": %.3f,\n", plan->uplift_utility);
+    printf("    \"information_gain\": %.3f\n", plan->uplift_information_gain);
+    printf("  },\n");
     printf("  \"active_domain_weights\": {\n");
     printf("    \"exec\": %.3f,\n", w.exec);
     printf("    \"artifact\": %.3f,\n", w.artifact);

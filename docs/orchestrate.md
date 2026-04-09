@@ -79,6 +79,24 @@ export BONFYRE_ORCHESTRATE_API_KEY=...
   "predicted_utility": 0.779,
   "predicted_information_gain": 0.512,
   "predicted_policy_score": 0.603,
+  "baseline_frontier_metrics": {
+    "cost": 0.390,
+    "latency": 0.310,
+    "confidence": 0.700,
+    "reversibility": 0.760,
+    "utility": 0.690,
+    "information_gain": 0.420,
+    "policy_score": 0.560
+  },
+  "frontier_uplift": {
+    "policy_score": 0.043,
+    "latency": 0.077,
+    "cost": 0.062,
+    "confidence": 0.031,
+    "reversibility": 0.044,
+    "utility": 0.089,
+    "information_gain": 0.092
+  },
   "active_domain_weights": {
     "exec": 0.270,
     "artifact": 0.207,
@@ -268,6 +286,15 @@ Successful state-level and family-level frontiers now feed back into determinist
 - but even the heuristic frontier can start preferring historically successful boosters for the same machine conditions
 
 This is the first real distillation loop from policy memory back into native planning.
+
+## Counterfactuals
+
+Each plan now also exposes:
+
+- `baseline_frontier_metrics`
+- `frontier_uplift`
+
+That gives Bonfyre an explicit counterfactual against the deterministic floor, so the system can measure what the retained frontier actually changed instead of treating the chosen path as an opaque result.
 
 ## Booster frontier
 
