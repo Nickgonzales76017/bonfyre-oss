@@ -284,23 +284,82 @@ static void add_surface(OrchestratePlan *plan, const char *surface) {
     plan->surfaces[plan->surface_count++] = surface;
 }
 
+static BfFeedbackDomains profile_domains(BfOperatorProfile profile) {
+    BfFeedbackDomains d;
+    d.exec = clamp01(1.0 - profile.latency);
+    d.artifact = clamp01(profile.reversibility);
+    d.tensor = clamp01((profile.information_gain + profile.reversibility) * 0.5);
+    d.cms = clamp01((profile.utility + profile.confidence) * 0.5);
+    d.retrieval = clamp01((profile.information_gain + profile.utility) * 0.5);
+    d.value = clamp01((profile.utility + (1.0 - profile.cost)) * 0.5);
+    return d;
+}
+
+static double booster_gain_score(const OrchestrateRequest *req, int op_idx) {
+    BfOperatorProfile profile = bf_operator_profile(&BF_OPERATORS[op_idx]);
+    BfFeedbackDomains d = profile_domains(profile);
+    BfDomainWeights w = objective_weights(req);
+    int fast = icontains(req->latency_class, "fast") || icontains(req->latency_class, "interactive") || icontains(req->latency_class, "realtime");
+    double gain = domain_policy_score(d, w);
+    double latency_penalty = fast ? 0.45 : 0.28;
+    double cost_penalty = fast ? 0.25 : 0.18;
+    return gain - (profile.latency * latency_penalty) - (profile.cost * cost_penalty);
+}
+
+static void rebalance_boosters(const OrchestrateRequest *req, OrchestratePlan *plan) {
+    if (plan->booster_count <= 1) return;
+    int fast = icontains(req->latency_class, "fast") || icontains(req->latency_class, "interactive") || icontains(req->latency_class, "realtime");
+    int max_boosters = fast ? 4 : 7;
+    if (icontains(req->surface, "jobs") || icontains(req->surface, "queue") || icontains(req->surface, "actions")) {
+        max_boosters += 1;
+    }
+
+    double scores[MAX_PLAN_STEPS];
+    for (int i = 0; i < plan->booster_count; ++i) scores[i] = booster_gain_score(req, plan->boosters[i]);
+
+    for (int i = 0; i < plan->booster_count - 1; ++i) {
+        int best = i;
+        for (int j = i + 1; j < plan->booster_count; ++j) {
+            if (scores[j] > scores[best]) best = j;
+        }
+        if (best != i) {
+            double score_tmp = scores[i];
+            int booster_tmp = plan->boosters[i];
+            scores[i] = scores[best];
+            plan->boosters[i] = plan->boosters[best];
+            scores[best] = score_tmp;
+            plan->boosters[best] = booster_tmp;
+        }
+    }
+
+    int keep = 0;
+    for (int i = 0; i < plan->booster_count && keep < max_boosters; ++i) {
+        if (scores[i] > 0.12 || keep == 0) plan->boosters[keep++] = plan->boosters[i];
+    }
+    plan->booster_count = keep;
+}
+
 static void collect_outputs(OrchestratePlan *plan) {
     plan->output_count = 0;
-    for (int i = 0; i < plan->selected_count; ++i) {
-      const BfOperator *op = &BF_OPERATORS[plan->selected[i]];
-      for (int j = 0; j < BF_MAX_TYPES && op->output_types[j]; ++j) {
-        const char *out = op->output_types[j];
-        int dup = 0;
-        for (int k = 0; k < plan->output_count; ++k) {
-          if (strcmp(plan->outputs[k], out) == 0) {
-            dup = 1;
-            break;
-          }
+    for (int pass = 0; pass < 2; ++pass) {
+        const int *items = pass == 0 ? plan->selected : plan->boosters;
+        int count = pass == 0 ? plan->selected_count : plan->booster_count;
+        for (int i = 0; i < count; ++i) {
+            const BfOperator *op = &BF_OPERATORS[items[i]];
+            for (int j = 0; j < BF_MAX_TYPES && op->output_types[j]; ++j) {
+                const char *out = op->output_types[j];
+                int dup = 0;
+                for (int k = 0; k < plan->output_count; ++k) {
+                    if (strcmp(plan->outputs[k], out) == 0) {
+                        dup = 1;
+                        break;
+                    }
+                }
+                if (!dup && plan->output_count < MAX_PLAN_STEPS) {
+                    plan->outputs[plan->output_count++] = out;
+                }
+            }
         }
-        if (!dup && plan->output_count < MAX_PLAN_STEPS) {
-          plan->outputs[plan->output_count++] = out;
-        }
-      }
     }
 }
 
@@ -707,6 +766,7 @@ static void heuristic_plan(const OrchestrateRequest *req, OrchestratePlan *plan)
     }
     if (!plan->surface_count) add_surface(plan, "bonfyre-runtime");
 
+    rebalance_boosters(req, plan);
     collect_outputs(plan);
     compute_plan_metrics(req, plan);
 }

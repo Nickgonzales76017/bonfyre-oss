@@ -186,3 +186,16 @@ The composite `policy_score` is not flat. Bonfyre now reweights domains by reque
 - fast and interactive surfaces bias toward `exec`
 
 That same objective-aware weighting is used for `predicted_policy_score`, so the planner compares paths against the right control surface for the current job instead of a universal reward curve.
+
+## Booster frontier
+
+The baseline planner no longer keeps every keyword-matched booster. It now scores candidate boosters against the request's objective-weighted control surface and keeps only the highest-value frontier under the current latency budget.
+
+That means:
+
+- interactive flows keep a smaller booster set
+- batch flows can keep a wider frontier
+- retrieval jobs favor `query`, `embed`, `vec`, `graph`, and `index`
+- value workflows favor `offer`, `ledger`, `gate`, and `meter`
+
+`expected_outputs` now reflects both always-on stages and retained boosters, so the output contract matches the actual planned path more closely.
