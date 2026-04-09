@@ -296,6 +296,8 @@ Each plan now also exposes:
 
 That gives Bonfyre an explicit counterfactual against the deterministic floor, so the system can measure what the retained frontier actually changed instead of treating the chosen path as an opaque result.
 
+Bonfyre now also uses that counterfactual internally as an uplift gate. If the retained frontier does not clear the minimum policy gain or a bounded utility tradeoff, the planner collapses back to the deterministic floor instead of keeping decorative or harmful boosters.
+
 ## Booster frontier
 
 The baseline planner no longer keeps every keyword-matched booster. It now scores candidate boosters against the request's objective-weighted control surface and keeps only the highest-value frontier under the current latency budget.

@@ -536,6 +536,22 @@ static void compute_plan_metrics(const OrchestrateRequest *req, OrchestratePlan 
     plan->uplift_information_gain = plan->predicted_information_gain - plan->baseline_information_gain;
 }
 
+static int frontier_uplift_is_worth_it(const OrchestratePlan *plan) {
+    if (!plan) return 0;
+    if (plan->booster_count <= 0) return 1;
+    if (plan->uplift_policy_score >= 0.015) return 1;
+    if (plan->uplift_utility >= 0.060 && plan->uplift_latency <= 0.050 && plan->uplift_cost <= 0.050) return 1;
+    return 0;
+}
+
+static void apply_frontier_uplift_gate(const OrchestrateRequest *req, OrchestratePlan *plan) {
+    if (!plan || plan->booster_count <= 0) return;
+    if (frontier_uplift_is_worth_it(plan)) return;
+    plan->booster_count = 0;
+    collect_outputs(plan);
+    compute_plan_metrics(req, plan);
+}
+
 static void build_signature(const OrchestrateRequest *req, char *dst, size_t dst_sz) {
     snprintf(dst, dst_sz, "%s|%s|%s|%s",
              req->input_type, req->objective, req->latency_class, req->surface);
@@ -1068,6 +1084,7 @@ static void heuristic_plan(const OrchestrateRequest *req, OrchestratePlan *plan)
     rebalance_boosters(req, plan, have_priors ? &priors : NULL);
     collect_outputs(plan);
     compute_plan_metrics(req, plan);
+    apply_frontier_uplift_gate(req, plan);
 }
 
 static void escape_json(FILE *fp, const char *text) {
@@ -1206,6 +1223,7 @@ static void adopt_model_boosters(const OrchestrateRequest *req, OrchestratePlan 
     rebalance_boosters(req, &candidate, have_priors ? &priors : NULL);
     collect_outputs(&candidate);
     compute_plan_metrics(req, &candidate);
+    apply_frontier_uplift_gate(req, &candidate);
     if (!plan_stable_improvement(&baseline, &candidate)) return;
     *plan = candidate;
     copy_text(plan->mode, sizeof(plan->mode), "gemma4-delta");
