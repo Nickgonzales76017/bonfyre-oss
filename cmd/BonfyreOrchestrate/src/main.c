@@ -2,6 +2,7 @@
 #include "bonfyre.h"
 
 #include <ctype.h>
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -72,7 +73,8 @@ static void usage(void) {
             "Usage:\n"
             "  bonfyre-orchestrate status\n"
             "  bonfyre-orchestrate plan <request.json>\n"
-            "  bonfyre-orchestrate feedback <request.json> <quality_gain> <latency_delta>\n\n"
+            "  bonfyre-orchestrate feedback <request.json> <quality_gain> <latency_delta>\n"
+            "  bonfyre-orchestrate feedback <request.json> <feedback.json>\n\n"
             "Environment:\n"
             "  BONFYRE_ORCHESTRATE_ENDPOINT  OpenAI-compatible Gemma endpoint\n"
             "  BONFYRE_ORCHESTRATE_MODEL     Model name (default: google/gemma-4-E4B)\n"
@@ -197,6 +199,23 @@ static int json_string(const char *json, const char *key, char *dst, size_t dst_
     }
     dst[j] = '\0';
     return j > 0;
+}
+
+static int json_double(const char *json, const char *key, double *value) {
+    char needle[64];
+    snprintf(needle, sizeof(needle), "\"%s\"", key);
+    const char *p = strstr(json, needle);
+    if (!p) return 0;
+    p += strlen(needle);
+    while (*p && isspace((unsigned char)*p)) p++;
+    if (*p != ':') return 0;
+    p++;
+    while (*p && isspace((unsigned char)*p)) p++;
+    char *end = NULL;
+    double parsed = strtod(p, &end);
+    if (end == p) return 0;
+    if (value) *value = parsed;
+    return 1;
 }
 
 static void infer_defaults(OrchestrateRequest *req) {
@@ -476,17 +495,71 @@ static void save_policy_memory(const OrchestrateRequest *req, const OrchestrateP
     sqlite3_close(db);
 }
 
-static int command_feedback(const char *path, const char *quality_gain_text, const char *latency_delta_text) {
+static int load_feedback_payload(const char *path, double *quality_gain, double *latency_delta, BfFeedbackDomains *domains, int *has_domain_override) {
+    char *json = bf_read_file(path, NULL);
+    if (!json) return 1;
+
+    double q = 0.0;
+    double l = 0.0;
+    domains->exec = NAN;
+    domains->artifact = NAN;
+    domains->tensor = NAN;
+    domains->cms = NAN;
+    domains->retrieval = NAN;
+    domains->value = NAN;
+    int have_q = json_double(json, "quality_gain", &q);
+    int have_l = json_double(json, "latency_delta", &l);
+    int have_exec = json_double(json, "exec", &domains->exec);
+    int have_artifact = json_double(json, "artifact", &domains->artifact);
+    int have_tensor = json_double(json, "tensor", &domains->tensor);
+    int have_cms = json_double(json, "cms", &domains->cms);
+    int have_retrieval = json_double(json, "retrieval", &domains->retrieval);
+    int have_value = json_double(json, "value", &domains->value);
+
+    if (quality_gain) *quality_gain = have_q ? q : 0.0;
+    if (latency_delta) *latency_delta = have_l ? l : 0.0;
+    if (has_domain_override) {
+        *has_domain_override = have_exec || have_artifact || have_tensor || have_cms || have_retrieval || have_value;
+    }
+    free(json);
+    return 0;
+}
+
+static int command_feedback(const char *path, const char *feedback_arg, const char *latency_delta_text) {
     OrchestrateRequest req;
     if (load_request(path, &req) != 0) {
         fprintf(stderr, "Failed to read request file: %s\n", path);
         return 1;
     }
 
-    double quality_gain = atof(quality_gain_text);
-    double latency_delta = atof(latency_delta_text);
+    double quality_gain = 0.0;
+    double latency_delta = 0.0;
+    BfFeedbackDomains domains;
+    int has_domain_override = 0;
+
+    if (latency_delta_text) {
+        quality_gain = atof(feedback_arg);
+        latency_delta = atof(latency_delta_text);
+        domains = default_domains(quality_gain, latency_delta);
+    } else {
+        if (load_feedback_payload(feedback_arg, &quality_gain, &latency_delta, &domains, &has_domain_override) != 0) {
+            fprintf(stderr, "Failed to read feedback file: %s\n", feedback_arg);
+            return 1;
+        }
+        BfFeedbackDomains derived = default_domains(quality_gain, latency_delta);
+        if (!has_domain_override) {
+            domains = derived;
+        } else {
+            if (isnan(domains.exec)) domains.exec = derived.exec;
+            if (isnan(domains.artifact)) domains.artifact = derived.artifact;
+            if (isnan(domains.tensor)) domains.tensor = derived.tensor;
+            if (isnan(domains.cms)) domains.cms = derived.cms;
+            if (isnan(domains.retrieval)) domains.retrieval = derived.retrieval;
+            if (isnan(domains.value)) domains.value = derived.value;
+        }
+    }
+
     double regret = latency_delta - quality_gain;
-    BfFeedbackDomains domains = default_domains(quality_gain, latency_delta);
     double policy_score = domain_policy_score(domains, objective_weights(&req));
 
     sqlite3 *db = NULL;
@@ -837,7 +910,7 @@ int main(int argc, char **argv) {
     }
     if (strcmp(argv[1], "status") == 0) return command_status();
     if (strcmp(argv[1], "plan") == 0 && argc >= 3) return command_plan(argv[2]);
-    if (strcmp(argv[1], "feedback") == 0 && argc >= 5) return command_feedback(argv[2], argv[3], argv[4]);
+    if (strcmp(argv[1], "feedback") == 0 && argc >= 4) return command_feedback(argv[2], argv[3], argc >= 5 ? argv[4] : NULL);
     if (strcmp(argv[1], "help") == 0 || strcmp(argv[1], "--help") == 0 || strcmp(argv[1], "-h") == 0) {
         usage();
         return 0;

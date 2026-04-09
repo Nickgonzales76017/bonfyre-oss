@@ -34,6 +34,7 @@ If no endpoint is configured, `bonfyre-orchestrate` still produces a valid boost
 bonfyre-orchestrate status
 bonfyre-orchestrate plan request.json
 bonfyre-orchestrate feedback request.json 0.22 0.08
+bonfyre-orchestrate feedback request.json feedback.json
 ```
 
 ## Environment
@@ -124,12 +125,29 @@ Bonfyre can now record simple post-run feedback:
 
 ```bash
 bonfyre-orchestrate feedback request.json 0.22 0.08
+bonfyre-orchestrate feedback request.json feedback.json
 ```
 
 Meaning:
 
 - `0.22` = observed quality gain
 - `0.08` = observed latency delta
+- `feedback.json` = optional typed feedback payload when Bonfyre already has domain-level observations
+
+Example:
+
+```json
+{
+  "quality_gain": 0.21,
+  "latency_delta": 0.05,
+  "exec": 0.88,
+  "artifact": 0.74,
+  "tensor": 0.93,
+  "cms": 0.62,
+  "retrieval": 0.91,
+  "value": 0.58
+}
+```
 
 The orchestrator stores:
 
@@ -154,6 +172,8 @@ Bonfyre now also derives compact domain signals from each feedback event:
 These are stored in the same policy table and folded into a composite `policy_score`.
 
 That means the planner can start treating Lambda Tensors, CMS relational fit, retrieval lift, and execution quality as different observability surfaces instead of flattening everything into one scalar too early.
+
+When Bonfyre already has direct measurements from those surfaces, the JSON feedback path lets them flow into policy memory without first collapsing back to a flat quality/latency proxy.
 
 ## Objective weighting
 
