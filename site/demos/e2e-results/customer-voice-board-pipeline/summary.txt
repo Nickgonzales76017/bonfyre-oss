@@ -1,0 +1,73 @@
++ mkdir
+command failed with rc=64
+expected file missing: site/demos/customer-voice/transcript.json
+expected file missing: site/demos/customer-voice/tone.json
+expected file missing: site/demos/customer-voice/tags.json
+expected file missing: site/demos/customer-voice/embed.json
+customer-voice-board-pipeline: FAIL
++ mkdir -p site/demos/customer-voice && ./cmd/BonfyreTranscribe/bonfyre-transcribe transcribe --in site/demos/test_a.wav --out site/demos/customer-voice/transcript.json || true
++ ./cmd/BonfyreTone/bonfyre-tone tone --in site/demos/customer-voice/transcript.json --out site/demos/customer-voice/tone.json || true
++ ./cmd/BonfyreTag/bonfyre-tag tag --in site/demos/customer-voice/transcript.json --out site/demos/customer-voice/tags.json || true
++ ./cmd/BonfyreEmbed/bonfyre-embed embed --in site/demos/customer-voice/transcript.json --out site/demos/customer-voice/embed.json || true
+expected file missing: site/demos/customer-voice/transcript.json
+expected file missing: site/demos/customer-voice/tone.json
+expected file missing: site/demos/customer-voice/tags.json
+expected file missing: site/demos/customer-voice/embed.json
+customer-voice-board-pipeline: FAIL
++ mkdir -p site/demos/customer-voice && ./cmd/BonfyreTranscribe/bonfyre-transcribe site/demos/test_a.wav site/demos/customer-voice || true
++ ./cmd/BonfyreTone/bonfyre-tone extract site/demos/customer-voice/transcript.txt site/demos/customer-voice || true
++ # bonfyre-tag requires a model; skip if not configured (user can supply model path)
++ ./cmd/BonfyreEmbed/bonfyre-embed --input-dir site/demos/customer-voice --out site/demos/customer-voice/embed.json || true
+found expected file: site/demos/customer-voice/transcript.json
+expected file missing: site/demos/customer-voice/tone.json
+expected file missing: site/demos/customer-voice/tags.json
+found expected file: site/demos/customer-voice/embed.json
+customer-voice-board-pipeline: FAIL
++ mkdir -p site/demos/customer-voice && ./cmd/BonfyreTranscribe/bonfyre-transcribe site/demos/test_a.wav site/demos/customer-voice || true
++ ./cmd/BonfyreTone/bonfyre-tone extract site/demos/customer-voice/transcript.txt site/demos/customer-voice || true
++ # bonfyre-tag requires a model; skip if not configured (user can supply model path)
++ ./cmd/BonfyreEmbed/bonfyre-embed --input-dir site/demos/customer-voice --out site/demos/customer-voice/embed.json || true
+found expected file: site/demos/customer-voice/transcript.json
+found expected file: site/demos/customer-voice/transcript.txt
+found expected file: site/demos/customer-voice/embed.json
+customer-voice-board-pipeline: PASS
++ mkdir -p site/demos/customer-voice && ./cmd/BonfyreTranscribe/bonfyre-transcribe site/demos/test_a.wav site/demos/customer-voice || true
++ ./cmd/BonfyreTone/bonfyre-tone extract site/demos/customer-voice/transcript.txt site/demos/customer-voice || true
++ # bonfyre-tag requires a model; skip if not configured (user can supply model path)
++ ./cmd/BonfyreEmbed/bonfyre-embed --input-dir site/demos/customer-voice --out site/demos/customer-voice/embed.json || true
+found expected file: site/demos/customer-voice/transcript.json
+found expected file: site/demos/customer-voice/transcript.txt
+found expected file: site/demos/customer-voice/embed.json
+customer-voice-board-pipeline: PASS
++ mkdir -p site/demos/customer-voice && ./cmd/BonfyreTranscribe/bonfyre-transcribe site/demos/test_a.wav site/demos/customer-voice || true
++ ./cmd/BonfyreTone/bonfyre-tone extract site/demos/customer-voice/transcript.txt site/demos/customer-voice || true
++ # bonfyre-tag requires a model; skip if not configured (user can supply model path)
++ ./cmd/BonfyreEmbed/bonfyre-embed --input-dir site/demos/customer-voice --out site/demos/customer-voice/embed.json || true
+found expected file: site/demos/customer-voice/transcript.json
+found expected file: site/demos/customer-voice/transcript.txt
+found expected file: site/demos/customer-voice/embed.json
+customer-voice-board-pipeline: PASS
++ mkdir -p site/demos/customer-voice && ./cmd/BonfyreTranscribe/bonfyre-transcribe site/demos/test_a.wav site/demos/customer-voice || true
++ ./cmd/BonfyreTone/bonfyre-tone extract site/demos/customer-voice/transcript.txt site/demos/customer-voice || true
++ # bonfyre-tag requires a model; skip if not configured (user can supply model path)
++ ./cmd/BonfyreEmbed/bonfyre-embed --input-dir site/demos/customer-voice --out site/demos/customer-voice/embed.json || true
+found expected file: site/demos/customer-voice/transcript.json
+found expected file: site/demos/customer-voice/transcript.txt
+found expected file: site/demos/customer-voice/embed.json
+customer-voice-board-pipeline: PASS
++ mkdir -p site/demos/customer-voice && ./cmd/BonfyreTranscribe/bonfyre-transcribe site/demos/test_a.wav site/demos/customer-voice || true
++ ./cmd/BonfyreTone/bonfyre-tone extract site/demos/customer-voice/transcript.txt site/demos/customer-voice || true
++ # bonfyre-tag requires a model; skip if not configured (user can supply model path)
++ ./cmd/BonfyreEmbed/bonfyre-embed --input-dir site/demos/customer-voice --out site/demos/customer-voice/embed.json || true
+found expected file: site/demos/customer-voice/transcript.json
+found expected file: site/demos/customer-voice/transcript.txt
+found expected file: site/demos/customer-voice/embed.json
+customer-voice-board-pipeline: PASS
++ mkdir -p site/demos/customer-voice && ./cmd/BonfyreTranscribe/bonfyre-transcribe site/demos/test_a.wav site/demos/customer-voice || true
++ ./cmd/BonfyreTone/bonfyre-tone extract site/demos/customer-voice/transcript.txt site/demos/customer-voice || true
++ # bonfyre-tag requires a model; skip if not configured (user can supply model path)
++ ./cmd/BonfyreEmbed/bonfyre-embed --input-dir site/demos/customer-voice --out site/demos/customer-voice/embed.json || true
+found expected file: site/demos/customer-voice/transcript.json
+found expected file: site/demos/customer-voice/transcript.txt
+found expected file: site/demos/customer-voice/embed.json
+customer-voice-board-pipeline: PASS

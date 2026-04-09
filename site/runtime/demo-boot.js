@@ -717,7 +717,7 @@
     var hidden = localStorage.getItem(hiddenKey) === '1';
 
     function updateButton() {
-      button.textContent = hidden ? 'Show Demo Data' : 'Clear Demo Data';
+      button.textContent = hidden ? 'Show Corpus' : 'Hide Corpus';
     }
 
     var observerTarget = document.getElementById('boardContent');

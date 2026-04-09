@@ -1,0 +1,4 @@
+bonfyre-transcript-family
+
+Usage:
+  bonfyre-transcript-family <input-audio> <output-dir> [--with-headers] [transcribe flags...]

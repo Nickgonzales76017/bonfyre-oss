@@ -1,0 +1,61 @@
++ mkdir
+command failed with rc=64
+expected file missing: site/demos/grant-evidence/transcript.json
+expected file missing: site/demos/grant-evidence/pack.zip
+grant-evidence-pack-pipeline: FAIL
++ mkdir -p site/demos/grant-evidence && ./cmd/BonfyreTranscribe/bonfyre-transcribe transcribe --in site/demos/test_b.wav --out site/demos/grant-evidence/transcript.json || true
++ ./cmd/BonfyreProof/bonfyre-proof score site/demos/grant-evidence site/demos/grant-evidence/proof || true
++ ./cmd/BonfyrePack/bonfyre-pack pack --in site/demos/grant-evidence --out site/demos/grant-evidence/pack.zip || true
++ ./cmd/BonfyreEmit/bonfyre-emit emit --in site/demos/grant-evidence --out site/demos/grant-evidence/output || true
+expected file missing: site/demos/grant-evidence/transcript.json
+expected file missing: site/demos/grant-evidence/pack.zip
+grant-evidence-pack-pipeline: FAIL
++ mkdir -p site/demos/grant-evidence && ./cmd/BonfyreTranscribe/bonfyre-transcribe site/demos/test_b.wav site/demos/grant-evidence || true
++ ./cmd/BonfyreProof/bonfyre-proof bundle site/demos/grant-evidence site/demos/grant-evidence/proof_bundle || true
++ ./cmd/BonfyrePack/bonfyre-pack assemble site/demos/grant-evidence site/demos/grant-evidence/proof_bundle site/demos/grant-evidence/pack_out || true
++ ./cmd/BonfyreEmit/bonfyre-emit site/demos/grant-evidence --format rss --out site/demos/grant-evidence/episode.rss || true
+found expected file: site/demos/grant-evidence/transcript.json
+expected file missing: site/demos/grant-evidence/pack.zip
+grant-evidence-pack-pipeline: FAIL
++ mkdir -p site/demos/grant-evidence && ./cmd/BonfyreTranscribe/bonfyre-transcribe site/demos/test_b.wav site/demos/grant-evidence || true
++ ./cmd/BonfyreProof/bonfyre-proof bundle site/demos/grant-evidence site/demos/grant-evidence/proof_bundle || true
++ ./cmd/BonfyrePack/bonfyre-pack assemble site/demos/grant-evidence site/demos/grant-evidence/proof_bundle site/demos/grant-evidence/pack_out || true
++ ./cmd/BonfyreEmit/bonfyre-emit site/demos/grant-evidence --format rss --out site/demos/grant-evidence/episode.rss || true
+found expected file: site/demos/grant-evidence/transcript.json
+found expected file: site/demos/grant-evidence/pack_out
+grant-evidence-pack-pipeline: PASS
++ mkdir -p site/demos/grant-evidence && ./cmd/BonfyreTranscribe/bonfyre-transcribe site/demos/test_b.wav site/demos/grant-evidence || true
++ ./cmd/BonfyreProof/bonfyre-proof bundle site/demos/grant-evidence site/demos/grant-evidence/proof_bundle || true
++ ./cmd/BonfyrePack/bonfyre-pack assemble site/demos/grant-evidence site/demos/grant-evidence/proof_bundle site/demos/grant-evidence/pack_out || true
++ ./cmd/BonfyreEmit/bonfyre-emit site/demos/grant-evidence --format rss --out site/demos/grant-evidence/episode.rss || true
+found expected file: site/demos/grant-evidence/transcript.json
+found expected file: site/demos/grant-evidence/pack_out
+grant-evidence-pack-pipeline: PASS
++ mkdir -p site/demos/grant-evidence && ./cmd/BonfyreTranscribe/bonfyre-transcribe site/demos/test_b.wav site/demos/grant-evidence || true
++ ./cmd/BonfyreProof/bonfyre-proof bundle site/demos/grant-evidence site/demos/grant-evidence/proof_bundle || true
++ ./cmd/BonfyrePack/bonfyre-pack assemble site/demos/grant-evidence site/demos/grant-evidence/proof_bundle site/demos/grant-evidence/pack_out || true
++ ./cmd/BonfyreEmit/bonfyre-emit site/demos/grant-evidence --format rss --out site/demos/grant-evidence/episode.rss || true
+found expected file: site/demos/grant-evidence/transcript.json
+found expected file: site/demos/grant-evidence/pack_out
+grant-evidence-pack-pipeline: PASS
++ mkdir -p site/demos/grant-evidence && ./cmd/BonfyreTranscribe/bonfyre-transcribe site/demos/test_b.wav site/demos/grant-evidence || true
++ ./cmd/BonfyreProof/bonfyre-proof bundle site/demos/grant-evidence site/demos/grant-evidence/proof_bundle || true
++ ./cmd/BonfyrePack/bonfyre-pack assemble site/demos/grant-evidence site/demos/grant-evidence/proof_bundle site/demos/grant-evidence/pack_out || true
++ ./cmd/BonfyreEmit/bonfyre-emit site/demos/grant-evidence --format rss --out site/demos/grant-evidence/episode.rss || true
+found expected file: site/demos/grant-evidence/transcript.json
+found expected file: site/demos/grant-evidence/pack_out
+grant-evidence-pack-pipeline: PASS
++ mkdir -p site/demos/grant-evidence && ./cmd/BonfyreTranscribe/bonfyre-transcribe site/demos/test_b.wav site/demos/grant-evidence || true
++ ./cmd/BonfyreProof/bonfyre-proof bundle site/demos/grant-evidence site/demos/grant-evidence/proof_bundle || true
++ ./cmd/BonfyrePack/bonfyre-pack assemble site/demos/grant-evidence site/demos/grant-evidence/proof_bundle site/demos/grant-evidence/pack_out || true
++ ./cmd/BonfyreEmit/bonfyre-emit site/demos/grant-evidence --format rss --out site/demos/grant-evidence/episode.rss || true
+found expected file: site/demos/grant-evidence/transcript.json
+found expected file: site/demos/grant-evidence/pack_out
+grant-evidence-pack-pipeline: PASS
++ mkdir -p site/demos/grant-evidence && ./cmd/BonfyreTranscribe/bonfyre-transcribe site/demos/test_b.wav site/demos/grant-evidence || true
++ ./cmd/BonfyreProof/bonfyre-proof bundle site/demos/grant-evidence site/demos/grant-evidence/proof_bundle || true
++ ./cmd/BonfyrePack/bonfyre-pack assemble site/demos/grant-evidence site/demos/grant-evidence/proof_bundle site/demos/grant-evidence/pack_out || true
++ ./cmd/BonfyreEmit/bonfyre-emit site/demos/grant-evidence --format rss --out site/demos/grant-evidence/episode.rss || true
+found expected file: site/demos/grant-evidence/transcript.json
+found expected file: site/demos/grant-evidence/pack_out
+grant-evidence-pack-pipeline: PASS

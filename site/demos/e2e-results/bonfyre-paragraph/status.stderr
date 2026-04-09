@@ -1,0 +1,1 @@
+Usage: bonfyre-paragraph --input <file> --out <file> [--with-headers] [--dry-run]

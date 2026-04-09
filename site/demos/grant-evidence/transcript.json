@@ -1,0 +1,12 @@
+{
+  "sourceSystem": "BonfyreTranscribe",
+  "segments": [
+    {"t0": 0, "t1": 2000, "confidence": 0.0244, "logprob": -3.713, "no_speech": 0.000, "compression_ratio": 0.33, "quality": 0.0244, "hallucination_flags": 8, "speaker_turn": false, "text": " the"}
+  ],
+  "summary": {
+    "segments_total": 1,
+    "segments_filtered": 0,
+    "segments_hallucinated": 1
+  },
+  "timing": {"encode_ms": 104.0, "decode_ms": 2.9, "batchd_ms": 1.2, "sample_ms": 1.3, "prompt_ms": 0.1}
+}

@@ -1,0 +1,36 @@
+{
+  "tests": [
+    {
+      "name": "bonfyre-narrate-verify",
+      "binary": "./cmd/BonfyreNarrate/bonfyre-narrate",
+      "commands": [
+        "./cmd/BonfyreNarrate/bonfyre-narrate verify site/demos/test_a.wav site/demos/test_a.wav"
+      ],
+      "expect": {
+        "stdout_json": true,
+        "stdout_json_path": ".composite",
+        "min_composite": 0.9
+      }
+    },
+    {
+      "name": "bonfyre-brief-smoke",
+      "binary": "./cmd/BonfyreBrief/bonfyre-brief",
+      "commands": [
+        "./cmd/BonfyreBrief/bonfyre-brief status"
+      ],
+      "expect": {
+        "rc": 0
+      }
+    },
+    {
+      "name": "bonfyre-transcribe-smoke",
+      "binary": "./cmd/BonfyreTranscribe/bonfyre-transcribe",
+      "commands": [
+        "./cmd/BonfyreTranscribe/bonfyre-transcribe status"
+      ],
+      "expect": {
+        "rc": 0
+      }
+    }
+  ]
+}

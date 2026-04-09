@@ -1,0 +1,20 @@
+{
+  "sourceSystem": "BonfyreTranscribe",
+  "exportedAt": "2026-04-08T19:53:40Z",
+  "status": "transcribed",
+  "jobSlug": "test_b",
+  "splitSpeech": false,
+  "sileroVad": false,
+  "denoised": true,
+  "segments": 1,
+  "segmentsFiltered": 0,
+  "segmentsHallucinated": 1,
+  "chunkCount": 0,
+  "avgQuality": 0.0244,
+  "rtf": 0.0722,
+  "transcriptPath": "site/demos/grant-evidence/transcript.txt",
+  "transcriptJsonPath": "site/demos/grant-evidence/transcript.json",
+  "transcriptSrtPath": "site/demos/grant-evidence/transcript.srt",
+  "transcriptVttPath": "site/demos/grant-evidence/transcript.vtt",
+  "metaPath": "site/demos/grant-evidence/meta.json"
+}

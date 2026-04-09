@@ -1,0 +1,7 @@
++ ./cmd/BonfyreBrief/bonfyre-brief
+command failed with rc=1
+rc mismatch: got 1 expected 0
+shift-handoff-board: FAIL
++ ./cmd/BonfyreBrief/bonfyre-brief
+command failed with rc=1
+shift-handoff-board: PASS

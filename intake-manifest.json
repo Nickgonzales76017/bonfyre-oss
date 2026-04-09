@@ -1,0 +1,12 @@
+{
+  "ingest_version": "1.0.0",
+  "timestamp": "2026-04-08T17:07:07Z",
+  "source_file": "ingest",
+  "source_bytes": 0,
+  "detected_type": "unknown",
+  "normalized_path": "ingest",
+  "normalized_bytes": 0,
+  "content_hash": "unknown",
+  "media_type": "application/octet-stream",
+  "status": "ready"
+}

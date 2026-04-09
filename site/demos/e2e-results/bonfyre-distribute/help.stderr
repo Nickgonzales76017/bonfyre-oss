@@ -1,0 +1,5 @@
+Usage:
+  bonfyre-distribute offers <_generated-offers.json>
+  bonfyre-distribute snapshot <_distribution-pipeline-snapshot.json>
+  bonfyre-distribute message <_generated-offers.json> <offer-name> <channel>
+  bonfyre-distribute send <payload.json> --webhook <URL> [--webhook <URL> ...]

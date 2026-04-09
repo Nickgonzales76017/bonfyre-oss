@@ -1,0 +1,8 @@
+Transcript: site/demos/grant-evidence/transcript.txt
+JSON:       site/demos/grant-evidence/transcript.json
+SRT:        site/demos/grant-evidence/transcript.srt
+VTT:        site/demos/grant-evidence/transcript.vtt
+Meta:       site/demos/grant-evidence/meta.json
+Status:     site/demos/grant-evidence/transcribe-status.json
+Quality:    0.0244 (conf=0.0244 logprob=-3.713)
+RTF:        0.0722 (13.8x realtime)

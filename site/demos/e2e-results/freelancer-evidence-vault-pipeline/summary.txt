@@ -1,0 +1,70 @@
++ mkdir
+command failed with rc=64
+expected file missing: site/demos/freelancer-evidence/transcript.json
+expected file missing: site/demos/freelancer-evidence/brief.json
+expected file missing: site/demos/freelancer-evidence/pack.zip
+freelancer-evidence-vault-pipeline: FAIL
++ mkdir -p site/demos/freelancer-evidence && ./cmd/BonfyreTranscribe/bonfyre-transcribe transcribe --in site/demos/test_a.wav --out site/demos/freelancer-evidence/transcript.json || true
++ ./cmd/BonfyreBrief/bonfyre-brief brief --in site/demos/freelancer-evidence/transcript.json --out site/demos/freelancer-evidence/brief.json || true
++ ./cmd/BonfyreProof/bonfyre-proof bundle site/demos/freelancer-evidence site/demos/freelancer-evidence/bundle || true
++ ./cmd/BonfyrePack/bonfyre-pack pack --in site/demos/freelancer-evidence --out site/demos/freelancer-evidence/pack.zip || true
+expected file missing: site/demos/freelancer-evidence/transcript.json
+expected file missing: site/demos/freelancer-evidence/brief.json
+expected file missing: site/demos/freelancer-evidence/pack.zip
+freelancer-evidence-vault-pipeline: FAIL
++ mkdir -p site/demos/freelancer-evidence && ./cmd/BonfyreTranscribe/bonfyre-transcribe site/demos/test_a.wav site/demos/freelancer-evidence || true
++ ./cmd/BonfyreBrief/bonfyre-brief site/demos/freelancer-evidence/transcript.json site/demos/freelancer-evidence || true
++ ./cmd/BonfyreProof/bonfyre-proof bundle site/demos/freelancer-evidence site/demos/freelancer-evidence/proof_bundle || true
++ ./cmd/BonfyrePack/bonfyre-pack assemble site/demos/freelancer-evidence site/demos/freelancer-evidence/proof_bundle site/demos/freelancer-evidence/pack_out || true
+found expected file: site/demos/freelancer-evidence/transcript.json
+expected file missing: site/demos/freelancer-evidence/brief.json
+expected file missing: site/demos/freelancer-evidence/pack.zip
+freelancer-evidence-vault-pipeline: FAIL
++ mkdir -p site/demos/freelancer-evidence && ./cmd/BonfyreTranscribe/bonfyre-transcribe site/demos/test_a.wav site/demos/freelancer-evidence || true
++ ./cmd/BonfyreBrief/bonfyre-brief site/demos/freelancer-evidence/transcript.json site/demos/freelancer-evidence || true
++ ./cmd/BonfyreProof/bonfyre-proof bundle site/demos/freelancer-evidence site/demos/freelancer-evidence/proof_bundle || true
++ ./cmd/BonfyrePack/bonfyre-pack assemble site/demos/freelancer-evidence site/demos/freelancer-evidence/proof_bundle site/demos/freelancer-evidence/pack_out || true
+found expected file: site/demos/freelancer-evidence/transcript.json
+found expected file: site/demos/freelancer-evidence/brief.md
+found expected file: site/demos/freelancer-evidence/pack_out
+freelancer-evidence-vault-pipeline: PASS
++ mkdir -p site/demos/freelancer-evidence && ./cmd/BonfyreTranscribe/bonfyre-transcribe site/demos/test_a.wav site/demos/freelancer-evidence || true
++ ./cmd/BonfyreBrief/bonfyre-brief site/demos/freelancer-evidence/transcript.json site/demos/freelancer-evidence || true
++ ./cmd/BonfyreProof/bonfyre-proof bundle site/demos/freelancer-evidence site/demos/freelancer-evidence/proof_bundle || true
++ ./cmd/BonfyrePack/bonfyre-pack assemble site/demos/freelancer-evidence site/demos/freelancer-evidence/proof_bundle site/demos/freelancer-evidence/pack_out || true
+found expected file: site/demos/freelancer-evidence/transcript.json
+found expected file: site/demos/freelancer-evidence/brief.md
+found expected file: site/demos/freelancer-evidence/pack_out
+freelancer-evidence-vault-pipeline: PASS
++ mkdir -p site/demos/freelancer-evidence && ./cmd/BonfyreTranscribe/bonfyre-transcribe site/demos/test_a.wav site/demos/freelancer-evidence || true
++ ./cmd/BonfyreBrief/bonfyre-brief site/demos/freelancer-evidence/transcript.json site/demos/freelancer-evidence || true
++ ./cmd/BonfyreProof/bonfyre-proof bundle site/demos/freelancer-evidence site/demos/freelancer-evidence/proof_bundle || true
++ ./cmd/BonfyrePack/bonfyre-pack assemble site/demos/freelancer-evidence site/demos/freelancer-evidence/proof_bundle site/demos/freelancer-evidence/pack_out || true
+found expected file: site/demos/freelancer-evidence/transcript.json
+found expected file: site/demos/freelancer-evidence/brief.md
+found expected file: site/demos/freelancer-evidence/pack_out
+freelancer-evidence-vault-pipeline: PASS
++ mkdir -p site/demos/freelancer-evidence && ./cmd/BonfyreTranscribe/bonfyre-transcribe site/demos/test_a.wav site/demos/freelancer-evidence || true
++ ./cmd/BonfyreBrief/bonfyre-brief site/demos/freelancer-evidence/transcript.json site/demos/freelancer-evidence || true
++ ./cmd/BonfyreProof/bonfyre-proof bundle site/demos/freelancer-evidence site/demos/freelancer-evidence/proof_bundle || true
++ ./cmd/BonfyrePack/bonfyre-pack assemble site/demos/freelancer-evidence site/demos/freelancer-evidence/proof_bundle site/demos/freelancer-evidence/pack_out || true
+found expected file: site/demos/freelancer-evidence/transcript.json
+found expected file: site/demos/freelancer-evidence/brief.md
+found expected file: site/demos/freelancer-evidence/pack_out
+freelancer-evidence-vault-pipeline: PASS
++ mkdir -p site/demos/freelancer-evidence && ./cmd/BonfyreTranscribe/bonfyre-transcribe site/demos/test_a.wav site/demos/freelancer-evidence || true
++ ./cmd/BonfyreBrief/bonfyre-brief site/demos/freelancer-evidence/transcript.json site/demos/freelancer-evidence || true
++ ./cmd/BonfyreProof/bonfyre-proof bundle site/demos/freelancer-evidence site/demos/freelancer-evidence/proof_bundle || true
++ ./cmd/BonfyrePack/bonfyre-pack assemble site/demos/freelancer-evidence site/demos/freelancer-evidence/proof_bundle site/demos/freelancer-evidence/pack_out || true
+found expected file: site/demos/freelancer-evidence/transcript.json
+found expected file: site/demos/freelancer-evidence/brief.md
+found expected file: site/demos/freelancer-evidence/pack_out
+freelancer-evidence-vault-pipeline: PASS
++ mkdir -p site/demos/freelancer-evidence && ./cmd/BonfyreTranscribe/bonfyre-transcribe site/demos/test_a.wav site/demos/freelancer-evidence || true
++ ./cmd/BonfyreBrief/bonfyre-brief site/demos/freelancer-evidence/transcript.json site/demos/freelancer-evidence || true
++ ./cmd/BonfyreProof/bonfyre-proof bundle site/demos/freelancer-evidence site/demos/freelancer-evidence/proof_bundle || true
++ ./cmd/BonfyrePack/bonfyre-pack assemble site/demos/freelancer-evidence site/demos/freelancer-evidence/proof_bundle site/demos/freelancer-evidence/pack_out || true
+found expected file: site/demos/freelancer-evidence/transcript.json
+found expected file: site/demos/freelancer-evidence/brief.md
+found expected file: site/demos/freelancer-evidence/pack_out
+freelancer-evidence-vault-pipeline: PASS

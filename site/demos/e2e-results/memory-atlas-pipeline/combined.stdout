@@ -1,0 +1,19 @@
+Transcript: site/demos/memory-atlas/transcript.txt
+JSON:       site/demos/memory-atlas/transcript.json
+SRT:        site/demos/memory-atlas/transcript.srt
+VTT:        site/demos/memory-atlas/transcript.vtt
+Meta:       site/demos/memory-atlas/meta.json
+Status:     site/demos/memory-atlas/transcribe-status.json
+Quality:    0.0214 (conf=0.0214 logprob=-3.845)
+RTF:        0.0760 (13.2x realtime)
+Brief: site/demos/memory-atlas/brief.md
+Meta: site/demos/memory-atlas/brief-meta.json
+Artifact: site/demos/memory-atlas/artifact.json
+Batch complete: 1/1 succeeded
+Brief: site/demos/memory-atlas/brief/brief.md
+Meta: site/demos/memory-atlas/brief/brief-meta.json
+Artifact: site/demos/memory-atlas/brief/artifact.json
+Narration:  site/demos/memory-atlas/narrate/narration.txt (paced-text)
+Manifest:   site/demos/memory-atlas/narrate/artifact.manifest.json
+WAV quality: DR=0.0 dB  continuity=0.000  pitch-stab=0.000  energy-cons=0.000
+Rendered artifact family: site/demos/memory-atlas

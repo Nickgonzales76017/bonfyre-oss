@@ -1,0 +1,19 @@
+{
+  "sourceSystem": "BonfyreOffer",
+  "createdAt": "2026-04-08T19:53:41Z",
+  "offerName": " Native Offer",
+  "proofSlug": "",
+  "proofLabel": "",
+  "qualityScore": 0,
+  "qualityStatus": "",
+  "reviewScore": 0,
+  "recommendation": "",
+  "wordCount": 0,
+  "sentenceCount": 0,
+  "headline": "Local-first proof-backed deliverables",
+  "promise": "Send one messy recording and get back a clean transcript, structured summary, and next steps.",
+  "price": "$8",
+  "priceCents": 800,
+  "pricingFactors": {"base": 5.0, "wordPremium": 0.00, "qualityMult": 1.0, "complexityBonus": 0.0},
+  "turnaround": "same day"
+}

@@ -1,0 +1,6 @@
+BonfyreGate — license enforcement
+
+Usage:
+  bonfyre-gate issue --tier free|pro|enterprise [--org NAME] [--out F]
+  bonfyre-gate check <key.json>
+  bonfyre-gate guard <key.json> --op OPERATION

@@ -1,0 +1,20 @@
+{
+  "sourceSystem": "BonfyreTranscribe",
+  "exportedAt": "2026-04-08T19:53:37Z",
+  "status": "transcribed",
+  "jobSlug": "test_a",
+  "splitSpeech": false,
+  "sileroVad": false,
+  "denoised": true,
+  "segments": 1,
+  "segmentsFiltered": 0,
+  "segmentsHallucinated": 1,
+  "chunkCount": 0,
+  "avgQuality": 0.2048,
+  "rtf": 0.0772,
+  "transcriptPath": "site/demos/freelancer-evidence/transcript.txt",
+  "transcriptJsonPath": "site/demos/freelancer-evidence/transcript.json",
+  "transcriptSrtPath": "site/demos/freelancer-evidence/transcript.srt",
+  "transcriptVttPath": "site/demos/freelancer-evidence/transcript.vtt",
+  "metaPath": "site/demos/freelancer-evidence/meta.json"
+}

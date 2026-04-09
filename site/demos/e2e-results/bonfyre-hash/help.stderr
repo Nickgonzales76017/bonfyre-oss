@@ -1,0 +1,8 @@
+BonfyreHash — content-addressing engine
+
+Usage:
+  bonfyre-hash file <path>                              SHA-256 of file
+  bonfyre-hash node <op> <ver> <params_json> <h1,h2>    operator node hash
+  bonfyre-hash merkle <artifact.json>                    compute/update root_hash
+  bonfyre-hash verify <artifact.json>                    verify all hashes
+  bonfyre-hash dedup <dir>                               find duplicate files

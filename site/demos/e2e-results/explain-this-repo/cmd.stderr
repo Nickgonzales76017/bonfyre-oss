@@ -1,0 +1,1 @@
+Usage: bonfyre-ingest <input> <output_dir> [--type audio|text|image|url]

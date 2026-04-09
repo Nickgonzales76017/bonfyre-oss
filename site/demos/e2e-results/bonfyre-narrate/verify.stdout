@@ -1,0 +1,25 @@
+{
+  "type": "narrate-fidelity-report",
+  "output": "site/demos/test_a.wav",
+  "reference": "site/demos/test_a.wav",
+  "fidelity": {
+    "cosine_88": 1.000000,
+    "composite": 1.000000,
+    "features_matched": 28,
+    "layers_passed": 6,
+    "layers": {
+      "pitch": 1.000000,
+      "energy": 1.000000,
+      "temporal": 1.000000,
+      "spectral": 1.000000,
+      "stability": 1.000000,
+      "dynamics": 1.000000
+    }
+  },
+  "wavQuality": {
+    "dynamic_range_db": 0.18,
+    "spectral_continuity": 0.9944,
+    "pitch_stability": 0.3569,
+    "energy_consistency": 0.9910
+  }
+}

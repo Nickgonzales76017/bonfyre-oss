@@ -1,0 +1,12 @@
+Unknown command: --help
+BonfyreGraph — Merkle-DAG artifact graph engine
+
+Usage:
+  bonfyre-graph init <db>
+  bonfyre-graph add-atom <db> --id ID --hash HASH --type TYPE [--path PATH]
+  bonfyre-graph add-op <db> --id ID --op OP --inputs A,B --output OUT [--params '{}'] [--version V]
+  bonfyre-graph validate <manifest.json>
+  bonfyre-graph merkle <manifest.json>
+  bonfyre-graph lineage <db> --id ID
+  bonfyre-graph export <db> [--out artifact.json]
+  bonfyre-graph status <db>

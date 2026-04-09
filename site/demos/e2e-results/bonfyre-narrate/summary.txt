@@ -1,0 +1,3 @@
+bonfyre-narrate: status OK
+Running narrate self-verify on site/demos/test_a.wav
+narrate verify exit=0 composite=

@@ -1,0 +1,20 @@
+{
+  "mappings": [
+    { "demo_dir": "site/demos/shift-handoff", "remote": "https://github.com/nickgonzales76017/pages-shift-handoff.git", "branch": "main", "paths": ["artifact.json", "brief.md", "brief-meta.json", "pack_out"] },
+    { "demo_dir": "site/demos/customer-voice", "remote": "https://github.com/nickgonzales76017/pages-customer-voice.git", "branch": "main", "paths": ["artifact.json", "brief.md", "transcript.txt", "embed.json"] },
+    { "demo_dir": "site/demos/memory-atlas", "remote": "https://github.com/nickgonzales76017/pages-memory-atlas.git", "branch": "main", "paths": ["artifact.json", "embed.json"] },
+    { "demo_dir": "site/demos/family-history", "remote": "https://github.com/nickgonzales76017/pages-family-history.git", "branch": "main", "paths": ["artifact.json", "brief.md"] },
+    { "demo_dir": "site/demos/freelancer-evidence", "remote": "https://github.com/nickgonzales76017/pages-freelancer-evidence.git", "branch": "main", "paths": ["artifact.json", "brief.md", "pack_out"] },
+    { "demo_dir": "site/demos/podcast-plant", "remote": "https://github.com/nickgonzales76017/pages-podcast-plant.git", "branch": "main", "paths": ["artifact.json", "episode.rss", "prepped.wav"] },
+    { "demo_dir": "site/demos/postmortem-atlas", "remote": "https://github.com/nickgonzales76017/pages-postmortem-atlas.git", "branch": "main", "paths": ["artifact.json", "embed.json"] },
+    { "demo_dir": "site/demos/explain-repo", "remote": "https://github.com/nickgonzales76017/pages-explain-repo.git", "branch": "main", "paths": ["artifact.json", "ast.json", "ingest.json"] },
+    { "demo_dir": "site/demos/town-box", "remote": "https://github.com/nickgonzales76017/pages-town-box.git", "branch": "main", "paths": ["artifact.json", "brief.md"] },
+    { "demo_dir": "site/demos/grant-evidence", "remote": "https://github.com/nickgonzales76017/pages-grant-evidence.git", "branch": "main", "paths": ["artifact.json", "pack_out"] },
+    { "demo_dir": "site/demos/micro-consulting", "remote": "https://github.com/nickgonzales76017/pages-micro-consulting.git", "branch": "main", "paths": ["artifact.json", "offer_out", "meter.json"] },
+    { "demo_dir": "site/demos/legal-prep", "remote": "https://github.com/nickgonzales76017/pages-legal-prep.git", "branch": "main", "paths": ["artifact.json", "proof_bundle", "pack_out"] },
+    { "demo_dir": "site/demos/oss-cockpit", "remote": "https://github.com/nickgonzales76017/pages-oss-cockpit.git", "branch": "main", "paths": ["artifact.json"] },
+    { "demo_dir": "site/demos/async-standup", "remote": "https://github.com/nickgonzales76017/pages-async-standup.git", "branch": "main", "paths": ["artifact.json"] },
+    { "demo_dir": "site/demos/competitive-intel", "remote": "https://github.com/nickgonzales76017/pages-competitive-intel.git", "branch": "main", "paths": ["artifact.json"] },
+    { "demo_dir": "site/demos/sales-distiller", "remote": "https://github.com/nickgonzales76017/pages-sales-distiller.git", "branch": "main", "paths": ["artifact.json"] }
+  ]
+}

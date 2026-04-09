@@ -1,0 +1,7 @@
+bonfyre-project
+
+Usage:
+  bonfyre-project cms <cms args...>
+  bonfyre-project index <index args...>
+  bonfyre-project stitch <stitch args...>
+  bonfyre-project refresh <artifact-dir> [--db FILE]

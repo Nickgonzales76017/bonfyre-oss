@@ -1,0 +1,5 @@
+bonfyre-render
+
+Usage:
+  bonfyre-render artifact <transcript-file> <output-dir> [--title TITLE]
+  bonfyre-render package <proof-dir> <offer-dir> <output-dir>

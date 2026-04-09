@@ -1,0 +1,6 @@
+BonfyreStitch — DAG materializer
+
+  bonfyre-stitch plan <artifact.json> --target ID
+  bonfyre-stitch materialize <artifact.json> --target ID [--cache DIR]
+  bonfyre-stitch prune <family_dir> [--keep-pinned]
+  bonfyre-stitch cache-stats [--cache DIR]

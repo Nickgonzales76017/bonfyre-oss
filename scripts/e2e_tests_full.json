@@ -1,0 +1,203 @@
+{
+  "tests": [
+    {
+      "name": "shift-handoff-board-pipeline",
+      "commands": [
+        "mkdir -p site/demos/shift-handoff && ./cmd/BonfyreTranscribe/bonfyre-transcribe site/demos/test_a.wav site/demos/shift-handoff || true",
+        "./cmd/BonfyreBrief/bonfyre-brief site/demos/shift-handoff/transcript.json site/demos/shift-handoff || true",
+        "./cmd/BonfyreProof/bonfyre-proof bundle site/demos/shift-handoff site/demos/shift-handoff/proof_bundle || true",
+        "./cmd/BonfyreOffer/bonfyre-offer generate site/demos/shift-handoff/proof_bundle site/demos/shift-handoff/offer_out || true",
+        "./cmd/BonfyrePack/bonfyre-pack assemble site/demos/shift-handoff site/demos/shift-handoff/offer_out site/demos/shift-handoff/pack_out || true"
+      ],
+      "expect": {
+        "files": [
+          "site/demos/shift-handoff/transcript.json",
+          "site/demos/shift-handoff/brief.md",
+          "site/demos/shift-handoff/brief-meta.json",
+          "site/demos/shift-handoff/pack_out"
+        ]
+      }
+    },
+    {
+      "name": "memory-atlas-pipeline",
+      "commands": [
+        "mkdir -p site/demos/memory-atlas && ./cmd/BonfyreTranscribe/bonfyre-transcribe site/demos/test_b.wav site/demos/memory-atlas || true",
+        "./cmd/BonfyreBrief/bonfyre-brief site/demos/memory-atlas/transcript.json site/demos/memory-atlas || true",
+        "./cmd/BonfyreEmbed/bonfyre-embed --input-dir site/demos/memory-atlas --out site/demos/memory-atlas/embed.json || true",
+        "./cmd/BonfyreRender/bonfyre-render artifact site/demos/memory-atlas/transcript.json site/demos/memory-atlas || true"
+      ],
+      "expect": {
+        "files": [
+          "site/demos/memory-atlas/transcript.json",
+          "site/demos/memory-atlas/brief.md",
+          "site/demos/memory-atlas/embed.json",
+          "site/demos/memory-atlas/artifact.json"
+        ]
+      }
+    },
+    {
+      "name": "customer-voice-board-pipeline",
+      "commands": [
+        "mkdir -p site/demos/customer-voice && ./cmd/BonfyreTranscribe/bonfyre-transcribe site/demos/test_a.wav site/demos/customer-voice || true",
+        "./cmd/BonfyreTone/bonfyre-tone extract site/demos/customer-voice/transcript.txt site/demos/customer-voice || true",
+        "# bonfyre-tag requires a model; skip if not configured (user can supply model path)",
+        "./cmd/BonfyreEmbed/bonfyre-embed --input-dir site/demos/customer-voice --out site/demos/customer-voice/embed.json || true"
+      ],
+      "expect": {
+        "files": [
+          "site/demos/customer-voice/transcript.json",
+          "site/demos/customer-voice/transcript.txt",
+          "site/demos/customer-voice/embed.json"
+        ]
+      }
+    },
+    {
+      "name": "family-history-museum-pipeline",
+      "commands": [
+        "mkdir -p site/demos/family-history && ./cmd/BonfyreTranscribe/bonfyre-transcribe site/demos/test_b.wav site/demos/family-history || true",
+        "./cmd/BonfyreBrief/bonfyre-brief site/demos/family-history/transcript.json site/demos/family-history || true",
+        "./cmd/BonfyreRender/bonfyre-render artifact site/demos/family-history/transcript.json site/demos/family-history || true"
+      ],
+      "expect": {
+        "files": [
+          "site/demos/family-history/transcript.json",
+          "site/demos/family-history/brief.md",
+          "site/demos/family-history/artifact.json"
+        ]
+      }
+    },
+    {
+      "name": "freelancer-evidence-vault-pipeline",
+      "commands": [
+        "mkdir -p site/demos/freelancer-evidence && ./cmd/BonfyreTranscribe/bonfyre-transcribe site/demos/test_a.wav site/demos/freelancer-evidence || true",
+        "./cmd/BonfyreBrief/bonfyre-brief site/demos/freelancer-evidence/transcript.json site/demos/freelancer-evidence || true",
+        "./cmd/BonfyreProof/bonfyre-proof bundle site/demos/freelancer-evidence site/demos/freelancer-evidence/proof_bundle || true",
+        "./cmd/BonfyrePack/bonfyre-pack assemble site/demos/freelancer-evidence site/demos/freelancer-evidence/proof_bundle site/demos/freelancer-evidence/pack_out || true"
+      ],
+      "expect": {
+        "files": [
+          "site/demos/freelancer-evidence/transcript.json",
+          "site/demos/freelancer-evidence/brief.md",
+          "site/demos/freelancer-evidence/pack_out"
+        ]
+      }
+    },
+    {
+      "name": "podcast-plant-pipeline",
+      "commands": [
+        "mkdir -p site/demos/podcast-plant && ./cmd/BonfyreMediaPrep/bonfyre-media-prep normalize site/demos/test_a.wav site/demos/podcast-plant/prepped.wav --loudnorm || true",
+        "./cmd/BonfyreTranscribe/bonfyre-transcribe site/demos/podcast-plant/prepped.wav site/demos/podcast-plant || true",
+        "./cmd/BonfyreBrief/bonfyre-brief site/demos/podcast-plant/transcript.json site/demos/podcast-plant || true",
+        "./cmd/BonfyreEmit/bonfyre-emit site/demos/podcast-plant --format rss --out site/demos/podcast-plant/episode.rss || true"
+      ],
+      "expect": {
+        "files": [
+          "site/demos/podcast-plant/prepped.wav",
+          "site/demos/podcast-plant/transcript.json",
+          "site/demos/podcast-plant/brief.md",
+          "site/demos/podcast-plant/episode.rss"
+        ]
+      }
+    },
+    {
+      "name": "postmortem-atlas-pipeline",
+      "commands": [
+        "mkdir -p site/demos/postmortem-atlas && ./cmd/BonfyreTranscribe/bonfyre-transcribe site/demos/test_b.wav site/demos/postmortem-atlas || true",
+        "./cmd/BonfyreTag/bonfyre-tag detect-lang site/demos/postmortem-atlas/transcript.txt site/demos/postmortem-atlas || true",
+        "./cmd/BonfyreEmbed/bonfyre-embed --input-dir site/demos/postmortem-atlas --out site/demos/postmortem-atlas/embed.json || true",
+        "./cmd/BonfyreRender/bonfyre-render artifact site/demos/postmortem-atlas/transcript.json site/demos/postmortem-atlas || true"
+      ],
+      "expect": {
+        "files": [
+          "site/demos/postmortem-atlas/transcript.json",
+          "site/demos/postmortem-atlas/transcript.txt",
+          "site/demos/postmortem-atlas/embed.json",
+          "site/demos/postmortem-atlas/brief/artifact.json"
+        ]
+      }
+    },
+    {
+      "name": "explain-repo-pipeline",
+      "commands": [
+        "mkdir -p site/demos/explain-repo && ./cmd/BonfyreIngest/bonfyre-ingest . site/demos/explain-repo || true",
+        "./cmd/BonfyreCanon/bonfyre-canon parse site/demos/explain-repo/ingest.json site/demos/explain-repo || true",
+        "./cmd/BonfyreBrief/bonfyre-brief site/demos/explain-repo/transcript.json site/demos/explain-repo || true",
+        "./cmd/BonfyreRender/bonfyre-render artifact site/demos/explain-repo/transcript.json site/demos/explain-repo || true"
+      ],
+      "expect": {
+        "files": [
+          "site/demos/explain-repo/ingest.json",
+          "site/demos/explain-repo/ast.json",
+          "site/demos/explain-repo/artifact.json"
+        ]
+      }
+    },
+    {
+      "name": "town-box-pipeline",
+      "commands": [
+        "mkdir -p site/demos/town-box && ./cmd/BonfyreTranscribe/bonfyre-transcribe site/demos/test_a.wav site/demos/town-box || true",
+        "./cmd/BonfyreBrief/bonfyre-brief site/demos/town-box/transcript.json site/demos/town-box || true",
+        "./cmd/BonfyreTag/bonfyre-tag detect-lang site/demos/town-box/transcript.txt site/demos/town-box || true",
+        "./cmd/BonfyreRender/bonfyre-render artifact site/demos/town-box/transcript.json site/demos/town-box || true"
+      ],
+      "expect": {
+        "files": [
+          "site/demos/town-box/transcript.json",
+          "site/demos/town-box/brief.md",
+          "site/demos/town-box/transcript.txt",
+          "site/demos/town-box/artifact.json"
+        ]
+      }
+    },
+    {
+      "name": "grant-evidence-pack-pipeline",
+      "commands": [
+        "mkdir -p site/demos/grant-evidence && ./cmd/BonfyreTranscribe/bonfyre-transcribe site/demos/test_b.wav site/demos/grant-evidence || true",
+        "./cmd/BonfyreProof/bonfyre-proof bundle site/demos/grant-evidence site/demos/grant-evidence/proof_bundle || true",
+        "./cmd/BonfyrePack/bonfyre-pack assemble site/demos/grant-evidence site/demos/grant-evidence/proof_bundle site/demos/grant-evidence/pack_out || true",
+        "./cmd/BonfyreEmit/bonfyre-emit site/demos/grant-evidence --format rss --out site/demos/grant-evidence/episode.rss || true"
+      ],
+      "expect": {
+        "files": [
+          "site/demos/grant-evidence/transcript.json",
+          "site/demos/grant-evidence/pack_out"
+        ]
+      }
+    },
+    {
+      "name": "micro-consulting-storefront-pipeline",
+      "commands": [
+        "mkdir -p site/demos/micro-consulting && ./cmd/BonfyreTranscribe/bonfyre-transcribe site/demos/test_a.wav site/demos/micro-consulting || true",
+        "./cmd/BonfyreBrief/bonfyre-brief site/demos/micro-consulting/transcript.json site/demos/micro-consulting || true",
+        "./cmd/BonfyreProof/bonfyre-proof bundle site/demos/micro-consulting site/demos/micro-consulting/proof_bundle || true",
+        "./cmd/BonfyreOffer/bonfyre-offer generate site/demos/micro-consulting/proof_bundle site/demos/micro-consulting/offer_out || true",
+        "./scripts/gen_meter_from_offer.sh site/demos/micro-consulting/offer_out site/demos/micro-consulting/meter.json || true",
+        "./cmd/BonfyrePack/bonfyre-pack assemble site/demos/micro-consulting site/demos/micro-consulting/offer_out site/demos/micro-consulting/pack_out || true"
+      ],
+      "expect": {
+        "files": [
+          "site/demos/micro-consulting/offer_out",
+          "site/demos/micro-consulting/meter.json",
+          "site/demos/micro-consulting/pack_out"
+        ]
+      }
+    },
+    {
+      "name": "personal-legal-prep-binder-pipeline",
+      "commands": [
+          "mkdir -p site/demos/legal-prep && ./cmd/BonfyreTranscribe/bonfyre-transcribe site/demos/test_a.wav site/demos/legal-prep || true",
+          "./scripts/gen_proof_meta.sh site/demos/legal-prep || true",
+          "./cmd/BonfyreProof/bonfyre-proof bundle site/demos/legal-prep site/demos/legal-prep/proof_bundle || true",
+          "./cmd/BonfyreTag/bonfyre-tag detect-lang site/demos/legal-prep/transcript.txt site/demos/legal-prep || true",
+          "./cmd/BonfyrePack/bonfyre-pack assemble site/demos/legal-prep site/demos/legal-prep/proof_bundle site/demos/legal-prep/pack_out || true"
+      ],
+      "expect": {
+        "files": [
+          "site/demos/legal-prep/proof_bundle",
+          "site/demos/legal-prep/transcript.txt",
+          "site/demos/legal-prep/pack_out"
+        ]
+      }
+    }
+  ]
+}

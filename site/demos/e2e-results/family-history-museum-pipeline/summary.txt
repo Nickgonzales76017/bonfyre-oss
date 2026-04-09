@@ -1,0 +1,62 @@
++ mkdir
+command failed with rc=64
+expected file missing: site/demos/family-history/transcript.json
+expected file missing: site/demos/family-history/brief.json
+expected file missing: site/demos/family-history/page.html
+family-history-museum-pipeline: FAIL
++ mkdir -p site/demos/family-history && ./cmd/BonfyreTranscribe/bonfyre-transcribe transcribe --in site/demos/test_b.wav --out site/demos/family-history/transcript.json || true
++ ./cmd/BonfyreBrief/bonfyre-brief brief --in site/demos/family-history/transcript.json --out site/demos/family-history/brief.json || true
++ ./cmd/BonfyreRender/bonfyre-render render --in site/demos/family-history/brief.json --out site/demos/family-history/page.html || true
+expected file missing: site/demos/family-history/transcript.json
+expected file missing: site/demos/family-history/brief.json
+expected file missing: site/demos/family-history/page.html
+family-history-museum-pipeline: FAIL
++ mkdir -p site/demos/family-history && ./cmd/BonfyreTranscribe/bonfyre-transcribe site/demos/test_b.wav site/demos/family-history || true
++ ./cmd/BonfyreBrief/bonfyre-brief site/demos/family-history/transcript.json site/demos/family-history || true
++ ./cmd/BonfyreRender/bonfyre-render artifact site/demos/family-history/transcript.json site/demos/family-history || true
+found expected file: site/demos/family-history/transcript.json
+expected file missing: site/demos/family-history/brief.json
+expected file missing: site/demos/family-history/page.html
+family-history-museum-pipeline: FAIL
++ mkdir -p site/demos/family-history && ./cmd/BonfyreTranscribe/bonfyre-transcribe site/demos/test_b.wav site/demos/family-history || true
++ ./cmd/BonfyreBrief/bonfyre-brief site/demos/family-history/transcript.json site/demos/family-history || true
++ ./cmd/BonfyreRender/bonfyre-render artifact site/demos/family-history/transcript.json site/demos/family-history || true
+found expected file: site/demos/family-history/transcript.json
+found expected file: site/demos/family-history/brief.md
+found expected file: site/demos/family-history/artifact.json
+family-history-museum-pipeline: PASS
++ mkdir -p site/demos/family-history && ./cmd/BonfyreTranscribe/bonfyre-transcribe site/demos/test_b.wav site/demos/family-history || true
++ ./cmd/BonfyreBrief/bonfyre-brief site/demos/family-history/transcript.json site/demos/family-history || true
++ ./cmd/BonfyreRender/bonfyre-render artifact site/demos/family-history/transcript.json site/demos/family-history || true
+found expected file: site/demos/family-history/transcript.json
+found expected file: site/demos/family-history/brief.md
+found expected file: site/demos/family-history/artifact.json
+family-history-museum-pipeline: PASS
++ mkdir -p site/demos/family-history && ./cmd/BonfyreTranscribe/bonfyre-transcribe site/demos/test_b.wav site/demos/family-history || true
++ ./cmd/BonfyreBrief/bonfyre-brief site/demos/family-history/transcript.json site/demos/family-history || true
++ ./cmd/BonfyreRender/bonfyre-render artifact site/demos/family-history/transcript.json site/demos/family-history || true
+found expected file: site/demos/family-history/transcript.json
+found expected file: site/demos/family-history/brief.md
+found expected file: site/demos/family-history/artifact.json
+family-history-museum-pipeline: PASS
++ mkdir -p site/demos/family-history && ./cmd/BonfyreTranscribe/bonfyre-transcribe site/demos/test_b.wav site/demos/family-history || true
++ ./cmd/BonfyreBrief/bonfyre-brief site/demos/family-history/transcript.json site/demos/family-history || true
++ ./cmd/BonfyreRender/bonfyre-render artifact site/demos/family-history/transcript.json site/demos/family-history || true
+found expected file: site/demos/family-history/transcript.json
+found expected file: site/demos/family-history/brief.md
+found expected file: site/demos/family-history/artifact.json
+family-history-museum-pipeline: PASS
++ mkdir -p site/demos/family-history && ./cmd/BonfyreTranscribe/bonfyre-transcribe site/demos/test_b.wav site/demos/family-history || true
++ ./cmd/BonfyreBrief/bonfyre-brief site/demos/family-history/transcript.json site/demos/family-history || true
++ ./cmd/BonfyreRender/bonfyre-render artifact site/demos/family-history/transcript.json site/demos/family-history || true
+found expected file: site/demos/family-history/transcript.json
+found expected file: site/demos/family-history/brief.md
+found expected file: site/demos/family-history/artifact.json
+family-history-museum-pipeline: PASS
++ mkdir -p site/demos/family-history && ./cmd/BonfyreTranscribe/bonfyre-transcribe site/demos/test_b.wav site/demos/family-history || true
++ ./cmd/BonfyreBrief/bonfyre-brief site/demos/family-history/transcript.json site/demos/family-history || true
++ ./cmd/BonfyreRender/bonfyre-render artifact site/demos/family-history/transcript.json site/demos/family-history || true
+found expected file: site/demos/family-history/transcript.json
+found expected file: site/demos/family-history/brief.md
+found expected file: site/demos/family-history/artifact.json
+family-history-museum-pipeline: PASS

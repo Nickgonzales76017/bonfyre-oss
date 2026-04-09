@@ -1,0 +1,40 @@
+{
+  "schema_version": "1.0.0",
+  "artifact_id": "ingest-unknown",
+  "artifact_type": "ingest",
+  "created_at": "2026-04-08T17:07:07Z",
+  "source_system": "BonfyreIngest",
+  "atoms": [
+    {
+      "atom_id": "source-raw",
+      "content_hash": "unknown",
+      "media_type": "application/octet-stream",
+      "path": "ingest",
+      "byte_size": 0,
+      "label": "Raw intake asset"
+    }
+  ],
+  "operators": [
+    {
+      "operator_id": "op-normalize",
+      "op": "Normalize",
+      "inputs": ["source-raw"],
+      "output": "normalized",
+      "params": { "type": "unknown" },
+      "version": "1.0.0",
+      "deterministic": true
+    }
+  ],
+  "realizations": [
+    {
+      "realization_id": "normalized",
+      "media_type": "application/octet-stream",
+      "path": "ingest",
+      "content_hash": "unknown",
+      "byte_size": 0,
+      "pinned": true,
+      "produced_by": "op-normalize",
+      "label": "Normalized intake"
+    }
+  ]
+}

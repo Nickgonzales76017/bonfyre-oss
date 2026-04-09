@@ -1,0 +1,4 @@
++ ./cmd/BonfyreNarrate/bonfyre-narrate
+command failed with rc=1
+failed to extract .composite from stdout
+bonfyre-narrate-verify: FAIL

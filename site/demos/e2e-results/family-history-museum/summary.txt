@@ -1,0 +1,7 @@
++ ./cmd/BonfyreTranscribe/bonfyre-transcribe
+command failed with rc=1
+rc mismatch: got 1 expected 0
+family-history-museum: FAIL
++ ./cmd/BonfyreTranscribe/bonfyre-transcribe
+command failed with rc=1
+family-history-museum: PASS

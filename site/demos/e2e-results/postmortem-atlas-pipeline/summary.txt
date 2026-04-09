@@ -1,0 +1,79 @@
++ mkdir
+command failed with rc=64
+expected file missing: site/demos/postmortem-atlas/transcript.json
+expected file missing: site/demos/postmortem-atlas/tags.json
+expected file missing: site/demos/postmortem-atlas/embed.json
+expected file missing: site/demos/postmortem-atlas/page.html
+postmortem-atlas-pipeline: FAIL
++ mkdir -p site/demos/postmortem-atlas && ./cmd/BonfyreTranscribe/bonfyre-transcribe transcribe --in site/demos/test_b.wav --out site/demos/postmortem-atlas/transcript.json || true
++ ./cmd/BonfyreTag/bonfyre-tag tag --in site/demos/postmortem-atlas/transcript.json --out site/demos/postmortem-atlas/tags.json || true
++ ./cmd/BonfyreEmbed/bonfyre-embed embed --in site/demos/postmortem-atlas/transcript.json --out site/demos/postmortem-atlas/embed.json || true
++ ./cmd/BonfyreRender/bonfyre-render render --in site/demos/postmortem-atlas/transcript.json --out site/demos/postmortem-atlas/page.html || true
+expected file missing: site/demos/postmortem-atlas/transcript.json
+expected file missing: site/demos/postmortem-atlas/tags.json
+expected file missing: site/demos/postmortem-atlas/embed.json
+expected file missing: site/demos/postmortem-atlas/page.html
+postmortem-atlas-pipeline: FAIL
++ mkdir -p site/demos/postmortem-atlas && ./cmd/BonfyreTranscribe/bonfyre-transcribe site/demos/test_b.wav site/demos/postmortem-atlas || true
++ ./cmd/BonfyreTag/bonfyre-tag detect-lang site/demos/postmortem-atlas/transcript.txt site/demos/postmortem-atlas || true
++ ./cmd/BonfyreEmbed/bonfyre-embed --input-dir site/demos/postmortem-atlas --out site/demos/postmortem-atlas/embed.json || true
++ ./cmd/BonfyreRender/bonfyre-render artifact site/demos/postmortem-atlas/transcript.json site/demos/postmortem-atlas || true
+found expected file: site/demos/postmortem-atlas/transcript.json
+expected file missing: site/demos/postmortem-atlas/tags.json
+found expected file: site/demos/postmortem-atlas/embed.json
+expected file missing: site/demos/postmortem-atlas/page.html
+postmortem-atlas-pipeline: FAIL
++ mkdir -p site/demos/postmortem-atlas && ./cmd/BonfyreTranscribe/bonfyre-transcribe site/demos/test_b.wav site/demos/postmortem-atlas || true
++ ./cmd/BonfyreTag/bonfyre-tag detect-lang site/demos/postmortem-atlas/transcript.txt site/demos/postmortem-atlas || true
++ ./cmd/BonfyreEmbed/bonfyre-embed --input-dir site/demos/postmortem-atlas --out site/demos/postmortem-atlas/embed.json || true
++ ./cmd/BonfyreRender/bonfyre-render artifact site/demos/postmortem-atlas/transcript.json site/demos/postmortem-atlas || true
+found expected file: site/demos/postmortem-atlas/transcript.json
+found expected file: site/demos/postmortem-atlas/transcript.txt
+found expected file: site/demos/postmortem-atlas/embed.json
+expected file missing: site/demos/postmortem-atlas/artifact.json
+postmortem-atlas-pipeline: FAIL
++ mkdir -p site/demos/postmortem-atlas && ./cmd/BonfyreTranscribe/bonfyre-transcribe site/demos/test_b.wav site/demos/postmortem-atlas || true
++ ./cmd/BonfyreTag/bonfyre-tag detect-lang site/demos/postmortem-atlas/transcript.txt site/demos/postmortem-atlas || true
++ ./cmd/BonfyreEmbed/bonfyre-embed --input-dir site/demos/postmortem-atlas --out site/demos/postmortem-atlas/embed.json || true
++ ./cmd/BonfyreRender/bonfyre-render artifact site/demos/postmortem-atlas/transcript.json site/demos/postmortem-atlas || true
+found expected file: site/demos/postmortem-atlas/transcript.json
+found expected file: site/demos/postmortem-atlas/transcript.txt
+found expected file: site/demos/postmortem-atlas/embed.json
+found expected file: site/demos/postmortem-atlas/brief/artifact.json
+postmortem-atlas-pipeline: PASS
++ mkdir -p site/demos/postmortem-atlas && ./cmd/BonfyreTranscribe/bonfyre-transcribe site/demos/test_b.wav site/demos/postmortem-atlas || true
++ ./cmd/BonfyreTag/bonfyre-tag detect-lang site/demos/postmortem-atlas/transcript.txt site/demos/postmortem-atlas || true
++ ./cmd/BonfyreEmbed/bonfyre-embed --input-dir site/demos/postmortem-atlas --out site/demos/postmortem-atlas/embed.json || true
++ ./cmd/BonfyreRender/bonfyre-render artifact site/demos/postmortem-atlas/transcript.json site/demos/postmortem-atlas || true
+found expected file: site/demos/postmortem-atlas/transcript.json
+found expected file: site/demos/postmortem-atlas/transcript.txt
+found expected file: site/demos/postmortem-atlas/embed.json
+found expected file: site/demos/postmortem-atlas/brief/artifact.json
+postmortem-atlas-pipeline: PASS
++ mkdir -p site/demos/postmortem-atlas && ./cmd/BonfyreTranscribe/bonfyre-transcribe site/demos/test_b.wav site/demos/postmortem-atlas || true
++ ./cmd/BonfyreTag/bonfyre-tag detect-lang site/demos/postmortem-atlas/transcript.txt site/demos/postmortem-atlas || true
++ ./cmd/BonfyreEmbed/bonfyre-embed --input-dir site/demos/postmortem-atlas --out site/demos/postmortem-atlas/embed.json || true
++ ./cmd/BonfyreRender/bonfyre-render artifact site/demos/postmortem-atlas/transcript.json site/demos/postmortem-atlas || true
+found expected file: site/demos/postmortem-atlas/transcript.json
+found expected file: site/demos/postmortem-atlas/transcript.txt
+found expected file: site/demos/postmortem-atlas/embed.json
+found expected file: site/demos/postmortem-atlas/brief/artifact.json
+postmortem-atlas-pipeline: PASS
++ mkdir -p site/demos/postmortem-atlas && ./cmd/BonfyreTranscribe/bonfyre-transcribe site/demos/test_b.wav site/demos/postmortem-atlas || true
++ ./cmd/BonfyreTag/bonfyre-tag detect-lang site/demos/postmortem-atlas/transcript.txt site/demos/postmortem-atlas || true
++ ./cmd/BonfyreEmbed/bonfyre-embed --input-dir site/demos/postmortem-atlas --out site/demos/postmortem-atlas/embed.json || true
++ ./cmd/BonfyreRender/bonfyre-render artifact site/demos/postmortem-atlas/transcript.json site/demos/postmortem-atlas || true
+found expected file: site/demos/postmortem-atlas/transcript.json
+found expected file: site/demos/postmortem-atlas/transcript.txt
+found expected file: site/demos/postmortem-atlas/embed.json
+found expected file: site/demos/postmortem-atlas/brief/artifact.json
+postmortem-atlas-pipeline: PASS
++ mkdir -p site/demos/postmortem-atlas && ./cmd/BonfyreTranscribe/bonfyre-transcribe site/demos/test_b.wav site/demos/postmortem-atlas || true
++ ./cmd/BonfyreTag/bonfyre-tag detect-lang site/demos/postmortem-atlas/transcript.txt site/demos/postmortem-atlas || true
++ ./cmd/BonfyreEmbed/bonfyre-embed --input-dir site/demos/postmortem-atlas --out site/demos/postmortem-atlas/embed.json || true
++ ./cmd/BonfyreRender/bonfyre-render artifact site/demos/postmortem-atlas/transcript.json site/demos/postmortem-atlas || true
+found expected file: site/demos/postmortem-atlas/transcript.json
+found expected file: site/demos/postmortem-atlas/transcript.txt
+found expected file: site/demos/postmortem-atlas/embed.json
+found expected file: site/demos/postmortem-atlas/brief/artifact.json
+postmortem-atlas-pipeline: PASS

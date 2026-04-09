@@ -1,0 +1,17 @@
+BonfyreIndex — artifact family index & search
+
+Usage:
+  bonfyre-index build <dir> [--db F]      Crawl & index artifact.json files
+  bonfyre-index search <q> [--type T]      Search families
+  bonfyre-index reuse [--db F]             Find shared atoms/operators
+  bonfyre-index equivalence [--db F]       Show canonical-equivalent families
+  bonfyre-index collapse-preview [--db F]  Preview safe equivalence collapse groups
+  bonfyre-index confidence-preview [--db F] Preview exact/probable/related family groups
+  bonfyre-index collapse-plan [--db F]     Choose deterministic keep/fold representatives
+  bonfyre-index collapse-ledger <out> [--db F] Write non-destructive collapse action ledger
+  bonfyre-index merge-manifest <out> [--db F] Write preview-only merge manifest artifact
+  bonfyre-index bundle-layout <merge> <out> Build preview-only canonical bundle layout
+  bonfyre-index validate-preview <path>    Validate preview-only merge/layout artifact
+  bonfyre-index bundle-diff <layout> <out> Compare current disk state to projected bundle layout
+  Add --json to the preview commands for machine-readable output
+  bonfyre-index stats [--db F]             Summary statistics

@@ -1,0 +1,20 @@
+{
+  "sourceSystem": "BonfyreTranscribe",
+  "exportedAt": "2026-04-08T19:53:34Z",
+  "status": "transcribed",
+  "jobSlug": "test_b",
+  "splitSpeech": false,
+  "sileroVad": false,
+  "denoised": true,
+  "segments": 1,
+  "segmentsFiltered": 0,
+  "segmentsHallucinated": 1,
+  "chunkCount": 0,
+  "avgQuality": 0.0214,
+  "rtf": 0.0760,
+  "transcriptPath": "site/demos/memory-atlas/transcript.txt",
+  "transcriptJsonPath": "site/demos/memory-atlas/transcript.json",
+  "transcriptSrtPath": "site/demos/memory-atlas/transcript.srt",
+  "transcriptVttPath": "site/demos/memory-atlas/transcript.vtt",
+  "metaPath": "site/demos/memory-atlas/meta.json"
+}

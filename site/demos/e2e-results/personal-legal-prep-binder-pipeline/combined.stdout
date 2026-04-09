@@ -1,0 +1,9 @@
+Transcript: site/demos/legal-prep/transcript.txt
+JSON:       site/demos/legal-prep/transcript.json
+SRT:        site/demos/legal-prep/transcript.srt
+VTT:        site/demos/legal-prep/transcript.vtt
+Meta:       site/demos/legal-prep/meta.json
+Status:     site/demos/legal-prep/transcribe-status.json
+Quality:    0.1507 (conf=0.1507 logprob=-1.892)
+RTF:        0.0786 (12.7x realtime)
+{"type": "language-detection", "source": "site/demos/legal-prep/transcript.txt", "chunks": 0, "languages": []}

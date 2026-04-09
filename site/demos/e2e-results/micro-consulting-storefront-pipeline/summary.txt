@@ -1,0 +1,77 @@
++ mkdir
+command failed with rc=64
+expected file missing: site/demos/micro-consulting/offer.json
+expected file missing: site/demos/micro-consulting/meter.json
+expected file missing: site/demos/micro-consulting/pack.zip
+micro-consulting-storefront-pipeline: FAIL
++ mkdir -p site/demos/micro-consulting && ./cmd/BonfyreOffer/bonfyre-offer offer --in site/demos/test_a.wav --out site/demos/micro-consulting/offer.json || true
++ ./cmd/BonfyreMeter/bonfyre-meter meter --in site/demos/micro-consulting/offer.json --out site/demos/micro-consulting/meter.json || true
++ ./cmd/BonfyrePack/bonfyre-pack pack --in site/demos/micro-consulting --out site/demos/micro-consulting/pack.zip || true
+expected file missing: site/demos/micro-consulting/offer.json
+expected file missing: site/demos/micro-consulting/meter.json
+expected file missing: site/demos/micro-consulting/pack.zip
+micro-consulting-storefront-pipeline: FAIL
++ mkdir -p site/demos/micro-consulting && ./cmd/BonfyreOffer/bonfyre-offer generate site/demos/micro-consulting/proof_bundle site/demos/micro-consulting/offer_out || true
++ ./cmd/BonfyreMeter/bonfyre-meter meter site/demos/micro-consulting/offer_out site/demos/micro-consulting/meter.json || true
++ ./cmd/BonfyrePack/bonfyre-pack assemble site/demos/micro-consulting site/demos/micro-consulting/offer_out site/demos/micro-consulting/pack_out || true
+expected file missing: site/demos/micro-consulting/offer.json
+expected file missing: site/demos/micro-consulting/meter.json
+expected file missing: site/demos/micro-consulting/pack.zip
+micro-consulting-storefront-pipeline: FAIL
++ mkdir -p site/demos/micro-consulting && ./cmd/BonfyreOffer/bonfyre-offer generate site/demos/micro-consulting/proof_bundle site/demos/micro-consulting/offer_out || true
++ ./cmd/BonfyreMeter/bonfyre-meter meter site/demos/micro-consulting/offer_out site/demos/micro-consulting/meter.json || true
++ ./cmd/BonfyrePack/bonfyre-pack assemble site/demos/micro-consulting site/demos/micro-consulting/offer_out site/demos/micro-consulting/pack_out || true
+expected file missing: site/demos/micro-consulting/offer_out
+expected file missing: site/demos/micro-consulting/meter.json
+found expected file: site/demos/micro-consulting/pack_out
+micro-consulting-storefront-pipeline: FAIL
++ mkdir -p site/demos/micro-consulting && ./cmd/BonfyreTranscribe/bonfyre-transcribe site/demos/test_a.wav site/demos/micro-consulting || true
++ ./cmd/BonfyreBrief/bonfyre-brief site/demos/micro-consulting/transcript.json site/demos/micro-consulting || true
++ ./cmd/BonfyreProof/bonfyre-proof bundle site/demos/micro-consulting site/demos/micro-consulting/proof_bundle || true
++ ./cmd/BonfyreOffer/bonfyre-offer generate site/demos/micro-consulting/proof_bundle site/demos/micro-consulting/offer_out || true
++ ./cmd/BonfyreMeter/bonfyre-meter meter site/demos/micro-consulting/offer_out site/demos/micro-consulting/meter.json || true
++ ./cmd/BonfyrePack/bonfyre-pack assemble site/demos/micro-consulting site/demos/micro-consulting/offer_out site/demos/micro-consulting/pack_out || true
+expected file missing: site/demos/micro-consulting/offer_out
+expected file missing: site/demos/micro-consulting/meter.json
+found expected file: site/demos/micro-consulting/pack_out
+micro-consulting-storefront-pipeline: FAIL
++ mkdir -p site/demos/micro-consulting && ./cmd/BonfyreTranscribe/bonfyre-transcribe site/demos/test_a.wav site/demos/micro-consulting || true
++ ./cmd/BonfyreBrief/bonfyre-brief site/demos/micro-consulting/transcript.json site/demos/micro-consulting || true
++ ./cmd/BonfyreProof/bonfyre-proof bundle site/demos/micro-consulting site/demos/micro-consulting/proof_bundle || true
++ ./cmd/BonfyreOffer/bonfyre-offer generate site/demos/micro-consulting/proof_bundle site/demos/micro-consulting/offer_out || true
++ ./cmd/BonfyreMeter/bonfyre-meter meter site/demos/micro-consulting/offer_out site/demos/micro-consulting/meter.json || true
++ ./cmd/BonfyrePack/bonfyre-pack assemble site/demos/micro-consulting site/demos/micro-consulting/offer_out site/demos/micro-consulting/pack_out || true
+found expected file: site/demos/micro-consulting/offer_out
+expected file missing: site/demos/micro-consulting/meter.json
+found expected file: site/demos/micro-consulting/pack_out
+micro-consulting-storefront-pipeline: FAIL
++ mkdir -p site/demos/micro-consulting && ./cmd/BonfyreTranscribe/bonfyre-transcribe site/demos/test_a.wav site/demos/micro-consulting || true
++ ./cmd/BonfyreBrief/bonfyre-brief site/demos/micro-consulting/transcript.json site/demos/micro-consulting || true
++ ./cmd/BonfyreProof/bonfyre-proof bundle site/demos/micro-consulting site/demos/micro-consulting/proof_bundle || true
++ ./cmd/BonfyreOffer/bonfyre-offer generate site/demos/micro-consulting/proof_bundle site/demos/micro-consulting/offer_out || true
++ ./cmd/BonfyreMeter/bonfyre-meter meter site/demos/micro-consulting/offer_out site/demos/micro-consulting/meter.json || true
++ ./cmd/BonfyrePack/bonfyre-pack assemble site/demos/micro-consulting site/demos/micro-consulting/offer_out site/demos/micro-consulting/pack_out || true
+found expected file: site/demos/micro-consulting/offer_out
+found expected file: site/demos/micro-consulting/meter.json
+found expected file: site/demos/micro-consulting/pack_out
+micro-consulting-storefront-pipeline: PASS
++ mkdir -p site/demos/micro-consulting && ./cmd/BonfyreTranscribe/bonfyre-transcribe site/demos/test_a.wav site/demos/micro-consulting || true
++ ./cmd/BonfyreBrief/bonfyre-brief site/demos/micro-consulting/transcript.json site/demos/micro-consulting || true
++ ./cmd/BonfyreProof/bonfyre-proof bundle site/demos/micro-consulting site/demos/micro-consulting/proof_bundle || true
++ ./cmd/BonfyreOffer/bonfyre-offer generate site/demos/micro-consulting/proof_bundle site/demos/micro-consulting/offer_out || true
++ ./scripts/gen_meter_from_offer.sh site/demos/micro-consulting/offer_out site/demos/micro-consulting/meter.json || true
++ ./cmd/BonfyrePack/bonfyre-pack assemble site/demos/micro-consulting site/demos/micro-consulting/offer_out site/demos/micro-consulting/pack_out || true
+found expected file: site/demos/micro-consulting/offer_out
+found expected file: site/demos/micro-consulting/meter.json
+found expected file: site/demos/micro-consulting/pack_out
+micro-consulting-storefront-pipeline: PASS
++ mkdir -p site/demos/micro-consulting && ./cmd/BonfyreTranscribe/bonfyre-transcribe site/demos/test_a.wav site/demos/micro-consulting || true
++ ./cmd/BonfyreBrief/bonfyre-brief site/demos/micro-consulting/transcript.json site/demos/micro-consulting || true
++ ./cmd/BonfyreProof/bonfyre-proof bundle site/demos/micro-consulting site/demos/micro-consulting/proof_bundle || true
++ ./cmd/BonfyreOffer/bonfyre-offer generate site/demos/micro-consulting/proof_bundle site/demos/micro-consulting/offer_out || true
++ ./scripts/gen_meter_from_offer.sh site/demos/micro-consulting/offer_out site/demos/micro-consulting/meter.json || true
++ ./cmd/BonfyrePack/bonfyre-pack assemble site/demos/micro-consulting site/demos/micro-consulting/offer_out site/demos/micro-consulting/pack_out || true
+found expected file: site/demos/micro-consulting/offer_out
+found expected file: site/demos/micro-consulting/meter.json
+found expected file: site/demos/micro-consulting/pack_out
+micro-consulting-storefront-pipeline: PASS

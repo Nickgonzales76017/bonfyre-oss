@@ -1,0 +1,8 @@
+{
+  "source": "gen_meter_from_offer",
+  "offerName": " Native Offer",
+  "charges": [
+    { "label": "offer", "amount_cents": 800 }
+  ],
+  "total_cents": 800
+}

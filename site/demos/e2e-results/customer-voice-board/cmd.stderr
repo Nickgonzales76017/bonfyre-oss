@@ -1,0 +1,41 @@
+bonfyre-transcribe — world-class libwhisper transcription engine
+
+Usage:
+  bonfyre-transcribe <input-audio> <output-dir> [--model NAME] [--language CODE|auto]
+                      [--media-prep-binary PATH]
+                      [--silero-vad] [--silero-script PATH]
+                      [--split-speech] [--noise-threshold DB] [--min-silence SEC]
+                      [--min-speech SEC] [--padding SEC]
+                      [--greedy] [--beam-size N] [--best-of N]
+                      [--vocab-db PATH] [--no-vocab]
+                      [--processors N] [--no-speech-thold N]
+
+Transcription engine:
+  Links libwhisper directly. Model loads ONCE. Zero fork+exec.
+  Metal GPU + flash attention. DTW forced-alignment timestamps.
+  Multi-processor parallel decode. TinyDiarize speaker turns.
+
+Quality (cutting-edge):
+  Geometric mean confidence (perplexity^-1 = exp(mean(log(p)))).
+  Compression ratio hallucination detection (zlib, rho > 2.4).
+  Token n-gram repetition detector. Repetition penalty logits filter.
+  Voice-length anomaly detection. Per-segment quality score.
+
+Output formats:
+  transcript.txt   — plain text
+  transcript.json  — structured segments with timestamps, confidence,
+                     logprob, compression ratio, hallucination flags
+  transcript.srt   — SubRip subtitles
+  transcript.vtt   — WebVTT subtitles with quality metadata
+
+Vocabulary learning:
+  Flat binary .bfvocab format (BFVD02). Zero SQLite, zero process spawns.
+  BM25-weighted terms injected as whisper initial_prompt.
+  Token-aware truncation to fit decoder context (112 token budget).
+  Shannon entropy + KL-divergence track convergence.
+
+  BM25(t,d) = IDF(t) * tf(t,d)*(k1+1) / (tf(t,d)+k1*(1-b+b*|d|/avgdl))
+  H = -sum(p_i * log2(p_i))           [Shannon entropy]
+  D_KL(P||U) = sum(p_i * log2(p_i/q)) [KL from uniform]
+
+  Disable with --no-vocab. Custom path with --vocab-db.

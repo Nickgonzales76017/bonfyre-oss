@@ -1,0 +1,1 @@
+{"binary":"bonfyre-narrate","version":"3.2.0","features":["ssml-prosody","psola-pitch-shift","energy-envelope","tone-profile-input","28-feature-fingerprint","6-layer-fidelity","closed-loop-verification","iterative-refinement","wav-quality-analysis","parabolic-f0","spectral-flatness"],"status":"available"}

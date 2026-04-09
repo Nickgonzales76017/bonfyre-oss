@@ -1,0 +1,4 @@
+BonfyreEmit — multi-format output engine
+
+Usage:
+  bonfyre-emit <artifact-dir> --format html|pdf|epub|rss|txt|bundle [--out FILE]

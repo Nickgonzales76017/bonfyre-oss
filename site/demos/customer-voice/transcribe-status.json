@@ -1,0 +1,20 @@
+{
+  "sourceSystem": "BonfyreTranscribe",
+  "exportedAt": "2026-04-08T19:53:34Z",
+  "status": "transcribed",
+  "jobSlug": "test_a",
+  "splitSpeech": false,
+  "sileroVad": false,
+  "denoised": true,
+  "segments": 1,
+  "segmentsFiltered": 0,
+  "segmentsHallucinated": 1,
+  "chunkCount": 0,
+  "avgQuality": 0.0374,
+  "rtf": 0.0720,
+  "transcriptPath": "site/demos/customer-voice/transcript.txt",
+  "transcriptJsonPath": "site/demos/customer-voice/transcript.json",
+  "transcriptSrtPath": "site/demos/customer-voice/transcript.srt",
+  "transcriptVttPath": "site/demos/customer-voice/transcript.vtt",
+  "metaPath": "site/demos/customer-voice/meta.json"
+}

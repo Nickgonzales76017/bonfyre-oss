@@ -1,0 +1,12 @@
+{
+  "ingest_version": "1.0.0",
+  "timestamp": "2026-04-08T19:53:39Z",
+  "source_file": ".",
+  "source_bytes": 896,
+  "detected_type": "unknown",
+  "normalized_path": ".",
+  "normalized_bytes": 256,
+  "content_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "media_type": "application/octet-stream",
+  "status": "ready"
+}

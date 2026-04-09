@@ -1,0 +1,4 @@
+Usage:
+  bonfyre-proof score <brief-dir> <output-dir>
+  bonfyre-proof inspect <proof-dir>
+  bonfyre-proof bundle <proof-dir> <output-dir>

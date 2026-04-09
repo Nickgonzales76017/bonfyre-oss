@@ -1,0 +1,7 @@
+BonfyreLedger — value accounting engine
+
+  bonfyre-ledger assess <artifact.json>          detailed family report
+  bonfyre-ledger assess-json <artifact.json>     JSON output
+  bonfyre-ledger portfolio <root_dir>             full portfolio roll-up
+  bonfyre-ledger delta <artifact.json>            value changes
+  bonfyre-ledger export <root_dir> [--format json|csv]

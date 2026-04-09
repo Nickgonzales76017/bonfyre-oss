@@ -1,0 +1,121 @@
+{
+  "tests": [
+    {
+      "name": "shift-handoff-board",
+      "commands": [
+        "./cmd/BonfyreBrief/bonfyre-brief --help",
+        "./cmd/BonfyreProof/bonfyre-proof --help",
+        "./cmd/BonfyreOffer/bonfyre-offer --help",
+        "./cmd/BonfyrePack/bonfyre-pack --help"
+      ],
+      "expect": { }
+    },
+    {
+      "name": "memory-atlas",
+      "commands": [
+        "./cmd/BonfyreTranscribe/bonfyre-transcribe --help",
+        "./cmd/BonfyreBrief/bonfyre-brief --help",
+        "./cmd/BonfyreEmbed/bonfyre-embed --help",
+        "./cmd/BonfyreRender/bonfyre-render --help"
+      ],
+      "expect": { }
+    },
+    {
+      "name": "freelancer-evidence-vault",
+      "commands": [
+        "./cmd/BonfyreTranscribe/bonfyre-transcribe --help",
+        "./cmd/BonfyreBrief/bonfyre-brief --help",
+        "./cmd/BonfyreProof/bonfyre-proof --help",
+        "./cmd/BonfyrePack/bonfyre-pack --help"
+      ],
+      "expect": { }
+    },
+    {
+      "name": "customer-voice-board",
+      "commands": [
+        "./cmd/BonfyreTranscribe/bonfyre-transcribe --help",
+        "./cmd/BonfyreTone/bonfyre-tone --help",
+        "./cmd/BonfyreTag/bonfyre-tag --help",
+        "./cmd/BonfyreEmbed/bonfyre-embed --help"
+      ],
+      "expect": { }
+    },
+    {
+      "name": "family-history-museum",
+      "commands": [
+        "./cmd/BonfyreTranscribe/bonfyre-transcribe --help",
+        "./cmd/BonfyreBrief/bonfyre-brief --help",
+        "./cmd/BonfyreRender/bonfyre-render --help"
+      ],
+      "expect": { }
+    },
+    {
+      "name": "podcast-plant",
+      "commands": [
+        "./cmd/BonfyreMediaPrep/bonfyre-media-prep --help",
+        "./cmd/BonfyreTranscribe/bonfyre-transcribe --help",
+        "./cmd/BonfyreBrief/bonfyre-brief --help",
+        "./cmd/BonfyreEmit/bonfyre-emit --help"
+      ],
+      "expect": { }
+    },
+    {
+      "name": "postmortem-atlas",
+      "commands": [
+        "./cmd/BonfyreTranscribe/bonfyre-transcribe --help",
+        "./cmd/BonfyreTag/bonfyre-tag --help",
+        "./cmd/BonfyreEmbed/bonfyre-embed --help",
+        "./cmd/BonfyreRender/bonfyre-render --help"
+      ],
+      "expect": { }
+    },
+    {
+      "name": "explain-this-repo",
+      "commands": [
+        "./cmd/BonfyreIngest/bonfyre-ingest --help",
+        "./cmd/BonfyreCanon/bonfyre-canon --help",
+        "./cmd/BonfyreBrief/bonfyre-brief --help",
+        "./cmd/BonfyreRender/bonfyre-render --help"
+      ],
+      "expect": { }
+    },
+    {
+      "name": "town-box",
+      "commands": [
+        "./cmd/BonfyreTranscribe/bonfyre-transcribe --help",
+        "./cmd/BonfyreBrief/bonfyre-brief --help",
+        "./cmd/BonfyreTag/bonfyre-tag --help",
+        "./cmd/BonfyreRender/bonfyre-render --help"
+      ],
+      "expect": { }
+    },
+    {
+      "name": "grant-evidence-pack",
+      "commands": [
+        "./cmd/BonfyreTranscribe/bonfyre-transcribe --help",
+        "./cmd/BonfyreProof/bonfyre-proof --help",
+        "./cmd/BonfyrePack/bonfyre-pack --help",
+        "./cmd/BonfyreEmit/bonfyre-emit --help"
+      ],
+      "expect": { }
+    },
+    {
+      "name": "micro-consulting-storefront",
+      "commands": [
+        "./cmd/BonfyreOffer/bonfyre-offer --help",
+        "./cmd/BonfyreMeter/bonfyre-meter --help",
+        "./cmd/BonfyrePack/bonfyre-pack --help"
+      ],
+      "expect": { }
+    },
+    {
+      "name": "personal-legal-prep-binder",
+      "commands": [
+        "./cmd/BonfyreProof/bonfyre-proof --help",
+        "./cmd/BonfyreTag/bonfyre-tag --help",
+        "./cmd/BonfyrePack/bonfyre-pack --help"
+      ],
+      "expect": { "rc": 0 }
+    }
+  ]
+}
