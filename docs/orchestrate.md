@@ -70,6 +70,7 @@ export BONFYRE_ORCHESTRATE_API_KEY=...
   "booster_binaries": ["bonfyre-narrate", "bonfyre-render", "bonfyre-emit", "bonfyre-pack"],
   "control_surfaces": ["bonfyre-render", "bonfyre-emit", "bonfyre-queue"],
   "objective_family": "publish",
+  "state_key": "m100-s101-l10-o1000-a11",
   "expected_outputs": ["normalized-audio", "transcript", "brief", "rendered-output", "formatted-output"],
   "predicted_cost": 0.452,
   "predicted_latency": 0.387,
@@ -85,6 +86,15 @@ export BONFYRE_ORCHESTRATE_API_KEY=...
     "cms": 0.216,
     "retrieval": 0.117,
     "value": 0.081
+  },
+  "state_vector": {
+    "modality_audio": true,
+    "surface_pages": true,
+    "surface_jobs": true,
+    "latency_interactive": true,
+    "objective_publish": true,
+    "artifact_local": true,
+    "artifact_structured": true
   }
 }
 ```
@@ -221,6 +231,15 @@ The plan JSON also exposes:
 - `active_domain_weights`
 
 So downstream Bonfyre surfaces can see which control layer won and what domain mix shaped the plan, without introducing a human prompt surface.
+
+## State compression
+
+Each request is also compressed into a small machine state:
+
+- `state_key`
+- `state_vector`
+
+This is Bonfyre's sufficient-statistics layer for orchestration. It keeps the planner oriented around modality, surface, latency class, objective family, and artifact shape instead of letting orchestration drift into raw-string prompt logic.
 
 ## Booster frontier
 

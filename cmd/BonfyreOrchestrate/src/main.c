@@ -41,6 +41,23 @@ typedef struct {
 } BfDomainWeights;
 
 typedef struct {
+    int modality_audio;
+    int modality_artifact;
+    int modality_text;
+    int surface_pages;
+    int surface_api;
+    int surface_jobs;
+    int latency_interactive;
+    int latency_batch;
+    int objective_publish;
+    int objective_retrieval;
+    int objective_value;
+    int objective_cms;
+    int artifact_local;
+    int artifact_structured;
+} OrchestrateStateVector;
+
+typedef struct {
     int selected[MAX_PLAN_STEPS];
     int selected_count;
     int boosters[MAX_PLAN_STEPS];
@@ -182,6 +199,36 @@ static const char *policy_source_for_mode(const char *mode) {
     if (strcmp(mode, "family-memory") == 0) return "family-policy-prior";
     if (strcmp(mode, "gemma4-delta") == 0) return "stability-gated-gemma-delta";
     return "heuristic-baseline";
+}
+
+static OrchestrateStateVector request_state_vector(const OrchestrateRequest *req) {
+    OrchestrateStateVector v;
+    memset(&v, 0, sizeof(v));
+    v.modality_audio = icontains(req->input_type, "audio");
+    v.modality_artifact = icontains(req->input_type, "artifact");
+    v.modality_text = !v.modality_audio && !v.modality_artifact;
+    v.surface_pages = icontains(req->surface, "pages");
+    v.surface_api = icontains(req->surface, "api") || icontains(req->surface, "backend");
+    v.surface_jobs = icontains(req->surface, "jobs") || icontains(req->surface, "queue") || icontains(req->surface, "actions");
+    v.latency_interactive = icontains(req->latency_class, "interactive") || icontains(req->latency_class, "fast") || icontains(req->latency_class, "realtime");
+    v.latency_batch = icontains(req->latency_class, "batch");
+    v.objective_publish = icontains(req->objective, "publish") || icontains(req->objective, "podcast") || icontains(req->objective, "release") || icontains(req->objective, "radio");
+    v.objective_retrieval = icontains(req->objective, "search") || icontains(req->objective, "semantic") || icontains(req->objective, "retrieval") || icontains(req->objective, "memory") || icontains(req->objective, "graph") || icontains(req->objective, "atlas");
+    v.objective_value = icontains(req->objective, "sales") || icontains(req->objective, "grant") || icontains(req->objective, "procurement") || icontains(req->objective, "offer") || icontains(req->objective, "value");
+    v.objective_cms = icontains(req->objective, "cms") || icontains(req->surface, "cms") || icontains(req->objective, "page") || icontains(req->objective, "content");
+    v.artifact_local = req->artifact_path[0] && !icontains(req->artifact_path, "http://") && !icontains(req->artifact_path, "https://");
+    v.artifact_structured = icontains(req->artifact_path, ".json") || icontains(req->artifact_path, ".md") || icontains(req->artifact_path, ".txt");
+    return v;
+}
+
+static void build_state_key(const OrchestrateRequest *req, char *dst, size_t dst_sz) {
+    OrchestrateStateVector v = request_state_vector(req);
+    snprintf(dst, dst_sz, "m%d%d%d-s%d%d%d-l%d%d-o%d%d%d%d-a%d%d",
+             v.modality_audio, v.modality_artifact, v.modality_text,
+             v.surface_pages, v.surface_api, v.surface_jobs,
+             v.latency_interactive, v.latency_batch,
+             v.objective_publish, v.objective_retrieval, v.objective_value, v.objective_cms,
+             v.artifact_local, v.artifact_structured);
 }
 
 static int json_string(const char *json, const char *key, char *dst, size_t dst_sz) {
@@ -988,14 +1035,18 @@ static void maybe_call_model(const OrchestrateRequest *req, OrchestratePlan *pla
 
 static void print_plan(const OrchestrateRequest *req, const OrchestratePlan *plan) {
     BfDomainWeights w = objective_weights(req);
+    OrchestrateStateVector sv = request_state_vector(req);
     const char *family = objective_family(req);
     const char *policy_source = policy_source_for_mode(plan->mode);
+    char state_key[64];
+    build_state_key(req, state_key, sizeof(state_key));
     printf("{\n");
     printf("  \"mode\": \"%s\",\n", plan->mode);
     printf("  \"policy_source\": \"%s\",\n", policy_source);
     printf("  \"model\": \"%s\",\n", plan->model);
     printf("  \"input_type\": \"%s\",\n", req->input_type);
     printf("  \"objective_family\": \"%s\",\n", family);
+    printf("  \"state_key\": \"%s\",\n", state_key);
     printf("  \"objective\": \"%s\",\n", req->objective);
     printf("  \"latency_class\": \"%s\",\n", req->latency_class);
     printf("  \"surface\": \"%s\",\n", req->surface);
@@ -1037,6 +1088,22 @@ static void print_plan(const OrchestrateRequest *req, const OrchestratePlan *pla
     printf("    \"cms\": %.3f,\n", w.cms);
     printf("    \"retrieval\": %.3f,\n", w.retrieval);
     printf("    \"value\": %.3f\n", w.value);
+    printf("  },\n");
+    printf("  \"state_vector\": {\n");
+    printf("    \"modality_audio\": %s,\n", sv.modality_audio ? "true" : "false");
+    printf("    \"modality_artifact\": %s,\n", sv.modality_artifact ? "true" : "false");
+    printf("    \"modality_text\": %s,\n", sv.modality_text ? "true" : "false");
+    printf("    \"surface_pages\": %s,\n", sv.surface_pages ? "true" : "false");
+    printf("    \"surface_api\": %s,\n", sv.surface_api ? "true" : "false");
+    printf("    \"surface_jobs\": %s,\n", sv.surface_jobs ? "true" : "false");
+    printf("    \"latency_interactive\": %s,\n", sv.latency_interactive ? "true" : "false");
+    printf("    \"latency_batch\": %s,\n", sv.latency_batch ? "true" : "false");
+    printf("    \"objective_publish\": %s,\n", sv.objective_publish ? "true" : "false");
+    printf("    \"objective_retrieval\": %s,\n", sv.objective_retrieval ? "true" : "false");
+    printf("    \"objective_value\": %s,\n", sv.objective_value ? "true" : "false");
+    printf("    \"objective_cms\": %s,\n", sv.objective_cms ? "true" : "false");
+    printf("    \"artifact_local\": %s,\n", sv.artifact_local ? "true" : "false");
+    printf("    \"artifact_structured\": %s\n", sv.artifact_structured ? "true" : "false");
     printf("  },\n");
     printf("  \"stability_gate\": {\n");
     printf("    \"min_policy_gain\": %.3f,\n", 0.015);
