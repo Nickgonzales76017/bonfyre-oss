@@ -408,9 +408,11 @@
   function renderDatasetOverview(items) {
     if (!items.length) return '';
     var flagged = 0;
+    var sourceBacked = 0;
     var outputs = {};
     for (var i = 0; i < items.length; i++) {
       if (items[i].flagged) flagged += 1;
+      if (items[i].sourceUrl || (Array.isArray(items[i].sourceLinks) && items[i].sourceLinks.length)) sourceBacked += 1;
       var list = Array.isArray(items[i].outputs) ? items[i].outputs : [];
       for (var j = 0; j < list.length; j++) outputs[list[j]] = (outputs[list[j]] || 0) + 1;
     }
@@ -424,11 +426,11 @@
     return '<section class="bonfyre-dataset-overview" data-bonfyre-overview="1">' +
       '<div class="bonfyre-dataset-head">' +
         '<div>' +
-          '<h3>Explore The Reference Corpus</h3>' +
+          '<h3>' + (sourceBacked === items.length ? 'Explore The Public-Origin Corpus' : 'Explore The Working Corpus') + '</h3>' +
           '<div class="bonfyre-dataset-copy">' + escapeHtml(lead.whyItMatters || 'These reference records are here to show search, reuse, and branching outputs across a larger corpus, not just on one isolated item.') + '</div>' +
         '</div>' +
         '<div class="bonfyre-dataset-stats">' +
-          '<div class="bonfyre-dataset-stat"><strong>' + String(items.length) + '</strong><span>reference records</span></div>' +
+          '<div class="bonfyre-dataset-stat"><strong>' + String(items.length) + '</strong><span>' + (sourceBacked === items.length ? 'public-origin records' : 'working records') + '</span></div>' +
           '<div class="bonfyre-dataset-stat"><strong>' + String(flagged) + '</strong><span>flagged or high-signal items</span></div>' +
           '<div class="bonfyre-dataset-stat"><strong>' + String(topTags.length) + '</strong><span>repeatable themes</span></div>' +
         '</div>' +
