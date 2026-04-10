@@ -3,9 +3,9 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Bonfyre — 48 static C binaries. ~2.1 MB. A complete backend.</title>
-<meta name="description" content="Bonfyre is 48 composable C11 binaries that replace an entire backend stack. CMS, transcription, telephony, auth, payments, compression — each under 70 KB. MIT licensed.">
-<meta property="og:title" content="Bonfyre — A complete backend in ~2.1 MB">
+<title>Bonfyre — 50 static C binaries. ~2.1 MB. A complete backend.</title>
+<meta name="description" content="Bonfyre is 50 composable C11 binaries that replace an entire backend stack. CMS, transcription, telephony, auth, payments, model quantization — each under 70 KB. MIT licensed.">
+<meta property="og:title" content="Bonfyre — A complete backend in ~2.1 MB (50 binaries)">
 <meta property="og:description" content="47 static C binaries. CMS, transcription, telephony, auth, payments, compression. MIT licensed.">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://nickgonzales76017.github.io/bonfyre/">
@@ -785,7 +785,7 @@ footer a:hover { color: var(--text); }
   <div class="container">
     <h1>🔥 <span>Bonfyre</span></h1>
     <p class="tagline">
-      48 composable C11 binaries that replace your entire backend stack.
+      50 composable C11 binaries that replace your entire backend stack.
       CMS, transcription, telephony, auth, payments, vector search, compression — each under 70 KB.
     </p>
     <div class="hero-stats">
@@ -953,7 +953,7 @@ footer a:hover { color: var(--text); }
         <tr><td>Idle memory</td><td>~200 MB</td><td>~80 MB</td><td class="highlight">15 MB</td></tr>
         <tr><td>Build step</td><td>npm install (2 min)</td><td>npm install (45 sec)</td><td class="highlight">make (8 sec)</td></tr>
         <tr><td>Runtime</td><td>Node.js 18+</td><td>Node.js 18+</td><td class="highlight">None (static binary)</td></tr>
-        <tr><td>Binaries</td><td>1 monolith</td><td>1 monolith</td><td class="highlight">48 composable</td></tr>
+        <tr><td>Binaries</td><td>1 monolith</td><td>1 monolith</td><td class="highlight">50 composable</td></tr>
       </tbody>
     </table>
   </div>
@@ -1006,6 +1006,12 @@ footer a:hover { color: var(--text); }
         <p>Drop-in replacement for OpenAI endpoints. Set OPENAI_API_BASE=http://localhost:8787 and existing code just works — transcription via HCP, completions via bonfyre-brief. 53 KB binary, localhost only.</p>
         <code>bonfyre-proxy serve --port 8787</code>
         <br><span class="time">1 min to try</span>
+      </div>
+      <div class="use-case">
+        <h3>Model Quantization (v8 RLF)</h3>
+        <p>Quantize LLM weights to 3-bit with 0.9999+ cosine similarity and zero perplexity loss. E8 lattice snap + μ-law warp + 16D RVQ. Qwen 0.5B: PPL 12.07 vs 11.95 baseline (+0.9%). 42 KB binary.</p>
+        <code>bonfyre-quant benchmark model.gguf --bits 3</code>
+        <br><span class="time">5 min to try</span>
       </div>
     </div>
   </div>
@@ -1222,7 +1228,7 @@ footer a:hover { color: var(--text); }
       <div class="wp-sprawl-col clean">
         <h4>Bonfyre</h4>
         <ul>
-          <li>48 binaries &mdash; $0/month</li>
+          <li>50 binaries &mdash; $0/month</li>
           <li>~2.1 MB total on disk</li>
           <li>Auth + billing + metering</li>
           <li>Local transcription</li>
@@ -1806,7 +1812,7 @@ footer a:hover { color: var(--text); }
 <!-- All binaries -->
 <section id="binaries">
   <div class="container">
-    <h2>All 48 binaries</h2>
+    <h2>All 50 binaries</h2>
     <p class="subtitle">Every binary is standalone. Use one or use all. ~2.1 MB total disk.</p>
 
     <div class="binary-group">
@@ -1825,7 +1831,7 @@ footer a:hover { color: var(--text); }
     </div>
 
     <div class="binary-group">
-      <h3>Transform (20 binaries)</h3>
+      <h3>Transform (22 binaries)</h3>
       <div class="binary-list">
         <div class="binary-item"><span class="name">bonfyre-media-prep</span> <span class="size">34 KB</span> <span class="desc">— audio normalization</span></div>
         <div class="binary-item"><span class="name">bonfyre-transcribe</span> <span class="size">34 KB</span> <span class="desc">— speech-to-text (Whisper)</span></div>
@@ -1847,6 +1853,8 @@ footer a:hover { color: var(--text); }
         <div class="binary-item"><span class="name">bonfyre-speechloop</span> <span class="size">34 KB</span> <span class="desc">— live speech loop</span></div>
         <div class="binary-item"><span class="name">bonfyre-tone</span> <span class="size">34 KB</span> <span class="desc">— tone/sentiment (openSMILE)</span></div>
         <div class="binary-item"><span class="name">bonfyre-tag</span> <span class="size">35 KB</span> <span class="desc">— topic tagging (native fastText)</span></div>
+        <div class="binary-item"><span class="name">bonfyre-quant</span> <span class="size">42 KB</span> <span class="desc">— v8 RLF weight quantization (E8 lattice + μ-law + 16D RVQ, 0.9999 cos @ 3-bit)</span></div>
+        <div class="binary-item"><span class="name">bonfyre-kvcache</span> <span class="size">42 KB</span> <span class="desc">— KV cache compression (E8 lattice + μ-law + 16D RVQ, 4-bit recommended)</span></div>
       </div>
     </div>
 
@@ -2062,7 +2070,7 @@ footer a:hover { color: var(--text); }
 <section style="text-align:center; padding:80px 0;">
   <div class="container">
     <h2>MIT Licensed. Do whatever you want with it.</h2>
-    <p class="subtitle">One repo. 48 binaries. ~2.1 MB. 167 tests. 5 optimization passes.</p>
+    <p class="subtitle">One repo. 50 binaries. ~2.1 MB. 167 tests. 5 optimization passes.</p>
     <div class="btn-row">
       <a href="https://github.com/Nickgonzales76017/bonfyre" class="btn btn-primary">
         ⭐ Star on GitHub

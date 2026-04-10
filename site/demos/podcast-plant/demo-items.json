@@ -1,0 +1,52 @@
+[
+  {
+    "id": "podcast-plant-episode-001",
+    "file": "Pilot Episode — Repurposing Strategies",
+    "time": "Reference corpus",
+    "status": "complete",
+    "brief": "Repurposing strategies for podcast episodes: clips, show notes, and SEO-friendly summaries. Demonstrates automated transcript → brief → clip pipeline.",
+    "tags": ["podcast", "repurposing", "clips"],
+    "flagged": false,
+    "demo": true,
+    "outputs": [
+      "transcript.json",
+      "brief.md",
+      "prepped.wav",
+      "episode.rss"
+    ],
+    "outputNotes": {},
+    "outputLinks": {
+      "source_public": "youtube:VIDEO_ID_PLACEHOLDER",
+      "live_demo": "https://nickgonzales76017.github.io/pages-podcast-plant/"
+    },
+    "searchSummary": "Repurposing strategies; clips; show notes; SEO",
+    "whyItMatters": "Shows how Bonfyre can convert a public episode into multiple deliverables and searchable artifacts without mirroring the original media.",
+    "searchIntro": "Search across episodes to find repurposing opportunities and auto-generate clips and notes.",
+    "searchOutputs": ["transcript", "brief", "clips"]
+  },
+  {
+    "id": "podcast-plant-episode-002",
+    "file": "Interview — Monetization Tips",
+    "time": "Reference corpus",
+    "status": "complete",
+    "brief": "Interview on simple monetization tactics for indie podcasters; good test for deliverable packaging and offer generation.",
+    "tags": ["podcast", "monetization", "interview"],
+    "flagged": false,
+    "demo": true,
+    "outputs": [
+      "transcript.json",
+      "brief.md",
+      "clips/*",
+      "pack_out/*"
+    ],
+    "outputNotes": {},
+    "outputLinks": {
+      "source_public": "youtube:VIDEO_ID_PLACEHOLDER",
+      "live_demo": "https://nickgonzales76017.github.io/pages-podcast-plant/"
+    },
+    "searchSummary": "Monetization tips interview; episode-level packaging",
+    "whyItMatters": "Demonstrates packaging and offer generation workflows for monetization-focused episodes.",
+    "searchIntro": "Find monetization leads and automated offers across podcast episodes.",
+    "searchOutputs": ["transcript", "brief", "offer_out"]
+  }
+]
