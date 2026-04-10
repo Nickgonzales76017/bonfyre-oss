@@ -117,6 +117,17 @@ pgo-use:
 pgo-clean:
 	rm -rf $(PGO_DIR)
 
+# ── Docker ────────────────────────────────────────────────────
+.PHONY: docker docker-up docker-down
+docker:
+	docker build -t bonfyre .
+
+docker-up: docker
+	docker compose up -d
+
+docker-down:
+	docker compose down
+
 # ── Help ─────────────────────────────────────────────────────
 help:
 	@echo "Bonfyre — Bonfyre binary fleet + 2 libraries, ~2.1 MB total"
@@ -131,6 +142,9 @@ help:
 	@echo "  make pgo-gen   Build with profiling instrumentation"
 	@echo "  make pgo-use   Rebuild using collected profile data"
 	@echo "  make pgo-clean Remove collected profile data"
+	@echo "  make docker    Build Docker image"
+	@echo "  make docker-up Start API + worker via compose"
+	@echo "  make docker-down Stop compose stack"
 	@echo "  make help      This message"
 
 # ── Models ───────────────────────────────────────────────────

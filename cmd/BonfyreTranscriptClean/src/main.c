@@ -124,37 +124,95 @@ static int textbuf_append_json_string(TextBuffer *buf, const char **cursor) {
     return 0;
 }
 
+/* Parse a numeric value after a JSON key within a bounded segment region */
+static double json_num(const char *start, const char *end, const char *key) {
+    size_t klen = strlen(key);
+    for (const char *p = start; p + klen < end; p++) {
+        if (strncmp(p, key, klen) == 0) {
+            const char *v = p + klen;
+            while (v < end && (*v == ' ' || *v == ':' || *v == '\t')) v++;
+            if (v < end) return strtod(v, NULL);
+        }
+    }
+    return -999.0;
+}
+
 static char *extract_segment_text_json(const char *json) {
     if (!json) return NULL;
     const char *segments = strstr(json, "\"segments\"");
     if (!segments) return NULL;
+    const char *arr = strchr(segments, '[');
+    if (!arr) return NULL;
+
     TextBuffer buf = {0};
-    const char *p = segments;
     int found = 0;
-    while ((p = strstr(p, "\"text\"")) != NULL) {
-        const char *cursor = p + strlen("\"text\"");
-        while (*cursor && isspace((unsigned char)*cursor)) cursor++;
-        if (*cursor != ':') {
-            p = cursor;
-            continue;
+    int skipped = 0;
+    const char *p = arr + 1;
+
+    while (*p) {
+        while (*p && (*p == ' ' || *p == '\t' || *p == '\n' || *p == '\r' || *p == ','))
+            p++;
+        if (*p == ']') break;
+        if (*p != '{') { p++; continue; }
+
+        /* Find matching closing brace for this segment object */
+        const char *seg_start = p;
+        int depth = 1;
+        p++;
+        while (*p && depth > 0) {
+            if (*p == '{') depth++;
+            else if (*p == '}') depth--;
+            p++;
         }
+        const char *seg_end = p;
+
+        /* Check quality fields */
+        double confidence   = json_num(seg_start, seg_end, "\"confidence\"");
+        double no_speech    = json_num(seg_start, seg_end, "\"no_speech\"");
+        double hall_flags   = json_num(seg_start, seg_end, "\"hallucination_flags\"");
+        double hcp_quality  = json_num(seg_start, seg_end, "\"hcp_quality\"");
+
+        /* Filter low-quality / hallucinated segments.
+         * If hcp_quality is available (from hcp-whisper), use it as primary signal.
+         * Otherwise fall back to raw confidence + hallucination_flags. */
+        if (no_speech > 0.5)                            { skipped++; continue; }
+        if (hall_flags > 0)                             { skipped++; continue; }
+        if (hcp_quality > -900 && hcp_quality < 0.3)    { skipped++; continue; }
+        if (confidence > -900 && confidence < 0.3)      { skipped++; continue; }
+
+        /* Find "text" field within this segment */
+        const char *text_key = NULL;
+        for (const char *s = seg_start; s + 6 < seg_end; s++) {
+            if (strncmp(s, "\"text\"", 6) == 0) { text_key = s; break; }
+        }
+        if (!text_key) continue;
+
+        const char *cursor = text_key + 6;
+        while (cursor < seg_end && isspace((unsigned char)*cursor)) cursor++;
+        if (cursor >= seg_end || *cursor != ':') continue;
         cursor++;
-        while (*cursor && isspace((unsigned char)*cursor)) cursor++;
-        if (*cursor != '"') {
-            p = cursor;
-            continue;
+        while (cursor < seg_end && isspace((unsigned char)*cursor)) cursor++;
+        if (cursor >= seg_end || *cursor != '"') continue;
+
+        /* Add sentence boundary between segments when prior text lacks one */
+        if (found && buf.len > 0) {
+            char last = buf.data[buf.len - 1];
+            if (last != '.' && last != '!' && last != '?') {
+                textbuf_append_char(&buf, '.');
+            }
+            textbuf_append_char(&buf, ' ');
         }
-        if (found && textbuf_append_char(&buf, ' ') != 0) {
-            free(buf.data);
-            return NULL;
-        }
+
         if (textbuf_append_json_string(&buf, &cursor) != 0) {
             free(buf.data);
             return NULL;
         }
         found = 1;
-        p = cursor;
     }
+
+    if (skipped > 0)
+        fprintf(stderr, "[clean] Filtered %d low-quality segments\n", skipped);
+
     if (!found) {
         free(buf.data);
         return NULL;
@@ -206,7 +264,10 @@ static int starts_with_chunk_header(const char *line) {
 
 static int is_filler_token(const char *token) {
     static const char *fillers[] = {
-        "um", "uh", "erm", "ah", "hmm", "hm", "mm", "mhm", "uh-huh", NULL
+        "um", "uh", "erm", "ah", "hmm", "hm", "mm", "mhm", "uh-huh",
+        "uhh", "umm", "uhm", "ugh", "huh", "eh", "er",
+        "mmm", "mmhmm", "uhhh", "ummm", "hmph", "heh",
+        NULL
     };
     for (int i = 0; fillers[i]; i++) {
         if (strcasecmp(token, fillers[i]) == 0) return 1;
@@ -295,7 +356,7 @@ static char *remove_fillers_and_repeat_words(const char *text, CleanStats *stats
 
             if (last_token[0] != '\0' && strcasecmp(token, last_token) == 0) {
                 last_count++;
-                if (last_count >= 3) {
+                if (last_count >= 2) {
                     stats->repeated_words_removed++;
                     continue;
                 }
@@ -338,11 +399,36 @@ static char *remove_fillers_and_repeat_words(const char *text, CleanStats *stats
     return out;
 }
 
+static char *remove_multiword_fillers(const char *text, CleanStats *stats) {
+    static const char *fillers[] = {
+        "you know what I mean", "you know what",
+        "or something like that", "or whatever",
+        "and stuff like that", "and stuff",
+        "and things like that", "and everything",
+        "if that makes sense", "does that make sense",
+        "at the end of the day", "if you will",
+        NULL
+    };
+    char *out = strdup(text);
+    if (!out) return NULL;
+    for (int i = 0; fillers[i]; i++) {
+        size_t plen = strlen(fillers[i]);
+        char *hit;
+        while ((hit = find_case_insensitive(out, fillers[i])) != NULL) {
+            memmove(hit, hit + plen, strlen(hit + plen) + 1);
+            stats->filler_tokens_removed++;
+        }
+    }
+    return out;
+}
+
 static char *remove_fixed_hallucinations(const char *text, CleanStats *stats) {
     const char *patterns[] = {
         "thank you thank you thank you",
         "thanks for watching thanks for watching",
         "please subscribe please subscribe",
+        "thanks for watching. thanks for watching.",
+        "thank you. thank you. thank you.",
         NULL
     };
     char *out = strdup(text);
@@ -464,6 +550,21 @@ static char *final_cleanup_pass(const char *text, CleanStats *stats) {
     return out;
 }
 
+static char *capitalize_sentences(const char *text) {
+    char *out = strdup(text);
+    if (!out) return NULL;
+    int cap_next = 1;
+    for (size_t i = 0; out[i]; i++) {
+        if (cap_next && isalpha((unsigned char)out[i])) {
+            out[i] = (char)toupper((unsigned char)out[i]);
+            cap_next = 0;
+        }
+        if (out[i] == '.' || out[i] == '!' || out[i] == '?')
+            cap_next = 1;
+    }
+    return out;
+}
+
 static void usage(void) {
     fprintf(stderr,
             "Usage: bonfyre-transcript-clean --transcript <path> --out <path> "
@@ -526,16 +627,20 @@ int main(int argc, char **argv) {
 
     pass1 = remove_chunk_headers(working_text, &stats);
     pass2 = pass1 ? remove_fillers_and_repeat_words(pass1, &stats) : NULL;
-    pass3 = pass2 ? remove_fixed_hallucinations(pass2, &stats) : NULL;
+    char *pass2b = pass2 ? remove_multiword_fillers(pass2, &stats) : NULL;
+    pass3 = pass2b ? remove_fixed_hallucinations(pass2b, &stats) : NULL;
     cleaned = pass3 ? normalize_spacing(pass3) : NULL;
     char *final = cleaned ? final_cleanup_pass(cleaned, &stats) : NULL;
-    if (!final) {
+    char *capitalized = final ? capitalize_sentences(final) : NULL;
+    if (!capitalized) {
         fprintf(stderr, "Failed to clean transcript\n");
         free(raw_text);
         free(pass1);
         free(pass2);
+        free(pass2b);
         free(pass3);
         free(cleaned);
+        free(final);
         return 1;
     }
 
@@ -563,11 +668,11 @@ int main(int argc, char **argv) {
         status_path = status_default;
     }
 
-    changed = strcmp(working_text, final) != 0;
-    if (write_text_file(out_path, final) != 0 ||
+    changed = strcmp(working_text, capitalized) != 0;
+    if (write_text_file(out_path, capitalized) != 0 ||
         write_status_file(status_path, transcript_path, out_path, changed, &stats) != 0) {
         fprintf(stderr, "Failed to write output artifacts\n");
-        free(raw_text); free(json_text); free(pass1); free(pass2); free(pass3); free(cleaned); free(final);
+        free(raw_text); free(json_text); free(pass1); free(pass2); free(pass2b); free(pass3); free(cleaned); free(final); free(capitalized);
         return 1;
     }
 
@@ -577,8 +682,10 @@ int main(int argc, char **argv) {
     free(json_text);
     free(pass1);
     free(pass2);
+    free(pass2b);
     free(pass3);
     free(cleaned);
     free(final);
+    free(capitalized);
     return 0;
 }

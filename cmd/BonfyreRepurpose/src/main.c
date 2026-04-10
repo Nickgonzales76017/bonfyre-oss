@@ -35,6 +35,80 @@ static void iso_timestamp(char *buf, size_t sz) {
     strftime(buf, sz, "%Y-%m-%dT%H:%M:%SZ", &t);
 }
 
+/* Capitalize first alpha char of a string */
+static void cap_first(char *s) {
+    while (*s && !isalpha((unsigned char)*s)) s++;
+    if (*s) *s = (char)toupper((unsigned char)*s);
+}
+
+/* Truncate text to max_len at last word boundary, append "..." if truncated */
+static void truncate_at_word(const char *src, char *dst, size_t max_len) {
+    size_t slen = strlen(src);
+    if (slen <= max_len) {
+        strcpy(dst, src);
+        return;
+    }
+    size_t cut = max_len - 3; /* room for "..." */
+    while (cut > 0 && src[cut] != ' ') cut--;
+    if (cut == 0) cut = max_len - 3;
+    memcpy(dst, src, cut);
+    dst[cut] = '\0';
+    strcat(dst, "...");
+}
+
+/* Strip internal IDs, video hashes, and app-slug prefixes from title.
+ * e.g. "async-standup — 9IqbMERRIME" -> "Async Standup"
+ *      "My Great Video Title" -> preserved as-is */
+static void sanitize_title(const char *src, char *dst, size_t dst_sz) {
+    /* If title contains " — " or " - " with a hash-looking suffix, strip it */
+    const char *sep = strstr(src, " — ");
+    if (!sep) sep = strstr(src, " - ");
+    /* Check if the part after separator looks like a video ID (alnum, 6-20 chars) */
+    int strip_suffix = 0;
+    if (sep) {
+        const char *after = sep + (strstr(src, " — ") == sep ? 5 : 3);
+        size_t alen = strlen(after);
+        if (alen >= 6 && alen <= 20) {
+            int all_alnum = 1;
+            for (size_t i = 0; i < alen; i++) {
+                if (!isalnum((unsigned char)after[i]) && after[i] != '-' && after[i] != '_') {
+                    all_alnum = 0; break;
+                }
+            }
+            if (all_alnum) strip_suffix = 1;
+        }
+    }
+
+    size_t copy_len;
+    if (strip_suffix && sep) {
+        copy_len = (size_t)(sep - src);
+    } else {
+        copy_len = strlen(src);
+    }
+    if (copy_len >= dst_sz) copy_len = dst_sz - 1;
+    memcpy(dst, src, copy_len);
+    dst[copy_len] = '\0';
+
+    /* Replace hyphens with spaces if the result looks like a slug (no spaces) */
+    int has_spaces = 0;
+    for (size_t i = 0; i < copy_len; i++)
+        if (dst[i] == ' ') { has_spaces = 1; break; }
+    if (!has_spaces) {
+        for (size_t i = 0; i < copy_len; i++)
+            if (dst[i] == '-') dst[i] = ' ';
+    }
+
+    /* Title-case each word */
+    int cap_next = 1;
+    for (size_t i = 0; dst[i]; i++) {
+        if (cap_next && isalpha((unsigned char)dst[i])) {
+            dst[i] = (char)toupper((unsigned char)dst[i]);
+            cap_next = 0;
+        }
+        if (dst[i] == ' ') cap_next = 1;
+    }
+}
+
 /* ── Brief parser ─────────────────────────────────────────────────── */
 
 #define MAX_LINES   2048
@@ -43,6 +117,7 @@ static void iso_timestamp(char *buf, size_t sz) {
 
 typedef struct {
     char title[512];
+    char clean_title[512]; /* sanitized version without IDs/slugs */
     char summary[MAX_ITEMS][MAX_LINE];
     int  summary_count;
     char actions[MAX_ITEMS][MAX_LINE];
@@ -130,27 +205,39 @@ static int emit_tweet_thread(const Brief *b, const char *out_dir) {
     FILE *fp = fopen(path, "w");
     if (!fp) return 1;
 
-    /* Hook tweet */
+    char trunc[300];
+
+    /* Hook tweet — use clean title (no video IDs), first summary as lead */
     fprintf(fp, "# Tweet Thread\n\n");
     fprintf(fp, "**1/**\n");
-    if (b->summary_count > 0)
-        fprintf(fp, "%s\n\nThread 🧵👇\n\n", b->summary[0]);
-    else
-        fprintf(fp, "%s\n\nThread 🧵👇\n\n", b->title);
+    if (b->clean_title[0]) {
+        fprintf(fp, "%s\n\n", b->clean_title);
+    }
+    if (b->summary_count > 0) {
+        truncate_at_word(b->summary[0], trunc, 200);
+        cap_first(trunc);
+        fprintf(fp, "%s\n\n", trunc);
+    }
+    fprintf(fp, "Thread 🧵👇\n\n");
 
-    /* Body tweets — one per key point */
+    /* Body tweets — one per key summary point, truncated to ~270 chars */
     int tweet = 2;
     int limit = b->summary_count < 5 ? b->summary_count : 5;
     for (int i = 1; i < limit; i++) {
-        fprintf(fp, "**%d/**\n%s\n\n", tweet++, b->summary[i]);
+        truncate_at_word(b->summary[i], trunc, 270);
+        cap_first(trunc);
+        fprintf(fp, "**%d/**\n%s\n\n", tweet++, trunc);
     }
 
     /* Action items as a single tweet */
     if (b->action_count > 0) {
         fprintf(fp, "**%d/**\nKey takeaways:\n\n", tweet++);
         int al = b->action_count < 4 ? b->action_count : 4;
-        for (int i = 0; i < al; i++)
-            fprintf(fp, "→ %s\n", b->actions[i]);
+        for (int i = 0; i < al; i++) {
+            truncate_at_word(b->actions[i], trunc, 250);
+            cap_first(trunc);
+            fprintf(fp, "→ %s\n", trunc);
+        }
         fprintf(fp, "\n");
     }
 
@@ -171,28 +258,48 @@ static int emit_linkedin(const Brief *b, const char *out_dir) {
     FILE *fp = fopen(path, "w");
     if (!fp) return 1;
 
+    char trunc[512];
+
     fprintf(fp, "# LinkedIn Post\n\n");
 
-    /* Hook line */
-    if (b->summary_count > 0)
-        fprintf(fp, "%s\n\n", b->summary[0]);
+    /* Hook line — use clean title */
+    if (b->clean_title[0]) {
+        fprintf(fp, "**%s**\n\n", b->clean_title);
+    }
 
-    /* The "I learned" pattern — LinkedIn loves this */
-    fprintf(fp, "Here's what stood out:\n\n");
-    int limit = b->summary_count < 5 ? b->summary_count : 5;
-    for (int i = 1; i < limit; i++)
-        fprintf(fp, "→ %s\n", b->summary[i]);
-    fprintf(fp, "\n");
+    /* Lead with first summary point */
+    if (b->summary_count > 0) {
+        truncate_at_word(b->summary[0], trunc, 400);
+        cap_first(trunc);
+        fprintf(fp, "%s\n\n", trunc);
+    }
 
-    /* Deep insight */
-    if (b->deep_count > 0) {
+    /* Key points */
+    if (b->summary_count > 1) {
+        fprintf(fp, "Here's what stood out:\n\n");
+        int limit = b->summary_count < 5 ? b->summary_count : 5;
+        for (int i = 1; i < limit; i++) {
+            truncate_at_word(b->summary[i], trunc, 300);
+            cap_first(trunc);
+            fprintf(fp, "→ %s\n", trunc);
+        }
+        fprintf(fp, "\n");
+    }
+
+    /* Deep insight — only if non-trivial */
+    if (b->deep_count > 0 && strlen(b->deep[0]) > 20) {
         fprintf(fp, "The bigger picture:\n\n");
-        fprintf(fp, "%s\n\n", b->deep[0]);
+        truncate_at_word(b->deep[0], trunc, 400);
+        cap_first(trunc);
+        fprintf(fp, "%s\n\n", trunc);
     }
 
     /* Action / CTA */
-    if (b->action_count > 0)
-        fprintf(fp, "Next step: %s\n\n", b->actions[0]);
+    if (b->action_count > 0) {
+        truncate_at_word(b->actions[0], trunc, 300);
+        cap_first(trunc);
+        fprintf(fp, "Next step: %s\n\n", trunc);
+    }
 
     fprintf(fp, "---\n\n");
     fprintf(fp, "♻️ Repost if this resonated. Follow for more.\n");
@@ -215,16 +322,23 @@ static int emit_carousel(const Brief *b, const char *out_dir) {
     /* Slide 1: Title / hook */
     fprintf(fp, "---\n\n");
     fprintf(fp, "## Slide 1 (Cover)\n\n");
-    fprintf(fp, "**%s**\n\n", b->title[0] ? b->title : "Key Insights");
-    if (b->summary_count > 0)
-        fprintf(fp, "%s\n\n", b->summary[0]);
+    fprintf(fp, "**%s**\n\n", b->clean_title[0] ? b->clean_title : "Key Insights");
+    if (b->summary_count > 0) {
+        char trunc[300];
+        truncate_at_word(b->summary[0], trunc, 280);
+        cap_first(trunc);
+        fprintf(fp, "%s\n\n", trunc);
+    }
 
     /* Slides 2-5: Key points */
     int limit = b->summary_count < 5 ? b->summary_count : 5;
     for (int i = 1; i < limit; i++) {
+        char trunc[300];
+        truncate_at_word(b->summary[i], trunc, 280);
+        cap_first(trunc);
         fprintf(fp, "---\n\n");
         fprintf(fp, "## Slide %d\n\n", i + 1);
-        fprintf(fp, "%s\n\n", b->summary[i]);
+        fprintf(fp, "%s\n\n", trunc);
     }
 
     /* Slide: Action items */
@@ -255,29 +369,39 @@ static int emit_youtube_desc(const Brief *b, const char *out_dir) {
     FILE *fp = fopen(path, "w");
     if (!fp) return 1;
 
+    char trunc[300];
+
     fprintf(fp, "# YouTube Description\n\n");
 
     /* Description */
-    if (b->summary_count > 0)
-        fprintf(fp, "%s\n\n", b->summary[0]);
+    if (b->summary_count > 0) {
+        truncate_at_word(b->summary[0], trunc, 280);
+        cap_first(trunc);
+        fprintf(fp, "%s\n\n", trunc);
+    }
 
     fprintf(fp, "In this episode:\n");
     int limit = b->summary_count < 6 ? b->summary_count : 6;
-    for (int i = 0; i < limit; i++)
-        fprintf(fp, "• %s\n", b->summary[i]);
+    for (int i = 0; i < limit; i++) {
+        truncate_at_word(b->summary[i], trunc, 250);
+        cap_first(trunc);
+        fprintf(fp, "• %s\n", trunc);
+    }
     fprintf(fp, "\n");
 
-    /* Chapters placeholder */
+    /* Chapters — estimate times by distributing evenly */
     fprintf(fp, "## Chapters\n\n");
     fprintf(fp, "0:00 Intro\n");
     for (int i = 0; i < limit && i < 5; i++) {
-        /* Truncate to first ~50 chars for chapter title */
         char title[60];
         strncpy(title, b->summary[i], 55);
         title[55] = '\0';
+        cap_first(title);
         char *dot = strchr(title, '.');
         if (dot && (dot - title) < 50) *(dot + 1) = '\0';
-        fprintf(fp, "XX:XX %s\n", title);
+        /* Estimate chapter time — distribute evenly across ~10min video */
+        int est_sec = (i + 1) * 120; /* ~2min per chapter */
+        fprintf(fp, "%d:%02d %s\n", est_sec / 60, est_sec % 60, title);
     }
     fprintf(fp, "\n");
 
@@ -285,8 +409,11 @@ static int emit_youtube_desc(const Brief *b, const char *out_dir) {
     if (b->action_count > 0) {
         fprintf(fp, "## Key Takeaways\n\n");
         int al = b->action_count < 5 ? b->action_count : 5;
-        for (int i = 0; i < al; i++)
-            fprintf(fp, "→ %s\n", b->actions[i]);
+        for (int i = 0; i < al; i++) {
+            truncate_at_word(b->actions[i], trunc, 250);
+            cap_first(trunc);
+            fprintf(fp, "→ %s\n", trunc);
+        }
         fprintf(fp, "\n");
     }
 
@@ -308,19 +435,27 @@ static int emit_newsletter(const Brief *b, const char *out_dir) {
     fprintf(fp, "# Newsletter Edition\n\n");
 
     /* Subject line */
-    fprintf(fp, "**Subject:** %s\n\n", b->title[0] ? b->title : "This Week's Breakdown");
+    fprintf(fp, "**Subject:** %s\n\n", b->clean_title[0] ? b->clean_title : "This Week's Breakdown");
     fprintf(fp, "---\n\n");
 
     /* Intro */
-    if (b->summary_count > 0)
-        fprintf(fp, "%s\n\n", b->summary[0]);
+    if (b->summary_count > 0) {
+        char trunc[400];
+        truncate_at_word(b->summary[0], trunc, 380);
+        cap_first(trunc);
+        fprintf(fp, "%s\n\n", trunc);
+    }
 
     /* Body — key points */
     if (b->summary_count > 1) {
         fprintf(fp, "## What We Covered\n\n");
         int limit = b->summary_count < 6 ? b->summary_count : 6;
-        for (int i = 1; i < limit; i++)
-            fprintf(fp, "**%d.** %s\n\n", i, b->summary[i]);
+        for (int i = 1; i < limit; i++) {
+            char trunc[400];
+            truncate_at_word(b->summary[i], trunc, 380);
+            cap_first(trunc);
+            fprintf(fp, "**%d.** %s\n\n", i, trunc);
+        }
     }
 
     /* Deep insight callout */
@@ -420,6 +555,7 @@ int main(int argc, char **argv) {
 
     Brief b;
     if (parse_brief(brief_path, &b) != 0) return 1;
+    sanitize_title(b.title, b.clean_title, sizeof(b.clean_title));
 
     if (b.summary_count == 0 && b.action_count == 0) {
         fprintf(stderr, "error: brief has no summary or action items\n");

@@ -18,6 +18,7 @@ typedef struct {
     char *text;
     int score;
     int is_action;
+    int original_index; /* preserve document order */
 } Sentence;
 
 typedef struct {
@@ -274,10 +275,80 @@ static int sentence_score(const char *text, int total_docs) {
     int score = 0;
     size_t len = strlen(text);
 
-    /* Length bonuses */
-    if (len > 30) score += 1;
-    if (len > 80) score += 1;
-    if (len > 200) score -= 1; /* penalize overly long sentences */
+    /* Length bonuses — prefer substantive sentences */
+    if (len > 40) score += 1;
+    if (len > 80) score += 2;
+    if (len > 200) score += 1; /* longer sentences in spoken word are usually substantive */
+    if (len > 400) score -= 1; /* but extremely long is run-on */
+    if (len < 25) score -= 3;  /* penalize very short fragments heavily */
+    if (len < 40) score -= 1;
+
+    /* Bonus for ideal summary length (60-250 chars) */
+    if (len >= 60 && len <= 250) score += 2;
+
+    /* Penalize fragment sentences ending with dangling prepositions/articles */
+    {
+        static const char *danglers[] = {
+            " for.", " and.", " or.", " the.", " a.", " an.", " to.",
+            " of.", " with.", " in.", " on.", " at.", " by.", NULL
+        };
+        for (int k = 0; danglers[k]; k++) {
+            size_t wlen = strlen(danglers[k]);
+            if (len >= wlen && strcmp(text + len - wlen, danglers[k]) == 0) {
+                score -= 3;
+                break;
+            }
+        }
+    }
+
+    /* Penalize context-dependent lead-ins */
+    if (strncmp(text, "This ", 5) == 0 || strncmp(text, "That ", 5) == 0 ||
+        strncmp(text, "These ", 6) == 0 || strncmp(text, "Those ", 6) == 0)
+        score -= 1;
+
+    /* Penalize sentences that start with pronouns (need prior context) */
+    if (strncmp(text, "It ", 3) == 0 || strncmp(text, "It's ", 5) == 0 ||
+        strncmp(text, "He ", 3) == 0 || strncmp(text, "She ", 4) == 0 ||
+        strncmp(text, "They ", 5) == 0 || strncmp(text, "We ", 3) == 0)
+        score -= 1;
+
+    /* Penalize sentences starting with a bare verb (no subject — spoken fragment) */
+    {
+        static const char *bare_verbs[] = {
+            "Would ", "Could ", "Should ", "Have ", "Has ", "Had ",
+            "Do ", "Does ", "Did ", "Make ", "Makes ", "Made ",
+            "Get ", "Gets ", "Got ", "Keep ", "Keeps ", "Let ",
+            "Put ", "Take ", "Give ", "Bring ", "Set ", "Run ",
+            "Where ", "When ", "Until ", "Whatever ", "Depending ",
+            "Before ", "After ", "Between ", "Among ",
+            "Reach ", "See ", "Watch ", "Film ", "Assign ",
+            "Also ", "Hopefully ", "Okay ", "Yes ", "No ",
+            NULL
+        };
+        for (int k = 0; bare_verbs[k]; k++) {
+            size_t vlen = strlen(bare_verbs[k]);
+            if (strncmp(text, bare_verbs[k], vlen) == 0) {
+                score -= 4;
+                break;
+            }
+        }
+    }
+
+    /* Bonus for sentences with specific quantities/facts */
+    if (strstr(text, " people ") || strstr(text, " team ") ||
+        strstr(text, " meeting") || strstr(text, " work"))
+        score += 1;
+
+    /* Bonus for sentences containing a complete claim (subject + verb pattern) */
+    if ((strstr(text, " is ") || strstr(text, " are ") || strstr(text, " can ") ||
+         strstr(text, " will ") || strstr(text, " helps ")) && len > 50)
+        score += 1;
+
+    /* Bonus for explanatory/definitional sentences */
+    if (strstr(text, " is a ") || strstr(text, " are a ") ||
+        strstr(text, " means ") || strstr(text, " helps ") ||
+        strstr(text, " way to ") || strstr(text, " called "))
+        score += 2;
 
     /* Domain keyword bonuses */
     if (contains_any(text, summary_words)) score += 2;
@@ -289,6 +360,16 @@ static int sentence_score(const char *text, int total_docs) {
     if (strstr(text, "yeah") || strstr(text, "Yeah")) score -= 2;
     if (strstr(text, "you know") || strstr(text, "You know")) score -= 2;
     if (strstr(text, "um ") || strstr(text, "uh ") || strstr(text, "hmm")) score -= 1;
+    if (strstr(text, "I love") || strstr(text, "I loved")) score -= 2;
+    if (strstr(text, "super fun") || strstr(text, "super simple")) score -= 1;
+    if (strncmp(text, "Hopefully ", 10) == 0) score -= 3;
+    if (strncmp(text, "Idea number ", 12) == 0) score -= 3;
+    if (strncmp(text, "Number ", 7) == 0) score -= 2;
+    if (strncmp(text, "Three,", 6) == 0 || strncmp(text, "Five,", 5) == 0 ||
+        strncmp(text, "Four,", 5) == 0 || strncmp(text, "Six,", 4) == 0 ||
+        strncmp(text, "Seven,", 6) == 0 || strncmp(text, "Eight,", 6) == 0 ||
+        strncmp(text, "Nine,", 5) == 0 || strncmp(text, "Ten,", 4) == 0 ||
+        strncmp(text, "Last one,", 9) == 0) score -= 2;
 
     /* Outro / boilerplate penalty */
     if (contains_any(text, outro_words)) score -= 5;
@@ -303,7 +384,13 @@ static int sentence_score(const char *text, int total_docs) {
 static int is_action_sentence(const char *text) {
     static const char *action_words[] = {
         "should", "need to", "must", "next", "plan", "test", "focus", "send",
-        "build", "validate", "launch", "review", "write", "ship", NULL
+        "build", "validate", "launch", "review", "write", "ship",
+        "consider", "evaluate", "implement", "schedule", "prioritize",
+        "follow up", "try", "start", "stop", "avoid", "practice", "remember",
+        "recommend", "suggest", "make sure", "ensure", "improve", "fix",
+        "set up", "create", "assign", "decide", "track", "measure",
+        "experiment", "prototype", "deploy", "migrate", "automate",
+        NULL
     };
     return contains_any(text, action_words);
 }
@@ -330,6 +417,7 @@ static int split_sentences(const char *text, Sentence *sentences, int max_senten
                     sentences[count].text = trimmed;
                     sentences[count].score = 0; /* scored after IDF built */
                     sentences[count].is_action = is_action_sentence(trimmed);
+                    sentences[count].original_index = count;
                     count++;
                 } else if (trimmed) {
                     free(trimmed);
@@ -342,20 +430,117 @@ static int split_sentences(const char *text, Sentence *sentences, int max_senten
     return count;
 }
 
+/* Strip leading conjunction ("And ", "So ", "But ", "Or ") from a sentence */
+static void strip_leading_conjunction(char *s) {
+    const char *prefixes[] = {"And ", "So ", "But ", "Or ", NULL};
+    for (int i = 0; prefixes[i]; i++) {
+        size_t plen = strlen(prefixes[i]);
+        if (strncmp(s, prefixes[i], plen) == 0) {
+            memmove(s, s + plen, strlen(s + plen) + 1);
+            /* Capitalize what's now first */
+            if (s[0]) s[0] = (char)toupper((unsigned char)s[0]);
+            return;
+        }
+    }
+}
+
+/* Clean up Whisper transcription artifacts:
+ * - Strip trailing ",." → "."
+ * - Strip trailing ",\0" → ".\0"
+ * - Strip dangling trailing preposition/article fragments */
+static void clean_whisper_artifacts(char *s) {
+    size_t len = strlen(s);
+    if (len < 2) return;
+
+    /* Fix ",." → "." */
+    for (size_t i = 0; i + 1 < len; i++) {
+        if (s[i] == ',' && s[i + 1] == '.') {
+            memmove(s + i, s + i + 1, len - i);
+            len--;
+        }
+    }
+
+    /* Remove trailing comma before end of string */
+    len = strlen(s);
+    while (len > 1 && s[len - 1] == ',') {
+        s[len - 1] = '\0';
+        len--;
+    }
+    /* Also handle ",." at the very end */
+    if (len > 2 && s[len - 2] == ',' && s[len - 1] == '.') {
+        s[len - 2] = '.';
+        s[len - 1] = '\0';
+        len--;
+    }
+}
+
+/* Check if two sentences share >60% of their words (crude dedup) */
+static int sentences_similar(const char *a, const char *b) {
+    /* Simple: check if a is a substring of b or vice versa */
+    if (strlen(a) > 20 && strlen(b) > 20) {
+        if (strstr(a, b) || strstr(b, a)) return 1;
+        /* Check first 40 chars overlap */
+        size_t cmp_len = 40;
+        if (strlen(a) < cmp_len) cmp_len = strlen(a);
+        if (strlen(b) < cmp_len) cmp_len = strlen(b);
+        if (cmp_len > 20 && strncasecmp(a, b, cmp_len) == 0) return 1;
+    }
+    return 0;
+}
+
+/* Capitalize first letter of a string in-place */
+static void capitalize_first(char *s) {
+    while (*s && isspace((unsigned char)*s)) s++;
+    if (*s) *s = (char)toupper((unsigned char)*s);
+}
+
 static void write_brief(const char *path, const char *title, Sentence *sentences, int count) {
     FILE *out = fopen(path, "w");
     if (!out) return;
 
     Sentence ranked[MAX_SENTENCES];
-    memcpy(ranked, sentences, sizeof(Sentence) * count);
-    qsort(ranked, count, sizeof(Sentence), cmp_sentence_desc);
+    memcpy(ranked, sentences, sizeof(Sentence) * (size_t)count);
+    qsort(ranked, (size_t)count, sizeof(Sentence), cmp_sentence_desc);
 
     fprintf(out, "# %s\n\n", title);
     fprintf(out, "## Summary\n");
     int summary_written = 0;
+    char *used[MAX_BULLETS];
+    char combined[MAX_BULLETS][MAX_LINE]; /* for storing combined sentences */
     for (int i = 0; i < count && summary_written < MAX_BULLETS; i++) {
-        if (ranked[i].score < 2 || ranked[i].is_action) continue;
-        fprintf(out, "- %s\n", ranked[i].text);
+        if (ranked[i].score < 3 || ranked[i].is_action) continue;
+        size_t slen = strlen(ranked[i].text);
+        if (slen > 400 || slen < 15) continue; /* skip too long / too short */
+        /* Dedup check */
+        int dup = 0;
+        for (int j = 0; j < summary_written; j++) {
+            if (sentences_similar(ranked[i].text, used[j])) { dup = 1; break; }
+        }
+        if (dup) continue;
+
+        /* If sentence is short (<60 chars), try to combine with the *next*
+         * sentence in document order for coherence.
+         * Skip combining if the neighbor has a low score (fragment). */
+        char *final_text = ranked[i].text;
+        int oidx = ranked[i].original_index;
+        if (slen < 60 && oidx + 1 < count) {
+            /* The next sentence in document order is simply sentences[oidx+1]
+             * since original_index == array index before sorting */
+            Sentence *next = &sentences[oidx + 1];
+            if (next->score >= 2 &&
+                strlen(next->text) > 10 &&
+                strlen(next->text) + slen < MAX_LINE - 2) {
+                snprintf(combined[summary_written], MAX_LINE, "%s %s",
+                         ranked[i].text, next->text);
+                final_text = combined[summary_written];
+            }
+        }
+
+        strip_leading_conjunction(final_text);
+        clean_whisper_artifacts(final_text);
+        capitalize_first(final_text);
+        fprintf(out, "- %s\n", final_text);
+        used[summary_written] = final_text;
         summary_written++;
     }
     if (!summary_written) fprintf(out, "- No summary generated\n");
@@ -364,17 +549,35 @@ static void write_brief(const char *path, const char *title, Sentence *sentences
     int action_written = 0;
     for (int i = 0; i < count && action_written < MAX_BULLETS; i++) {
         if (!ranked[i].is_action) continue;
+        size_t slen = strlen(ranked[i].text);
+        if (slen > 300 || slen < 10) continue;
+        strip_leading_conjunction(ranked[i].text);
+        clean_whisper_artifacts(ranked[i].text);
+        capitalize_first(ranked[i].text);
         fprintf(out, "- %s\n", ranked[i].text);
         action_written++;
     }
     if (!action_written) fprintf(out, "- No action items detected\n");
 
     fprintf(out, "\n## Deep Summary\n");
-    fprintf(out, "- Key Details\n");
-    for (int i = 0; i < count && i < 4; i++) {
+    int deep_written = 0;
+    for (int i = 0; i < count && deep_written < 4; i++) {
         if (ranked[i].score < 1) continue;
-        fprintf(out, "  - %s\n", ranked[i].text);
+        size_t slen = strlen(ranked[i].text);
+        if (slen > 300 || slen < 15) continue;
+        /* Skip if already used in summary */
+        int dup = 0;
+        for (int j = 0; j < summary_written; j++) {
+            if (sentences_similar(ranked[i].text, used[j])) { dup = 1; break; }
+        }
+        if (dup) continue;
+        strip_leading_conjunction(ranked[i].text);
+        clean_whisper_artifacts(ranked[i].text);
+        capitalize_first(ranked[i].text);
+        fprintf(out, "- %s\n", ranked[i].text);
+        deep_written++;
     }
+    if (!deep_written) fprintf(out, "- No deep insights extracted\n");
 
     fprintf(out, "\n## Transcript\n");
     for (int i = 0; i < count; i++) {
@@ -393,15 +596,47 @@ int main(int argc, char **argv) {
     const char *transcript_path = argv[1];
     const char *output_dir = argv[2];
     const char *title = "Bonfyre Brief";
+    const char *source_meta_path = NULL;
 
     for (int i = 3; i < argc; i++) {
         if (strcmp(argv[i], "--title") == 0 && i + 1 < argc) {
             title = argv[++i];
+        } else if (strcmp(argv[i], "--source-meta") == 0 && i + 1 < argc) {
+            source_meta_path = argv[++i];
         } else {
             fprintf(stderr, "Unknown option: %s\n", argv[i]);
             return 1;
         }
     }
+
+    /* Try to read real title from source-meta.json (yt-dlp output) */
+    char real_title[512] = {0};
+    if (source_meta_path) {
+        size_t meta_len = 0;
+        char *meta_buf = bf_read_file(source_meta_path, &meta_len);
+        if (meta_buf && meta_len > 0) {
+            /* Extract "title":"..." from JSON */
+            const char *tp = strstr(meta_buf, "\"title\"");
+            if (tp) {
+                tp = strchr(tp + 7, ':');
+                if (tp) {
+                    tp++;
+                    while (*tp && isspace((unsigned char)*tp)) tp++;
+                    if (*tp == '"') {
+                        tp++;
+                        size_t tlen = 0;
+                        while (tp[tlen] && tp[tlen] != '"' && tlen < sizeof(real_title) - 1) {
+                            real_title[tlen] = tp[tlen];
+                            tlen++;
+                        }
+                        real_title[tlen] = '\0';
+                    }
+                }
+            }
+            free(meta_buf);
+        }
+    }
+    if (real_title[0]) title = real_title;
 
     if (ensure_dir(output_dir) != 0) {
         fprintf(stderr, "Failed to create output dir: %s\n", output_dir);
@@ -434,13 +669,22 @@ int main(int argc, char **argv) {
     build_idf(sentences, count);
     for (int i = 0; i < count; i++) {
         sentences[i].score = sentence_score(sentences[i].text, count);
-        /* Position penalty: first 10% and last 10% of sentences are
-         * typically intro/outro fluff. Penalize them. */
+        /* Position weighting: spoken content often states thesis early.
+         * Only penalize the very first few sentences (greetings/intro)
+         * and the last ~10% (outro/CTA). Boost the "thesis zone" (10-30%). */
         if (count > 10) {
             int tenth = count / 10;
             if (tenth < 1) tenth = 1;
-            if (i < tenth || i >= count - tenth)
-                sentences[i].score -= 2;
+            int third = count / 3;
+            /* First ~5% is usually "hey everyone" / intro noise */
+            if (i < (count < 20 ? 1 : 2))
+                sentences[i].score -= 3;
+            /* Thesis zone: 5-30% — speaker states the main point */
+            else if (i >= 2 && i < third)
+                sentences[i].score += 1;
+            /* Last 10% is usually outro */
+            if (i >= count - tenth)
+                sentences[i].score -= 3;
         }
     }
 
