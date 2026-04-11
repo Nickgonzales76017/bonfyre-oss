@@ -1,0 +1,28 @@
+bonfyre-narrate v3.2 — verified tone-aware text-to-speech synthesis
+
+Usage:
+  bonfyre-narrate <text-file> <output-dir> [options]
+  bonfyre-narrate verify <output.wav> <source-features.json>
+
+Options:
+  --voice-model PATH        Piper ONNX model path
+  --tone-profile PATH       Tone profile JSON (bonfyre-tone profile)
+  --source-features PATH    88-feature tone.json (bonfyre-tone extract)
+  --verify                  Run closed-loop fidelity verification
+  --refine [TARGET]         Iterative refinement (default: 0.85)
+  --audio-format FMT        Output format (default: wav)
+  --title TITLE             Artifact title
+  --ssml                    Generate SSML
+  --dry-run                 Print plan without generating audio
+  --no-pitch-shift          Skip PSOLA pitch correction
+  --no-envelope             Skip energy envelope transfer
+
+Verification pipeline:
+  bonfyre-tone extract audio.wav tone_out/
+  bonfyre-tone profile audio.wav tone_out/
+  bonfyre-narrate summary.md narrate_out/ \
+    --tone-profile tone_out/profile.json \
+    --source-features tone_out/tone.json \
+    --verify --refine
+
+6-layer fidelity scoring. Closed-loop quality verification.

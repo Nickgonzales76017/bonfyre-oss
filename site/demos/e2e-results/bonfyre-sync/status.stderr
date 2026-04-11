@@ -1,0 +1,5 @@
+Usage:
+  bonfyre-sync inspect-intake <path>
+  bonfyre-sync inspect-status <path>
+  bonfyre-sync push <local.json> <remote-url>
+  bonfyre-sync pull <remote-url> <local.json>

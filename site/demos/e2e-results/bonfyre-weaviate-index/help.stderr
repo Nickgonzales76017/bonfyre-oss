@@ -1,0 +1,1 @@
+Usage: bonfyre-weaviate-index --emb <path> --meta <path> [--out <path>] [--class-name <name>] [--dry-run]

@@ -1,0 +1,14 @@
+bonfyre-speechloop — whisper → transform → piper speech engine
+
+Usage:
+  bonfyre-speechloop transform <input-audio> <out-dir>
+    [--voice-model PATH] [--model NAME] [--compress] [--brief]
+
+  bonfyre-speechloop narrate-brief <brief-dir> <out-dir>
+    [--voice-model PATH]
+
+The transform loop:
+  audio → transcribe → clean → [paragraph → brief] → narrate → new audio
+
+The narrate-brief shortcut:
+  existing brief.md → narrate → audio recap

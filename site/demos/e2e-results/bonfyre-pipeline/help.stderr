@@ -1,0 +1,11 @@
+BonfyrePipeline — unified single-process pipeline
+
+Usage:
+  bonfyre-pipeline run <input> --out DIR [--type TYPE] [--artifacts DIR]
+      [--key KEY] [--key-file F] [--tier TIER]
+
+Audio files (.wav/.mp3/.m4a/.flac/.ogg or --type audio):
+  Runs transcript pipeline: transcribe → clean → brief → proof → tag → offer → pack
+
+Other types:
+  Runs data pipeline: gate → ingest → index → compress → meter → stitch → ledger

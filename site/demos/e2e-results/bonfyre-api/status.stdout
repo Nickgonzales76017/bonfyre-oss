@@ -1,0 +1,2 @@
+BonfyreAPI v1.0.0
+Use 'bonfyre-api serve' to start, then GET /api/status for live dashboard.

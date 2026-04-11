@@ -1,0 +1,11 @@
+Transcript: site/demos/freelancer-evidence/transcript.txt
+JSON:       site/demos/freelancer-evidence/transcript.json
+SRT:        site/demos/freelancer-evidence/transcript.srt
+VTT:        site/demos/freelancer-evidence/transcript.vtt
+Meta:       site/demos/freelancer-evidence/meta.json
+Status:     site/demos/freelancer-evidence/transcribe-status.json
+Quality:    0.2048 (conf=0.2048 logprob=-1.586)
+RTF:        0.0772 (12.9x realtime)
+Brief: site/demos/freelancer-evidence/brief.md
+Meta: site/demos/freelancer-evidence/brief-meta.json
+Artifact: site/demos/freelancer-evidence/artifact.json

@@ -1,0 +1,12 @@
+[narrate] Inline extraction: 28 features from 40 frames (40 voiced, 0 unvoiced)
+[narrate] Verification: inline fingerprint extraction...
+[narrate] Inline extraction: 28 features from 40 frames (40 voiced, 0 unvoiced)
+[narrate] Fidelity report (28 features matched):
+          cosine:             1.0000
+          L1 pitch            1.0000 PASS
+          L2 energy           1.0000 PASS
+          L3 temporal         1.0000 PASS
+          L4 spectral         1.0000 PASS
+          L5 stability        1.0000 PASS
+          L6 dynamics         1.0000 PASS
+          Composite (geomean): 1.0000  [6/6 layers pass]

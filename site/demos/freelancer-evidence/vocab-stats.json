@@ -1,0 +1,15 @@
+{
+  "sourceSystem": "BonfyreTranscribe",
+  "vocabPath": "/Users/nickgonzales/.local/share/bonfyre/bonfyre_vocab.bfvocab",
+  "format": "bfvocab",
+  "totalFilesProcessed": 75,
+  "totalWordsObserved": 15911,
+  "filteredTermFreqSum": 6855,
+  "uniqueTerms": 1316,
+  "shannonEntropy": 9.2633,
+  "maxEntropy": 10.3619,
+  "klDivergenceFromUniform": 1.0987,
+  "bm25Convergence": 0.1753,
+  "promptTerms": 200,
+  "promptTermsMax": 200
+}

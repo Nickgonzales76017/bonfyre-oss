@@ -1,0 +1,1 @@
+bonfyre-weaviate-index: FAIL (status/help failed)

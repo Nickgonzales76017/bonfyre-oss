@@ -1,0 +1,3 @@
+Usage:
+  bonfyre-pack assemble <proof-dir> <offer-dir> <output-dir>
+  bonfyre-pack archive  <proof-dir> <offer-dir> <output.tar.gz>

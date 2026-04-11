@@ -1,0 +1,9 @@
+bonfyre-queue
+
+Usage:
+  bonfyre-queue enqueue <queue-file> <job-slug> <payload-path> [--source NAME] [--priority N]
+  bonfyre-queue list <queue-file>
+  bonfyre-queue claim <queue-file> [--worker NAME]
+  bonfyre-queue complete <queue-file> <job-id>
+  bonfyre-queue fail <queue-file> <job-id>
+  bonfyre-queue stats <queue-file>

@@ -1,0 +1,8 @@
+bonfyre-canon — structural canonicalization (Tree-sitter)
+
+Usage:
+  bonfyre-canon parse <file> [output-dir]
+  bonfyre-canon hash <file> [output-dir]
+  bonfyre-canon diff <file1> <file2> [output-dir]
+  bonfyre-canon normalize <file> <output-file>
+  bonfyre-canon status

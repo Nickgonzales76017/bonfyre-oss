@@ -1,0 +1,93 @@
++ mkdir
+command failed with rc=64
+expected file missing: site/demos/shift-handoff/transcript.json
+expected file missing: site/demos/shift-handoff/brief.json
+expected file missing: site/demos/shift-handoff/offer.json
+expected file missing: site/demos/shift-handoff/pack.zip
+expected json file missing: site/demos/shift-handoff/transcript.json
+expected json file missing: site/demos/shift-handoff/brief.json
+shift-handoff-board-pipeline: FAIL
++ mkdir -p site/demos/shift-handoff && ./cmd/BonfyreTranscribe/bonfyre-transcribe transcribe --in site/demos/test_a.wav --out site/demos/shift-handoff/transcript.json || true
++ ./cmd/BonfyreBrief/bonfyre-brief brief --in site/demos/shift-handoff/transcript.json --out site/demos/shift-handoff/brief.json || true
++ ./cmd/BonfyreProof/bonfyre-proof score site/demos/shift-handoff site/demos/shift-handoff/proof || true
++ ./cmd/BonfyreOffer/bonfyre-offer offer --in site/demos/shift-handoff/brief.json --out site/demos/shift-handoff/offer.json || true
++ ./cmd/BonfyrePack/bonfyre-pack pack --in site/demos/shift-handoff --out site/demos/shift-handoff/pack.zip || true
+expected file missing: site/demos/shift-handoff/transcript.json
+expected file missing: site/demos/shift-handoff/brief.json
+expected file missing: site/demos/shift-handoff/offer.json
+expected file missing: site/demos/shift-handoff/pack.zip
+expected json file missing: site/demos/shift-handoff/transcript.json
+expected json file missing: site/demos/shift-handoff/brief.json
+shift-handoff-board-pipeline: FAIL
++ mkdir -p site/demos/shift-handoff && ./cmd/BonfyreTranscribe/bonfyre-transcribe site/demos/test_a.wav site/demos/shift-handoff || true
++ ./cmd/BonfyreBrief/bonfyre-brief site/demos/shift-handoff/transcript.json site/demos/shift-handoff || true
++ ./cmd/BonfyreProof/bonfyre-proof bundle site/demos/shift-handoff site/demos/shift-handoff/proof_bundle || true
++ ./cmd/BonfyreOffer/bonfyre-offer generate site/demos/shift-handoff/proof_bundle site/demos/shift-handoff/offer_out || true
++ ./cmd/BonfyrePack/bonfyre-pack assemble site/demos/shift-handoff site/demos/shift-handoff/offer_out site/demos/shift-handoff/pack_out || true
+found expected file: site/demos/shift-handoff/transcript.json
+expected file missing: site/demos/shift-handoff/brief.json
+expected file missing: site/demos/shift-handoff/offer.json
+expected file missing: site/demos/shift-handoff/pack.zip
+json path $.transcript|true empty in site/demos/shift-handoff/transcript.json
+expected json file missing: site/demos/shift-handoff/brief.json
+shift-handoff-board-pipeline: FAIL
++ mkdir -p site/demos/shift-handoff && ./cmd/BonfyreTranscribe/bonfyre-transcribe site/demos/test_a.wav site/demos/shift-handoff || true
++ ./cmd/BonfyreBrief/bonfyre-brief site/demos/shift-handoff/transcript.json site/demos/shift-handoff || true
++ ./cmd/BonfyreProof/bonfyre-proof bundle site/demos/shift-handoff site/demos/shift-handoff/proof_bundle || true
++ ./cmd/BonfyreOffer/bonfyre-offer generate site/demos/shift-handoff/proof_bundle site/demos/shift-handoff/offer_out || true
++ ./cmd/BonfyrePack/bonfyre-pack assemble site/demos/shift-handoff site/demos/shift-handoff/offer_out site/demos/shift-handoff/pack_out || true
+found expected file: site/demos/shift-handoff/transcript.json
+found expected file: site/demos/shift-handoff/brief.md
+found expected file: site/demos/shift-handoff/brief-meta.json
+found expected file: site/demos/shift-handoff/pack_out
+shift-handoff-board-pipeline: PASS
++ mkdir -p site/demos/shift-handoff && ./cmd/BonfyreTranscribe/bonfyre-transcribe site/demos/test_a.wav site/demos/shift-handoff || true
++ ./cmd/BonfyreBrief/bonfyre-brief site/demos/shift-handoff/transcript.json site/demos/shift-handoff || true
++ ./cmd/BonfyreProof/bonfyre-proof bundle site/demos/shift-handoff site/demos/shift-handoff/proof_bundle || true
++ ./cmd/BonfyreOffer/bonfyre-offer generate site/demos/shift-handoff/proof_bundle site/demos/shift-handoff/offer_out || true
++ ./cmd/BonfyrePack/bonfyre-pack assemble site/demos/shift-handoff site/demos/shift-handoff/offer_out site/demos/shift-handoff/pack_out || true
+found expected file: site/demos/shift-handoff/transcript.json
+found expected file: site/demos/shift-handoff/brief.md
+found expected file: site/demos/shift-handoff/brief-meta.json
+found expected file: site/demos/shift-handoff/pack_out
+shift-handoff-board-pipeline: PASS
++ mkdir -p site/demos/shift-handoff && ./cmd/BonfyreTranscribe/bonfyre-transcribe site/demos/test_a.wav site/demos/shift-handoff || true
++ ./cmd/BonfyreBrief/bonfyre-brief site/demos/shift-handoff/transcript.json site/demos/shift-handoff || true
++ ./cmd/BonfyreProof/bonfyre-proof bundle site/demos/shift-handoff site/demos/shift-handoff/proof_bundle || true
++ ./cmd/BonfyreOffer/bonfyre-offer generate site/demos/shift-handoff/proof_bundle site/demos/shift-handoff/offer_out || true
++ ./cmd/BonfyrePack/bonfyre-pack assemble site/demos/shift-handoff site/demos/shift-handoff/offer_out site/demos/shift-handoff/pack_out || true
+found expected file: site/demos/shift-handoff/transcript.json
+found expected file: site/demos/shift-handoff/brief.md
+found expected file: site/demos/shift-handoff/brief-meta.json
+found expected file: site/demos/shift-handoff/pack_out
+shift-handoff-board-pipeline: PASS
++ mkdir -p site/demos/shift-handoff && ./cmd/BonfyreTranscribe/bonfyre-transcribe site/demos/test_a.wav site/demos/shift-handoff || true
++ ./cmd/BonfyreBrief/bonfyre-brief site/demos/shift-handoff/transcript.json site/demos/shift-handoff || true
++ ./cmd/BonfyreProof/bonfyre-proof bundle site/demos/shift-handoff site/demos/shift-handoff/proof_bundle || true
++ ./cmd/BonfyreOffer/bonfyre-offer generate site/demos/shift-handoff/proof_bundle site/demos/shift-handoff/offer_out || true
++ ./cmd/BonfyrePack/bonfyre-pack assemble site/demos/shift-handoff site/demos/shift-handoff/offer_out site/demos/shift-handoff/pack_out || true
+found expected file: site/demos/shift-handoff/transcript.json
+found expected file: site/demos/shift-handoff/brief.md
+found expected file: site/demos/shift-handoff/brief-meta.json
+found expected file: site/demos/shift-handoff/pack_out
+shift-handoff-board-pipeline: PASS
++ mkdir -p site/demos/shift-handoff && ./cmd/BonfyreTranscribe/bonfyre-transcribe site/demos/test_a.wav site/demos/shift-handoff || true
++ ./cmd/BonfyreBrief/bonfyre-brief site/demos/shift-handoff/transcript.json site/demos/shift-handoff || true
++ ./cmd/BonfyreProof/bonfyre-proof bundle site/demos/shift-handoff site/demos/shift-handoff/proof_bundle || true
++ ./cmd/BonfyreOffer/bonfyre-offer generate site/demos/shift-handoff/proof_bundle site/demos/shift-handoff/offer_out || true
++ ./cmd/BonfyrePack/bonfyre-pack assemble site/demos/shift-handoff site/demos/shift-handoff/offer_out site/demos/shift-handoff/pack_out || true
+found expected file: site/demos/shift-handoff/transcript.json
+found expected file: site/demos/shift-handoff/brief.md
+found expected file: site/demos/shift-handoff/brief-meta.json
+found expected file: site/demos/shift-handoff/pack_out
+shift-handoff-board-pipeline: PASS
++ mkdir -p site/demos/shift-handoff && ./cmd/BonfyreTranscribe/bonfyre-transcribe site/demos/test_a.wav site/demos/shift-handoff || true
++ ./cmd/BonfyreBrief/bonfyre-brief site/demos/shift-handoff/transcript.json site/demos/shift-handoff || true
++ ./cmd/BonfyreProof/bonfyre-proof bundle site/demos/shift-handoff site/demos/shift-handoff/proof_bundle || true
++ ./cmd/BonfyreOffer/bonfyre-offer generate site/demos/shift-handoff/proof_bundle site/demos/shift-handoff/offer_out || true
++ ./cmd/BonfyrePack/bonfyre-pack assemble site/demos/shift-handoff site/demos/shift-handoff/offer_out site/demos/shift-handoff/pack_out || true
+found expected file: site/demos/shift-handoff/transcript.json
+found expected file: site/demos/shift-handoff/brief.md
+found expected file: site/demos/shift-handoff/brief-meta.json
+found expected file: site/demos/shift-handoff/pack_out
+shift-handoff-board-pipeline: PASS

@@ -1,0 +1,2 @@
+Usage:
+  bonfyre-offer generate <proof-bundle.json> <output-dir>

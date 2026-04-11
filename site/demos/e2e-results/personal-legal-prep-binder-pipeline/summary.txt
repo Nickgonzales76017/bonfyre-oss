@@ -1,0 +1,69 @@
++ mkdir
+command failed with rc=64
+expected file missing: site/demos/legal-prep/proof
+expected file missing: site/demos/legal-prep/tags.json
+expected file missing: site/demos/legal-prep/pack.zip
+personal-legal-prep-binder-pipeline: FAIL
++ mkdir -p site/demos/legal-prep && ./cmd/BonfyreProof/bonfyre-proof score site/demos/legal-prep site/demos/legal-prep/proof || true
++ ./cmd/BonfyreTag/bonfyre-tag tag --in site/demos/legal-prep --out site/demos/legal-prep/tags.json || true
++ ./cmd/BonfyrePack/bonfyre-pack pack --in site/demos/legal-prep --out site/demos/legal-prep/pack.zip || true
+expected file missing: site/demos/legal-prep/proof
+expected file missing: site/demos/legal-prep/tags.json
+expected file missing: site/demos/legal-prep/pack.zip
+personal-legal-prep-binder-pipeline: FAIL
++ mkdir -p site/demos/legal-prep && ./cmd/BonfyreProof/bonfyre-proof bundle site/demos/legal-prep site/demos/legal-prep/proof_bundle || true
++ ./cmd/BonfyreTag/bonfyre-tag detect-lang site/demos/legal-prep/transcript.txt site/demos/legal-prep || true
++ ./cmd/BonfyrePack/bonfyre-pack assemble site/demos/legal-prep site/demos/legal-prep/proof_bundle site/demos/legal-prep/pack_out || true
+expected file missing: site/demos/legal-prep/proof
+expected file missing: site/demos/legal-prep/tags.json
+expected file missing: site/demos/legal-prep/pack.zip
+personal-legal-prep-binder-pipeline: FAIL
++ mkdir -p site/demos/legal-prep && ./cmd/BonfyreProof/bonfyre-proof bundle site/demos/legal-prep site/demos/legal-prep/proof_bundle || true
++ ./cmd/BonfyreTag/bonfyre-tag detect-lang site/demos/legal-prep/transcript.txt site/demos/legal-prep || true
++ ./cmd/BonfyrePack/bonfyre-pack assemble site/demos/legal-prep site/demos/legal-prep/proof_bundle site/demos/legal-prep/pack_out || true
+expected file missing: site/demos/legal-prep/proof_bundle
+expected file missing: site/demos/legal-prep/transcript.txt
+found expected file: site/demos/legal-prep/pack_out
+personal-legal-prep-binder-pipeline: FAIL
++ mkdir -p site/demos/legal-prep && ./cmd/BonfyreTranscribe/bonfyre-transcribe site/demos/test_a.wav site/demos/legal-prep || true
++ ./cmd/BonfyreProof/bonfyre-proof bundle site/demos/legal-prep site/demos/legal-prep/proof_bundle || true
++ ./cmd/BonfyreTag/bonfyre-tag detect-lang site/demos/legal-prep/transcript.txt site/demos/legal-prep || true
++ ./cmd/BonfyrePack/bonfyre-pack assemble site/demos/legal-prep site/demos/legal-prep/proof_bundle site/demos/legal-prep/pack_out || true
+expected file missing: site/demos/legal-prep/proof_bundle
+found expected file: site/demos/legal-prep/transcript.txt
+found expected file: site/demos/legal-prep/pack_out
+personal-legal-prep-binder-pipeline: FAIL
++ mkdir -p site/demos/legal-prep && ./cmd/BonfyreTranscribe/bonfyre-transcribe site/demos/test_a.wav site/demos/legal-prep || true
++ ./cmd/BonfyreProof/bonfyre-proof bundle site/demos/legal-prep site/demos/legal-prep/proof_bundle || true
++ ./cmd/BonfyreTag/bonfyre-tag detect-lang site/demos/legal-prep/transcript.txt site/demos/legal-prep || true
++ ./cmd/BonfyrePack/bonfyre-pack assemble site/demos/legal-prep site/demos/legal-prep/proof_bundle site/demos/legal-prep/pack_out || true
+expected file missing: site/demos/legal-prep/proof_bundle
+found expected file: site/demos/legal-prep/transcript.txt
+found expected file: site/demos/legal-prep/pack_out
+personal-legal-prep-binder-pipeline: FAIL
++ mkdir -p site/demos/legal-prep && ./cmd/BonfyreTranscribe/bonfyre-transcribe site/demos/test_a.wav site/demos/legal-prep || true
++ ./cmd/BonfyreProof/bonfyre-proof bundle site/demos/legal-prep site/demos/legal-prep/proof_bundle || true
++ ./cmd/BonfyreTag/bonfyre-tag detect-lang site/demos/legal-prep/transcript.txt site/demos/legal-prep || true
++ ./cmd/BonfyrePack/bonfyre-pack assemble site/demos/legal-prep site/demos/legal-prep/proof_bundle site/demos/legal-prep/pack_out || true
+found expected file: site/demos/legal-prep/proof_bundle
+found expected file: site/demos/legal-prep/transcript.txt
+found expected file: site/demos/legal-prep/pack_out
+personal-legal-prep-binder-pipeline: PASS
++ mkdir -p site/demos/legal-prep && ./cmd/BonfyreTranscribe/bonfyre-transcribe site/demos/test_a.wav site/demos/legal-prep || true
++ ./scripts/gen_proof_meta.sh site/demos/legal-prep || true
++ ./cmd/BonfyreProof/bonfyre-proof bundle site/demos/legal-prep site/demos/legal-prep/proof_bundle || true
++ ./cmd/BonfyreTag/bonfyre-tag detect-lang site/demos/legal-prep/transcript.txt site/demos/legal-prep || true
++ ./cmd/BonfyrePack/bonfyre-pack assemble site/demos/legal-prep site/demos/legal-prep/proof_bundle site/demos/legal-prep/pack_out || true
+found expected file: site/demos/legal-prep/proof_bundle
+found expected file: site/demos/legal-prep/transcript.txt
+found expected file: site/demos/legal-prep/pack_out
+personal-legal-prep-binder-pipeline: PASS
++ mkdir -p site/demos/legal-prep && ./cmd/BonfyreTranscribe/bonfyre-transcribe site/demos/test_a.wav site/demos/legal-prep || true
++ ./scripts/gen_proof_meta.sh site/demos/legal-prep || true
++ ./cmd/BonfyreProof/bonfyre-proof bundle site/demos/legal-prep site/demos/legal-prep/proof_bundle || true
++ ./cmd/BonfyreTag/bonfyre-tag detect-lang site/demos/legal-prep/transcript.txt site/demos/legal-prep || true
++ ./cmd/BonfyrePack/bonfyre-pack assemble site/demos/legal-prep site/demos/legal-prep/proof_bundle site/demos/legal-prep/pack_out || true
+found expected file: site/demos/legal-prep/proof_bundle
+found expected file: site/demos/legal-prep/transcript.txt
+found expected file: site/demos/legal-prep/pack_out
+personal-legal-prep-binder-pipeline: PASS

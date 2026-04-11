@@ -1,0 +1,104 @@
+{
+  "shift-handoff": [
+    "Nursing SBAR handoff simulation",
+    "Hospital bedside report training",
+    "bedside handoff simulation",
+    "nursing handoff training video"
+  ],
+  "async-standup": [
+    "Remote daily scrum standup",
+    "distributed team async standup demo",
+    "agile standup simulation",
+    "daily standup remote team"
+  ],
+  "postmortem-atlas": [
+    "IT incident postmortem review",
+    "engineering war room recording",
+    "postmortem blameless retrospective",
+    "incident response postmortem talk"
+  ],
+  "explain-this-repo": [
+    "PyCon architecture deep dive",
+    "RustConf infrastructure talk",
+    "open source repo walkthrough",
+    "project architecture walkthrough"
+  ],
+  "oss-maintainer": [
+    "OSS maintainer vlog",
+    "maintainer office hours",
+    "GitHub issue triage live stream",
+    "open source maintainer talk"
+  ],
+  "memory-atlas": [
+    "StoryCorps interview full",
+    "veterans history project interview",
+    "oral history full interview",
+    "family history interview"
+  ],
+  "local-archive": [
+    "local history society documentary",
+    "small town historical archive tour",
+    "community archive oral history",
+    "local archive interview"
+  ],
+  "museum-exhibit": [
+    "museum curator talk",
+    "art gallery tour narration",
+    "museum exhibit audio guide",
+    "museum curator interview"
+  ],
+  "town-box": [
+    "city council meeting full",
+    "town hall meeting recording",
+    "planning commission hearing full",
+    "municipal council meeting"
+  ],
+  "sales-distiller": [
+    "sales call recording",
+    "Shark Tank full pitch",
+    "earnings call Q&A",
+    "customer interview UX research"
+  ],
+  "freelancer-evidence": [
+    "courtroom deposition full",
+    "small claims hearing recording",
+    "freelancer client dispute recording",
+    "deposition audio"
+  ],
+  "grant-evidence": [
+    "nonprofit grant interview",
+    "community foundation impact report",
+    "grant writing success stories",
+    "grant recipient interview"
+  ],
+  "podcast-plant": [
+    "full length podcast video",
+    "raw podcast recording session",
+    "podcast interview full episode",
+    "podcast producer raw session"
+  ],
+  "release-note-radio": [
+    "software product launch announcement",
+    "developer changelog video",
+    "tech keynote feature reveal",
+    "product release notes video"
+  ],
+  "micro-consulting": [
+    "consulting pricing strategy workshop",
+    "freelance consulting rate negotiation",
+    "micro consulting case study",
+    "consulting workshop video"
+  ],
+  "competitive-intel": [
+    "competitor product review",
+    "market trend analysis presentation",
+    "industry landscape deep dive",
+    "competitive analysis talk"
+  ],
+  "procurement-memory": [
+    "supply chain procurement training",
+    "vendor contract negotiation simulation",
+    "logistics procurement case study",
+    "procurement training video"
+  ]
+}

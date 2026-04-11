@@ -1,0 +1,4 @@
+Usage: bonfyre-embed --text <path> --out <path> [--backend onnx|hash] [--model <name>] [--dims <n>] [--output-format json|binary] [--insert-db <db>] [--doc-id <id>] [--input-dir <dir>] [--meta-out <path>] [--dry-run]
+
+  --input-dir <dir>  Batch mode: embed all .txt files in <dir>
+                     (loads model once, amortizes startup)

@@ -1,0 +1,7 @@
++ ./cmd/BonfyreMediaPrep/bonfyre-media-prep
+command failed with rc=1
+rc mismatch: got 1 expected 0
+podcast-plant: FAIL
++ ./cmd/BonfyreMediaPrep/bonfyre-media-prep
+command failed with rc=1
+podcast-plant: PASS

@@ -1,0 +1,19 @@
+Transcript: site/demos/town-box/transcript.txt
+JSON:       site/demos/town-box/transcript.json
+SRT:        site/demos/town-box/transcript.srt
+VTT:        site/demos/town-box/transcript.vtt
+Meta:       site/demos/town-box/meta.json
+Status:     site/demos/town-box/transcribe-status.json
+Quality:    0.1804 (conf=0.1805 logprob=-1.712)
+RTF:        0.0727 (13.8x realtime)
+Brief: site/demos/town-box/brief.md
+Meta: site/demos/town-box/brief-meta.json
+Artifact: site/demos/town-box/artifact.json
+{"type": "language-detection", "source": "site/demos/town-box/transcript.txt", "chunks": 0, "languages": []}
+Brief: site/demos/town-box/brief/brief.md
+Meta: site/demos/town-box/brief/brief-meta.json
+Artifact: site/demos/town-box/brief/artifact.json
+Narration:  site/demos/town-box/narrate/narration.txt (paced-text)
+Manifest:   site/demos/town-box/narrate/artifact.manifest.json
+WAV quality: DR=0.0 dB  continuity=0.000  pitch-stab=0.000  energy-cons=0.000
+Rendered artifact family: site/demos/town-box

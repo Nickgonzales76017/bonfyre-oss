@@ -1,0 +1,20 @@
+{
+  "sourceSystem": "BonfyreTranscribe",
+  "exportedAt": "2026-04-08T19:53:37Z",
+  "status": "transcribed",
+  "jobSlug": "prepped",
+  "splitSpeech": false,
+  "sileroVad": false,
+  "denoised": true,
+  "segments": 1,
+  "segmentsFiltered": 0,
+  "segmentsHallucinated": 1,
+  "chunkCount": 0,
+  "avgQuality": 0.1721,
+  "rtf": 0.0756,
+  "transcriptPath": "site/demos/podcast-plant/transcript.txt",
+  "transcriptJsonPath": "site/demos/podcast-plant/transcript.json",
+  "transcriptSrtPath": "site/demos/podcast-plant/transcript.srt",
+  "transcriptVttPath": "site/demos/podcast-plant/transcript.vtt",
+  "metaPath": "site/demos/podcast-plant/meta.json"
+}

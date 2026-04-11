@@ -1,0 +1,17 @@
+Transcript: site/demos/postmortem-atlas/transcript.txt
+JSON:       site/demos/postmortem-atlas/transcript.json
+SRT:        site/demos/postmortem-atlas/transcript.srt
+VTT:        site/demos/postmortem-atlas/transcript.vtt
+Meta:       site/demos/postmortem-atlas/meta.json
+Status:     site/demos/postmortem-atlas/transcribe-status.json
+Quality:    0.0493 (conf=0.0493 logprob=-3.011)
+RTF:        0.0772 (12.9x realtime)
+{"type": "language-detection", "source": "site/demos/postmortem-atlas/transcript.txt", "chunks": 0, "languages": []}
+Batch complete: 1/1 succeeded
+Brief: site/demos/postmortem-atlas/brief/brief.md
+Meta: site/demos/postmortem-atlas/brief/brief-meta.json
+Artifact: site/demos/postmortem-atlas/brief/artifact.json
+Narration:  site/demos/postmortem-atlas/narrate/narration.txt (paced-text)
+Manifest:   site/demos/postmortem-atlas/narrate/artifact.manifest.json
+WAV quality: DR=0.0 dB  continuity=0.000  pitch-stab=0.000  energy-cons=0.000
+Rendered artifact family: site/demos/postmortem-atlas

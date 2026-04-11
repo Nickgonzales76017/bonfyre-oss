@@ -1,0 +1,28 @@
+BonfyreCMS v0.1.0 — stripped binary CMS
+
+Usage:
+  bonfyre-cms serve [--port PORT] [--db FILE] [--schemas DIR]
+  bonfyre-cms schema list [--db FILE]
+  bonfyre-cms schema apply <schema.json> [--db FILE]
+  bonfyre-cms schema migrate [--db FILE] [--schemas DIR]
+  bonfyre-cms entry create <type> [--ns NS] '<json>'
+  bonfyre-cms entry list <type> [--ns NS] [--status STATUS] [--limit N]
+  bonfyre-cms entry get <type> <id>
+  bonfyre-cms entry update <type> <id> '<json>'
+  bonfyre-cms entry delete <type> <id>
+  bonfyre-cms token issue [--scope NS] [--actions ACTS] [--label LABEL]
+  bonfyre-cms token list
+  bonfyre-cms ann build <type>
+  bonfyre-cms ann knn <type> '<json>' [k]
+  bonfyre-cms ann qknn <type> '<json>' [k]
+  bonfyre-cms ann qknn-entry <type> <id> [k]
+  bonfyre-cms ann qbench <type> [queries] [k]
+  bonfyre-cms ann stats <type>
+  bonfyre-cms bench-real <type> [--query-field F --query-op OP --query-value V]
+
+Options:
+  --port PORT     HTTP port (default: 8800)
+  --db FILE       SQLite database file (default: bonfyre_cms.db)
+  --schemas DIR   Content-type JSON directory (default: ./content-types)
+  --ns NAMESPACE  Namespace scope (default: root)
+

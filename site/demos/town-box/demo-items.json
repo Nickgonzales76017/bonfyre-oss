@@ -1,0 +1,58 @@
+[
+  {
+    "id": "town-2023-11-07-01",
+    "title": "Smallville City Council — November 7, 2023 (Full Meeting)",
+    "seed": "YOUTUBE_ID_1",
+    "status": "complete",
+    "brief": "Full council meeting covering zoning changes, public comment, and a transportation update.",
+    "tags": ["city-council","zoning","public-comment","transportation"],
+    "outputs": ["brief.md","transcript.json"],
+    "provenance": {
+      "source_public": "https://www.youtube.com/watch?v=YOUTUBE_ID_1",
+      "note": "Bonfyre processed the public origin transiently and kept only derived artifacts; original media is available at the public link."
+    },
+    "artifact_root": "/demos/town-box/town-2023-11-07-01/"
+  },
+  {
+    "id": "town-2024-02-19-01",
+    "title": "Rivertown Planning Commission — Feb 19, 2024 (Zoning Hearing)",
+    "seed": "YOUTUBE_ID_2",
+    "status": "complete",
+    "brief": "Zoning hearing on mixed-use development with extended public comment. Good example for extracting action items and speakers.",
+    "tags": ["planning","zoning","public-comment"],
+    "outputs": ["brief.md","transcript.json"],
+    "provenance": {
+      "source_public": "https://www.youtube.com/watch?v=YOUTUBE_ID_2",
+      "note": "Original recording retained by public host; Bonfyre references it for provenance only."
+    },
+    "artifact_root": "/demos/town-box/town-2024-02-19-01/"
+  },
+  {
+    "id": "town-2024-06-03-01",
+    "title": "Lakeview Town Hall — June 3, 2024 (Budget & Parks)",
+    "seed": "YOUTUBE_ID_3",
+    "status": "complete",
+    "brief": "Budget discussion focused on parks and community events; useful for sentiment and stakeholder extraction tests.",
+    "tags": ["budget","town-hall","parks"],
+    "outputs": ["brief.md","transcript.json"],
+    "provenance": {
+      "source_public": "https://www.youtube.com/watch?v=YOUTUBE_ID_3",
+      "note": "Bonfyre stores derived artifacts only; link goes to the public origin for full video/audio."
+    },
+    "artifact_root": "/demos/town-box/town-2024-06-03-01/"
+  },
+  {
+    "id": "town-2024-08-21-01",
+    "title": "Metro City Council Special Session — Aug 21, 2024 (Emergency Measures)",
+    "seed": "YOUTUBE_ID_4",
+    "status": "complete",
+    "brief": "Special session discussing emergency measures; good for testing urgency detection and action-item extraction.",
+    "tags": ["special-session","emergency","action-items"],
+    "outputs": ["brief.md","transcript.json"],
+    "provenance": {
+      "source_public": "https://www.youtube.com/watch?v=YOUTUBE_ID_4",
+      "note": "Public origin link for playback; Bonfyre shows derived artifacts inline without hosting the original media."
+    },
+    "artifact_root": "/demos/town-box/town-2024-08-21-01/"
+  }
+]

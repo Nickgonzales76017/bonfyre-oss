@@ -1,0 +1,50 @@
+# Bonfyre Brief
+
+## Summary
+- 0493, "hallucination_flags": 12, "speaker_turn": false, "text": " on the"}
+  ],
+  "summary": {
+    "segments_total": 1,
+    "segments_filtered": 0,
+    "segments_hallucinated": 1
+  },
+  "timing": {"encode_ms": 114.
+- 0493, "logprob": -3.
+- 000, "compression_ratio": 0.
+- 47, "quality": 0.
+- {
+  "sourceSystem": "BonfyreTranscribe",
+  "segments": [
+    {"t0": 0, "t1": 2000, "confidence": 0.
+- 011, "no_speech": 0.
+
+## Action Items
+- No action items detected
+
+## Deep Summary
+- Key Details
+  - 0493, "hallucination_flags": 12, "speaker_turn": false, "text": " on the"}
+  ],
+  "summary": {
+    "segments_total": 1,
+    "segments_filtered": 0,
+    "segments_hallucinated": 1
+  },
+  "timing": {"encode_ms": 114.
+  - 0493, "logprob": -3.
+  - 000, "compression_ratio": 0.
+  - 47, "quality": 0.
+
+## Transcript
+{
+  "sourceSystem": "BonfyreTranscribe",
+  "segments": [
+    {"t0": 0, "t1": 2000, "confidence": 0. 0493, "logprob": -3. 011, "no_speech": 0. 000, "compression_ratio": 0. 47, "quality": 0. 0493, "hallucination_flags": 12, "speaker_turn": false, "text": " on the"}
+  ],
+  "summary": {
+    "segments_total": 1,
+    "segments_filtered": 0,
+    "segments_hallucinated": 1
+  },
+  "timing": {"encode_ms": 114. 3, "decode_ms": 2. 3, "batchd_ms": 1. 1, "sample_ms": 1. 4, "prompt_ms": 0. 1}
+}

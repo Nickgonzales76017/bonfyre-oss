@@ -1,0 +1,78 @@
++ mkdir
+command failed with rc=64
+expected file missing: site/demos/explain-repo/ingest.json
+expected file missing: site/demos/explain-repo/canon.json
+expected file missing: site/demos/explain-repo/brief.json
+expected file missing: site/demos/explain-repo/page.html
+explain-repo-pipeline: FAIL
++ mkdir -p site/demos/explain-repo && ./cmd/BonfyreIngest/bonfyre-ingest ingest --src . --out site/demos/explain-repo/ingest.json || true
++ ./cmd/BonfyreCanon/bonfyre-canon canon --in site/demos/explain-repo/ingest.json --out site/demos/explain-repo/canon.json || true
++ ./cmd/BonfyreBrief/bonfyre-brief brief --in site/demos/explain-repo/canon.json --out site/demos/explain-repo/brief.json || true
++ ./cmd/BonfyreRender/bonfyre-render render --in site/demos/explain-repo/brief.json --out site/demos/explain-repo/page.html || true
+expected file missing: site/demos/explain-repo/ingest.json
+expected file missing: site/demos/explain-repo/canon.json
+expected file missing: site/demos/explain-repo/brief.json
+expected file missing: site/demos/explain-repo/page.html
+explain-repo-pipeline: FAIL
++ mkdir -p site/demos/explain-repo && ./cmd/BonfyreIngest/bonfyre-ingest ingest . site/demos/explain-repo || true
++ ./cmd/BonfyreCanon/bonfyre-canon canon site/demos/explain-repo/ingest.json site/demos/explain-repo || true
++ ./cmd/BonfyreBrief/bonfyre-brief site/demos/explain-repo/transcript.json site/demos/explain-repo || true
++ ./cmd/BonfyreRender/bonfyre-render artifact site/demos/explain-repo/transcript.json site/demos/explain-repo || true
+expected file missing: site/demos/explain-repo/ingest.json
+expected file missing: site/demos/explain-repo/canon.json
+expected file missing: site/demos/explain-repo/brief.json
+expected file missing: site/demos/explain-repo/page.html
+explain-repo-pipeline: FAIL
++ mkdir -p site/demos/explain-repo && ./cmd/BonfyreIngest/bonfyre-ingest ingest . site/demos/explain-repo || true
++ ./cmd/BonfyreCanon/bonfyre-canon canon site/demos/explain-repo/ingest.json site/demos/explain-repo || true
++ ./cmd/BonfyreBrief/bonfyre-brief site/demos/explain-repo/transcript.json site/demos/explain-repo || true
++ ./cmd/BonfyreRender/bonfyre-render artifact site/demos/explain-repo/transcript.json site/demos/explain-repo || true
+expected file missing: site/demos/explain-repo/ingest.json
+expected file missing: site/demos/explain-repo/canon.json
+expected file missing: site/demos/explain-repo/brief.md
+expected file missing: site/demos/explain-repo/artifact.json
+explain-repo-pipeline: FAIL
++ mkdir -p site/demos/explain-repo && ./cmd/BonfyreIngest/bonfyre-ingest . site/demos/explain-repo || true
++ ./cmd/BonfyreCanon/bonfyre-canon site/demos/explain-repo/ingest.json site/demos/explain-repo || true
++ ./cmd/BonfyreBrief/bonfyre-brief site/demos/explain-repo/transcript.json site/demos/explain-repo || true
++ ./cmd/BonfyreRender/bonfyre-render artifact site/demos/explain-repo/transcript.json site/demos/explain-repo || true
+expected file missing: site/demos/explain-repo/ingest.json
+expected file missing: site/demos/explain-repo/canon.json
+expected file missing: site/demos/explain-repo/brief.md
+found expected file: site/demos/explain-repo/artifact.json
+explain-repo-pipeline: FAIL
++ mkdir -p site/demos/explain-repo && ./cmd/BonfyreIngest/bonfyre-ingest . site/demos/explain-repo || true
++ ./cmd/BonfyreCanon/bonfyre-canon site/demos/explain-repo/ingest.json site/demos/explain-repo || true
++ ./cmd/BonfyreBrief/bonfyre-brief site/demos/explain-repo/transcript.json site/demos/explain-repo || true
++ ./cmd/BonfyreRender/bonfyre-render artifact site/demos/explain-repo/transcript.json site/demos/explain-repo || true
+found expected file: site/demos/explain-repo/ingest.json
+expected file missing: site/demos/explain-repo/canon.json
+expected file missing: site/demos/explain-repo/brief.md
+found expected file: site/demos/explain-repo/artifact.json
+explain-repo-pipeline: FAIL
++ mkdir -p site/demos/explain-repo && ./cmd/BonfyreIngest/bonfyre-ingest . site/demos/explain-repo || true
++ ./cmd/BonfyreCanon/bonfyre-canon site/demos/explain-repo/ingest.json site/demos/explain-repo || true
++ ./cmd/BonfyreBrief/bonfyre-brief site/demos/explain-repo/transcript.json site/demos/explain-repo || true
++ ./cmd/BonfyreRender/bonfyre-render artifact site/demos/explain-repo/transcript.json site/demos/explain-repo || true
+found expected file: site/demos/explain-repo/ingest.json
+found expected file: site/demos/explain-repo/canon.json
+found expected file: site/demos/explain-repo/brief.md
+found expected file: site/demos/explain-repo/artifact.json
+explain-repo-pipeline: PASS
++ mkdir -p site/demos/explain-repo && ./cmd/BonfyreIngest/bonfyre-ingest . site/demos/explain-repo || true
++ ./cmd/BonfyreCanon/bonfyre-canon parse site/demos/explain-repo/ingest.json site/demos/explain-repo || true
++ ./cmd/BonfyreBrief/bonfyre-brief site/demos/explain-repo/transcript.json site/demos/explain-repo || true
++ ./cmd/BonfyreRender/bonfyre-render artifact site/demos/explain-repo/transcript.json site/demos/explain-repo || true
+found expected file: site/demos/explain-repo/ingest.json
+expected file missing: site/demos/explain-repo/canon.json
+expected file missing: site/demos/explain-repo/brief.md
+found expected file: site/demos/explain-repo/artifact.json
+explain-repo-pipeline: FAIL
++ mkdir -p site/demos/explain-repo && ./cmd/BonfyreIngest/bonfyre-ingest . site/demos/explain-repo || true
++ ./cmd/BonfyreCanon/bonfyre-canon parse site/demos/explain-repo/ingest.json site/demos/explain-repo || true
++ ./cmd/BonfyreBrief/bonfyre-brief site/demos/explain-repo/transcript.json site/demos/explain-repo || true
++ ./cmd/BonfyreRender/bonfyre-render artifact site/demos/explain-repo/transcript.json site/demos/explain-repo || true
+found expected file: site/demos/explain-repo/ingest.json
+found expected file: site/demos/explain-repo/ast.json
+found expected file: site/demos/explain-repo/artifact.json
+explain-repo-pipeline: PASS

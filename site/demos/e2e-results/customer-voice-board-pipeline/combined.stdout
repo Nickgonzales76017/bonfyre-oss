@@ -1,0 +1,9 @@
+Transcript: site/demos/customer-voice/transcript.txt
+JSON:       site/demos/customer-voice/transcript.json
+SRT:        site/demos/customer-voice/transcript.srt
+VTT:        site/demos/customer-voice/transcript.vtt
+Meta:       site/demos/customer-voice/meta.json
+Status:     site/demos/customer-voice/transcribe-status.json
+Quality:    0.0374 (conf=0.0374 logprob=-3.285)
+RTF:        0.0720 (13.9x realtime)
+Batch complete: 1/1 succeeded

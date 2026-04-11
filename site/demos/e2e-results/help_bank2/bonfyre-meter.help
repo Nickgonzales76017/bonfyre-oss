@@ -1,0 +1,6 @@
+BonfyreMeter — usage metering & billing
+
+  bonfyre-meter record --key K --op OP [--bytes N] [--duration MS]
+  bonfyre-meter usage --key K [--since DATE]
+  bonfyre-meter invoice --key K [--period YYYY-MM]
+  bonfyre-meter top [--limit N]

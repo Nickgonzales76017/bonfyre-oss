@@ -1,0 +1,18 @@
+Transcript: site/demos/family-history/transcript.txt
+JSON:       site/demos/family-history/transcript.json
+SRT:        site/demos/family-history/transcript.srt
+VTT:        site/demos/family-history/transcript.vtt
+Meta:       site/demos/family-history/meta.json
+Status:     site/demos/family-history/transcribe-status.json
+Quality:    0.0227 (conf=0.0227 logprob=-3.785)
+RTF:        0.0710 (14.1x realtime)
+Brief: site/demos/family-history/brief.md
+Meta: site/demos/family-history/brief-meta.json
+Artifact: site/demos/family-history/artifact.json
+Brief: site/demos/family-history/brief/brief.md
+Meta: site/demos/family-history/brief/brief-meta.json
+Artifact: site/demos/family-history/brief/artifact.json
+Narration:  site/demos/family-history/narrate/narration.txt (paced-text)
+Manifest:   site/demos/family-history/narrate/artifact.manifest.json
+WAV quality: DR=0.0 dB  continuity=0.000  pitch-stab=0.000  energy-cons=0.000
+Rendered artifact family: site/demos/family-history

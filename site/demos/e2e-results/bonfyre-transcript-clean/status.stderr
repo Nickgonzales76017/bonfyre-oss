@@ -1,0 +1,1 @@
+Usage: bonfyre-transcript-clean --transcript <path> --out <path> [--status-out <path>] [--dry-run]

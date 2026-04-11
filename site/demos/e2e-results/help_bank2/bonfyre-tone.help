@@ -1,0 +1,7 @@
+bonfyre-tone — speech tone/emotion/rhythm extraction (OpenSMILE)
+
+Usage:
+  bonfyre-tone extract <audio> [output-dir]
+  bonfyre-tone profile <audio> [output-dir]
+  bonfyre-tone compare <audio1> <audio2> [output-dir]
+  bonfyre-tone status

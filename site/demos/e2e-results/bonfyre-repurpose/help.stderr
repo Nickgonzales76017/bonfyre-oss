@@ -1,0 +1,15 @@
+bonfyre-repurpose — turn brief artifacts into social media formats
+
+Usage:
+  bonfyre-repurpose <format> <brief-dir> <output-dir>
+
+Formats:
+  tweet-thread   Twitter/X thread (5-7 tweets)
+  linkedin       LinkedIn post (hook → insight → CTA)
+  carousel       Instagram/LinkedIn carousel slides
+  youtube-desc   YouTube description + chapters + SEO
+  newsletter     Email newsletter edition
+  all            Generate all formats
+
+Example:
+  bonfyre-repurpose all ./output/brief ./output/social

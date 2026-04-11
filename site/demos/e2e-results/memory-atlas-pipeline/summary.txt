@@ -1,0 +1,79 @@
++ mkdir
+command failed with rc=64
+expected file missing: site/demos/memory-atlas/transcript.json
+expected file missing: site/demos/memory-atlas/brief.json
+expected file missing: site/demos/memory-atlas/embed.json
+expected file missing: site/demos/memory-atlas/page.html
+memory-atlas-pipeline: FAIL
++ mkdir -p site/demos/memory-atlas && ./cmd/BonfyreTranscribe/bonfyre-transcribe transcribe --in site/demos/test_b.wav --out site/demos/memory-atlas/transcript.json || true
++ ./cmd/BonfyreBrief/bonfyre-brief brief --in site/demos/memory-atlas/transcript.json --out site/demos/memory-atlas/brief.json || true
++ ./cmd/BonfyreEmbed/bonfyre-embed embed --in site/demos/memory-atlas/transcript.json --out site/demos/memory-atlas/embed.json || true
++ ./cmd/BonfyreRender/bonfyre-render render --in site/demos/memory-atlas/brief.json --out site/demos/memory-atlas/page.html || true
+expected file missing: site/demos/memory-atlas/transcript.json
+expected file missing: site/demos/memory-atlas/brief.json
+expected file missing: site/demos/memory-atlas/embed.json
+expected file missing: site/demos/memory-atlas/page.html
+memory-atlas-pipeline: FAIL
++ mkdir -p site/demos/memory-atlas && ./cmd/BonfyreTranscribe/bonfyre-transcribe site/demos/test_b.wav site/demos/memory-atlas || true
++ ./cmd/BonfyreBrief/bonfyre-brief site/demos/memory-atlas/transcript.json site/demos/memory-atlas || true
++ ./cmd/BonfyreEmbed/bonfyre-embed --input-dir site/demos/memory-atlas --out site/demos/memory-atlas/embed.json || true
++ ./cmd/BonfyreRender/bonfyre-render artifact site/demos/memory-atlas/transcript.json site/demos/memory-atlas || true
+found expected file: site/demos/memory-atlas/transcript.json
+expected file missing: site/demos/memory-atlas/brief.json
+found expected file: site/demos/memory-atlas/embed.json
+expected file missing: site/demos/memory-atlas/page.html
+memory-atlas-pipeline: FAIL
++ mkdir -p site/demos/memory-atlas && ./cmd/BonfyreTranscribe/bonfyre-transcribe site/demos/test_b.wav site/demos/memory-atlas || true
++ ./cmd/BonfyreBrief/bonfyre-brief site/demos/memory-atlas/transcript.json site/demos/memory-atlas || true
++ ./cmd/BonfyreEmbed/bonfyre-embed --input-dir site/demos/memory-atlas --out site/demos/memory-atlas/embed.json || true
++ ./cmd/BonfyreRender/bonfyre-render artifact site/demos/memory-atlas/transcript.json site/demos/memory-atlas || true
+found expected file: site/demos/memory-atlas/transcript.json
+found expected file: site/demos/memory-atlas/brief.md
+found expected file: site/demos/memory-atlas/embed.json
+found expected file: site/demos/memory-atlas/artifact.json
+memory-atlas-pipeline: PASS
++ mkdir -p site/demos/memory-atlas && ./cmd/BonfyreTranscribe/bonfyre-transcribe site/demos/test_b.wav site/demos/memory-atlas || true
++ ./cmd/BonfyreBrief/bonfyre-brief site/demos/memory-atlas/transcript.json site/demos/memory-atlas || true
++ ./cmd/BonfyreEmbed/bonfyre-embed --input-dir site/demos/memory-atlas --out site/demos/memory-atlas/embed.json || true
++ ./cmd/BonfyreRender/bonfyre-render artifact site/demos/memory-atlas/transcript.json site/demos/memory-atlas || true
+found expected file: site/demos/memory-atlas/transcript.json
+found expected file: site/demos/memory-atlas/brief.md
+found expected file: site/demos/memory-atlas/embed.json
+found expected file: site/demos/memory-atlas/artifact.json
+memory-atlas-pipeline: PASS
++ mkdir -p site/demos/memory-atlas && ./cmd/BonfyreTranscribe/bonfyre-transcribe site/demos/test_b.wav site/demos/memory-atlas || true
++ ./cmd/BonfyreBrief/bonfyre-brief site/demos/memory-atlas/transcript.json site/demos/memory-atlas || true
++ ./cmd/BonfyreEmbed/bonfyre-embed --input-dir site/demos/memory-atlas --out site/demos/memory-atlas/embed.json || true
++ ./cmd/BonfyreRender/bonfyre-render artifact site/demos/memory-atlas/transcript.json site/demos/memory-atlas || true
+found expected file: site/demos/memory-atlas/transcript.json
+found expected file: site/demos/memory-atlas/brief.md
+found expected file: site/demos/memory-atlas/embed.json
+found expected file: site/demos/memory-atlas/artifact.json
+memory-atlas-pipeline: PASS
++ mkdir -p site/demos/memory-atlas && ./cmd/BonfyreTranscribe/bonfyre-transcribe site/demos/test_b.wav site/demos/memory-atlas || true
++ ./cmd/BonfyreBrief/bonfyre-brief site/demos/memory-atlas/transcript.json site/demos/memory-atlas || true
++ ./cmd/BonfyreEmbed/bonfyre-embed --input-dir site/demos/memory-atlas --out site/demos/memory-atlas/embed.json || true
++ ./cmd/BonfyreRender/bonfyre-render artifact site/demos/memory-atlas/transcript.json site/demos/memory-atlas || true
+found expected file: site/demos/memory-atlas/transcript.json
+found expected file: site/demos/memory-atlas/brief.md
+found expected file: site/demos/memory-atlas/embed.json
+found expected file: site/demos/memory-atlas/artifact.json
+memory-atlas-pipeline: PASS
++ mkdir -p site/demos/memory-atlas && ./cmd/BonfyreTranscribe/bonfyre-transcribe site/demos/test_b.wav site/demos/memory-atlas || true
++ ./cmd/BonfyreBrief/bonfyre-brief site/demos/memory-atlas/transcript.json site/demos/memory-atlas || true
++ ./cmd/BonfyreEmbed/bonfyre-embed --input-dir site/demos/memory-atlas --out site/demos/memory-atlas/embed.json || true
++ ./cmd/BonfyreRender/bonfyre-render artifact site/demos/memory-atlas/transcript.json site/demos/memory-atlas || true
+found expected file: site/demos/memory-atlas/transcript.json
+found expected file: site/demos/memory-atlas/brief.md
+found expected file: site/demos/memory-atlas/embed.json
+found expected file: site/demos/memory-atlas/artifact.json
+memory-atlas-pipeline: PASS
++ mkdir -p site/demos/memory-atlas && ./cmd/BonfyreTranscribe/bonfyre-transcribe site/demos/test_b.wav site/demos/memory-atlas || true
++ ./cmd/BonfyreBrief/bonfyre-brief site/demos/memory-atlas/transcript.json site/demos/memory-atlas || true
++ ./cmd/BonfyreEmbed/bonfyre-embed --input-dir site/demos/memory-atlas --out site/demos/memory-atlas/embed.json || true
++ ./cmd/BonfyreRender/bonfyre-render artifact site/demos/memory-atlas/transcript.json site/demos/memory-atlas || true
+found expected file: site/demos/memory-atlas/transcript.json
+found expected file: site/demos/memory-atlas/brief.md
+found expected file: site/demos/memory-atlas/embed.json
+found expected file: site/demos/memory-atlas/artifact.json
+memory-atlas-pipeline: PASS

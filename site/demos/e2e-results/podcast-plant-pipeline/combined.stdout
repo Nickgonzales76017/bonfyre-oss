@@ -1,0 +1,11 @@
+Transcript: site/demos/podcast-plant/transcript.txt
+JSON:       site/demos/podcast-plant/transcript.json
+SRT:        site/demos/podcast-plant/transcript.srt
+VTT:        site/demos/podcast-plant/transcript.vtt
+Meta:       site/demos/podcast-plant/meta.json
+Status:     site/demos/podcast-plant/transcribe-status.json
+Quality:    0.1721 (conf=0.1721 logprob=-1.759)
+RTF:        0.0756 (13.2x realtime)
+Brief: site/demos/podcast-plant/brief.md
+Meta: site/demos/podcast-plant/brief-meta.json
+Artifact: site/demos/podcast-plant/artifact.json

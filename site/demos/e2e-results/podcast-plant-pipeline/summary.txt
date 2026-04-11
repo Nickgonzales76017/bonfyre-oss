@@ -1,0 +1,79 @@
++ mkdir
+command failed with rc=64
+expected file missing: site/demos/podcast-plant/prepped.wav
+expected file missing: site/demos/podcast-plant/transcript.json
+expected file missing: site/demos/podcast-plant/brief.json
+expected file missing: site/demos/podcast-plant/episode.rss
+podcast-plant-pipeline: FAIL
++ mkdir -p site/demos/podcast-plant && ./cmd/BonfyreMediaPrep/bonfyre-media-prep prepare --in site/demos/test_a.wav --out site/demos/podcast-plant/prepped.wav || true
++ ./cmd/BonfyreTranscribe/bonfyre-transcribe transcribe --in site/demos/podcast-plant/prepped.wav --out site/demos/podcast-plant/transcript.json || true
++ ./cmd/BonfyreBrief/bonfyre-brief brief --in site/demos/podcast-plant/transcript.json --out site/demos/podcast-plant/brief.json || true
++ ./cmd/BonfyreEmit/bonfyre-emit emit --in site/demos/podcast-plant/brief.json --out site/demos/podcast-plant/episode.rss || true
+expected file missing: site/demos/podcast-plant/prepped.wav
+expected file missing: site/demos/podcast-plant/transcript.json
+expected file missing: site/demos/podcast-plant/brief.json
+expected file missing: site/demos/podcast-plant/episode.rss
+podcast-plant-pipeline: FAIL
++ mkdir -p site/demos/podcast-plant && ./cmd/BonfyreMediaPrep/bonfyre-media-prep prepare site/demos/test_a.wav site/demos/podcast-plant || true
++ ./cmd/BonfyreTranscribe/bonfyre-transcribe site/demos/podcast-plant/prepped.wav site/demos/podcast-plant || true
++ ./cmd/BonfyreBrief/bonfyre-brief site/demos/podcast-plant/transcript.json site/demos/podcast-plant || true
++ ./cmd/BonfyreEmit/bonfyre-emit site/demos/podcast-plant --format rss --out site/demos/podcast-plant/episode.rss || true
+expected file missing: site/demos/podcast-plant/prepped.wav
+expected file missing: site/demos/podcast-plant/transcript.json
+expected file missing: site/demos/podcast-plant/brief.json
+expected file missing: site/demos/podcast-plant/episode.rss
+podcast-plant-pipeline: FAIL
++ mkdir -p site/demos/podcast-plant && ./cmd/BonfyreMediaPrep/bonfyre-media-prep prepare site/demos/test_a.wav site/demos/podcast-plant || true
++ ./cmd/BonfyreTranscribe/bonfyre-transcribe site/demos/podcast-plant/prepped.wav site/demos/podcast-plant || true
++ ./cmd/BonfyreBrief/bonfyre-brief site/demos/podcast-plant/transcript.json site/demos/podcast-plant || true
++ ./cmd/BonfyreEmit/bonfyre-emit site/demos/podcast-plant --format rss --out site/demos/podcast-plant/episode.rss || true
+expected file missing: site/demos/podcast-plant/prepped.wav
+expected file missing: site/demos/podcast-plant/transcript.json
+expected file missing: site/demos/podcast-plant/brief.md
+expected file missing: site/demos/podcast-plant/episode.rss
+podcast-plant-pipeline: FAIL
++ mkdir -p site/demos/podcast-plant && ./cmd/BonfyreMediaPrep/bonfyre-media-prep normalize site/demos/test_a.wav site/demos/podcast-plant/prepped.wav --loudnorm || true
++ ./cmd/BonfyreTranscribe/bonfyre-transcribe site/demos/podcast-plant/prepped.wav site/demos/podcast-plant || true
++ ./cmd/BonfyreBrief/bonfyre-brief site/demos/podcast-plant/transcript.json site/demos/podcast-plant || true
++ ./cmd/BonfyreEmit/bonfyre-emit site/demos/podcast-plant --format rss --out site/demos/podcast-plant/episode.rss || true
+found expected file: site/demos/podcast-plant/prepped.wav
+found expected file: site/demos/podcast-plant/transcript.json
+found expected file: site/demos/podcast-plant/brief.md
+found expected file: site/demos/podcast-plant/episode.rss
+podcast-plant-pipeline: PASS
++ mkdir -p site/demos/podcast-plant && ./cmd/BonfyreMediaPrep/bonfyre-media-prep normalize site/demos/test_a.wav site/demos/podcast-plant/prepped.wav --loudnorm || true
++ ./cmd/BonfyreTranscribe/bonfyre-transcribe site/demos/podcast-plant/prepped.wav site/demos/podcast-plant || true
++ ./cmd/BonfyreBrief/bonfyre-brief site/demos/podcast-plant/transcript.json site/demos/podcast-plant || true
++ ./cmd/BonfyreEmit/bonfyre-emit site/demos/podcast-plant --format rss --out site/demos/podcast-plant/episode.rss || true
+found expected file: site/demos/podcast-plant/prepped.wav
+found expected file: site/demos/podcast-plant/transcript.json
+found expected file: site/demos/podcast-plant/brief.md
+found expected file: site/demos/podcast-plant/episode.rss
+podcast-plant-pipeline: PASS
++ mkdir -p site/demos/podcast-plant && ./cmd/BonfyreMediaPrep/bonfyre-media-prep normalize site/demos/test_a.wav site/demos/podcast-plant/prepped.wav --loudnorm || true
++ ./cmd/BonfyreTranscribe/bonfyre-transcribe site/demos/podcast-plant/prepped.wav site/demos/podcast-plant || true
++ ./cmd/BonfyreBrief/bonfyre-brief site/demos/podcast-plant/transcript.json site/demos/podcast-plant || true
++ ./cmd/BonfyreEmit/bonfyre-emit site/demos/podcast-plant --format rss --out site/demos/podcast-plant/episode.rss || true
+found expected file: site/demos/podcast-plant/prepped.wav
+found expected file: site/demos/podcast-plant/transcript.json
+found expected file: site/demos/podcast-plant/brief.md
+found expected file: site/demos/podcast-plant/episode.rss
+podcast-plant-pipeline: PASS
++ mkdir -p site/demos/podcast-plant && ./cmd/BonfyreMediaPrep/bonfyre-media-prep normalize site/demos/test_a.wav site/demos/podcast-plant/prepped.wav --loudnorm || true
++ ./cmd/BonfyreTranscribe/bonfyre-transcribe site/demos/podcast-plant/prepped.wav site/demos/podcast-plant || true
++ ./cmd/BonfyreBrief/bonfyre-brief site/demos/podcast-plant/transcript.json site/demos/podcast-plant || true
++ ./cmd/BonfyreEmit/bonfyre-emit site/demos/podcast-plant --format rss --out site/demos/podcast-plant/episode.rss || true
+found expected file: site/demos/podcast-plant/prepped.wav
+found expected file: site/demos/podcast-plant/transcript.json
+found expected file: site/demos/podcast-plant/brief.md
+found expected file: site/demos/podcast-plant/episode.rss
+podcast-plant-pipeline: PASS
++ mkdir -p site/demos/podcast-plant && ./cmd/BonfyreMediaPrep/bonfyre-media-prep normalize site/demos/test_a.wav site/demos/podcast-plant/prepped.wav --loudnorm || true
++ ./cmd/BonfyreTranscribe/bonfyre-transcribe site/demos/podcast-plant/prepped.wav site/demos/podcast-plant || true
++ ./cmd/BonfyreBrief/bonfyre-brief site/demos/podcast-plant/transcript.json site/demos/podcast-plant || true
++ ./cmd/BonfyreEmit/bonfyre-emit site/demos/podcast-plant --format rss --out site/demos/podcast-plant/episode.rss || true
+found expected file: site/demos/podcast-plant/prepped.wav
+found expected file: site/demos/podcast-plant/transcript.json
+found expected file: site/demos/podcast-plant/brief.md
+found expected file: site/demos/podcast-plant/episode.rss
+podcast-plant-pipeline: PASS

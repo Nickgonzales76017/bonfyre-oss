@@ -1,0 +1,8 @@
+bonfyre-tag — instant topic/intent tagging (fastText, pure C)
+
+Usage:
+  bonfyre-tag predict <model.bin> <text-file> [output-dir] [--top N]
+  bonfyre-tag batch <model.bin> <dir> [output-dir]
+  bonfyre-tag train <training-data> <model-out>
+  bonfyre-tag detect-lang <text-file> [output-dir]
+  bonfyre-tag status

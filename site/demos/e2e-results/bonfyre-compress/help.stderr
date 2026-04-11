@@ -1,0 +1,8 @@
+BonfyreCompress — family-aware compression engine
+
+Usage:
+  bonfyre-compress train <dir> [--dict-out F]    Train zstd dictionary
+  bonfyre-compress pack <in> <out> [--dict D]    Compress file
+  bonfyre-compress unpack <in> <out> [--dict D]  Decompress file
+  bonfyre-compress family <dir> [--out F]        Pack entire family
+  bonfyre-compress savings <dir>                 Report savings

@@ -1,0 +1,15 @@
+Transcript: site/demos/micro-consulting/transcript.txt
+JSON:       site/demos/micro-consulting/transcript.json
+SRT:        site/demos/micro-consulting/transcript.srt
+VTT:        site/demos/micro-consulting/transcript.vtt
+Meta:       site/demos/micro-consulting/meta.json
+Status:     site/demos/micro-consulting/transcribe-status.json
+Quality:    0.1241 (conf=0.1242 logprob=-2.086)
+RTF:        0.0825 (12.1x realtime)
+Brief: site/demos/micro-consulting/brief.md
+Meta: site/demos/micro-consulting/brief-meta.json
+Artifact: site/demos/micro-consulting/artifact.json
+Offer JSON: site/demos/micro-consulting/offer_out/offer.json
+Offer MD: site/demos/micro-consulting/offer_out/offer.md
+Outreach MD: site/demos/micro-consulting/offer_out/outreach.md
+Generated meter: site/demos/micro-consulting/meter.json

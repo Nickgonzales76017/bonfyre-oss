@@ -1,0 +1,11 @@
+Transcript: site/demos/shift-handoff/transcript.txt
+JSON:       site/demos/shift-handoff/transcript.json
+SRT:        site/demos/shift-handoff/transcript.srt
+VTT:        site/demos/shift-handoff/transcript.vtt
+Meta:       site/demos/shift-handoff/meta.json
+Status:     site/demos/shift-handoff/transcribe-status.json
+Quality:    0.0505 (conf=0.0505 logprob=-2.985)
+RTF:        0.0753 (13.3x realtime)
+Brief: site/demos/shift-handoff/brief.md
+Meta: site/demos/shift-handoff/brief-meta.json
+Artifact: site/demos/shift-handoff/artifact.json

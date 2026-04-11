@@ -1,0 +1,79 @@
++ mkdir
+command failed with rc=64
+expected file missing: site/demos/town-box/transcript.json
+expected file missing: site/demos/town-box/brief.json
+expected file missing: site/demos/town-box/tags.json
+expected file missing: site/demos/town-box/page.html
+town-box-pipeline: FAIL
++ mkdir -p site/demos/town-box && ./cmd/BonfyreTranscribe/bonfyre-transcribe transcribe --in site/demos/test_a.wav --out site/demos/town-box/transcript.json || true
++ ./cmd/BonfyreBrief/bonfyre-brief brief --in site/demos/town-box/transcript.json --out site/demos/town-box/brief.json || true
++ ./cmd/BonfyreTag/bonfyre-tag tag --in site/demos/town-box/transcript.json --out site/demos/town-box/tags.json || true
++ ./cmd/BonfyreRender/bonfyre-render render --in site/demos/town-box/brief.json --out site/demos/town-box/page.html || true
+expected file missing: site/demos/town-box/transcript.json
+expected file missing: site/demos/town-box/brief.json
+expected file missing: site/demos/town-box/tags.json
+expected file missing: site/demos/town-box/page.html
+town-box-pipeline: FAIL
++ mkdir -p site/demos/town-box && ./cmd/BonfyreTranscribe/bonfyre-transcribe site/demos/test_a.wav site/demos/town-box || true
++ ./cmd/BonfyreBrief/bonfyre-brief site/demos/town-box/transcript.json site/demos/town-box || true
++ ./cmd/BonfyreTag/bonfyre-tag detect-lang site/demos/town-box/transcript.txt site/demos/town-box || true
++ ./cmd/BonfyreRender/bonfyre-render artifact site/demos/town-box/transcript.json site/demos/town-box || true
+found expected file: site/demos/town-box/transcript.json
+expected file missing: site/demos/town-box/brief.json
+expected file missing: site/demos/town-box/tags.json
+expected file missing: site/demos/town-box/page.html
+town-box-pipeline: FAIL
++ mkdir -p site/demos/town-box && ./cmd/BonfyreTranscribe/bonfyre-transcribe site/demos/test_a.wav site/demos/town-box || true
++ ./cmd/BonfyreBrief/bonfyre-brief site/demos/town-box/transcript.json site/demos/town-box || true
++ ./cmd/BonfyreTag/bonfyre-tag detect-lang site/demos/town-box/transcript.txt site/demos/town-box || true
++ ./cmd/BonfyreRender/bonfyre-render artifact site/demos/town-box/transcript.json site/demos/town-box || true
+found expected file: site/demos/town-box/transcript.json
+found expected file: site/demos/town-box/brief.md
+found expected file: site/demos/town-box/transcript.txt
+found expected file: site/demos/town-box/artifact.json
+town-box-pipeline: PASS
++ mkdir -p site/demos/town-box && ./cmd/BonfyreTranscribe/bonfyre-transcribe site/demos/test_a.wav site/demos/town-box || true
++ ./cmd/BonfyreBrief/bonfyre-brief site/demos/town-box/transcript.json site/demos/town-box || true
++ ./cmd/BonfyreTag/bonfyre-tag detect-lang site/demos/town-box/transcript.txt site/demos/town-box || true
++ ./cmd/BonfyreRender/bonfyre-render artifact site/demos/town-box/transcript.json site/demos/town-box || true
+found expected file: site/demos/town-box/transcript.json
+found expected file: site/demos/town-box/brief.md
+found expected file: site/demos/town-box/transcript.txt
+found expected file: site/demos/town-box/artifact.json
+town-box-pipeline: PASS
++ mkdir -p site/demos/town-box && ./cmd/BonfyreTranscribe/bonfyre-transcribe site/demos/test_a.wav site/demos/town-box || true
++ ./cmd/BonfyreBrief/bonfyre-brief site/demos/town-box/transcript.json site/demos/town-box || true
++ ./cmd/BonfyreTag/bonfyre-tag detect-lang site/demos/town-box/transcript.txt site/demos/town-box || true
++ ./cmd/BonfyreRender/bonfyre-render artifact site/demos/town-box/transcript.json site/demos/town-box || true
+found expected file: site/demos/town-box/transcript.json
+found expected file: site/demos/town-box/brief.md
+found expected file: site/demos/town-box/transcript.txt
+found expected file: site/demos/town-box/artifact.json
+town-box-pipeline: PASS
++ mkdir -p site/demos/town-box && ./cmd/BonfyreTranscribe/bonfyre-transcribe site/demos/test_a.wav site/demos/town-box || true
++ ./cmd/BonfyreBrief/bonfyre-brief site/demos/town-box/transcript.json site/demos/town-box || true
++ ./cmd/BonfyreTag/bonfyre-tag detect-lang site/demos/town-box/transcript.txt site/demos/town-box || true
++ ./cmd/BonfyreRender/bonfyre-render artifact site/demos/town-box/transcript.json site/demos/town-box || true
+found expected file: site/demos/town-box/transcript.json
+found expected file: site/demos/town-box/brief.md
+found expected file: site/demos/town-box/transcript.txt
+found expected file: site/demos/town-box/artifact.json
+town-box-pipeline: PASS
++ mkdir -p site/demos/town-box && ./cmd/BonfyreTranscribe/bonfyre-transcribe site/demos/test_a.wav site/demos/town-box || true
++ ./cmd/BonfyreBrief/bonfyre-brief site/demos/town-box/transcript.json site/demos/town-box || true
++ ./cmd/BonfyreTag/bonfyre-tag detect-lang site/demos/town-box/transcript.txt site/demos/town-box || true
++ ./cmd/BonfyreRender/bonfyre-render artifact site/demos/town-box/transcript.json site/demos/town-box || true
+found expected file: site/demos/town-box/transcript.json
+found expected file: site/demos/town-box/brief.md
+found expected file: site/demos/town-box/transcript.txt
+found expected file: site/demos/town-box/artifact.json
+town-box-pipeline: PASS
++ mkdir -p site/demos/town-box && ./cmd/BonfyreTranscribe/bonfyre-transcribe site/demos/test_a.wav site/demos/town-box || true
++ ./cmd/BonfyreBrief/bonfyre-brief site/demos/town-box/transcript.json site/demos/town-box || true
++ ./cmd/BonfyreTag/bonfyre-tag detect-lang site/demos/town-box/transcript.txt site/demos/town-box || true
++ ./cmd/BonfyreRender/bonfyre-render artifact site/demos/town-box/transcript.json site/demos/town-box || true
+found expected file: site/demos/town-box/transcript.json
+found expected file: site/demos/town-box/brief.md
+found expected file: site/demos/town-box/transcript.txt
+found expected file: site/demos/town-box/artifact.json
+town-box-pipeline: PASS

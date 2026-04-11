@@ -1,0 +1,8 @@
+bonfyre-media-prep
+
+Usage:
+  bonfyre-media-prep inspect <input>
+  bonfyre-media-prep normalize <input> <output> [--sample-rate N] [--channels N] [--trim-silence] [--loudnorm]
+  bonfyre-media-prep denoise <input> <output>
+  bonfyre-media-prep chunk <input> <output-pattern> [--segment-seconds N]
+  bonfyre-media-prep split-speech <input> <output-pattern> [--noise-threshold DB] [--min-silence SEC] [--min-speech SEC] [--padding SEC]
