@@ -767,6 +767,7 @@ footer a:hover { color: var(--text); }
     <a href="#" class="nav-brand">🔥 Bonfyre</a>
     <div class="nav-links" style="display:flex;gap:4px;">
       <a href="#fpq" style="color:var(--green)">FPQ Compression</a>
+      <a href="#fpqx" style="color:var(--accent)">FPQ-X</a>
       <a href="#vs-competition">Why Bonfyre</a>
       <a href="#use-cases">Use Cases</a>
       <a href="#repo-graph">Repo Graph</a>
@@ -1351,6 +1352,225 @@ footer a:hover { color: var(--text); }
       <a href="https://github.com/Nickgonzales76017/bonfyre" class="btn btn-primary">View on GitHub →</a>
       <a href="#fpq-benchmarks" class="btn btn-outline">FPQ Benchmarks ↓</a>
       <a href="#benchmarks" class="btn btn-outline">System Benchmarks ↓</a>
+    </div>
+  </div>
+</section>
+
+<!-- FPQ-X: Generalized Compression Algebra -->
+<section id="fpqx" style="padding:60px 0;border-bottom:1px solid var(--border);background:linear-gradient(135deg, rgba(255,107,0,0.08) 0%, rgba(13,17,23,1) 50%)">
+  <div class="container">
+    <div style="text-align:center;margin-bottom:40px">
+      <div style="font-size:0.75rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--accent);font-weight:700;margin-bottom:8px">FPQ-X — Generalized Compression Algebra</div>
+      <h2 style="font-size:2.4rem;font-weight:800;letter-spacing:-0.02em;margin-bottom:12px">Six operators. One compiler.<br>Rate–distortion–execution optimized.</h2>
+      <p style="font-size:1.05rem;color:var(--text-dim);max-width:720px;margin:0 auto;line-height:1.7">
+        FPQ-X evolves BonfyreFPQ from a quantizer into a full compression algebra.
+        Instead of compressing tensors, FPQ-X compresses <em>information flow</em> — optimizing
+        the joint objective of rate, distortion, and hardware execution cost.
+      </p>
+    </div>
+
+    <!-- The equation -->
+    <div style="max-width:780px;margin:0 auto 40px;text-align:center">
+      <div style="background:var(--surface);border:2px solid var(--accent);border-radius:12px;padding:24px 32px;display:inline-block">
+        <div style="font-family:var(--mono);font-size:1.3rem;color:var(--text);letter-spacing:0.02em">
+          𝒯(x,c,h,t) = <span style="color:var(--green)">(B + R + P)</span> <span style="color:var(--accent)">⊙ S</span> + <span style="color:var(--blue)">Π(x,c,h,t)</span> + <span style="color:#b392f0">Δ_seq(c,t)</span>
+        </div>
+        <div style="font-size:0.78rem;color:var(--text-dim);margin-top:8px">
+          <span style="color:var(--green)">A = Additive core</span> · <span style="color:var(--accent)">M = Multiplicative manifold</span> · <span style="color:var(--blue)">Π = Predictive restoration</span> · <span style="color:#b392f0">D = Sequence distillation</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- The six operators -->
+    <div style="max-width:920px;margin:0 auto 40px">
+      <h3 style="font-size:1.1rem;color:var(--text);margin-bottom:16px;text-align:center">Six operator families — each derived from 2026 published research</h3>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px">
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:20px">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+            <span style="display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:6px;background:rgba(63,185,80,0.15);color:var(--green);font-weight:800;font-size:0.9rem">A</span>
+            <div>
+              <div style="font-size:0.95rem;font-weight:700;color:var(--text)">Additive</div>
+              <div style="font-size:0.7rem;color:var(--text-dim)">Inherited from FPQ v10</div>
+            </div>
+          </div>
+          <p style="font-size:0.82rem;color:var(--text-dim);line-height:1.6">Low-rank SVD + E8 lattice + 16D RVQ + QJL projection + Ghost correction. The proven foundation delivering 0.999+ cosine across 1,790 tensors.</p>
+        </div>
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:20px">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+            <span style="display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:6px;background:rgba(255,107,0,0.15);color:var(--accent);font-weight:800;font-size:0.9rem">M</span>
+            <div>
+              <div style="font-size:0.95rem;font-weight:700;color:var(--text)">Multiplicative</div>
+              <div style="font-size:0.7rem;color:var(--text-dim)">Low-rank scaling manifold</div>
+            </div>
+          </div>
+          <p style="font-size:0.82rem;color:var(--text-dim);line-height:1.6">Learns S = I + AB<sup>T</sup> via thin SVD of the ratio matrix Q = W/Ŵ − 1. Captures scaling distortion that additive methods miss. Auto-rollback if cosine doesn't improve.</p>
+          <div style="font-size:0.7rem;color:var(--text-dim);margin-top:6px">Derived from: <a href="https://arxiv.org/abs/2601.22716" style="color:var(--accent)">LoRDS</a>, <a href="https://arxiv.org/abs/2603.04956" style="color:var(--accent)">WaterSIC</a></div>
+        </div>
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:20px">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+            <span style="display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:6px;background:rgba(88,166,255,0.15);color:var(--blue);font-weight:800;font-size:0.9rem">Π</span>
+            <div>
+              <div style="font-size:0.95rem;font-weight:700;color:var(--text)">Predictive</div>
+              <div style="font-size:0.7rem;color:var(--text-dim)">Context-conditioned restoration</div>
+            </div>
+          </div>
+          <p style="font-size:0.82rem;color:var(--text-dim);line-height:1.6">Per-column linear predictor from the low-rank basis to the quantization residual. At decode time, uses the already-available L factor to predict and cancel systematic error.</p>
+          <div style="font-size:0.7rem;color:var(--text-dim);margin-top:6px">Derived from: <a href="https://arxiv.org/abs/2603.22910" style="color:var(--accent)">EchoKV</a>, <a href="https://arxiv.org/abs/2602.20191" style="color:var(--accent)">MoBiQuant</a></div>
+        </div>
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:20px">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+            <span style="display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:6px;background:rgba(179,146,240,0.15);color:#b392f0;font-weight:800;font-size:0.9rem">D</span>
+            <div>
+              <div style="font-size:0.95rem;font-weight:700;color:var(--text)">Distilled</div>
+              <div style="font-size:0.7rem;color:var(--text-dim)">Sequence-axis compression</div>
+            </div>
+          </div>
+          <p style="font-size:0.82rem;color:var(--text-dim);line-height:1.6">Attention-weighted K-means++ on KV cache vectors. Compresses along the sequence dimension — tokens that attend similarly share one cache atom. Orthogonal to weight quantization.</p>
+          <div style="font-size:0.7rem;color:var(--text-dim);margin-top:6px">Derived from: <a href="https://arxiv.org/abs/2603.27819" style="color:var(--accent)">KVSculpt</a>, <a href="https://arxiv.org/abs/2602.05929" style="color:var(--accent)">KV-CoRE</a></div>
+        </div>
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:20px">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+            <span style="display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:6px;background:rgba(240,200,80,0.15);color:#f0c850;font-weight:800;font-size:0.9rem">Λ</span>
+            <div>
+              <div style="font-size:0.95rem;font-weight:700;color:var(--text)">Adaptive</div>
+              <div style="font-size:0.7rem;color:var(--text-dim)">Per-tensor policy selection</div>
+            </div>
+          </div>
+          <p style="font-size:0.82rem;color:var(--text-dim);line-height:1.6">Profiles each tensor: η<sub>L</sub> (low-rank energy), spectral gap, kurtosis, outlier fraction. Decision tree selects which operators to activate and at what rank — no blanket compression.</p>
+          <div style="font-size:0.7rem;color:var(--text-dim);margin-top:6px">Derived from: <a href="https://arxiv.org/abs/2602.05929" style="color:var(--accent)">KV-CoRE</a>, <a href="https://arxiv.org/abs/2602.20191" style="color:var(--accent)">MoBiQuant</a></div>
+        </div>
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:20px">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+            <span style="display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:6px;background:rgba(200,200,200,0.15);color:#ccc;font-weight:800;font-size:0.9rem">H</span>
+            <div>
+              <div style="font-size:0.95rem;font-weight:700;color:var(--text)">Hardware</div>
+              <div style="font-size:0.7rem;color:var(--text-dim)">Kernel-aligned packing</div>
+            </div>
+          </div>
+          <p style="font-size:0.82rem;color:var(--text-dim);line-height:1.6">Inner-group quantization that aligns bit boundaries to hardware SIMD lanes. Stores scales per group instead of per-channel, enabling vectorized unpacking without scatter/gather overhead.</p>
+          <div style="font-size:0.7rem;color:var(--text-dim);margin-top:6px">Derived from: <a href="https://arxiv.org/abs/2602.23200" style="color:var(--accent)">InnerQ</a>, <a href="https://arxiv.org/abs/2601.17187" style="color:var(--accent)">High-Rate QMM</a></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Pipeline visualization -->
+    <div style="max-width:780px;margin:0 auto 40px">
+      <h3 style="font-size:1.1rem;color:var(--text);margin-bottom:16px;text-align:center">The FPQ-X encode pipeline</h3>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:24px 28px">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:center;font-family:var(--mono);font-size:0.85rem">
+          <div style="background:rgba(240,200,80,0.12);color:#f0c850;padding:8px 14px;border-radius:6px;border:1px solid rgba(240,200,80,0.25)">1. Λ Profile</div>
+          <span style="color:var(--text-dim)">→</span>
+          <div style="background:rgba(63,185,80,0.12);color:var(--green);padding:8px 14px;border-radius:6px;border:1px solid rgba(63,185,80,0.25)">2. BWA Prune</div>
+          <span style="color:var(--text-dim)">→</span>
+          <div style="background:rgba(63,185,80,0.12);color:var(--green);padding:8px 14px;border-radius:6px;border:1px solid rgba(63,185,80,0.25)">3. A Encode (v9)</div>
+          <span style="color:var(--text-dim)">→</span>
+          <div style="background:rgba(255,107,0,0.12);color:var(--accent);padding:8px 14px;border-radius:6px;border:1px solid rgba(255,107,0,0.25)">4. M Scale</div>
+          <span style="color:var(--text-dim)">→</span>
+          <div style="background:rgba(88,166,255,0.12);color:var(--blue);padding:8px 14px;border-radius:6px;border:1px solid rgba(88,166,255,0.25)">5. Π Predict</div>
+        </div>
+        <div style="font-size:0.78rem;color:var(--text-dim);text-align:center;margin-top:12px;line-height:1.6">
+          Each stage has automatic quality rollback — if an operator doesn't improve cosine by &gt;1e-7, it's disabled for that tensor.
+          The Λ profiler pre-selects operators based on tensor statistics, so most tensors skip inapplicable stages entirely.
+        </div>
+      </div>
+    </div>
+
+    <!-- What's new vs FPQ -->
+    <div style="max-width:780px;margin:0 auto 40px">
+      <h3 style="font-size:1.1rem;color:var(--text);margin-bottom:16px;text-align:center">FPQ v10 vs FPQ-X — what changes</h3>
+      <table style="width:100%;border-collapse:collapse;font-size:0.85rem">
+        <thead>
+          <tr style="border-bottom:2px solid var(--border);color:var(--text-dim)">
+            <th style="text-align:left;padding:8px 12px;font-weight:600">Dimension</th>
+            <th style="text-align:left;padding:8px 12px;font-weight:600">FPQ v10</th>
+            <th style="text-align:left;padding:8px 12px;font-weight:600;color:var(--accent)">FPQ-X</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr style="border-bottom:1px solid var(--border)"><td style="padding:6px 12px;font-weight:600">Error model</td><td style="padding:6px 12px;color:var(--text-dim)">Additive only (W ≈ Ŵ)</td><td style="padding:6px 12px;color:var(--accent)">Additive × Multiplicative + Predictive</td></tr>
+          <tr style="border-bottom:1px solid var(--border)"><td style="padding:6px 12px;font-weight:600">Per-tensor policy</td><td style="padding:6px 12px;color:var(--text-dim)">Same pipeline for all</td><td style="padding:6px 12px;color:var(--accent)">Λ profiles η<sub>L</sub>, gap, kurtosis → selects operators</td></tr>
+          <tr style="border-bottom:1px solid var(--border)"><td style="padding:6px 12px;font-weight:600">KV cache</td><td style="padding:6px 12px;color:var(--text-dim)">Weight-only quantization</td><td style="padding:6px 12px;color:var(--accent)">D operator: sequence-axis distillation</td></tr>
+          <tr style="border-bottom:1px solid var(--border)"><td style="padding:6px 12px;font-weight:600">Hardware awareness</td><td style="padding:6px 12px;color:var(--text-dim)">Generic packing</td><td style="padding:6px 12px;color:var(--accent)">H operator: SIMD-lane-aligned groups</td></tr>
+          <tr style="border-bottom:1px solid var(--border)"><td style="padding:6px 12px;font-weight:600">Objective</td><td style="padding:6px 12px;color:var(--text-dim)">min ‖W − Ŵ‖</td><td style="padding:6px 12px;color:var(--accent)">min λ<sub>R</sub>·Rate + λ<sub>D</sub>·Distortion + λ<sub>E</sub>·Execution</td></tr>
+          <tr><td style="padding:6px 12px;font-weight:600">Research basis</td><td style="padding:6px 12px;color:var(--text-dim)">Original FPQ design</td><td style="padding:6px 12px;color:var(--accent)">9 papers from early 2026</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- CLI -->
+    <div style="max-width:680px;margin:0 auto 32px">
+      <h3 style="font-size:1.1rem;color:var(--text);margin-bottom:12px;text-align:center">bonfyre-fpqx — the new CLI</h3>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:16px 24px;margin-bottom:12px">
+        <code style="font-family:var(--mono);font-size:0.82rem;color:var(--text-dim);line-height:1.8">
+          <span style="color:var(--green)"># Full A+M+Π pipeline — compress and write output</span><br>
+          bonfyre-fpqx compress model.safetensors compressed.safetensors --bits 3<br><br>
+          <span style="color:var(--green)"># Encode+decode roundtrip — measure quality (no output file)</span><br>
+          bonfyre-fpqx roundtrip model.safetensors --bits 3<br><br>
+          <span style="color:var(--green)"># Per-tensor compressibility analysis — see which operators activate</span><br>
+          bonfyre-fpqx profile model.safetensors<br><br>
+          <span style="color:var(--green)"># KV cache distillation — sequence-axis compression</span><br>
+          bonfyre-fpqx distill cache.safetensors distilled.safetensors --atoms 256<br><br>
+          <span style="color:var(--green)"># Hardware-aligned repacking</span><br>
+          bonfyre-fpqx pack model.safetensors packed.safetensors --bits 3 --group-size 128
+        </code>
+      </div>
+    </div>
+
+    <!-- Papers -->
+    <div style="max-width:780px;margin:0 auto 32px">
+      <h3 style="font-size:1.1rem;color:var(--text);margin-bottom:12px;text-align:center">Research foundation — 9 papers synthesized</h3>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px">
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:12px 14px">
+          <div style="font-size:0.82rem;font-weight:600;color:var(--text)">LoRDS</div>
+          <div style="font-size:0.75rem;color:var(--text-dim)">Multiplicative low-rank scaling</div>
+          <a href="https://arxiv.org/abs/2601.22716" style="font-size:0.72rem;color:var(--accent)">arXiv:2601.22716</a>
+        </div>
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:12px 14px">
+          <div style="font-size:0.82rem;font-weight:600;color:var(--text)">WaterSIC</div>
+          <div style="font-size:0.75rem;color:var(--text-dim)">Activation-aware rate–distortion</div>
+          <a href="https://arxiv.org/abs/2603.04956" style="font-size:0.72rem;color:var(--accent)">arXiv:2603.04956</a>
+        </div>
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:12px 14px">
+          <div style="font-size:0.82rem;font-weight:600;color:var(--text)">EchoKV</div>
+          <div style="font-size:0.75rem;color:var(--text-dim)">Predictive KV reconstruction</div>
+          <a href="https://arxiv.org/abs/2603.22910" style="font-size:0.72rem;color:var(--accent)">arXiv:2603.22910</a>
+        </div>
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:12px 14px">
+          <div style="font-size:0.82rem;font-weight:600;color:var(--text)">KVSculpt</div>
+          <div style="font-size:0.75rem;color:var(--text-dim)">Attention-weighted cache distillation</div>
+          <a href="https://arxiv.org/abs/2603.27819" style="font-size:0.72rem;color:var(--accent)">arXiv:2603.27819</a>
+        </div>
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:12px 14px">
+          <div style="font-size:0.82rem;font-weight:600;color:var(--text)">KV-CoRE</div>
+          <div style="font-size:0.75rem;color:var(--text-dim)">Data-dependent compressibility</div>
+          <a href="https://arxiv.org/abs/2602.05929" style="font-size:0.72rem;color:var(--accent)">arXiv:2602.05929</a>
+        </div>
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:12px 14px">
+          <div style="font-size:0.82rem;font-weight:600;color:var(--text)">InnerQ</div>
+          <div style="font-size:0.75rem;color:var(--text-dim)">Hardware-aligned inner quantization</div>
+          <a href="https://arxiv.org/abs/2602.23200" style="font-size:0.72rem;color:var(--accent)">arXiv:2602.23200</a>
+        </div>
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:12px 14px">
+          <div style="font-size:0.82rem;font-weight:600;color:var(--text)">MoBiQuant</div>
+          <div style="font-size:0.75rem;color:var(--text-dim)">Token-adaptive mixed precision</div>
+          <a href="https://arxiv.org/abs/2602.20191" style="font-size:0.72rem;color:var(--accent)">arXiv:2602.20191</a>
+        </div>
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:12px 14px">
+          <div style="font-size:0.82rem;font-weight:600;color:var(--text)">High-Rate QMM</div>
+          <div style="font-size:0.75rem;color:var(--text-dim)">Activation-weighted matrix multiply</div>
+          <a href="https://arxiv.org/abs/2601.17187" style="font-size:0.72rem;color:var(--accent)">arXiv:2601.17187</a>
+        </div>
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:12px 14px">
+          <div style="font-size:0.82rem;font-weight:600;color:var(--text)">Codebook Opt.</div>
+          <div style="font-size:0.75rem;color:var(--text-dim)">Optimal codebook initialization</div>
+          <a href="https://arxiv.org/abs/2602.06557" style="font-size:0.72rem;color:var(--accent)">arXiv:2602.06557</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="btn-row" style="margin-top:28px">
+      <a href="https://github.com/Nickgonzales76017/bonfyre" class="btn btn-primary">View Source →</a>
+      <a href="#fpq" class="btn btn-outline">FPQ v10 (current) ↑</a>
     </div>
   </div>
 </section>
