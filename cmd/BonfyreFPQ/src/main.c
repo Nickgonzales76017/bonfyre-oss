@@ -20,10 +20,27 @@
  *   --bits <N>          Force COORD bit depth (2/3/4, default: auto)
  */
 #include "fpq.h"
+#include "weight_algebra.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+#include <sys/stat.h>
+
+/* Auto-detect model format and read tensors */
+static fpq_raw_tensor_t *fpq_read_model(const char *path, size_t *n_tensors) {
+    struct stat st;
+    if (stat(path, &st) == 0 && S_ISDIR(st.st_mode)) {
+        /* Directory → assume safetensors sharded model */
+        return fpq_safetensors_read(path, n_tensors);
+    }
+    size_t len = strlen(path);
+    if (len > 12 && strcmp(path + len - 12, ".safetensors") == 0) {
+        return fpq_safetensors_read(path, n_tensors);
+    }
+    /* Default: GGUF/GGML */
+    return fpq_ggml_read(path, n_tensors);
+}
 
 static void usage(void) {
     fprintf(stderr,
@@ -54,7 +71,7 @@ static int cmd_compress(const char *input, const char *output,
 
     /* Read model */
     size_t n_raw;
-    fpq_raw_tensor_t *raw = fpq_ggml_read(input, &n_raw);
+    fpq_raw_tensor_t *raw = fpq_read_model(input, &n_raw);
     if (!raw || n_raw == 0) {
         fprintf(stderr, "Failed to read model from %s\n", input);
         return 1;
@@ -206,7 +223,7 @@ static int cmd_roundtrip(const char *input,
     fprintf(stderr, "  max_nodes=%zu  tolerance=%.4f\n", max_nodes, tolerance);
 
     size_t n_raw;
-    fpq_raw_tensor_t *raw = fpq_ggml_read(input, &n_raw);
+    fpq_raw_tensor_t *raw = fpq_read_model(input, &n_raw);
     if (!raw || n_raw == 0) return 1;
 
     size_t n_process = (limit > 0 && limit < n_raw) ? limit : n_raw;
@@ -308,7 +325,7 @@ static int cmd_roundtrip_v4(const char *input,
         input);
 
     size_t n_raw;
-    fpq_raw_tensor_t *raw = fpq_ggml_read(input, &n_raw);
+    fpq_raw_tensor_t *raw = fpq_read_model(input, &n_raw);
     if (!raw || n_raw == 0) return 1;
 
     size_t n_process = (limit > 0 && limit < n_raw) ? limit : n_raw;
@@ -497,7 +514,7 @@ static int cmd_lie_probe(const char *input,
         input);
 
     size_t n_raw;
-    fpq_raw_tensor_t *raw = fpq_ggml_read(input, &n_raw);
+    fpq_raw_tensor_t *raw = fpq_read_model(input, &n_raw);
     if (!raw || n_raw == 0) return 1;
 
     size_t n_process = (limit > 0 && limit < n_raw) ? limit : n_raw;
@@ -555,7 +572,7 @@ static int cmd_roundtrip_v5(const char *input,
         input);
 
     size_t n_raw;
-    fpq_raw_tensor_t *raw = fpq_ggml_read(input, &n_raw);
+    fpq_raw_tensor_t *raw = fpq_read_model(input, &n_raw);
     if (!raw || n_raw == 0) return 1;
 
     size_t n_process = (limit > 0 && limit < n_raw) ? limit : n_raw;
@@ -666,7 +683,7 @@ static int cmd_roundtrip_v6(const char *input,
         input);
 
     size_t n_raw;
-    fpq_raw_tensor_t *raw = fpq_ggml_read(input, &n_raw);
+    fpq_raw_tensor_t *raw = fpq_read_model(input, &n_raw);
     if (!raw || n_raw == 0) return 1;
 
     size_t n_process = (limit > 0 && limit < n_raw) ? limit : n_raw;
@@ -769,7 +786,7 @@ static int cmd_roundtrip_v7(const char *input,
         input);
 
     size_t n_raw;
-    fpq_raw_tensor_t *raw = fpq_ggml_read(input, &n_raw);
+    fpq_raw_tensor_t *raw = fpq_read_model(input, &n_raw);
     if (!raw || n_raw == 0) return 1;
 
     size_t n_process = (limit > 0 && limit < n_raw) ? limit : n_raw;
@@ -898,116 +915,290 @@ static int cmd_roundtrip_v8(const char *input,
         input);
 
     size_t n_raw;
-    fpq_raw_tensor_t *raw = fpq_ggml_read(input, &n_raw);
+    fpq_raw_tensor_t *raw = fpq_read_model(input, &n_raw);
     if (!raw || n_raw == 0) return 1;
 
     size_t n_process = (limit > 0 && limit < n_raw) ? limit : n_raw;
 
-    float worst_cos_v7 = 1.0f, worst_cos_v8 = 1.0f;
-    double sum_cos_v7 = 0.0, sum_cos_v8 = 0.0;
-    float worst_cos_v4 = 1.0f;
-    double sum_cos_v4 = 0.0;
+    float worst_cos_v8 = 1.0f;
+    double sum_cos_v8 = 0.0;
     int n_tested = 0;
 
     for (size_t i = 0; i < n_process; i++) {
         if (tensor_filter && strcmp(raw[i].name, tensor_filter) != 0) continue;
         if (raw[i].n_elements < FPQ_BLOCK_DIM * 2) continue;
         if (raw[i].rows <= 1) continue;
+        size_t n = raw[i].rows * raw[i].cols;
+        if (n < FPQ_BLOCK_DIM * 2) continue;  /* skip 3D+ tensors with tiny 2D shape */
 
         fprintf(stderr, "\n[%zu/%zu] %s (%zu params, %zu×%zu)\n",
                 i + 1, n_process, raw[i].name, raw[i].n_elements,
                 raw[i].rows, raw[i].cols);
 
         int cbits = force_bits > 0 ? force_bits : 3;
-        size_t n = raw[i].rows * raw[i].cols;
-
-        /* ── v4 baseline ── */
-        fpq_tensor_t *t_v4 = fpq_encode_tensor_v4(
-            raw[i].data, raw[i].rows, raw[i].cols,
-            raw[i].name, cbits, NULL, -1);
-        float *decoded_v4 = (float *)malloc(n * sizeof(float));
-        fpq_decode_tensor_v4(t_v4, decoded_v4);
-        float cos_v4 = fpq_cosine_sim(raw[i].data, decoded_v4, n);
-        float bpw_v4 = (float)t_v4->total_bits / (float)n;
-
-        /* ── v7 holographic lattice ── */
-        fpq_tensor_t *t_v7 = fpq_encode_tensor_v7(
-            raw[i].data, raw[i].rows, raw[i].cols,
-            raw[i].name, cbits);
-        float *decoded_v7 = (float *)malloc(n * sizeof(float));
-        fpq_decode_tensor_v7(t_v7, decoded_v7);
-        float cos_v7 = fpq_cosine_sim(raw[i].data, decoded_v7, n);
-        float bpw_v7 = (float)t_v7->total_bits / (float)n;
 
         /* ── v8 recursive lattice-flow ── */
         fpq_tensor_t *t_v8 = fpq_encode_tensor_v8(
             raw[i].data, raw[i].rows, raw[i].cols,
             raw[i].name, cbits);
         float *decoded_v8 = (float *)malloc(n * sizeof(float));
-        fpq_decode_tensor_v8(t_v8, decoded_v8);
+        /* Use correct decoder: v8 uses sbb_scale_delta, v4 fallback uses coord_quants */
+        if (t_v8->sbb_scale_delta)
+            fpq_decode_tensor_v8(t_v8, decoded_v8);
+        else
+            fpq_decode_tensor_v4(t_v8, decoded_v8);
         float cos_v8 = fpq_cosine_sim(raw[i].data, decoded_v8, n);
         float bpw_v8 = (float)t_v8->total_bits / (float)n;
 
-        if (cos_v4 < worst_cos_v4) worst_cos_v4 = cos_v4;
-        if (cos_v7 < worst_cos_v7) worst_cos_v7 = cos_v7;
         if (cos_v8 < worst_cos_v8) worst_cos_v8 = cos_v8;
-        sum_cos_v4 += cos_v4;
-        sum_cos_v7 += cos_v7;
         sum_cos_v8 += cos_v8;
 
         fprintf(stderr,
-            "  ╔═══ v4 vs v7 vs v8 COMPARISON ════════════════╗\n"
-            "  ║ v4 CHAOS+GHOST@%d:                             ║\n"
-            "  ║   cos=%.6f    bpw=%.2f                       ║\n"
-            "  ║ v7 Holographic@%d:                             ║\n"
-            "  ║   cos=%.6f    bpw=%.2f                       ║\n"
-            "  ║ v8 RLF@%d:                                     ║\n"
-            "  ║   cos=%.6f    bpw=%.2f                       ║\n"
-            "  ║ Δcos v8-v4: %+.6f                            ║\n"
-            "  ║ Δcos v8-v7: %+.6f                            ║\n"
-            "  ╚═══════════════════════════════════════════════╝\n",
-            cbits, cos_v4, bpw_v4,
-            cbits, cos_v7, bpw_v7,
-            cbits, cos_v8, bpw_v8,
-            cos_v8 - cos_v4,
-            cos_v8 - cos_v7);
+            "  v8 RLF@%d: cos=%.6f  bpw=%.2f\n",
+            cbits, cos_v8, bpw_v8);
 
         n_tested++;
 
-        free(decoded_v4);
-        free(decoded_v7);
         free(decoded_v8);
-        fpq_tensor_free(t_v4);
-        fpq_tensor_free(t_v7);
         fpq_tensor_free(t_v8);
     }
 
-    float avg_cos_v4 = n_tested > 0 ? (float)(sum_cos_v4 / n_tested) : 0.0f;
-    float avg_cos_v7 = n_tested > 0 ? (float)(sum_cos_v7 / n_tested) : 0.0f;
     float avg_cos_v8 = n_tested > 0 ? (float)(sum_cos_v8 / n_tested) : 0.0f;
 
     fprintf(stderr,
         "\n═══════════════════════════════════════════════════════\n"
         " v8 RECURSIVE LATTICE-FLOW SUMMARY (%d tensors)\n"
         "═══════════════════════════════════════════════════════\n"
-        "  v4 worst: %.6f  avg: %.6f\n"
-        "  v7 worst: %.6f  avg: %.6f\n"
         "  v8 worst: %.6f  avg: %.6f\n"
-        "  Δworst v8-v4: %+.6f\n"
-        "  Δavg   v8-v4: %+.6f\n"
-        "  Δavg   v8-v7: %+.6f\n"
-        "  Verdict: %s\n"
         "═══════════════════════════════════════════════════════\n",
         n_tested,
-        worst_cos_v4, avg_cos_v4,
-        worst_cos_v7, avg_cos_v7,
-        worst_cos_v8, avg_cos_v8,
-        worst_cos_v8 - worst_cos_v4,
-        avg_cos_v8 - avg_cos_v4,
-        avg_cos_v8 - avg_cos_v7,
-        avg_cos_v8 > avg_cos_v7 ? "v8 WINS — Recursive Lattice-Flow is the new champion" :
-        avg_cos_v8 > avg_cos_v4 ? "v8 beats v4 but not v7" :
-                                   "v4 baseline holds");
+        worst_cos_v8, avg_cos_v8);
+
+    fpq_raw_tensor_free(raw, n_raw);
+    return 0;
+}
+
+/* ── write-v9: roundtrip + write reconstructed safetensors ── */
+/* ── Lightweight converter: existing safetensors → native .fpq ── */
+static int cmd_convert_fpq(const char *input, const char *output) {
+    fprintf(stderr,
+        "═══════════════════════════════════════════════════════\n"
+        " Convert to native .fpq (no recompression)\n"
+        " Input:  %s\n"
+        " Output: %s\n"
+        "═══════════════════════════════════════════════════════\n",
+        input, output);
+
+    size_t n_raw;
+    fpq_raw_tensor_t *raw = fpq_read_model(input, &n_raw);
+    if (!raw || n_raw == 0) return 1;
+
+    fprintf(stderr, "  Read %zu tensors, writing native .fpq...\n", n_raw);
+    int rc = fpq_native_write(output, raw, n_raw);
+
+    fpq_raw_tensor_free(raw, n_raw);
+    return rc;
+}
+
+static int cmd_write_v9(const char *input, const char *output,
+                        int force_bits) {
+    fprintf(stderr,
+        "═══════════════════════════════════════════════════════\n"
+        " FPQ v9 Write: Roundtrip → BF16 safetensors\n"
+        " Input:  %s\n"
+        " Output: %s\n"
+        "═══════════════════════════════════════════════════════\n",
+        input, output);
+
+    size_t n_raw;
+    fpq_raw_tensor_t *raw = fpq_read_model(input, &n_raw);
+    if (!raw || n_raw == 0) return 1;
+
+    int cbits = force_bits > 0 ? force_bits : 3;
+    int n_encoded = 0, n_passthrough = 0;
+    double sum_cos = 0.0;
+    float worst_cos = 1.0f;
+
+    for (size_t i = 0; i < n_raw; i++) {
+        size_t n = raw[i].rows * raw[i].cols;
+        int skip = (raw[i].n_elements < FPQ_BLOCK_DIM * 2) ||
+                   (raw[i].rows <= 1) ||
+                   (n < FPQ_BLOCK_DIM * 2);
+
+        if (skip) {
+            /* Pass through unchanged (biases, 1D, small tensors) */
+            n_passthrough++;
+            continue;
+        }
+
+        fprintf(stderr, "  [%zu/%zu] %s (%zu×%zu) ... ",
+                i + 1, n_raw, raw[i].name, raw[i].rows, raw[i].cols);
+
+        /* Encode + decode through v9 */
+        fpq_tensor_t *t = fpq_encode_tensor_v9(
+            raw[i].data, raw[i].rows, raw[i].cols,
+            raw[i].name, cbits);
+
+        float *decoded = (float *)malloc(n * sizeof(float));
+        if (t->pid_alpha == -9.0f)
+            fpq_decode_tensor_v9(t, decoded);
+        else if (t->sbb_scale_delta)
+            fpq_decode_tensor_v8(t, decoded);
+        else
+            fpq_decode_tensor_v4(t, decoded);
+
+        float cos = fpq_cosine_sim(raw[i].data, decoded, n);
+        if (cos < worst_cos) worst_cos = cos;
+        sum_cos += cos;
+        n_encoded++;
+
+        /* Replace original data with reconstructed */
+        memcpy(raw[i].data, decoded, n * sizeof(float));
+
+        fprintf(stderr, "cos=%.6f\n", cos);
+
+        free(decoded);
+        fpq_tensor_free(t);
+    }
+
+    fprintf(stderr,
+        "\nEncoded: %d tensors (avg cos=%.6f, worst=%.6f)\n"
+        "Passthrough: %d tensors (unchanged)\n",
+        n_encoded, n_encoded > 0 ? (float)(sum_cos / n_encoded) : 0.0f,
+        worst_cos, n_passthrough);
+
+    /* Write the modified model */
+    int rc = fpq_safetensors_write(output, raw, n_raw);
+
+    fpq_raw_tensor_free(raw, n_raw);
+    return rc;
+}
+
+static int cmd_roundtrip_v9(const char *input,
+                             const char *tensor_filter, size_t limit,
+                             int force_bits) {
+    fprintf(stderr,
+        "═══════════════════════════════════════════════════════\n"
+        " FPQ v9 Roundtrip: Unified Multiscale (LR+E8+RVQ+QJL+Ghost)\n"
+        " Model: %s\n"
+        "═══════════════════════════════════════════════════════\n",
+        input);
+
+    size_t n_raw;
+    fpq_raw_tensor_t *raw = fpq_read_model(input, &n_raw);
+    if (!raw || n_raw == 0) return 1;
+
+    size_t n_process = (limit > 0 && limit < n_raw) ? limit : n_raw;
+
+    float worst_cos_v9 = 1.0f, worst_cos_v8 = 1.0f;
+    double sum_cos_v9 = 0.0, sum_cos_v8 = 0.0;
+    int n_tested = 0;
+
+    for (size_t i = 0; i < n_process; i++) {
+        if (tensor_filter && strcmp(raw[i].name, tensor_filter) != 0) continue;
+        if (raw[i].n_elements < FPQ_BLOCK_DIM * 2) continue;
+        if (raw[i].rows <= 1) continue;
+        size_t n = raw[i].rows * raw[i].cols;
+        if (n < FPQ_BLOCK_DIM * 2) continue;  /* skip 3D+ tensors with tiny 2D shape */
+
+        fprintf(stderr, "\n[%zu/%zu] %s (%zu params, %zu×%zu)\n",
+                i + 1, n_process, raw[i].name, raw[i].n_elements,
+                raw[i].rows, raw[i].cols);
+
+        int cbits = force_bits > 0 ? force_bits : 3;
+
+        /* v8 baseline for comparison */
+        fpq_tensor_t *t_v8 = fpq_encode_tensor_v8(
+            raw[i].data, raw[i].rows, raw[i].cols,
+            raw[i].name, cbits);
+        float *decoded_v8 = (float *)malloc(n * sizeof(float));
+        if (t_v8->sbb_scale_delta)
+            fpq_decode_tensor_v8(t_v8, decoded_v8);
+        else
+            fpq_decode_tensor_v4(t_v8, decoded_v8);
+        float cos_v8 = fpq_cosine_sim(raw[i].data, decoded_v8, n);
+        float bpw_v8 = (float)t_v8->total_bits / (float)n;
+        free(decoded_v8);
+        fpq_tensor_free(t_v8);
+
+        /* v9 multiscale */
+        fpq_tensor_t *t_v9 = fpq_encode_tensor_v9(
+            raw[i].data, raw[i].rows, raw[i].cols,
+            raw[i].name, cbits);
+        float *decoded_v9 = (float *)malloc(n * sizeof(float));
+        if (t_v9->pid_alpha == -9.0f)
+            fpq_decode_tensor_v9(t_v9, decoded_v9);
+        else if (t_v9->sbb_scale_delta)
+            fpq_decode_tensor_v8(t_v9, decoded_v9);
+        else
+            fpq_decode_tensor_v4(t_v9, decoded_v9);
+        float cos_v9 = fpq_cosine_sim(raw[i].data, decoded_v9, n);
+        float bpw_v9 = (float)t_v9->total_bits / (float)n;
+        free(decoded_v9);
+        fpq_tensor_free(t_v9);
+
+        if (cos_v8 < worst_cos_v8) worst_cos_v8 = cos_v8;
+        if (cos_v9 < worst_cos_v9) worst_cos_v9 = cos_v9;
+        sum_cos_v8 += cos_v8;
+        sum_cos_v9 += cos_v9;
+
+        const char *winner = cos_v9 >= cos_v8 ? "v9 ✓" : "v8 ✓";
+        fprintf(stderr,
+            "  v8: cos=%.6f bpw=%.2f | v9: cos=%.6f bpw=%.2f  [%s]\n",
+            cos_v8, bpw_v8, cos_v9, bpw_v9, winner);
+
+        n_tested++;
+    }
+
+    float avg_v8 = n_tested > 0 ? (float)(sum_cos_v8 / n_tested) : 0.0f;
+    float avg_v9 = n_tested > 0 ? (float)(sum_cos_v9 / n_tested) : 0.0f;
+
+    fprintf(stderr,
+        "\n═══════════════════════════════════════════════════════\n"
+        " v9 UNIFIED MULTISCALE SUMMARY (%d tensors)\n"
+        "═══════════════════════════════════════════════════════\n"
+        "  v8 worst: %.6f  avg: %.6f\n"
+        "  v9 worst: %.6f  avg: %.6f\n"
+        "═══════════════════════════════════════════════════════\n",
+        n_tested,
+        worst_cos_v8, avg_v8,
+        worst_cos_v9, avg_v9);
+
+    fpq_raw_tensor_free(raw, n_raw);
+    return 0;
+}
+
+static int cmd_v9_analyze(const char *input,
+                          const char *tensor_filter, int force_bits) {
+    fprintf(stderr,
+        "═══════════════════════════════════════════════════════\n"
+        " FPQ v9 Deep Analysis\n"
+        " Model: %s\n"
+        "═══════════════════════════════════════════════════════\n",
+        input);
+
+    size_t n_raw;
+    fpq_raw_tensor_t *raw = fpq_read_model(input, &n_raw);
+    if (!raw || n_raw == 0) return 1;
+
+    int cbits = force_bits > 0 ? force_bits : 3;
+    int found = 0;
+
+    for (size_t i = 0; i < n_raw; i++) {
+        if (tensor_filter && strcmp(raw[i].name, tensor_filter) != 0) continue;
+        if (raw[i].n_elements < FPQ_BLOCK_DIM * 2) continue;
+        if (raw[i].rows <= 1) continue;
+
+        fpq_v9_analyze(raw[i].data, raw[i].rows, raw[i].cols,
+                       raw[i].name, cbits);
+        found++;
+
+        /* Analyze only the first matching 2D tensor unless --tensor filters */
+        if (!tensor_filter) break;
+    }
+
+    if (found == 0)
+        fprintf(stderr, "No eligible tensors found.\n");
 
     fpq_raw_tensor_free(raw, n_raw);
     return 0;
@@ -1016,6 +1207,10 @@ static int cmd_roundtrip_v8(const char *input,
 /* ── main ── */
 
 int main(int argc, char **argv) {
+    /* Ensure real-time output when redirected to file */
+    setvbuf(stderr, NULL, _IONBF, 0);
+    setvbuf(stdout, NULL, _IOLBF, 0);
+
     if (argc < 2) {
         usage();
         return 1;
@@ -1079,6 +1274,392 @@ int main(int argc, char **argv) {
     } else if (strcmp(cmd, "roundtrip-v8") == 0) {
         if (argc < 3) { usage(); return 1; }
         return cmd_roundtrip_v8(argv[2], tensor_filter, limit, force_bits);
+    } else if (strcmp(cmd, "roundtrip-v9") == 0) {
+        if (argc < 3) { usage(); return 1; }
+        return cmd_roundtrip_v9(argv[2], tensor_filter, limit, force_bits);
+    } else if (strcmp(cmd, "v9-analyze") == 0) {
+        if (argc < 3) { usage(); return 1; }
+        return cmd_v9_analyze(argv[2], tensor_filter, force_bits);
+    } else if (strcmp(cmd, "write-v9") == 0) {
+        if (argc < 4) {
+            fprintf(stderr, "Usage: bonfyre-fpq write-v9 <input.safetensors> <output.safetensors> [--bits N]\n");
+            return 1;
+        }
+        return cmd_write_v9(argv[2], argv[3], force_bits);
+    } else if (strcmp(cmd, "convert-fpq") == 0) {
+        if (argc < 4) {
+            fprintf(stderr,
+                "Usage: bonfyre-fpq convert-fpq <input.safetensors> <output.fpq>\n"
+                "\n"
+                "  Convert existing safetensors to compact native .fpq format.\n"
+                "  No full recompression — reads weights and encodes to .fpq directly.\n"
+                "  Use on already algebra-compressed models for maximum savings.\n");
+            return 1;
+        }
+        return cmd_convert_fpq(argv[2], argv[3]);
+    } else if (strcmp(cmd, "quantize") == 0) {
+        if (argc < 4) {
+            fprintf(stderr,
+                "Usage: bonfyre-fpq quantize <input> <output> [--bits N]\n"
+                "\n"
+                "  Compress a model with FPQ v9 and write a usable output file.\n"
+                "  Input:  GGUF (.gguf) or safetensors (.safetensors)\n"
+                "  Output: GGUF F16 (for llama.cpp) or BF16 safetensors\n"
+                "\n"
+                "  Format is auto-detected from file extensions.\n"
+                "  GGUF input  → GGUF F16 output (preserves all metadata)\n"
+                "  Safetensors → BF16 safetensors output\n"
+            );
+            return 1;
+        }
+        const char *in = argv[2];
+        const char *out = argv[3];
+        size_t ilen = strlen(in);
+        /* Auto-detect: safetensors input → safetensors path */
+        if (ilen > 12 && strcmp(in + ilen - 12, ".safetensors") == 0) {
+            return cmd_write_v9(in, out, force_bits);
+        }
+        /* Default: GGUF path */
+        return fpq_gguf_write_v9(in, out, force_bits);
+    } else if (strcmp(cmd, "algebra-analyze") == 0) {
+        if (argc < 3) {
+            fprintf(stderr, "Usage: bonfyre-fpq algebra-analyze <model>\n");
+            return 1;
+        }
+        bwa_analyze_model(argv[2]);
+        return 0;
+    } else if (strcmp(cmd, "algebra-prune") == 0) {
+        if (argc < 4) {
+            fprintf(stderr,
+                "Usage: bonfyre-fpq algebra-prune <input> <output> [--keep-ratio F] [--mode raw|rank|hybrid]\n");
+            return 1;
+        }
+        float keep_ratio = 0.75f;
+        int prune_mode = BWA_PRUNE_HYBRID;
+        for (int i = 4; i < argc; i++) {
+            if (strcmp(argv[i], "--keep-ratio") == 0 && i + 1 < argc)
+                keep_ratio = (float)atof(argv[++i]);
+            else if (strcmp(argv[i], "--mode") == 0 && i + 1 < argc) {
+                i++;
+                if (strcmp(argv[i], "raw") == 0) prune_mode = BWA_PRUNE_RAW;
+                else if (strcmp(argv[i], "rank") == 0) prune_mode = BWA_PRUNE_RANK;
+                else prune_mode = BWA_PRUNE_HYBRID;
+            }
+        }
+        size_t n_raw;
+        fpq_raw_tensor_t *raw = fpq_read_model(argv[2], &n_raw);
+        if (!raw || n_raw == 0) return 1;
+        fprintf(stderr, "BWA Prune: %s → %s (keep=%.0f%%, mode=%d)\n",
+                argv[2], argv[3], keep_ratio * 100, prune_mode);
+        for (size_t i = 0; i < n_raw; i++) {
+            if (raw[i].rows <= 1 || raw[i].cols <= 1 ||
+                raw[i].rows * raw[i].cols < 512) continue;
+            float *pruned = (float *)malloc(raw[i].rows * raw[i].cols * sizeof(float));
+            bwa_prune(raw[i].data, raw[i].rows, raw[i].cols, raw[i].name,
+                      keep_ratio, 0.25f, (bwa_prune_mode_t)prune_mode, pruned);
+            float cos = fpq_cosine_sim(raw[i].data, pruned,
+                                        raw[i].rows * raw[i].cols);
+            fprintf(stderr, "  %-50s cos=%.6f\n", raw[i].name, cos);
+            memcpy(raw[i].data, pruned, raw[i].rows * raw[i].cols * sizeof(float));
+            free(pruned);
+        }
+        int rc = fpq_safetensors_write(argv[3], raw, n_raw);
+        fpq_raw_tensor_free(raw, n_raw);
+        return rc;
+    } else if (strcmp(cmd, "algebra-merge") == 0) {
+        if (argc < 5) {
+            fprintf(stderr,
+                "Usage: bonfyre-fpq algebra-merge <model-a> <model-b> <output> [--alpha F]\n");
+            return 1;
+        }
+        float alpha = 0.5f;
+        for (int i = 5; i < argc; i++)
+            if (strcmp(argv[i], "--alpha") == 0 && i + 1 < argc)
+                alpha = (float)atof(argv[++i]);
+        size_t n_a, n_b;
+        fpq_raw_tensor_t *raw_a = fpq_read_model(argv[2], &n_a);
+        fpq_raw_tensor_t *raw_b = fpq_read_model(argv[3], &n_b);
+        if (!raw_a || !raw_b) return 1;
+        size_t n_out = n_a < n_b ? n_a : n_b;
+        fprintf(stderr, "BWA Merge: %s + %s → %s (α=%.2f)\n",
+                argv[2], argv[3], argv[4], alpha);
+        for (size_t i = 0; i < n_out; i++) {
+            if (raw_a[i].rows != raw_b[i].rows || raw_a[i].cols != raw_b[i].cols)
+                continue;
+            size_t total = raw_a[i].rows * raw_a[i].cols;
+            if (raw_a[i].rows <= 1 || total < 512) {
+                for (size_t j = 0; j < total; j++)
+                    raw_a[i].data[j] = alpha * raw_a[i].data[j] +
+                                       (1.0f - alpha) * raw_b[i].data[j];
+                continue;
+            }
+            float *merged = (float *)malloc(total * sizeof(float));
+            bwa_merge(raw_a[i].data, raw_b[i].data,
+                      raw_a[i].rows, raw_a[i].cols, raw_a[i].name,
+                      alpha, 0.25f, merged);
+            float cos_raw = 0.0f, cos_struct = 0.0f;
+            {
+                float *raw_m = (float *)malloc(total * sizeof(float));
+                for (size_t j = 0; j < total; j++)
+                    raw_m[j] = alpha * raw_a[i].data[j] +
+                               (1.0f - alpha) * raw_b[i].data[j];
+                cos_raw = fpq_cosine_sim(raw_a[i].data, raw_m, total);
+                cos_struct = fpq_cosine_sim(raw_a[i].data, merged, total);
+                free(raw_m);
+            }
+            fprintf(stderr, "  %-50s raw_cos=%.6f struct_cos=%.6f\n",
+                    raw_a[i].name, cos_raw, cos_struct);
+            memcpy(raw_a[i].data, merged, total * sizeof(float));
+            free(merged);
+        }
+        int rc = fpq_safetensors_write(argv[4], raw_a, n_out);
+        fpq_raw_tensor_free(raw_a, n_a);
+        fpq_raw_tensor_free(raw_b, n_b);
+        return rc;
+    } else if (strcmp(cmd, "algebra-compress") == 0) {
+        if (argc < 4) {
+            fprintf(stderr,
+                "Usage: bonfyre-fpq algebra-compress <input> <output>\n"
+                "       [--bits N] [--keep-ratio F] [--rank-ratio F] [--format safetensors|fpq]\n"
+                "\n"
+                "  Combined pipeline: decompose W=L+R → adaptive prune R →\n"
+                "  curl+div correct → η_L-routed FPQ v9 encode → write output\n"
+                "\n"
+                "  Per-layer adaptive bit allocation (v10):\n"
+                "    η_L ≥ 0.50: residual@(N-1) bit — LR captures most energy\n"
+                "    η_L 0.20–0.50: residual@N bit    — standard allocation\n"
+                "    η_L < 0.20: residual@(N+1) bit  — protect residual quality\n"
+                "\n"
+                "  --format fpq: write native .fpq format (~1.6 bpw, 20× from fp32)\n"
+                "  --format safetensors: write BF16 safetensors (default)\n");
+            return 1;
+        }
+        float keep_ratio = 0.50f;
+        float rank_ratio = 0.25f;
+        int cbits = force_bits > 0 ? force_bits : 3;
+        int use_fpq_format = 0;
+        for (int i = 4; i < argc; i++) {
+            if (strcmp(argv[i], "--keep-ratio") == 0 && i + 1 < argc)
+                keep_ratio = (float)atof(argv[++i]);
+            else if (strcmp(argv[i], "--rank-ratio") == 0 && i + 1 < argc)
+                rank_ratio = (float)atof(argv[++i]);
+            else if (strcmp(argv[i], "--format") == 0 && i + 1 < argc) {
+                i++;
+                if (strcmp(argv[i], "fpq") == 0) use_fpq_format = 1;
+            }
+        }
+        size_t n_raw;
+        fpq_raw_tensor_t *raw = fpq_read_model(argv[2], &n_raw);
+        if (!raw || n_raw == 0) return 1;
+
+        fprintf(stderr,
+            "═══════════════════════════════════════════════════════\n"
+            " BWA Algebra-Compress v10 (Adaptive η_L Routing)\n"
+            " Input:      %s\n"
+            " Output:     %s\n"
+            " Base bits:  %d (adaptive: 2–4 per layer)\n"
+            " Keep ratio: %.0f%% (adaptive per η_L)\n"
+            " Rank ratio: %.0f%%\n"
+            " Format:     %s\n"
+            " Tensors:    %zu\n"
+            "═══════════════════════════════════════════════════════\n",
+            argv[2], argv[3], cbits, keep_ratio * 100, rank_ratio * 100,
+            use_fpq_format ? "native .fpq" : "BF16 safetensors", n_raw);
+
+        /* Phase 1: Count eligible tensors */
+        int n_eligible = 0;
+        for (size_t i = 0; i < n_raw; i++) {
+            if (raw[i].rows <= 1 || raw[i].cols <= 1 ||
+                raw[i].rows * raw[i].cols < 512) continue;
+            bwa_tensor_type_t tt = bwa_classify_tensor(raw[i].name);
+            if (tt == BWA_TENSOR_NORM) continue;
+            n_eligible++;
+        }
+        fprintf(stderr, "  Phase 1: %d eligible 2D tensors\n", n_eligible);
+
+        /* Phase 2: η_L analysis + adaptive decompose + prune + FPQ encode */
+        int n_algebra = 0, n_fpq_only = 0, n_pass = 0;
+        double sum_cos_pre = 0.0, sum_cos_post = 0.0;
+        float worst_cos = 1.0f;
+        int bits_hist[5] = {0};  /* count of tensors at each bit level */
+        double sum_eta_L = 0.0;
+        int n_eta = 0;
+
+        /* Collect η_L for all eligible tensors for native format */
+        float *eta_L_cache = (float *)calloc(n_raw, sizeof(float));
+        int *bits_cache = (int *)calloc(n_raw, sizeof(int));
+
+        for (size_t i = 0; i < n_raw; i++) {
+            size_t n = raw[i].rows * raw[i].cols;
+            int skip = (n < FPQ_BLOCK_DIM * 2) ||
+                       (raw[i].rows <= 1) ||
+                       (raw[i].cols <= 1);
+
+            if (skip) {
+                n_pass++;
+                continue;
+            }
+
+            bwa_tensor_type_t tt = bwa_classify_tensor(raw[i].name);
+
+            if (tt != BWA_TENSOR_NORM && n >= 512 && raw[i].rows > 1 && raw[i].cols > 1) {
+                /* Compute η_L for adaptive routing */
+                float eta_L = bwa_get_eta_L(raw[i].data, raw[i].rows,
+                                             raw[i].cols, rank_ratio);
+                eta_L_cache[i] = eta_L;
+                sum_eta_L += eta_L;
+                n_eta++;
+
+                /* Adaptive bit allocation */
+                int adaptive_cbits = bwa_adaptive_bits(eta_L, cbits);
+                bits_cache[i] = adaptive_cbits;
+                if (adaptive_cbits >= 2 && adaptive_cbits <= 4)
+                    bits_hist[adaptive_cbits]++;
+
+                /* Adaptive pruning aggressiveness */
+                float adaptive_keep = bwa_adaptive_keep_ratio(eta_L, keep_ratio);
+
+                /* Full algebra path: decompose → prune → correct → FPQ */
+                float *pruned = (float *)malloc(n * sizeof(float));
+                bwa_prune(raw[i].data, raw[i].rows, raw[i].cols,
+                          raw[i].name, adaptive_keep, rank_ratio,
+                          BWA_PRUNE_HYBRID, pruned);
+
+                float cos_prune = fpq_cosine_sim(raw[i].data, pruned, n);
+
+                /* FPQ v9 encode with adaptive bit depth */
+                fpq_tensor_t *t = fpq_encode_tensor_v9(
+                    pruned, raw[i].rows, raw[i].cols,
+                    raw[i].name, adaptive_cbits);
+
+                float *decoded = (float *)malloc(n * sizeof(float));
+                if (t->pid_alpha == -9.0f)
+                    fpq_decode_tensor_v9(t, decoded);
+                else if (t->sbb_scale_delta)
+                    fpq_decode_tensor_v8(t, decoded);
+                else
+                    fpq_decode_tensor_v4(t, decoded);
+
+                float cos_final = fpq_cosine_sim(raw[i].data, decoded, n);
+                if (cos_final < worst_cos) worst_cos = cos_final;
+                sum_cos_pre += cos_prune;
+                sum_cos_post += cos_final;
+
+                memcpy(raw[i].data, decoded, n * sizeof(float));
+
+                if (n_algebra < 20 || (n_algebra % 50 == 0))
+                    fprintf(stderr, "  [%zu] %-40s η_L=%.3f @%db keep=%.0f%% prune=%.6f final=%.6f  (%s)\n",
+                            i, raw[i].name, eta_L, adaptive_cbits,
+                            adaptive_keep * 100, cos_prune, cos_final,
+                            tt == BWA_TENSOR_FFN ? "FFN" :
+                            tt == BWA_TENSOR_SELF_ATTN ? "attn" :
+                            tt == BWA_TENSOR_CROSS_ATTN ? "xattn" : "embed");
+
+                n_algebra++;
+                free(pruned);
+                free(decoded);
+                fpq_tensor_free(t);
+            } else {
+                /* FPQ-only path (norm, small) */
+                fpq_tensor_t *t = fpq_encode_tensor_v9(
+                    raw[i].data, raw[i].rows, raw[i].cols,
+                    raw[i].name, cbits);
+                float *decoded = (float *)malloc(n * sizeof(float));
+                if (t->pid_alpha == -9.0f)
+                    fpq_decode_tensor_v9(t, decoded);
+                else if (t->sbb_scale_delta)
+                    fpq_decode_tensor_v8(t, decoded);
+                else
+                    fpq_decode_tensor_v4(t, decoded);
+
+                float cos = fpq_cosine_sim(raw[i].data, decoded, n);
+                if (cos < worst_cos) worst_cos = cos;
+                sum_cos_post += cos;
+
+                memcpy(raw[i].data, decoded, n * sizeof(float));
+                n_fpq_only++;
+                free(decoded);
+                fpq_tensor_free(t);
+            }
+        }
+
+        int n_total_enc = n_algebra + n_fpq_only;
+        fprintf(stderr,
+            "\n═══════════════════════════════════════════════════════\n"
+            " ALGEBRA-COMPRESS v10 SUMMARY\n"
+            "═══════════════════════════════════════════════════════\n"
+            "  Algebra path:  %d tensors (adaptive η_L routing)\n"
+            "  FPQ-only path: %d tensors\n"
+            "  Passthrough:   %d tensors\n"
+            "  Mean η_L:      %.4f\n"
+            "  Bit allocation: @2b=%d  @3b=%d  @4b=%d\n"
+            "  Avg prune cos: %.6f\n"
+            "  Avg final cos: %.6f\n"
+            "  Worst cos:     %.6f\n"
+            "═══════════════════════════════════════════════════════\n",
+            n_algebra, n_fpq_only, n_pass,
+            n_eta > 0 ? (float)(sum_eta_L / n_eta) : 0.0f,
+            bits_hist[2], bits_hist[3], bits_hist[4],
+            n_algebra > 0 ? (float)(sum_cos_pre / n_algebra) : 0.0f,
+            n_total_enc > 0 ? (float)(sum_cos_post / n_total_enc) : 0.0f,
+            worst_cos);
+
+        free(eta_L_cache);
+        free(bits_cache);
+
+        int rc;
+        if (use_fpq_format) {
+            rc = fpq_native_write(argv[3], raw, n_raw);
+        } else {
+            rc = fpq_safetensors_write(argv[3], raw, n_raw);
+        }
+        fpq_raw_tensor_free(raw, n_raw);
+        return rc;
+    } else if (strcmp(cmd, "algebra-edit") == 0) {
+        if (argc < 5) {
+            fprintf(stderr,
+                "Usage: bonfyre-fpq algebra-edit <model> <delta> <output> "
+                "[--scale F] [--mode raw|lr|residual|selective]\n");
+            return 1;
+        }
+        float scale = 0.1f;
+        int edit_mode = BWA_EDIT_LR_ONLY;
+        for (int i = 5; i < argc; i++) {
+            if (strcmp(argv[i], "--scale") == 0 && i + 1 < argc)
+                scale = (float)atof(argv[++i]);
+            else if (strcmp(argv[i], "--mode") == 0 && i + 1 < argc) {
+                i++;
+                if (strcmp(argv[i], "raw") == 0) edit_mode = BWA_EDIT_RAW;
+                else if (strcmp(argv[i], "lr") == 0) edit_mode = BWA_EDIT_LR_ONLY;
+                else if (strcmp(argv[i], "residual") == 0) edit_mode = BWA_EDIT_RESIDUAL_ONLY;
+                else edit_mode = BWA_EDIT_SELECTIVE;
+            }
+        }
+        size_t n_m, n_d;
+        fpq_raw_tensor_t *raw_m = fpq_read_model(argv[2], &n_m);
+        fpq_raw_tensor_t *raw_d = fpq_read_model(argv[3], &n_d);
+        if (!raw_m || !raw_d) return 1;
+        size_t n_out = n_m < n_d ? n_m : n_d;
+        fprintf(stderr, "BWA Edit: %s + %s → %s (scale=%.2f, mode=%d)\n",
+                argv[2], argv[3], argv[4], scale, edit_mode);
+        for (size_t i = 0; i < n_out; i++) {
+            if (raw_m[i].rows != raw_d[i].rows || raw_m[i].cols != raw_d[i].cols)
+                continue;
+            size_t total = raw_m[i].rows * raw_m[i].cols;
+            float *edited = (float *)malloc(total * sizeof(float));
+            bwa_edit(raw_m[i].data, raw_d[i].data,
+                     raw_m[i].rows, raw_m[i].cols, raw_m[i].name,
+                     scale, (bwa_edit_mode_t)edit_mode, 1.0f, 0.1f, 0.25f, edited);
+            float cos = fpq_cosine_sim(raw_m[i].data, edited, total);
+            if (total >= 512 && raw_m[i].rows > 1)
+                fprintf(stderr, "  %-50s cos=%.6f\n", raw_m[i].name, cos);
+            memcpy(raw_m[i].data, edited, total * sizeof(float));
+            free(edited);
+        }
+        int rc = fpq_safetensors_write(argv[4], raw_m, n_out);
+        fpq_raw_tensor_free(raw_m, n_m);
+        fpq_raw_tensor_free(raw_d, n_d);
+        return rc;
     } else {
         fprintf(stderr, "Unknown command: %s\n", cmd);
         usage();

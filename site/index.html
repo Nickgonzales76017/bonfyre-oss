@@ -832,10 +832,10 @@ footer a:hover { color: var(--text); }
       The first live proof corpus now traces public YouTube sources through Bonfyre's transient audio path into derived transcripts, handoff briefs, proof bundles, and in-app search without hosting the original media.
     </p>
     <div class="install-box">
-      <code>git clone https://github.com/Nickgonzales76017/bonfyre.git && cd bonfyre && make</code>
+      <code>git clone https://github.com/Nickgonzales76017/bonfyre-oss.git && cd bonfyre-oss && make</code>
     </div>
     <div class="btn-row">
-      <a href="https://github.com/Nickgonzales76017/bonfyre" class="btn btn-primary">
+      <a href="https://github.com/Nickgonzales76017/bonfyre-oss" class="btn btn-primary">
         View on GitHub
       </a>
       <a href="#fpq" class="btn btn-outline" style="border-color:var(--green);color:var(--green)">
@@ -917,15 +917,15 @@ footer a:hover { color: var(--text); }
         <span style="font-size:0.75rem;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.05em">output cosine (30 layers)</span>
       </div>
       <div style="text-align:center">
-        <span style="display:block;font-size:2.2rem;font-weight:700;color:var(--blue)">2,300+</span>
-        <span style="font-size:0.75rem;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.05em">tensors compressed</span>
+        <span style="display:block;font-size:2.2rem;font-weight:700;color:var(--blue)">+1.97%</span>
+        <span style="font-size:0.75rem;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.05em">PPL degradation (Qwen 0.5B)</span>
       </div>
       <div style="text-align:center">
-        <span style="display:block;font-size:2.2rem;font-weight:700;color:var(--text)">54→27 GB</span>
-        <span style="font-size:0.75rem;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.05em">Wan2.1-T2V-14B</span>
+        <span style="display:block;font-size:2.2rem;font-weight:700;color:var(--text)">~4 bpw</span>
+        <span style="font-size:0.75rem;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.05em">bits per weight</span>
       </div>
       <div style="text-align:center">
-        <span style="display:block;font-size:2.2rem;font-weight:700;color:var(--text)">5 models</span>
+        <span style="display:block;font-size:2.2rem;font-weight:700;color:var(--text)">24 models</span>
         <span style="font-size:0.75rem;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.05em"><a href="https://huggingface.co/NICKO" style="color:var(--text-dim)">on Hugging Face</a></span>
       </div>
     </div>
@@ -954,146 +954,143 @@ footer a:hover { color: var(--text); }
 
     <!-- Models tested: the evidence -->
     <div style="max-width:920px;margin:0 auto 40px">
-      <h3 style="font-size:1.1rem;color:var(--text);margin-bottom:16px;text-align:center">Models compressed — real files, real numbers</h3>
+      <h3 style="font-size:1.1rem;color:var(--text);margin-bottom:16px;text-align:center">Verified quality — reproducible benchmarks</h3>
       <table style="width:100%;border-collapse:collapse;font-size:0.85rem">
         <thead>
           <tr style="border-bottom:2px solid var(--border);color:var(--text-dim)">
             <th style="text-align:left;padding:8px 10px;font-weight:600">Model</th>
             <th style="text-align:left;padding:8px 10px;font-weight:600">Domain</th>
-            <th style="text-align:right;padding:8px 10px;font-weight:600">Original</th>
-            <th style="text-align:right;padding:8px 10px;font-weight:600">Compressed</th>
             <th style="text-align:right;padding:8px 10px;font-weight:600">Tensors</th>
             <th style="text-align:right;padding:8px 10px;font-weight:600">Avg Cos</th>
             <th style="text-align:right;padding:8px 10px;font-weight:600">Worst Cos</th>
             <th style="text-align:right;padding:8px 10px;font-weight:600">Avg bpw</th>
-            <th style="text-align:left;padding:8px 10px;font-weight:600">HF Model</th>
+            <th style="text-align:left;padding:8px 10px;font-weight:600">Source</th>
           </tr>
         </thead>
         <tbody>
           <tr style="border-bottom:1px solid var(--border);background:rgba(63,185,80,0.06)">
-            <td style="padding:6px 10px;font-weight:600;color:var(--green)">Wan2.1-T2V-14B</td>
+            <td style="padding:6px 10px;font-weight:600;color:var(--green)">Wan2.1-T2V-1.3B</td>
             <td style="padding:6px 10px">Video diffusion</td>
-            <td style="text-align:right;padding:6px 10px">54 GB</td>
-            <td style="text-align:right;padding:6px 10px;color:var(--green)">27 GB</td>
-            <td style="text-align:right;padding:6px 10px">402</td>
-            <td style="text-align:right;padding:6px 10px;color:var(--green)">0.999882</td>
-            <td style="text-align:right;padding:6px 10px">0.999826</td>
-            <td style="text-align:right;padding:6px 10px">4.05</td>
-            <td style="padding:6px 10px"><a href="https://huggingface.co/NICKO/Wan2.1-T2V-14B-BonfyreFPQ3" style="color:var(--accent)">Download →</a></td>
-          </tr>
-          <tr style="border-bottom:1px solid var(--border);background:rgba(63,185,80,0.04)">
-            <td style="padding:6px 10px;font-weight:600;color:var(--green)">Phi-4 (14B)</td>
-            <td style="padding:6px 10px">Language model</td>
-            <td style="text-align:right;padding:6px 10px">28 GB</td>
-            <td style="text-align:right;padding:6px 10px;color:var(--green)">28 GB</td>
-            <td style="text-align:right;padding:6px 10px">162</td>
-            <td style="text-align:right;padding:6px 10px;color:var(--green)">1.000614</td>
-            <td style="text-align:right;padding:6px 10px">1.000149</td>
-            <td style="text-align:right;padding:6px 10px">4.08</td>
-            <td style="padding:6px 10px"><a href="https://huggingface.co/NICKO/phi-4-BonfyreFPQ3" style="color:var(--accent)">Download →</a></td>
-          </tr>
-          <tr style="border-bottom:1px solid var(--border)">
-            <td style="padding:6px 10px;font-weight:600">Whisper Large V3</td>
-            <td style="padding:6px 10px">Speech recognition</td>
-            <td style="text-align:right;padding:6px 10px">8.7 GB</td>
-            <td style="text-align:right;padding:6px 10px;color:var(--green)">5.8 GB</td>
-            <td style="text-align:right;padding:6px 10px">998</td>
-            <td style="text-align:right;padding:6px 10px;color:var(--green)">0.999916</td>
-            <td style="text-align:right;padding:6px 10px">0.999834</td>
-            <td style="text-align:right;padding:6px 10px">4.19</td>
-            <td style="padding:6px 10px"><a href="https://huggingface.co/NICKO/whisper-large-v3-BonfyreFPQ3" style="color:var(--accent)">Download →</a></td>
-          </tr>
-          <tr style="border-bottom:1px solid var(--border)">
-            <td style="padding:6px 10px;font-weight:600">Whisper Large V3 Turbo</td>
-            <td style="padding:6px 10px">Speech recognition</td>
-            <td style="text-align:right;padding:6px 10px">1.6 GB</td>
-            <td style="text-align:right;padding:6px 10px;color:var(--green)">1.6 GB</td>
-            <td style="text-align:right;padding:6px 10px">228</td>
-            <td style="text-align:right;padding:6px 10px;color:var(--green)">0.999929</td>
-            <td style="text-align:right;padding:6px 10px">0.999858</td>
-            <td style="text-align:right;padding:6px 10px">4.18</td>
-            <td style="padding:6px 10px"><a href="https://huggingface.co/NICKO/whisper-large-v3-turbo-BonfyreFPQ3" style="color:var(--accent)">Download →</a></td>
-          </tr>
-          <tr style="border-bottom:1px solid var(--border)">
-            <td style="padding:6px 10px;font-weight:600">Wan2.1-T2V-1.3B</td>
-            <td style="padding:6px 10px">Video diffusion</td>
-            <td style="text-align:right;padding:6px 10px">5.3 GB</td>
-            <td style="text-align:right;padding:6px 10px;color:var(--green)">2.7 GB</td>
             <td style="text-align:right;padding:6px 10px">307</td>
             <td style="text-align:right;padding:6px 10px;color:var(--green)">0.999874</td>
             <td style="text-align:right;padding:6px 10px">0.999590</td>
-            <td style="text-align:right;padding:6px 10px">—</td>
-            <td style="padding:6px 10px;color:var(--text-dim)">local</td>
+            <td style="text-align:right;padding:6px 10px">4.21</td>
+            <td style="padding:6px 10px;font-size:0.75rem"><a href="https://github.com/Nickgonzales76017/bonfyre-oss/tree/main/cmd/BonfyreFPQ" style="color:var(--accent)">v9 roundtrip log</a></td>
+          </tr>
+          <tr style="border-bottom:1px solid var(--border);background:rgba(63,185,80,0.04)">
+            <td style="padding:6px 10px;font-weight:600;color:var(--green)">Qwen2.5-0.5B</td>
+            <td style="padding:6px 10px">Language model</td>
+            <td style="text-align:right;padding:6px 10px">169</td>
+            <td style="text-align:right;padding:6px 10px;color:var(--green)">0.999783</td>
+            <td style="text-align:right;padding:6px 10px">0.999588</td>
+            <td style="text-align:right;padding:6px 10px">~4</td>
+            <td style="padding:6px 10px;font-size:0.75rem"><a href="https://github.com/Nickgonzales76017/bonfyre-oss/tree/main/cmd/BonfyreFPQ/results/2026-04-10-proof-pack" style="color:var(--accent)">proof pack</a></td>
           </tr>
           <tr style="border-bottom:1px solid var(--border)">
-            <td style="padding:6px 10px;font-weight:600">SmolLM2-135M</td>
-            <td style="padding:6px 10px">Language model</td>
-            <td style="text-align:right;padding:6px 10px">101 MB</td>
-            <td style="text-align:right;padding:6px 10px;color:var(--green)">258 MB F16</td>
-            <td style="text-align:right;padding:6px 10px">211</td>
-            <td style="text-align:right;padding:6px 10px;color:var(--green)">0.999855</td>
-            <td style="text-align:right;padding:6px 10px">0.999589</td>
-            <td style="text-align:right;padding:6px 10px">—</td>
-            <td style="padding:6px 10px;color:var(--text-dim)">GGUF</td>
+            <td style="padding:6px 10px;font-weight:600">Whisper base.en</td>
+            <td style="padding:6px 10px">Speech recognition</td>
+            <td style="text-align:right;padding:6px 10px">sampled</td>
+            <td style="text-align:right;padding:6px 10px;color:var(--green)">0.999808</td>
+            <td style="text-align:right;padding:6px 10px">0.999763</td>
+            <td style="text-align:right;padding:6px 10px">~4</td>
+            <td style="padding:6px 10px;font-size:0.75rem"><a href="https://github.com/Nickgonzales76017/bonfyre-oss/tree/main/cmd/BonfyreFPQ/results/2026-04-10-proof-pack" style="color:var(--accent)">proof pack</a></td>
           </tr>
           <tr style="border-bottom:1px solid var(--border)">
             <td style="padding:6px 10px;font-weight:600">Gemma 2B-it</td>
             <td style="padding:6px 10px">Language model</td>
-            <td style="text-align:right;padding:6px 10px">—</td>
-            <td style="text-align:right;padding:6px 10px">—</td>
             <td style="text-align:right;padding:6px 10px">sampled</td>
             <td style="text-align:right;padding:6px 10px;color:var(--green)">0.99995</td>
             <td style="text-align:right;padding:6px 10px">0.99995</td>
-            <td style="text-align:right;padding:6px 10px">—</td>
-            <td style="padding:6px 10px;color:var(--text-dim)">local</td>
-          </tr>
-          <tr>
-            <td style="padding:6px 10px;font-weight:600">Whisper base.en</td>
-            <td style="padding:6px 10px">Speech recognition</td>
-            <td style="text-align:right;padding:6px 10px">—</td>
-            <td style="text-align:right;padding:6px 10px">—</td>
-            <td style="text-align:right;padding:6px 10px">sampled</td>
-            <td style="text-align:right;padding:6px 10px;color:var(--green)">0.999808</td>
-            <td style="text-align:right;padding:6px 10px">0.999763</td>
-            <td style="text-align:right;padding:6px 10px">—</td>
-            <td style="padding:6px 10px;color:var(--text-dim)">GGML</td>
-          </tr>
-          <tr style="border-top:2px solid var(--accent)">
-            <td style="padding:6px 10px;font-weight:600;color:var(--accent)">F5-TTS <span style="font-size:0.7rem;color:var(--text-dim)">(algebra)</span></td>
-            <td style="padding:6px 10px">Text-to-speech (DiT)</td>
-            <td style="text-align:right;padding:6px 10px">1.3 GB</td>
-            <td style="text-align:right;padding:6px 10px">643 MB</td>
-            <td style="text-align:right;padding:6px 10px">364</td>
-            <td style="text-align:right;padding:6px 10px;color:var(--green)">0.999884</td>
-            <td style="text-align:right;padding:6px 10px">0.982</td>
-            <td style="text-align:right;padding:6px 10px">4.25</td>
-            <td style="padding:6px 10px"><a href="https://huggingface.co/NICKO/F5-TTS-BonfyreAlgebra-FPQ3" style="color:var(--accent)">HF</a></td>
-          </tr>
-          <tr style="opacity:0.6">
-            <td style="padding:6px 10px;font-weight:600">Chatterbox <span style="font-size:0.7rem;color:var(--text-dim)">(algebra)</span></td>
-            <td style="padding:6px 10px">Voice synthesis</td>
-            <td style="text-align:right;padding:6px 10px">—</td>
-            <td style="text-align:right;padding:6px 10px">—</td>
-            <td style="text-align:right;padding:6px 10px">in progress</td>
-            <td style="text-align:right;padding:6px 10px;color:var(--text-dim)">—</td>
-            <td style="text-align:right;padding:6px 10px">—</td>
-            <td style="text-align:right;padding:6px 10px">—</td>
-            <td style="padding:6px 10px;color:var(--text-dim)">RunPod</td>
-          </tr>
-          <tr style="opacity:0.6">
-            <td style="padding:6px 10px;font-weight:600">Llasa-8B <span style="font-size:0.7rem;color:var(--text-dim)">(algebra)</span></td>
-            <td style="padding:6px 10px">Speech LLM</td>
-            <td style="text-align:right;padding:6px 10px">—</td>
-            <td style="text-align:right;padding:6px 10px">—</td>
-            <td style="text-align:right;padding:6px 10px">in progress</td>
-            <td style="text-align:right;padding:6px 10px;color:var(--text-dim)">—</td>
-            <td style="text-align:right;padding:6px 10px">—</td>
-            <td style="text-align:right;padding:6px 10px">—</td>
-            <td style="padding:6px 10px;color:var(--text-dim)">RunPod</td>
+            <td style="text-align:right;padding:6px 10px">~4</td>
+            <td style="padding:6px 10px;font-size:0.75rem;color:var(--text-dim)">local GGUF Q8_0</td>
           </tr>
         </tbody>
       </table>
-      <p style="font-size:0.78rem;color:var(--text-dim);margin-top:8px;text-align:center">All tests at 3-bit (FPQ3). Production models compressed on RunPod RTX 6000 Ada with OpenMP. All compressed models available on <a href="https://huggingface.co/NICKO" style="color:var(--accent)">Hugging Face</a> as drop-in BF16 safetensors — no special loader required.</p>
+      <p style="font-size:0.78rem;color:var(--text-dim);margin-top:8px;text-align:center">All tests at 3-bit (FPQ3). Proof pack includes raw logs, commands, and scripts to reproduce every number. <a href="https://github.com/Nickgonzales76017/bonfyre-oss/tree/main/cmd/BonfyreFPQ/results/2026-04-10-proof-pack" style="color:var(--accent)">View proof pack →</a></p>
+    </div>
+
+    <!-- Models on Hugging Face -->
+    <div style="max-width:920px;margin:0 auto 40px">
+      <h3 style="font-size:1.1rem;color:var(--text);margin-bottom:16px;text-align:center">Models on <a href="https://huggingface.co/NICKO" style="color:var(--accent)">Hugging Face</a> — native .fpq format</h3>
+      <table style="width:100%;border-collapse:collapse;font-size:0.85rem">
+        <thead>
+          <tr style="border-bottom:2px solid var(--border);color:var(--text-dim)">
+            <th style="text-align:left;padding:8px 10px;font-weight:600">Model</th>
+            <th style="text-align:left;padding:8px 10px;font-weight:600">Domain</th>
+            <th style="text-align:right;padding:8px 10px;font-weight:600">.fpq Size</th>
+            <th style="text-align:right;padding:8px 10px;font-weight:600">Files</th>
+            <th style="text-align:left;padding:8px 10px;font-weight:600">Method</th>
+            <th style="text-align:left;padding:8px 10px;font-weight:600">Download</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr style="border-bottom:1px solid var(--border);background:rgba(63,185,80,0.06)">
+            <td style="padding:6px 10px;font-weight:600;color:var(--green)">Chatterbox</td>
+            <td style="padding:6px 10px">Voice synthesis</td>
+            <td style="text-align:right;padding:6px 10px;color:var(--green)">3.2 GB</td>
+            <td style="text-align:right;padding:6px 10px">3</td>
+            <td style="padding:6px 10px">algebra-compress</td>
+            <td style="padding:6px 10px"><a href="https://huggingface.co/NICKO/chatterbox-algebra-fpq3-BonfyreFPQ-Native" style="color:var(--accent)">HF →</a></td>
+          </tr>
+          <tr style="border-bottom:1px solid var(--border)">
+            <td style="padding:6px 10px;font-weight:600">SmolLM2-1.7B</td>
+            <td style="padding:6px 10px">Language model</td>
+            <td style="text-align:right;padding:6px 10px;color:var(--green)">1.96 GB</td>
+            <td style="text-align:right;padding:6px 10px">1</td>
+            <td style="padding:6px 10px">algebra-compress</td>
+            <td style="padding:6px 10px"><a href="https://huggingface.co/NICKO/SmolLM2-1-7B-BonfyreFPQ-Native" style="color:var(--accent)">HF →</a></td>
+          </tr>
+          <tr style="border-bottom:1px solid var(--border)">
+            <td style="padding:6px 10px;font-weight:600">Llasa-8B</td>
+            <td style="padding:6px 10px">Speech LLM</td>
+            <td style="text-align:right;padding:6px 10px;color:var(--green)">1.7 GB</td>
+            <td style="text-align:right;padding:6px 10px">3/4</td>
+            <td style="padding:6px 10px">algebra-compress</td>
+            <td style="padding:6px 10px"><a href="https://huggingface.co/NICKO/llasa-8b-algebra-fpq3-BonfyreFPQ-Native" style="color:var(--accent)">HF →</a></td>
+          </tr>
+          <tr style="border-bottom:1px solid var(--border)">
+            <td style="padding:6px 10px;font-weight:600">TinyLlama-1.1B</td>
+            <td style="padding:6px 10px">Language model</td>
+            <td style="text-align:right;padding:6px 10px;color:var(--green)">1.36 GB</td>
+            <td style="text-align:right;padding:6px 10px">1</td>
+            <td style="padding:6px 10px">algebra-compress</td>
+            <td style="padding:6px 10px"><a href="https://huggingface.co/NICKO/TinyLlama-1-1B-BonfyreFPQ-Native" style="color:var(--accent)">HF →</a></td>
+          </tr>
+          <tr style="border-bottom:1px solid var(--border)">
+            <td style="padding:6px 10px;font-weight:600">Qwen2.5-3B</td>
+            <td style="padding:6px 10px">Language model</td>
+            <td style="text-align:right;padding:6px 10px;color:var(--green)">578 MB</td>
+            <td style="text-align:right;padding:6px 10px">2</td>
+            <td style="padding:6px 10px">algebra-compress</td>
+            <td style="padding:6px 10px"><a href="https://huggingface.co/NICKO/qwen2-5-3b-algebra-fpq3-BonfyreFPQ-Native" style="color:var(--accent)">HF →</a></td>
+          </tr>
+          <tr style="border-bottom:1px solid var(--border)">
+            <td style="padding:6px 10px;font-weight:600">Whisper V3 Turbo</td>
+            <td style="padding:6px 10px">Speech recognition</td>
+            <td style="text-align:right;padding:6px 10px;color:var(--green)">208 MB</td>
+            <td style="text-align:right;padding:6px 10px">1</td>
+            <td style="padding:6px 10px">convert-fpq</td>
+            <td style="padding:6px 10px"><a href="https://huggingface.co/NICKO/openai-whisper-large-v3-turbo-BonfyreFPQ-Native" style="color:var(--accent)">HF →</a></td>
+          </tr>
+          <tr style="border-bottom:1px solid var(--border)">
+            <td style="padding:6px 10px;font-weight:600">Whisper V3 (algebra)</td>
+            <td style="padding:6px 10px">Speech recognition</td>
+            <td style="text-align:right;padding:6px 10px;color:var(--green)">203 MB</td>
+            <td style="text-align:right;padding:6px 10px">1</td>
+            <td style="padding:6px 10px">algebra-compress</td>
+            <td style="padding:6px 10px"><a href="https://huggingface.co/NICKO/whisper-large-v3-algebra-fpq3-BonfyreFPQ-Native" style="color:var(--accent)">HF →</a></td>
+          </tr>
+          <tr style="border-bottom:1px solid var(--border)">
+            <td style="padding:6px 10px;font-weight:600">F5-TTS (algebra)</td>
+            <td style="padding:6px 10px">Text-to-speech</td>
+            <td style="text-align:right;padding:6px 10px;color:var(--green)">156 MB</td>
+            <td style="text-align:right;padding:6px 10px">1</td>
+            <td style="padding:6px 10px">algebra-compress</td>
+            <td style="padding:6px 10px"><a href="https://huggingface.co/NICKO/f5-tts-algebra-fpq3-BonfyreFPQ-Native" style="color:var(--accent)">HF →</a></td>
+          </tr>
+        </tbody>
+      </table>
+      <p style="font-size:0.78rem;color:var(--text-dim);margin-top:8px;text-align:center">Native .fpq files require <code style="color:var(--green)">bonfyre-fpq decompress</code> to reconstruct weights. BF16 safetensors versions also available for some models — see <a href="https://huggingface.co/NICKO" style="color:var(--accent)">all 24 repos on HF</a>.</p>
     </div>
 
     <!-- Output-level proof: DiT comparison -->
@@ -1172,7 +1169,7 @@ footer a:hover { color: var(--text); }
           <tr style="border-bottom:1px solid var(--border)"><td style="padding:6px 12px">COORD @3-bit (v4)</td><td style="text-align:right;padding:6px 12px">35.59</td><td style="text-align:right;padding:6px 12px;color:var(--red)">+150%</td><td style="text-align:right;padding:6px 12px">0.982761</td><td style="text-align:right;padding:6px 12px">0.982327</td></tr>
         </tbody>
       </table>
-      <p style="font-size:0.78rem;color:var(--text-dim);margin-top:8px;text-align:center">169 tensors quantized. HQQ run via standalone benchmark script (group-size 64, axis 1, CPU). Reproduced from <a href="https://github.com/Nickgonzales76017/bonfyre/tree/main/10-Code/BonfyreFPQ/results/2026-04-10-proof-pack" style="color:var(--accent)">proof pack</a>.</p>
+      <p style="font-size:0.78rem;color:var(--text-dim);margin-top:8px;text-align:center">169 tensors quantized. HQQ run via standalone benchmark script (group-size 64, axis 1, CPU). Reproduced from <a href="https://github.com/Nickgonzales76017/bonfyre-oss/tree/main/cmd/BonfyreFPQ/results/2026-04-10-proof-pack" style="color:var(--accent)">proof pack</a>.</p>
     </div>
 
     <!-- External methods comparison -->
@@ -1228,22 +1225,22 @@ footer a:hover { color: var(--text); }
       <h3 style="font-size:1.1rem;color:var(--text);margin-bottom:12px;text-align:center">Cross-domain validation</h3>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
         <div style="display:flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:10px 14px">
-          <span style="color:var(--green);font-weight:700">✓</span><span style="font-size:0.85rem">14B LLM — Phi-4 (cos 1.000614)</span>
+          <span style="color:var(--green);font-weight:700">✓</span><span style="font-size:0.85rem">1.3B Video — Wan2.1-T2V (cos 0.999874)</span>
         </div>
         <div style="display:flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:10px 14px">
-          <span style="color:var(--green);font-weight:700">✓</span><span style="font-size:0.85rem">14B Video — Wan2.1-T2V-14B (cos 0.999882)</span>
+          <span style="color:var(--green);font-weight:700">✓</span><span style="font-size:0.85rem">LLM — Qwen2.5-0.5B (PPL +1.97%)</span>
         </div>
         <div style="display:flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:10px 14px">
-          <span style="color:var(--green);font-weight:700">✓</span><span style="font-size:0.85rem">Speech — Whisper Large V3 (cos 0.999916)</span>
+          <span style="color:var(--green);font-weight:700">✓</span><span style="font-size:0.85rem">Speech — Whisper base.en (cos 0.999808)</span>
         </div>
         <div style="display:flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:10px 14px">
-          <span style="color:var(--green);font-weight:700">✓</span><span style="font-size:0.85rem">Speech — Whisper Turbo (cos 0.999929)</span>
+          <span style="color:var(--green);font-weight:700">✓</span><span style="font-size:0.85rem">LLM — Gemma 2B-it (cos 0.99995)</span>
         </div>
         <div style="display:flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:10px 14px">
-          <span style="color:var(--green);font-weight:700">✓</span><span style="font-size:0.85rem">1.3B Video — Wan2.1 (cos 0.9976 output)</span>
+          <span style="color:var(--green);font-weight:700">✓</span><span style="font-size:0.85rem">DiT output cosine 0.9976 (30 layers)</span>
         </div>
         <div style="display:flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:10px 14px">
-          <span style="color:var(--green);font-weight:700">✓</span><span style="font-size:0.85rem">GGUF — SmolLM2 Q4_K (cos 0.999855)</span>
+          <span style="color:var(--green);font-weight:700">✓</span><span style="font-size:0.85rem">8 native .fpq models on HF</span>
         </div>
         <div style="display:flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:10px 14px">
           <span style="color:var(--green);font-weight:700">✓</span><span style="font-size:0.85rem">TTS — F5-TTS (cos 0.982 algebra)</span>
@@ -1252,7 +1249,7 @@ footer a:hover { color: var(--text); }
           <span style="color:var(--green);font-weight:700">✓</span><span style="font-size:0.85rem">DiT forward pass verified</span>
         </div>
         <div style="display:flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:10px 14px">
-          <span style="color:var(--green);font-weight:700">✓</span><span style="font-size:0.85rem">5 models on <a href="https://huggingface.co/NICKO" style="color:var(--accent)">Hugging Face</a></span>
+          <span style="color:var(--green);font-weight:700">✓</span><span style="font-size:0.85rem">24 models on <a href="https://huggingface.co/NICKO" style="color:var(--accent)">Hugging Face</a></span>
         </div>
       </div>
     </div>
@@ -1327,16 +1324,16 @@ footer a:hover { color: var(--text); }
     <div style="max-width:680px;margin:0 auto 32px;background:var(--surface);border:2px solid var(--green);border-radius:12px;padding:28px 32px">
       <div style="font-size:1rem;font-weight:700;margin-bottom:8px;color:var(--text)">What this means (in plain English)</div>
       <p style="font-size:0.95rem;color:var(--text-dim);line-height:1.7;margin-bottom:12px">
-        A 14B video model that needed <strong style="color:var(--text)">54 GB</strong> of disk now fits in <strong style="color:var(--green)">27 GB</strong>. Same outputs.
-        No retraining. No calibration data. No GPU required for compression. Compressed models are standard BF16 safetensors — load them exactly like the originals.
+        BonfyreFPQ compresses model weights at ~4 bits per weight while maintaining <strong style="color:var(--green)">0.9999</strong> per-weight cosine similarity.
+        No retraining. No calibration data. No GPU required for compression. Native .fpq format stores the compressed representation directly. BF16 safetensors versions available as drop-in replacements.
       </p>
       <p style="font-size:0.95rem;color:var(--text-dim);line-height:1.7;margin-bottom:12px">
         Most compression methods look good at the weight level but degrade when outputs are actually measured.
-        FPQ is the first to prove — through real end-to-end inference —
-        that compression error doesn't accumulate across deep transformer stacks or iterative diffusion processes.
+        FPQ proves — through real end-to-end DiT forward passes —
+        that compression error doesn't accumulate across deep transformer stacks (output cos 0.9976 after 30 layers).
       </p>
       <p style="font-size:0.95rem;color:var(--text-dim);line-height:1.7">
-        All 4 production models are available on <a href="https://huggingface.co/NICKO" style="color:var(--accent);font-weight:600">Hugging Face</a> as drop-in replacements.
+        All models available on <a href="https://huggingface.co/NICKO" style="color:var(--accent);font-weight:600">Hugging Face</a> — 24 repos covering speech, video, language, and TTS.
       </p>
     </div>
 
@@ -1398,11 +1395,11 @@ footer a:hover { color: var(--text); }
           python3 scripts/wan_dit_compare.py
         </code>
       </div>
-      <p style="font-size:0.78rem;color:var(--text-dim);text-align:center">All scripts, logs, and CSV artifacts live in <a href="https://github.com/Nickgonzales76017/bonfyre/tree/main/10-Code/BonfyreFPQ" style="color:var(--accent)">10-Code/BonfyreFPQ/</a>. Proof pack with raw logs: <a href="https://github.com/Nickgonzales76017/bonfyre/tree/main/10-Code/BonfyreFPQ/results/2026-04-10-proof-pack" style="color:var(--accent)">results/2026-04-10-proof-pack/</a></p>
+      <p style="font-size:0.78rem;color:var(--text-dim);text-align:center">All scripts, logs, and CSV artifacts live in <a href="https://github.com/Nickgonzales76017/bonfyre-oss/tree/main/cmd/BonfyreFPQ" style="color:var(--accent)">cmd/BonfyreFPQ/</a>. Proof pack with raw logs: <a href="https://github.com/Nickgonzales76017/bonfyre-oss/tree/main/cmd/BonfyreFPQ/results/2026-04-10-proof-pack" style="color:var(--accent)">results/2026-04-10-proof-pack/</a></p>
     </div>
 
     <div class="btn-row" style="margin-top:28px">
-      <a href="https://github.com/Nickgonzales76017/bonfyre" class="btn btn-primary">View on GitHub →</a>
+      <a href="https://github.com/Nickgonzales76017/bonfyre-oss" class="btn btn-primary">View on GitHub →</a>
       <a href="#fpq-benchmarks" class="btn btn-outline">FPQ Benchmarks ↓</a>
       <a href="#benchmarks" class="btn btn-outline">System Benchmarks ↓</a>
     </div>
@@ -1624,7 +1621,7 @@ footer a:hover { color: var(--text); }
     </div>
 
     <div class="btn-row" style="margin-top:28px">
-      <a href="https://github.com/Nickgonzales76017/bonfyre/tree/main/10-Code/BonfyreFPQ" class="btn btn-primary">Source Code →</a>
+      <a href="https://github.com/Nickgonzales76017/bonfyre-oss/tree/main/cmd/BonfyreFPQ" class="btn btn-primary">Source Code →</a>
       <a href="#fpq" class="btn btn-outline">FPQ v9 Results ↑</a>
     </div>
   </div>
@@ -1742,7 +1739,7 @@ footer a:hover { color: var(--text); }
       </div>
       <div class="use-case">
         <h3>Self-Host a SaaS Backend</h3>
-        <p>Auth, payments, metering, API keys, rate limiting, telephony — composable binaries. ~240 KB total. <a href="https://github.com/Nickgonzales76017/bonfyre">Umbrella repo</a>. <a href="https://github.com/Nickgonzales76017/bonfyre-tel">Telephony repo</a>.</p>
+        <p>Auth, payments, metering, API keys, rate limiting, telephony — composable binaries. ~240 KB total. <a href="https://github.com/Nickgonzales76017/bonfyre-oss">Umbrella repo</a>. <a href="https://github.com/Nickgonzales76017/bonfyre-tel">Telephony repo</a>.</p>
         <code>bonfyre-api + auth + pay + gate + tel</code>
         <br><span class="time">15 min to try</span>
       </div>
@@ -1773,7 +1770,7 @@ footer a:hover { color: var(--text); }
         <p>The top-level router for architecture, comparisons, and the full system story.</p>
         <code>bonfyre</code>
         <div class="repo-links">
-          <a class="repo-link" href="https://github.com/Nickgonzales76017/bonfyre">Open repo</a>
+          <a class="repo-link" href="https://github.com/Nickgonzales76017/bonfyre-oss">Open repo</a>
         </div>
       </div>
       <div class="repo-card">
@@ -2410,32 +2407,32 @@ footer a:hover { color: var(--text); }
       <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:16px">
         <div style="font-size:0.75rem;color:var(--accent);font-weight:700;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.05em">Proof Pack (2026-04-10)</div>
         <p style="font-size:0.85rem;color:var(--text-dim);line-height:1.6;margin-bottom:8px">Qwen perplexity (v8 vs v4 vs HQQ), Whisper roundtrip, CSV, PNG chart, reproduction commands.</p>
-        <a href="https://github.com/Nickgonzales76017/bonfyre/tree/main/10-Code/BonfyreFPQ/results/2026-04-10-proof-pack" style="color:var(--accent);font-size:0.85rem">View proof pack →</a>
+        <a href="https://github.com/Nickgonzales76017/bonfyre-oss/tree/main/cmd/BonfyreFPQ/results/2026-04-10-proof-pack" style="color:var(--accent);font-size:0.85rem">View proof pack →</a>
       </div>
       <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:16px">
         <div style="font-size:0.75rem;color:var(--accent);font-weight:700;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.05em">DiT Comparison JSON</div>
         <p style="font-size:0.85rem;color:var(--text-dim);line-height:1.6;margin-bottom:8px">Forward pass metrics, per-channel analysis, timestep sweep, timing data. Machine-readable.</p>
-        <a href="https://github.com/Nickgonzales76017/bonfyre/tree/main/10-Code/BonfyreFPQ/scripts/wan_dit_compare.py" style="color:var(--accent);font-size:0.85rem">View comparison script →</a>
+        <a href="https://github.com/Nickgonzales76017/bonfyre-oss/tree/main/cmd/BonfyreFPQ/scripts/wan_dit_compare.py" style="color:var(--accent);font-size:0.85rem">View comparison script →</a>
       </div>
       <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:16px">
         <div style="font-size:0.75rem;color:var(--accent);font-weight:700;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.05em">BENCHMARKS.md</div>
         <p style="font-size:0.85rem;color:var(--text-dim);line-height:1.6;margin-bottom:8px">Full benchmark report: version progression, weight tables, KV cache, speed optimization, binary sizes.</p>
-        <a href="https://github.com/Nickgonzales76017/bonfyre/tree/main/10-Code/BonfyreFPQ/BENCHMARKS.md" style="color:var(--accent);font-size:0.85rem">View benchmarks doc →</a>
+        <a href="https://github.com/Nickgonzales76017/bonfyre-oss/tree/main/cmd/BonfyreFPQ/BENCHMARKS.md" style="color:var(--accent);font-size:0.85rem">View benchmarks doc →</a>
       </div>
       <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:16px">
         <div style="font-size:0.75rem;color:var(--accent);font-weight:700;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.05em">Perplexity Benchmark Script</div>
         <p style="font-size:0.85rem;color:var(--text-dim);line-height:1.6;margin-bottom:8px">Python script to reproduce Qwen PPL results. Supports v4/v8 modes, configurable tokens/stride.</p>
-        <a href="https://github.com/Nickgonzales76017/bonfyre/tree/main/10-Code/BonfyreFPQ/perplexity_benchmark.py" style="color:var(--accent);font-size:0.85rem">View script →</a>
+        <a href="https://github.com/Nickgonzales76017/bonfyre-oss/tree/main/cmd/BonfyreFPQ/perplexity_benchmark.py" style="color:var(--accent);font-size:0.85rem">View script →</a>
       </div>
       <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:16px">
         <div style="font-size:0.75rem;color:var(--accent);font-weight:700;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.05em">BonfyreFPQ Source</div>
         <p style="font-size:0.85rem;color:var(--text-dim);line-height:1.6;margin-bottom:8px">Pure C11 engine: main.c, fpq_codec.c, ggml_reader.c, fpq.h. Builds with make on macOS/Linux.</p>
-        <a href="https://github.com/Nickgonzales76017/bonfyre/tree/main/10-Code/BonfyreFPQ" style="color:var(--accent);font-size:0.85rem">View source →</a>
+        <a href="https://github.com/Nickgonzales76017/bonfyre-oss/tree/main/cmd/BonfyreFPQ" style="color:var(--accent);font-size:0.85rem">View source →</a>
       </div>
       <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:16px">
         <div style="font-size:0.75rem;color:var(--accent);font-weight:700;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.05em">Wan2.1 Roundtrip Log</div>
         <p style="font-size:0.85rem;color:var(--text-dim);line-height:1.6;margin-bottom:8px">Full 307-tensor v9 roundtrip log showing per-tensor cosine, adaptive rank, E8/RVQ diagnostics.</p>
-        <a href="https://github.com/Nickgonzales76017/bonfyre/tree/main/10-Code/BonfyreFPQ/wan2.1_roundtrip_v9.log" style="color:var(--accent);font-size:0.85rem">View log →</a>
+        <a href="https://github.com/Nickgonzales76017/bonfyre-oss/tree/main/cmd/BonfyreFPQ/wan2.1_roundtrip_v9.log" style="color:var(--accent);font-size:0.85rem">View log →</a>
       </div>
     </div>
   </div>
@@ -2512,8 +2509,8 @@ footer a:hover { color: var(--text); }
     <div class="install-box" style="max-width:100%;margin-bottom:12px;">
       <code>
         <span class="comment"># Bonfyre pipeline (5-8 ms per stage)</span><br>
-        git clone https://github.com/Nickgonzales76017/bonfyre.git<br>
-        cd bonfyre && make<br>
+        git clone https://github.com/Nickgonzales76017/bonfyre-oss.git<br>
+        cd bonfyre-oss && make<br>
         time ./bin/bonfyre-pipeline run --input audio.wav
       </code>
     </div>
@@ -2652,7 +2649,7 @@ footer a:hover { color: var(--text); }
       </div>
     </div>
     <p style="text-align:center; margin-top:24px; color:var(--text-dim); font-size:0.9rem;">
-      <a href="https://github.com/Nickgonzales76017/bonfyre/blob/main/docs/architecture.md">Full architecture doc →</a>
+      <a href="https://github.com/Nickgonzales76017/bonfyre-oss/blob/main/docs/architecture.md">Full architecture doc →</a>
     </p>
   </div>
 </section>
@@ -2754,7 +2751,7 @@ footer a:hover { color: var(--text); }
     <div class="install-box" style="max-width:100%;margin-bottom:16px;">
       <code>
         <span class="comment"># From source (recommended)</span><br>
-        git clone https://github.com/Nickgonzales76017/bonfyre.git<br>
+        git clone https://github.com/Nickgonzales76017/bonfyre-oss.git<br>
         cd bonfyre<br>
         make <span class="comment"># builds 2 libraries + 47 binaries</span><br>
         make install <span class="comment"># copies to ~/.local/bin</span>
@@ -2763,7 +2760,7 @@ footer a:hover { color: var(--text); }
     <div class="install-box" style="max-width:100%;margin-bottom:16px;">
       <code>
         <span class="comment"># One command (macOS / Linux)</span><br>
-        curl -fsSL https://raw.githubusercontent.com/Nickgonzales76017/bonfyre/main/install.sh | sh
+        curl -fsSL https://raw.githubusercontent.com/Nickgonzales76017/bonfyre-oss/main/install.sh | sh
       </code>
     </div>
     <p style="color:var(--text-dim);font-size:0.9rem;">
@@ -2920,16 +2917,16 @@ footer a:hover { color: var(--text); }
     <h2>MIT Licensed. Do whatever you want with it.</h2>
     <p class="subtitle">One repo. 50 binaries. ~2.1 MB. 167 tests. 5 optimization passes.</p>
     <div class="btn-row">
-      <a href="https://github.com/Nickgonzales76017/bonfyre" class="btn btn-primary">
+      <a href="https://github.com/Nickgonzales76017/bonfyre-oss" class="btn btn-primary">
         ⭐ Star on GitHub
       </a>
       <a href="#install" class="btn btn-primary">
         Install now
       </a>
-      <a href="https://github.com/Nickgonzales76017/bonfyre/blob/main/docs/benchmarks.md" class="btn btn-outline">
+      <a href="https://github.com/Nickgonzales76017/bonfyre-oss/blob/main/docs/benchmarks.md" class="btn btn-outline">
         Full benchmarks →
       </a>
-      <a href="https://github.com/Nickgonzales76017/bonfyre/blob/main/CONTRIBUTING.md" class="btn btn-outline">
+      <a href="https://github.com/Nickgonzales76017/bonfyre-oss/blob/main/CONTRIBUTING.md" class="btn btn-outline">
         Contributing guide
       </a>
     </div>
@@ -2940,8 +2937,8 @@ footer a:hover { color: var(--text); }
   <div class="container">
     <p>
       Made by <a href="https://nickgonzales76017.github.io">Nick Gonzales</a> ·
-      <a href="https://github.com/Nickgonzales76017/bonfyre">GitHub</a> ·
-      <a href="https://github.com/Nickgonzales76017/bonfyre/blob/main/LICENSE">MIT License</a> ·
+      <a href="https://github.com/Nickgonzales76017/bonfyre-oss">GitHub</a> ·
+      <a href="https://github.com/Nickgonzales76017/bonfyre-oss/blob/main/LICENSE">MIT License</a> ·
       <a href="https://github.com/Nickgonzales76017/bonfyre-recipes">Recipes Repo</a>
     </p>
     <p style="margin-top:8px;"><a href="#" style="color:var(--text-dim);font-size:0.85rem;">↑ Back to top</a></p>

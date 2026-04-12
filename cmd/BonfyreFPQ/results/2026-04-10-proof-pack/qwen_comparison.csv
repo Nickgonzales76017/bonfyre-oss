@@ -1,0 +1,5 @@
+method,baseline_ppl,quantized_ppl,ppl_degradation_pct,avg_cosine,worst_cosine,notes
+FP32,14.2033,14.2033,0.00,1.000000,1.000000,Reference baseline from v8 run
+v8_RLF_3bit,14.2033,14.4829,1.97,0.999783,0.999588,Same 994-token WikiText-2 slice on Qwen/Qwen2.5-0.5B
+v4_COORD_3bit,14.2033,35.5890,150.57,0.982761,0.982327,Same 994-token WikiText-2 slice on Qwen/Qwen2.5-0.5B
+HQQ_3bit_g64_axis1,14.2019,32.3814,128.01,,,Same 994-token WikiText-2 slice on Qwen/Qwen2.5-0.5B; CPU run

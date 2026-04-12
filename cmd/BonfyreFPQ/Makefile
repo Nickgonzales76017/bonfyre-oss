@@ -1,36 +1,53 @@
-CC ?= cc
-CFLAGS ?= -O2 -Wall -Wextra -std=c11
-LOCAL_CFLAGS = -Iinclude
-LDFLAGS = -lm
+# BonfyreFPQ — Functional Polar Quantization
+# Store seed programs, not weights.
 
-TARGET = bonfyre-fpq
-BUILD = build
+CC      := cc
+CFLAGS  := -O3 -march=native -Wall -Wextra -std=c11 -Iinclude
+LDFLAGS := -lm
+UNAME_S := $(shell uname -s)
+ifeq ($(UNAME_S),Darwin)
+  CFLAGS  += -DACCELERATE_NEW_LAPACK
+  LDFLAGS += -framework Accelerate
+endif
 
-SRC = src/fwht.c \
-	src/polar.c \
-	src/seed.c \
-	src/qjl.c \
-	src/debruijn.c \
-	src/fpq_codec.c \
-	src/ggml_reader.c \
-	src/serialize.c \
-	src/v4_optimizations.c \
-	src/main.c
+SRC_DIR := src
+INC_DIR := include
+BUILD   := build
 
-OBJ = $(SRC:src/%.c=$(BUILD)/%.o)
+SRCS := $(SRC_DIR)/fwht.c \
+        $(SRC_DIR)/polar.c \
+        $(SRC_DIR)/seed.c \
+        $(SRC_DIR)/qjl.c \
+        $(SRC_DIR)/debruijn.c \
+        $(SRC_DIR)/fpq_codec.c \
+        $(SRC_DIR)/ggml_reader.c \
+        $(SRC_DIR)/safetensors_reader.c \
+        $(SRC_DIR)/serialize.c \
+        $(SRC_DIR)/v4_optimizations.c \
+        $(SRC_DIR)/weight_algebra.c \
+        $(SRC_DIR)/fpq_native.c \
+        $(SRC_DIR)/main.c
 
-all: $(TARGET)
+OBJS := $(patsubst $(SRC_DIR)/%.c,$(BUILD)/%.o,$(SRCS))
+BIN  := bonfyre-fpq
 
-$(TARGET): $(OBJ)
-	$(CC) $(CFLAGS) $(LOCAL_CFLAGS) -o $(TARGET) $(OBJ) $(LDFLAGS)
+.PHONY: all clean test
 
-$(BUILD)/%.o: src/%.c include/fpq.h | $(BUILD)
-	$(CC) $(CFLAGS) $(LOCAL_CFLAGS) -c $< -o $@
+all: $(BIN)
+
+$(BIN): $(OBJS)
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
+
+$(BUILD)/%.o: $(SRC_DIR)/%.c $(INC_DIR)/fpq.h $(wildcard $(INC_DIR)/weight_algebra.h) | $(BUILD)
+	$(CC) $(CFLAGS) -c -o $@ $<
 
 $(BUILD):
 	mkdir -p $(BUILD)
 
 clean:
-	rm -rf $(BUILD) $(TARGET)
+	rm -rf $(BUILD) $(BIN)
 
-.PHONY: all clean
+# Quick roundtrip test on a whisper model
+test: $(BIN)
+	@echo "=== FPQ Roundtrip Test ==="
+	./$(BIN) roundtrip models/ggml-base.en.bin --limit 5 --report --max-nodes 32 --tolerance 0.01

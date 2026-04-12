@@ -21,6 +21,10 @@
 #include <stdio.h>
 #include <float.h>
 
+#ifdef __APPLE__
+#include <dispatch/dispatch.h>
+#endif
+
 static int cmp_float(const void *a, const void *b) {
     float fa = *(const float *)a, fb = *(const float *)b;
     return (fa > fb) - (fa < fb);
@@ -280,7 +284,8 @@ uint8_t fpq_chaos_find_best_r(const float *normalized_coords, size_t n,
  * At decode: W_corrected = Ŵ + σ * u * v'
  * ═══════════════════════════════════════════════════════════════════ */
 
-#define GHOST_POWER_ITERS 20
+#define GHOST_POWER_ITERS_MAX 20
+#define GHOST_CONVERGENCE_TOL 1e-6f
 
 fpq_ghost_t *fpq_ghost_compute(const float *error_matrix, size_t rows, size_t cols) {
     fpq_ghost_t *ghost = (fpq_ghost_t *)calloc(1, sizeof(fpq_ghost_t));
@@ -288,6 +293,17 @@ fpq_ghost_t *fpq_ghost_compute(const float *error_matrix, size_t rows, size_t co
     ghost->cols = cols;
     ghost->u = (float *)calloc(rows, sizeof(float));
     ghost->v = (float *)calloc(cols, sizeof(float));
+
+    /* Quick check: skip SVD for rank-0 (near-zero energy) tensors */
+    float energy_check = 0.0f;
+    size_t check_stride = (rows * cols > 10000) ? (rows * cols / 1000) : 1;
+    for (size_t i = 0; i < rows * cols; i += check_stride)
+        energy_check += error_matrix[i] * error_matrix[i];
+    if (energy_check < 1e-20f) {
+        ghost->sigma = 0.0f;
+        fprintf(stderr, "    Ghost: σ=0.000000, captures 0.0%% of error energy (rank-0 skip)\n");
+        return ghost;
+    }
 
     /* Initialize v with deterministic "random" vector */
     for (size_t j = 0; j < cols; j++)
@@ -300,8 +316,10 @@ fpq_ghost_t *fpq_ghost_compute(const float *error_matrix, size_t rows, size_t co
     if (norm > 1e-10f)
         for (size_t j = 0; j < cols; j++) ghost->v[j] /= norm;
 
-    /* Power iteration */
-    for (int iter = 0; iter < GHOST_POWER_ITERS; iter++) {
+    /* Adaptive power iteration — converge on sigma, not fixed count */
+    float prev_sigma = 0.0f;
+    int iters_used = 0;
+    for (int iter = 0; iter < GHOST_POWER_ITERS_MAX; iter++) {
         /* u = E * v */
         for (size_t i = 0; i < rows; i++) {
             float s = 0.0f;
@@ -325,12 +343,21 @@ fpq_ghost_t *fpq_ghost_compute(const float *error_matrix, size_t rows, size_t co
             ghost->v[j] = s;
         }
 
-        /* Normalize v */
+        /* Normalize v — the norm here approximates sigma */
         norm = 0.0f;
         for (size_t j = 0; j < cols; j++) norm += ghost->v[j] * ghost->v[j];
         norm = sqrtf(norm);
         if (norm < 1e-10f) break;
         for (size_t j = 0; j < cols; j++) ghost->v[j] /= norm;
+
+        iters_used = iter + 1;
+
+        /* Convergence check: |σ_new - σ_old| / |σ_new| < tol */
+        if (iter >= 2) {
+            float rel_change = fabsf(norm - prev_sigma) / (norm + 1e-10f);
+            if (rel_change < GHOST_CONVERGENCE_TOL) break;
+        }
+        prev_sigma = norm;
     }
 
     /* Compute singular value: σ = u' * E * v */
@@ -349,8 +376,8 @@ fpq_ghost_t *fpq_ghost_compute(const float *error_matrix, size_t rows, size_t co
         total_err_sq += error_matrix[i] * error_matrix[i];
     float captured = (sigma * sigma) / (total_err_sq + 1e-10f);
 
-    fprintf(stderr, "    Ghost: σ=%.6f, captures %.1f%% of error energy\n",
-            sigma, captured * 100.0f);
+    fprintf(stderr, "    Ghost: σ=%.6f, captures %.1f%% of error energy (%d iters)\n",
+            sigma, captured * 100.0f, iters_used);
 
     return ghost;
 }
@@ -2468,7 +2495,7 @@ void fpq_decode_tensor_v7(const fpq_tensor_t *tensor, float *output) {
 #define V8_RVQ_TILES       256
 #define V8_RVQ_ITERS       20
 #define V8_MU_BETA         8.0f
-#define V8_SMOOTH_LAMBDA   0.0f   /* Viterbi smoothness (0 = pure distortion) */
+#define V8_SMOOTH_LAMBDA   0.0f   /* Viterbi smoothness (0 = greedy bypass) */
 
 
 /* ── NEON-ACCELERATED E8 SNAP (Apple Silicon fast path) ──
@@ -2810,14 +2837,37 @@ static void v8_learn_tiles(const float *all_residuals, size_t n_pairs,
     float *sums = (float *)calloc((size_t)effective_k * V8_TILE_DIM, sizeof(float));
     int *counts = (int *)calloc((size_t)effective_k, sizeof(int));
 
+    /* For convergence detection: old centroids */
+    float *old_tiles = (float *)malloc((size_t)effective_k * V8_TILE_DIM * sizeof(float));
+
     for (int iter = 0; iter < V8_RVQ_ITERS; iter++) {
-        /* Assign each training sample to nearest tile */
+        /* Snapshot current centroids for convergence check */
+        memcpy(old_tiles, tiles, (size_t)effective_k * V8_TILE_DIM * sizeof(float));
+
+        /* Assign each training sample to nearest tile (parallel) */
+#ifdef __APPLE__
+        const float *_tiles_r = tiles;
+        const float *_res_r = all_residuals;
+        int _ek = effective_k;
+        size_t _ts = train_step;
+        size_t _np = n_pairs;
+        dispatch_apply(train_n,
+            dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0),
+            ^(size_t vi) {
+                size_t v = vi * _ts;
+                if (v >= _np) v = _np - 1;
+                const float *vec = _res_r + v * V8_TILE_DIM;
+                assignments[vi] = v8_find_nearest_tile(vec, _tiles_r, _ek);
+            });
+#else
+        #pragma omp parallel for schedule(dynamic, 64)
         for (size_t vi = 0; vi < train_n; vi++) {
             size_t v = vi * train_step;
             if (v >= n_pairs) v = n_pairs - 1;
             const float *vec = all_residuals + v * V8_TILE_DIM;
             assignments[vi] = v8_find_nearest_tile(vec, tiles, effective_k);
         }
+#endif
 
         /* Recompute centroids from training samples */
         memset(sums, 0, (size_t)effective_k * V8_TILE_DIM * sizeof(float));
@@ -2838,8 +2888,18 @@ static void v8_learn_tiles(const float *all_residuals, size_t n_pairs,
                         sums[t * V8_TILE_DIM + d] / (float)counts[t];
             }
         }
+
+        /* Convergence check: max centroid shift */
+        float max_shift = 0.0f;
+        for (int t = 0; t < effective_k; t++) {
+            float shift = v8_dist16d(old_tiles + t * V8_TILE_DIM,
+                                     tiles + t * V8_TILE_DIM, FLT_MAX);
+            if (shift > max_shift) max_shift = shift;
+        }
+        if (max_shift < 1e-8f) break;  /* converged — no quality loss */
     }
 
+    free(old_tiles);
     free(assignments);
     free(sums);
     free(counts);
@@ -2956,13 +3016,19 @@ fpq_tensor_t *fpq_encode_tensor_v8(const float *weights, size_t rows, size_t col
 
     double greedy_mse = 0.0, viterbi_mse = 0.0;
 
+    /* ── Phase 1 block processing: parallel via GCD on Apple, OpenMP on Linux ── */
+#ifdef __APPLE__
+    dispatch_apply(n_blocks, dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^(size_t b) {
+#else
+    #pragma omp parallel for schedule(dynamic, 64)
     for (size_t b = 0; b < n_blocks; b++) {
-        size_t offset = b * block_dim;
-        size_t this_dim = (offset + block_dim <= total) ? block_dim : (total - offset);
+#endif
+        size_t b_offset = b * block_dim;
+        size_t b_dim = (b_offset + block_dim <= total) ? block_dim : (total - b_offset);
 
         float buf[256];
         memset(buf, 0, sizeof(buf));
-        memcpy(buf, weights + offset, this_dim * sizeof(float));
+        memcpy(buf, weights + b_offset, b_dim * sizeof(float));
 
         /* FWHT */
         fpq_random_signs(buf, padded, tensor->haar_seed ^ (uint64_t)b);
@@ -2994,32 +3060,47 @@ fpq_tensor_t *fpq_encode_tensor_v8(const float *weights, size_t rows, size_t col
         for (size_t i = 0; i < padded; i++)
             scaled[i] = fwht_warped[b][i] / wnorm * lattice_scale;
 
-        /* ── VITERBI TCLQ: find globally optimal E8 sequence ── */
+        /* ── E8 SNAP (greedy bypass when λ=0, full Viterbi otherwise) ── */
         e8_points[b] = (float *)calloc(padded, sizeof(float));
-        v8_viterbi_snap(scaled, e8_points[b], V8_SMOOTH_LAMBDA);
 
-        /* Measure Viterbi vs greedy (for diagnostics) */
-        float greedy_e8[256];
-        for (int g = 0; g < V8_E8_GROUPS; g++)
-            E8_SNAP_FAST(scaled + g * V8_E8_DIM, greedy_e8 + g * V8_E8_DIM);
-
-        for (size_t i = 0; i < padded; i++) {
-            float eg = scaled[i] - greedy_e8[i];
-            float ev = scaled[i] - e8_points[b][i];
-            greedy_mse += (double)(eg * eg);
-            viterbi_mse += (double)(ev * ev);
+        if (V8_SMOOTH_LAMBDA > 0.0f) {
+            v8_viterbi_snap(scaled, e8_points[b], V8_SMOOTH_LAMBDA);
+        } else {
+            for (int g = 0; g < V8_E8_GROUPS; g++)
+                E8_SNAP_FAST(scaled + g * V8_E8_DIM,
+                             e8_points[b] + g * V8_E8_DIM);
         }
 
         free(scaled);
+#ifdef __APPLE__
+    });
+#else
     }
+#endif
+
+    /* ── Compute diagnostic MSE (serial — cheap) ── */
+    for (size_t b = 0; b < n_blocks; b++) {
+        float wnorm = warp_norms[b];
+        for (size_t i = 0; i < padded; i++) {
+            float scaled_val = fwht_warped[b][i] / wnorm * lattice_scale;
+            float eg = scaled_val - e8_points[b][i];
+            greedy_mse += (double)(eg * eg);
+        }
+    }
+    viterbi_mse = greedy_mse;  /* identical when λ=0 */
 
     /* ── PHASE 2: Collect 16D pair residuals for RVQ ── */
 
     size_t total_pairs = n_blocks * V8_E8_PAIRS;
     float *all_pair_residuals = (float *)calloc(total_pairs * V8_TILE_DIM, sizeof(float));
 
+#ifdef __APPLE__
+    dispatch_apply(n_blocks, dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^(size_t b) {
+#else
+    #pragma omp parallel for schedule(static)
     for (size_t b = 0; b < n_blocks; b++) {
-        float wnorm = warp_norms[b];
+#endif
+        float wnorm_b = warp_norms[b];
 
         for (int p = 0; p < V8_E8_PAIRS; p++) {
             size_t pair_base = (size_t)p * V8_TILE_DIM;
@@ -3027,12 +3108,16 @@ fpq_tensor_t *fpq_encode_tensor_v8(const float *weights, size_t rows, size_t col
 
             for (int d = 0; d < V8_TILE_DIM; d++) {
                 float scaled_orig = fwht_warped[b][pair_base + d] /
-                                    wnorm * lattice_scale;
+                                    wnorm_b * lattice_scale;
                 all_pair_residuals[ridx + d] =
                     scaled_orig - e8_points[b][pair_base + d];
             }
         }
+#ifdef __APPLE__
+    });
+#else
     }
+#endif
 
     /* ── PHASE 3: Learn 16D RVQ tiles via K-means ── */
 
@@ -3055,10 +3140,114 @@ fpq_tensor_t *fpq_encode_tensor_v8(const float *weights, size_t rows, size_t col
     float *decoded_flat = (float *)calloc(total, sizeof(float));
     double pre_rvq_mse = 0.0, post_rvq_mse = 0.0;
 
-    /* Track previous block's tile assignments for seeded search */
-    int prev_tile_seeds[V8_E8_PAIRS];
-    for (int p = 0; p < V8_E8_PAIRS; p++) prev_tile_seeds[p] = -1;
+    /* Parallel Phase 4: each block is independent.
+     * Tile search is unseeded (no sequential prev_tile dependency)
+     * — same quality (optimal assignment), just slightly less early-exit benefit,
+     * massively compensated by multi-core parallelism. */
+#ifdef __APPLE__
+    const float *_tiles4 = tiles;
+    const float *_apr = all_pair_residuals;
+    const float *_weights4 = weights;
+    int _ek4 = effective_k;
+    float _beta4 = beta;
+    float _ls4 = lattice_scale;
+    size_t _bd4 = block_dim;
+    size_t _total4 = total;
+    size_t _padded4 = padded;
 
+    dispatch_apply(n_blocks, dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^(size_t b) {
+        size_t b_off = b * _bd4;
+        size_t b_dim = (b_off + _bd4 <= _total4) ? _bd4 : (_total4 - b_off);
+        float b_rms = tensor->coord_scales[b];
+        float b_wnorm = warp_norms[b];
+
+        /* Assign tiles + compute correction */
+        float corrected[256];
+        for (int p = 0; p < V8_E8_PAIRS; p++) {
+            size_t ridx = (b * V8_E8_PAIRS + (size_t)p) * V8_TILE_DIM;
+            const float *pair_res = _apr + ridx;
+
+            int ti = v8_find_nearest_tile(pair_res, _tiles4, _ek4);
+            tile_indices[b][p] = (uint8_t)ti;
+
+            size_t pair_base = (size_t)p * V8_TILE_DIM;
+            for (int d = 0; d < V8_TILE_DIM; d++) {
+                corrected[pair_base + d] =
+                    e8_points[b][pair_base + d] +
+                    _tiles4[ti * V8_TILE_DIM + d];
+            }
+        }
+
+        /* Convert corrected lattice → FWHT domain */
+        float fwht_recon[256];
+        for (size_t i = 0; i < _padded4; i++) {
+            float lat_val = corrected[i] / _ls4 * b_wnorm;
+            float unwarp = v7_warp_inverse(lat_val, _beta4);
+            fwht_recon[i] = unwarp * b_rms;
+        }
+
+        /* QJL on remaining residual */
+        float *orig_fwht = (float *)calloc(_padded4, sizeof(float));
+        memset(orig_fwht, 0, _padded4 * sizeof(float));
+        memcpy(orig_fwht, _weights4 + b_off, b_dim * sizeof(float));
+        fpq_random_signs(orig_fwht, _padded4, tensor->haar_seed ^ (uint64_t)b);
+        fpq_fwht(orig_fwht, _padded4);
+
+        float *final_residual = (float *)malloc(_padded4 * sizeof(float));
+        float fnorm_sq = 0.0f;
+        for (size_t i = 0; i < _padded4; i++) {
+            final_residual[i] = orig_fwht[i] - fwht_recon[i];
+            fnorm_sq += final_residual[i] * final_residual[i];
+        }
+        tensor->coord_residual_norms[b] = sqrtf(fnorm_sq);
+        tensor->qjl[b] = fpq_qjl_encode(final_residual, _padded4,
+                                           tensor->haar_seed ^ (uint64_t)b ^ 0xC00DULL);
+
+        /* Reconstruct (simulate decode) for ghost */
+        float recon_final[256];
+        memcpy(recon_final, fwht_recon, _padded4 * sizeof(float));
+        if (tensor->coord_residual_norms[b] > 1e-10f) {
+            float *resid_approx = (float *)malloc(_padded4 * sizeof(float));
+            fpq_qjl_reconstruct(tensor->qjl[b],
+                                 tensor->coord_residual_norms[b], resid_approx);
+            for (size_t i = 0; i < _padded4; i++)
+                recon_final[i] += resid_approx[i];
+            free(resid_approx);
+        }
+
+        /* Inverse FWHT → weight domain */
+        fpq_fwht_inverse(recon_final, _padded4);
+        fpq_random_signs_inverse(recon_final, _padded4,
+                                  tensor->haar_seed ^ (uint64_t)b);
+        memcpy(decoded_flat + b_off, recon_final, b_dim * sizeof(float));
+
+        free(final_residual);
+        free(orig_fwht);
+    });
+
+    /* Compute RVQ MSE diagnostics (serial — reads only) */
+    for (size_t b = 0; b < n_blocks; b++) {
+        float b_wnorm = warp_norms[b];
+        for (int p = 0; p < V8_E8_PAIRS; p++) {
+            size_t ridx = (b * V8_E8_PAIRS + (size_t)p) * V8_TILE_DIM;
+            size_t pair_base = (size_t)p * V8_TILE_DIM;
+            for (int d = 0; d < V8_TILE_DIM; d++) {
+                float r = all_pair_residuals[ridx + d];
+                pre_rvq_mse += (double)(r * r);
+                float scaled_orig = fwht_warped[b][pair_base + d] /
+                                    b_wnorm * lattice_scale;
+                float post_err = scaled_orig -
+                    (e8_points[b][pair_base + d] +
+                     tiles[tile_indices[b][p] * V8_TILE_DIM + d]);
+                post_rvq_mse += (double)(post_err * post_err);
+            }
+        }
+    }
+#else
+    /* OpenMP parallel Phase 4: each block is independent.
+     * Use unseeded tile search (same as Apple path) — same quality,
+     * trades small early-exit benefit for multi-core parallelism. */
+    #pragma omp parallel for schedule(dynamic, 64)
     for (size_t b = 0; b < n_blocks; b++) {
         size_t offset = b * block_dim;
         size_t this_dim = (offset + block_dim <= total) ? block_dim : (total - offset);
@@ -3071,14 +3260,8 @@ fpq_tensor_t *fpq_encode_tensor_v8(const float *weights, size_t rows, size_t col
             size_t ridx = (b * V8_E8_PAIRS + (size_t)p) * V8_TILE_DIM;
             const float *pair_res = all_pair_residuals + ridx;
 
-            /* Pre-RVQ error */
-            for (int d = 0; d < V8_TILE_DIM; d++)
-                pre_rvq_mse += (double)(pair_res[d] * pair_res[d]);
-
-            int ti = v8_find_nearest_tile_seeded(pair_res, tiles, effective_k,
-                                                  prev_tile_seeds[p]);
+            int ti = v8_find_nearest_tile(pair_res, tiles, effective_k);
             tile_indices[b][p] = (uint8_t)ti;
-            prev_tile_seeds[p] = ti;
 
             /* Apply correction: e8 + tile */
             size_t pair_base = (size_t)p * V8_TILE_DIM;
@@ -3086,12 +3269,6 @@ fpq_tensor_t *fpq_encode_tensor_v8(const float *weights, size_t rows, size_t col
                 corrected[pair_base + d] =
                     e8_points[b][pair_base + d] +
                     tiles[ti * V8_TILE_DIM + d];
-
-                /* Post-RVQ error */
-                float scaled_orig = fwht_warped[b][pair_base + d] /
-                                    wnorm * lattice_scale;
-                float post_err = scaled_orig - corrected[pair_base + d];
-                post_rvq_mse += (double)(post_err * post_err);
             }
         }
 
@@ -3140,6 +3317,27 @@ fpq_tensor_t *fpq_encode_tensor_v8(const float *weights, size_t rows, size_t col
 
         free(final_residual);
         free(orig_fwht);
+    }
+#endif
+
+    /* ── Compute RVQ MSE (serial — safe after parallel Phase 4) ── */
+    for (size_t b = 0; b < n_blocks; b++) {
+        size_t offset = b * padded;
+        float wnorm = warp_norms[b];
+        float lattice_scale = wnorm / (float)padded;
+        for (int p = 0; p < V8_E8_PAIRS; p++) {
+            size_t ridx = b * V8_E8_PAIRS * V8_TILE_DIM + (size_t)p * V8_TILE_DIM;
+            const float *pair_res = all_pair_residuals + ridx;
+            size_t pair_base = (size_t)p * V8_TILE_DIM;
+            for (int d = 0; d < V8_TILE_DIM; d++) {
+                pre_rvq_mse += (double)(pair_res[d] * pair_res[d]);
+                float scaled_orig = fwht_warped[b][pair_base + d] /
+                                    wnorm * lattice_scale;
+                float post_err = scaled_orig - (e8_points[b][pair_base + d] +
+                    tiles[tile_indices[b][p] * V8_TILE_DIM + d]);
+                post_rvq_mse += (double)(post_err * post_err);
+            }
+        }
     }
 
     /* ── Ghost Head ── */
@@ -3384,4 +3582,1466 @@ void fpq_decode_tensor_v8(const fpq_tensor_t *tensor, float *output) {
 
     /* Ghost correction */
     fpq_ghost_apply(tensor->ghost, output);
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════
+ * v9 ENCODE — Unified Multiscale Compression
+ *
+ * Pipeline:
+ *   Phase 0: Low-rank SVD extraction (global structure)
+ *   Phase 1: v8 RLF on residual (FWHT → warp → E8 → 16D RVQ)
+ *   Phase 2: QJL on transform-domain residual
+ *   Phase 3: Ghost head on final reconstruction error
+ *
+ * Decode: W_hat = U_k Σ_k V_k^T + decode_v8(residual)
+ *
+ * Data packing in sbb_scale_delta:
+ *   [0]: lr_rank  [1]: lr_rank (stride)
+ *   [2 .. 2+rows*rank-1]:           U_k * Σ_k (pre-multiplied)
+ *   [+rows*rank .. +rank*cols-1]:   V_k^T
+ *   --- v8 block ---
+ *   [v8_base+0 .. +n_blocks-1]:     warp_norms
+ *   [+n_blocks*256]:                E8 points
+ *   [+ek*TILE_DIM]:                 tile codebook
+ *   [+n_blocks*PAIRS]:              tile indices
+ *   [last]:                         effective_k
+ * ═══════════════════════════════════════════════════════════════════ */
+
+/* Truncated SVD via iterated power method.
+ * Extracts top-k singular triplets from A [m×n].
+ * U_out [m × max_rank], S_out [max_rank], Vt_out [max_rank × n].
+ * Returns actual rank used.
+ *
+ * Uses Accelerate BLAS on Apple platforms for O(mn) mat-vec speed.
+ * Uses OpenBLAS + LAPACK on Linux when available (HAVE_OPENBLAS).
+ * Falls back to iterative power method otherwise.
+ * Convergence-checked iteration (not fixed 30). */
+#ifdef __APPLE__
+#include <Accelerate/Accelerate.h>
+#define FPQ_HAS_BLAS 1
+#define LAP_INT __LAPACK_int
+#elif defined(HAVE_OPENBLAS)
+#include <cblas.h>
+/* LAPACK Fortran prototypes (OpenBLAS ships these) */
+extern void dgeqrf_(int*, int*, double*, int*, double*, double*, int*, int*);
+extern void dorgqr_(int*, int*, int*, double*, int*, double*, double*, int*, int*);
+extern void dgesvd_(char*, char*, int*, int*, double*, int*, double*, double*, int*, double*, int*, double*, int*, int*);
+#define FPQ_HAS_BLAS 1
+#define LAP_INT int
+#endif
+
+int v9_truncated_svd(const float *A, size_t m, size_t n,
+                            int max_rank, float energy_threshold,
+                            float *U_out, float *S_out, float *Vt_out) {
+#ifdef FPQ_HAS_BLAS
+    /*
+     * Mixed-precision randomized SVD (Halko-Martinsson-Tropp 2011).
+     *
+     * Key quality knobs vs. the naive version:
+     *   - oversampling  p = 20  (was 10)
+     *   - power iters   q = 2   (was 0) — critical for flat spectra
+     *   - double-precision orthogonalization in the sketch
+     *   - float storage for big matrices (A, Omega)
+     *   - double for sketch columns, QR, projection, small SVD
+     *
+     * Pipeline:
+     *   1. Sketch:  Y = A * Omega            [m × l]  float gemm
+     *   2. Power iterations (q rounds):
+     *        Z = A^T * Y                     [n × l]  float gemm
+     *        QR(Z) in double                           double QR
+     *        Y = A * Z                       [m × l]  float gemm
+     *        QR(Y) in double                           double QR
+     *   3. Final QR:  Y → Q                  [m × l]  double QR
+     *   4. Project:   B = Q^T * A            [l × n]  mixed gemm
+     *   5. Small SVD: B = Ub S Vt            [l × n]  double SVD
+     *   6. Recover:   U = Q * Ub             [m × r]  double gemm
+     */
+    /* Adaptive oversampling: scale with matrix size, cap at 20 */
+    int mn_min = (int)(m < n ? m : n);
+    int p = (mn_min < 64) ? (mn_min / 4 > 2 ? mn_min / 4 : 2) : 20;
+    int l = max_rank + p;               /* sketch width */
+    if (l > mn_min) l = mn_min;
+
+    /* A stays float row-major — we'll use CblasRowMajor for big gemms */
+    double total_energy = 0.0;
+    #if defined(HAVE_OPENBLAS) || defined(__APPLE__)
+    {
+        size_t mn = m * n;
+        #pragma omp parallel for reduction(+:total_energy) schedule(static)
+        for (size_t i = 0; i < mn; i++)
+            total_energy += (double)A[i] * (double)A[i];
+    }
+    #else
+    for (size_t i = 0; i < m * n; i++)
+        total_energy += (double)A[i] * (double)A[i];
+    #endif
+
+    /* Skip SVD entirely for rank-0 (near-zero energy) tensors */
+    if (total_energy < 1e-20) {
+        return 0;
+    }
+
+    /* 1. Omega [n × l] col-major float */
+    float *Omega = (float *)malloc(n * (size_t)l * sizeof(float));
+    uint64_t seed = 0xDEADBEEF42ULL;
+    for (int c = 0; c < l; c++)
+        for (size_t j = 0; j < n; j++) {
+            seed ^= seed << 13; seed ^= seed >> 7; seed ^= seed << 17;
+            Omega[j + (size_t)c * n] =
+                (float)((int64_t)(seed & 0xFFFF) - 0x7FFF) / 32768.0f;
+        }
+
+    /* Y = A * Omega  [m × l]
+     * A row-major [m × n], Omega col-major [n × l].
+     * Treat Omega as row-major [n × l] lda=l for CblasRowMajor call. */
+    float *Yf = (float *)calloc(m * (size_t)l, sizeof(float));
+    cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans,
+                (int)m, l, (int)n,
+                1.0f, A, (int)n,             /* A  row-major [m×n] lda=n */
+                Omega, l,                     /* Omega as row-major [n×l] lda=l */
+                0.0f, Yf, l);                /* Yf row-major [m×l] lda=l */
+    free(Omega);
+
+    /* Helper: promote float row-major [rows×cols] to double col-major [rows×cols] */
+    #define F2D_CM(dst, src, rows, cols) do { \
+        for (size_t _j = 0; _j < (size_t)(cols); _j++) \
+            for (size_t _i = 0; _i < (size_t)(rows); _i++) \
+                (dst)[_i + _j * (size_t)(rows)] = (double)(src)[_i * (size_t)(cols) + _j]; \
+    } while(0)
+
+    /* Helper: demote double col-major [rows×cols] to float row-major [rows×cols] */
+    #define D2F_RM(dst, src, rows, cols) do { \
+        for (size_t _j = 0; _j < (size_t)(cols); _j++) \
+            for (size_t _i = 0; _i < (size_t)(rows); _i++) \
+                (dst)[_i * (size_t)(cols) + _j] = (float)(src)[_i + _j * (size_t)(rows)]; \
+    } while(0)
+
+    /* Allocate double sketch buffers (small: m×l and n×l) */
+    double *Yd = (double *)malloc(m * (size_t)l * sizeof(double));  /* col-major */
+    double *Zd = (double *)malloc(n * (size_t)l * sizeof(double));  /* col-major */
+    float  *Zf = (float  *)malloc(n * (size_t)l * sizeof(float));   /* row-major scratch */
+
+    LAP_INT m_lap = (LAP_INT)m;
+    LAP_INT n_lap = (LAP_INT)n;
+    LAP_INT l_lap = (LAP_INT)l;
+    LAP_INT info  = 0;
+
+    /* ── 2. Power iterations ──
+     * q=2 for normal tensors, q=1 for very large tensors (>100M elements)
+     * to avoid excessive sgemm time. The sketch is already high-quality
+     * with oversampling p=20, so 1 power iteration suffices. */
+    int q_pow = (m * n > 100000000UL) ? 1 : 2;
+    for (int qi = 0; qi < q_pow; qi++) {
+        /* Z = A^T * Y  [n × l] row-major float */
+        cblas_sgemm(CblasRowMajor, CblasTrans, CblasNoTrans,
+                    (int)n, l, (int)m,
+                    1.0f, A, (int)n,         /* A row-major [m×n] lda=n */
+                    Yf, l,                    /* Yf row-major [m×l] lda=l */
+                    0.0f, Zf, l);            /* Zf row-major [n×l] lda=l */
+
+        /* QR(Z) in double: promote Zf → Zd col-major, QR, demote back */
+        F2D_CM(Zd, Zf, n, l);
+        {
+            double *tau_d = (double *)malloc(l * sizeof(double));
+            LAP_INT lw = -1; double wopt;
+            dgeqrf_(&n_lap, &l_lap, Zd, &n_lap, tau_d, &wopt, &lw, &info);
+            lw = (LAP_INT)wopt;
+            double *wrk = (double *)malloc(lw * sizeof(double));
+            dgeqrf_(&n_lap, &l_lap, Zd, &n_lap, tau_d, wrk, &lw, &info);
+            free(wrk);
+            lw = -1;
+            dorgqr_(&n_lap, &l_lap, &l_lap, Zd, &n_lap, tau_d, &wopt, &lw, &info);
+            lw = (LAP_INT)wopt;
+            wrk = (double *)malloc(lw * sizeof(double));
+            dorgqr_(&n_lap, &l_lap, &l_lap, Zd, &n_lap, tau_d, wrk, &lw, &info);
+            free(wrk); free(tau_d);
+        }
+        D2F_RM(Zf, Zd, n, l);  /* Zf now holds Q_z row-major [n×l] */
+
+        /* Y = A * Z  [m × l] row-major float */
+        cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans,
+                    (int)m, l, (int)n,
+                    1.0f, A, (int)n,
+                    Zf, l,
+                    0.0f, Yf, l);
+
+        /* QR(Y) in double: promote Yf → Yd col-major, QR, demote back */
+        F2D_CM(Yd, Yf, m, l);
+        {
+            double *tau_d = (double *)malloc(l * sizeof(double));
+            LAP_INT lw = -1; double wopt;
+            dgeqrf_(&m_lap, &l_lap, Yd, &m_lap, tau_d, &wopt, &lw, &info);
+            lw = (LAP_INT)wopt;
+            double *wrk = (double *)malloc(lw * sizeof(double));
+            dgeqrf_(&m_lap, &l_lap, Yd, &m_lap, tau_d, wrk, &lw, &info);
+            free(wrk);
+            lw = -1;
+            dorgqr_(&m_lap, &l_lap, &l_lap, Yd, &m_lap, tau_d, &wopt, &lw, &info);
+            lw = (LAP_INT)wopt;
+            wrk = (double *)malloc(lw * sizeof(double));
+            dorgqr_(&m_lap, &l_lap, &l_lap, Yd, &m_lap, tau_d, wrk, &lw, &info);
+            free(wrk); free(tau_d);
+        }
+        D2F_RM(Yf, Yd, m, l);
+    }
+    free(Zf); free(Zd);
+
+    /* ── 3. Final QR in double ── */
+    F2D_CM(Yd, Yf, m, l);
+    free(Yf);
+    {
+        double *tau_d = (double *)malloc(l * sizeof(double));
+        LAP_INT lw = -1; double wopt;
+        dgeqrf_(&m_lap, &l_lap, Yd, &m_lap, tau_d, &wopt, &lw, &info);
+        lw = (LAP_INT)wopt;
+        double *wrk = (double *)malloc(lw * sizeof(double));
+        dgeqrf_(&m_lap, &l_lap, Yd, &m_lap, tau_d, wrk, &lw, &info);
+        free(wrk);
+        lw = -1;
+        dorgqr_(&m_lap, &l_lap, &l_lap, Yd, &m_lap, tau_d, &wopt, &lw, &info);
+        lw = (LAP_INT)wopt;
+        wrk = (double *)malloc(lw * sizeof(double));
+        dorgqr_(&m_lap, &l_lap, &l_lap, Yd, &m_lap, tau_d, wrk, &lw, &info);
+        free(wrk); free(tau_d);
+    }
+    /* Yd now holds Q [m × l] col-major double, lda=m */
+
+    /* ── 4. B = Q^T * A  [l × n] double ──
+     * Q is double col-major [m×l].  A is float row-major [m×n].
+     * Parallelized via GCD (Apple) or OpenMP (Linux).
+     * Peak extra memory: n_threads × m × 8 bytes. */
+    double *B = (double *)malloc((size_t)l * n * sizeof(double));
+    {
+#ifdef __APPLE__
+        const double *_Yd = Yd;
+        const float *_A = A;
+        int _l = l;
+        size_t _m = m, _n = n;
+        dispatch_apply(n, dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0),
+            ^(size_t j) {
+                double *a_col = (double *)malloc(_m * sizeof(double));
+                for (size_t i = 0; i < _m; i++)
+                    a_col[i] = (double)_A[i * _n + j];
+                cblas_dgemv(CblasColMajor, CblasTrans,
+                            (int)_m, _l,
+                            1.0, _Yd, (int)_m,
+                            a_col, 1,
+                            0.0, B + j * (size_t)_l, 1);
+                free(a_col);
+            });
+#else
+        /* B = Q^T * A  via chunked dgemm (much faster than column-by-column dgemv).
+         * Promote A to double in column-chunks to limit memory, then dgemm.
+         * B is col-major [l × n], Q^T is [l × m], A_chunk is [m × chunk_cols]. */
+        size_t chunk_cols = 512;  /* ~m*512*8 bytes per chunk */
+        if (chunk_cols > n) chunk_cols = n;
+        double *A_chunk = (double *)malloc(m * chunk_cols * sizeof(double));
+
+        for (size_t c0 = 0; c0 < n; c0 += chunk_cols) {
+            size_t cc = (c0 + chunk_cols <= n) ? chunk_cols : (n - c0);
+            /* Promote A[:, c0:c0+cc] to double col-major */
+            #pragma omp parallel for schedule(static)
+            for (size_t j = 0; j < cc; j++)
+                for (size_t i = 0; i < m; i++)
+                    A_chunk[i + j * m] = (double)A[i * n + (c0 + j)];
+            /* B[:, c0:c0+cc] = Q^T * A_chunk
+             * Q is col-major [m × l], so Q^T is [l × m].
+             * cblas_dgemm: C = alpha * op(A) * op(B) + beta * C */
+            cblas_dgemm(CblasColMajor, CblasTrans, CblasNoTrans,
+                        l, (int)cc, (int)m,
+                        1.0, Yd, (int)m,            /* Q^T: [l × m] */
+                        A_chunk, (int)m,             /* A_chunk: [m × cc] */
+                        0.0, B + c0 * (size_t)l, l); /* B: [l × cc] */
+        }
+        free(A_chunk);
+#endif
+    }
+
+    /* ── 5. SVD of small B [l × n] in double ── */
+    int svd_rank = l < (int)n ? l : (int)n;
+    double *S_svd   = (double *)malloc(svd_rank * sizeof(double));
+    double *Ub      = (double *)malloc((size_t)l * svd_rank * sizeof(double));
+    double *Vt_svd  = (double *)malloc((size_t)svd_rank * n * sizeof(double));
+    LAP_INT ldu  = l_lap;
+    LAP_INT ldvt = (LAP_INT)svd_rank;
+    char jobu = 'S', jobvt = 'S';
+
+    {
+        LAP_INT lw = -1; double wopt;
+        dgesvd_(&jobu, &jobvt, &l_lap, &n_lap,
+                B, &l_lap, S_svd, Ub, &ldu, Vt_svd, &ldvt,
+                &wopt, &lw, &info);
+        lw = (LAP_INT)wopt;
+        double *wrk = (double *)malloc(lw * sizeof(double));
+        dgesvd_(&jobu, &jobvt, &l_lap, &n_lap,
+                B, &l_lap, S_svd, Ub, &ldu, Vt_svd, &ldvt,
+                wrk, &lw, &info);
+        free(wrk);
+    }
+    free(B);
+
+    /* ── 6. U_final = Q * Ub  [m × use_rank] double ── */
+    int use_rank = max_rank < svd_rank ? max_rank : svd_rank;
+    double *U_final = (double *)malloc(m * (size_t)use_rank * sizeof(double));
+    cblas_dgemm(CblasColMajor, CblasNoTrans, CblasNoTrans,
+                (int)m, use_rank, l,
+                1.0, Yd, (int)m,
+                Ub, l,
+                0.0, U_final, (int)m);
+    free(Yd); free(Ub);
+
+    /* Apply energy threshold */
+    double captured = 0.0;
+    int rank = 0;
+    for (int r = 0; r < use_rank; r++) {
+        double sv = S_svd[r];
+        if (sv < 1e-6) break;
+        captured += sv * sv;
+        rank++;
+        if (total_energy > 0 && captured / total_energy >= energy_threshold)
+            break;
+    }
+
+    /* Copy to output (double col-major → float row-major) */
+    for (int r = 0; r < rank; r++) {
+        S_out[r] = (float)S_svd[r];
+        for (size_t i = 0; i < m; i++)
+            U_out[i * max_rank + r] = (float)U_final[i + (size_t)r * m];
+        for (size_t j = 0; j < n; j++)
+            Vt_out[r * n + j] = (float)Vt_svd[r + j * svd_rank];
+    }
+
+    free(U_final); free(S_svd); free(Vt_svd);
+    return rank;
+
+#else
+    /* Fallback: iterative power method — no BLAS/LAPACK available */
+    double *R  = (double *)malloc(m * n * sizeof(double));
+    double *dv = (double *)malloc(n * sizeof(double));
+    double *du = (double *)malloc(m * sizeof(double));
+
+    double total_energy = 0.0;
+    for (size_t i = 0; i < m * n; i++) {
+        R[i] = (double)A[i];
+        total_energy += R[i] * R[i];
+    }
+
+    /* Skip SVD for rank-0 tensors */
+    if (total_energy < 1e-20) {
+        free(R); free(dv); free(du);
+        return 0;
+    }
+
+    double captured = 0.0;
+    int rank = 0;
+
+    for (int r = 0; r < max_rank; r++) {
+        uint64_t seed = 0xDEADBEEF ^ (uint64_t)r;
+        for (size_t j = 0; j < n; j++) {
+            seed ^= seed << 13; seed ^= seed >> 7; seed ^= seed << 17;
+            dv[j] = (double)((int64_t)(seed & 0xFFFF) - 0x7FFF) / 32768.0;
+        }
+
+        double prev_norm_v = 0.0;
+        for (int iter = 0; iter < 30; iter++) {
+            for (size_t i = 0; i < m; i++) {
+                double s = 0.0;
+                for (size_t j = 0; j < n; j++)
+                    s += R[i * n + j] * dv[j];
+                du[i] = s;
+            }
+            double norm_u = 0.0;
+            for (size_t i = 0; i < m; i++)
+                norm_u += du[i] * du[i];
+            norm_u = sqrt(norm_u);
+            if (norm_u < 1e-12) break;
+            double inv_nu = 1.0 / norm_u;
+            for (size_t i = 0; i < m; i++) du[i] *= inv_nu;
+
+            for (size_t j = 0; j < n; j++) {
+                double s = 0.0;
+                for (size_t i = 0; i < m; i++)
+                    s += R[i * n + j] * du[i];
+                dv[j] = s;
+            }
+            double norm_v = 0.0;
+            for (size_t j = 0; j < n; j++)
+                norm_v += dv[j] * dv[j];
+            norm_v = sqrt(norm_v);
+            if (norm_v < 1e-12) break;
+            double inv_nv = 1.0 / norm_v;
+            for (size_t j = 0; j < n; j++) dv[j] *= inv_nv;
+
+            /* Adaptive convergence check */
+            if (iter >= 2 && fabs(norm_v - prev_norm_v) / (norm_v + 1e-20) < 1e-6)
+                break;
+            prev_norm_v = norm_v;
+        }
+
+        double sigma = 0.0;
+        for (size_t i = 0; i < m; i++) {
+            double rd = 0.0;
+            for (size_t j = 0; j < n; j++)
+                rd += R[i * n + j] * dv[j];
+            sigma += du[i] * rd;
+        }
+        if (sigma < 0) {
+            sigma = -sigma;
+            for (size_t i = 0; i < m; i++) du[i] = -du[i];
+        }
+
+        if (sigma < 1e-6) break;
+
+        for (size_t i = 0; i < m; i++) U_out[i * max_rank + r] = (float)du[i];
+        S_out[r] = (float)sigma;
+        for (size_t j = 0; j < n; j++) Vt_out[r * n + j] = (float)dv[j];
+
+        for (size_t i = 0; i < m; i++)
+            for (size_t j = 0; j < n; j++)
+                R[i * n + j] -= sigma * du[i] * dv[j];
+
+        captured += sigma * sigma;
+        rank++;
+
+        if (total_energy > 0 && captured / total_energy >= energy_threshold)
+            break;
+    }
+
+    free(du); free(dv); free(R);
+    return rank;
+#endif
+}
+
+/* ── fp16 roundtrip for compact metadata ── */
+static inline float snap_fp16(float x) {
+    if (x == 0.0f) return 0.0f;
+    union { float f; uint32_t u; } v = { .f = x };
+    v.u = (v.u + 0x00001000u) & 0xFFFFE000u;
+    return v.f;
+}
+
+/* ── Frobenius norm of error (a-b) ── */
+static double frob_norm_sq_f(const float *a, const float *b, size_t n) {
+    double s = 0.0;
+    for (size_t i = 0; i < n; i++) {
+        double d = (double)a[i] - (double)b[i];
+        s += d * d;
+    }
+    return s;
+}
+
+fpq_tensor_t *fpq_encode_tensor_v9(const float *weights, size_t rows, size_t cols,
+                                     const char *name, int coord_bits) {
+    size_t total = rows * cols;
+    size_t block_dim = FPQ_BLOCK_DIM;
+    size_t padded = 256;
+
+    if (total < block_dim * 2 || rows <= 1 || cols <= 1) {
+        fprintf(stderr, "  v9: tensor too small for multiscale, falling back to v8\n");
+        return fpq_encode_tensor_v8(weights, rows, cols, name, coord_bits);
+    }
+
+    /* ════════════════════════════════════════════════════════════════
+     * PHASE 0: Low-rank extraction via truncated SVD
+     *   Rank is adaptive: extract components while the marginal
+     *   distortion reduction exceeds the marginal rate cost.
+     *   Cost model: b_i bits per component, Δ_energy per component.
+     *   We keep component k if  ΔD(k)/D_total > λ · ΔR(k)/mn
+     *   where λ balances quality vs rate (lower = more aggressive).
+     * ════════════════════════════════════════════════════════════════ */
+
+    int max_rank = 32;
+    if ((int)rows < max_rank) max_rank = (int)rows;
+    if ((int)cols < max_rank) max_rank = (int)cols;
+    float energy_threshold = 0.95f;
+
+    float *U = (float *)calloc(rows * (size_t)max_rank, sizeof(float));
+    float *S = (float *)calloc((size_t)max_rank, sizeof(float));
+    float *Vt = (float *)calloc((size_t)max_rank * cols, sizeof(float));
+
+    int lr_rank = v9_truncated_svd(weights, rows, cols,
+                                    max_rank, energy_threshold, U, S, Vt);
+
+    /* Adaptive rank selection via marginal rate-distortion */
+    {
+        double total_en = 0.0;
+        for (size_t i = 0; i < total; i++)
+            total_en += (double)weights[i] * (double)weights[i];
+        if (total_en < 1e-30) total_en = 1e-30;
+
+        /* λ = marginal cost threshold: keep component k if
+           (σ_k²/‖W‖²) / (bits_k / (m*n)) > λ
+           i.e. fractional energy per fractional bpw > λ        */
+        double lambda = 0.5;
+        int adaptive_rank = 0;
+        for (int k = 0; k < lr_rank; k++) {
+            double frac_energy = ((double)S[k] * (double)S[k]) / total_en;
+            /* Cost: INT8 if σ ≥ 10% of σ_0, else INT4 */
+            int bits_per_el = (S[k] >= S[0] * 0.1f) ? 8 : 4;
+            double frac_bpw = (double)bits_per_el * (double)(rows + cols) /
+                              (double)(rows * cols);
+            double marginal = frac_energy / frac_bpw;
+            if (marginal < lambda) break;
+            adaptive_rank = k + 1;
+        }
+        if (adaptive_rank < lr_rank) {
+            fprintf(stderr, "    Adaptive rank: %d → %d (λ=%.2f)\n",
+                    lr_rank, adaptive_rank, lambda);
+            lr_rank = adaptive_rank;
+        }
+    }
+
+    /* Actual captured energy */
+    double total_energy = 0.0, captured_energy = 0.0;
+    for (size_t i = 0; i < total; i++)
+        total_energy += (double)weights[i] * (double)weights[i];
+    for (int r = 0; r < lr_rank; r++)
+        captured_energy += (double)S[r] * (double)S[r];
+    double pct = (total_energy > 0) ? 100.0 * captured_energy / total_energy : 0.0;
+    fprintf(stderr, "    LR: rank=%d captures %.1f%% energy\n", lr_rank, pct);
+
+    /* Selective LR: skip if spectrum too flat relative to storage cost */
+    {
+        double lr_bpw_int8 = 8.0 * (double)lr_rank * (double)(rows + cols) / (double)total;
+        double efficiency = (lr_bpw_int8 > 0) ? pct / lr_bpw_int8 : 0.0;
+        if (efficiency < 20.0) {
+            fprintf(stderr, "    LR skipped: %.1f%%/%.2f bpw = %.1f eff < 20 → v8 fallback\n",
+                    pct, lr_bpw_int8, efficiency);
+            free(U); free(S); free(Vt);
+            return fpq_encode_tensor_v8(weights, rows, cols, name, coord_bits);
+        }
+    }
+
+    /* Per-component bit allocation via rate-distortion Lagrangian.
+     *
+     * For each component k with singular value σ_k, the reconstruction
+     * error from b-bit quantization scales as  D_k ∝ σ_k² / (2^(2b)).
+     * We allocate bits to minimize total distortion subject to a budget:
+     *   min Σ D_k(b_k)  s.t.  Σ b_k(m+n) ≤ budget
+     *
+     * Practical: three tiers based on σ_k / σ_0 ratio.
+     *   tier 0 (σ ≥ 10% of σ_0): INT8  → 127 levels
+     *   tier 1 (σ ≥  1% of σ_0): INT6  →  31 levels
+     *   tier 2 (σ <  1% of σ_0): INT4  →   7 levels
+     */
+    int comp_bits[32];  /* bits assigned per component */
+    int k_int8 = 0, k_int6 = 0, k_int4 = 0;
+    float sigma_max = (lr_rank > 0) ? S[0] : 1.0f;
+    for (int r = 0; r < lr_rank; r++) {
+        float ratio = S[r] / sigma_max;
+        if (ratio >= 0.10f) {
+            comp_bits[r] = 8; k_int8++;
+        } else if (ratio >= 0.01f) {
+            comp_bits[r] = 6; k_int6++;
+        } else {
+            comp_bits[r] = 4; k_int4++;
+        }
+    }
+
+    float *US_premul = (float *)calloc(rows * (size_t)lr_rank, sizeof(float));
+    for (size_t i = 0; i < rows; i++)
+        for (int r = 0; r < lr_rank; r++)
+            US_premul[i * lr_rank + r] = U[i * max_rank + r] * S[r];
+
+    for (int r = 0; r < lr_rank; r++) {
+        int max_val = (1 << (comp_bits[r] - 1)) - 1;  /* 127, 31, or 7 */
+
+        /* Quantize US column r */
+        float us_absmax = 0.0f;
+        for (size_t i = 0; i < rows; i++) {
+            float v = fabsf(US_premul[i * lr_rank + r]);
+            if (v > us_absmax) us_absmax = v;
+        }
+        if (us_absmax > 1e-30f) {
+            float sc = us_absmax / (float)max_val;
+            for (size_t i = 0; i < rows; i++) {
+                size_t idx = i * lr_rank + r;
+                int q = (int)roundf(US_premul[idx] / sc);
+                if (q < -max_val) q = -max_val;
+                if (q > max_val) q = max_val;
+                US_premul[idx] = q * sc;
+            }
+        }
+        /* Quantize Vt row r */
+        float vt_absmax = 0.0f;
+        for (size_t j = 0; j < cols; j++) {
+            float v = fabsf(Vt[r * cols + j]);
+            if (v > vt_absmax) vt_absmax = v;
+        }
+        if (vt_absmax > 1e-30f) {
+            float sc = vt_absmax / (float)max_val;
+            for (size_t j = 0; j < cols; j++) {
+                size_t idx = r * cols + j;
+                int q = (int)roundf(Vt[idx] / sc);
+                if (q < -max_val) q = -max_val;
+                if (q > max_val) q = max_val;
+                Vt[idx] = q * sc;
+            }
+        }
+    }
+    fprintf(stderr, "    Factor alloc: %d×INT8 + %d×INT6 + %d×INT4\n",
+            k_int8, k_int6, k_int4);
+
+    float *W_lr = (float *)calloc(total, sizeof(float));
+    float *W_residual = (float *)malloc(total * sizeof(float));
+
+    for (size_t i = 0; i < rows; i++) {
+        for (size_t j = 0; j < cols; j++) {
+            double val = 0.0;
+            for (int r = 0; r < lr_rank; r++)
+                val += (double)US_premul[i * lr_rank + r] *
+                       (double)Vt[r * cols + j];
+            W_lr[i * cols + j] = (float)val;
+        }
+    }
+    for (size_t i = 0; i < total; i++)
+        W_residual[i] = weights[i] - W_lr[i];
+
+    fprintf(stderr, "    LR-only cos (quantized): %.6f\n",
+            fpq_cosine_sim(weights, W_lr, total));
+
+    /* ════════════════════════════════════════════════════════════════
+     * PHASE 1: v8 RLF on residual (FWHT → warp → E8 → 16D RVQ)
+     * ════════════════════════════════════════════════════════════════ */
+    size_t n_blocks = (total + block_dim - 1) / block_dim;
+
+    fpq_tensor_t *tensor = (fpq_tensor_t *)calloc(1, sizeof(fpq_tensor_t));
+    if (name) strncpy(tensor->name, name, sizeof(tensor->name) - 1);
+    tensor->original_rows = rows;
+    tensor->original_cols = cols;
+    tensor->n_blocks = n_blocks;
+    tensor->mode = FPQ_MODE_COORD;
+    tensor->coord_bits = (uint8_t)coord_bits;
+    tensor->sbb_group_id = -1;
+    tensor->ghost = NULL;
+    tensor->pid_alpha = -9.0f;  /* v9 multiscale mode marker */
+
+    tensor->haar_seed = 0x12345678ULL;
+    if (name) {
+        for (const char *p = name; *p; p++)
+            tensor->haar_seed = tensor->haar_seed * 31 + (uint64_t)*p;
+    }
+
+    tensor->coord_scales = (float *)calloc(n_blocks, sizeof(float));
+    tensor->coord_quants = NULL;
+    tensor->coord_residual_norms = (float *)calloc(n_blocks, sizeof(float));
+    tensor->qjl = (fpq_qjl_t **)calloc(n_blocks, sizeof(fpq_qjl_t *));
+    tensor->chaos_r_idx = NULL;
+
+    /* ── Phase 1a: Per-block FWHT + warp + E8 snap on residual ── */
+    float **e8_points = (float **)calloc(n_blocks, sizeof(float *));
+    float **fwht_warped = (float **)calloc(n_blocks, sizeof(float *));
+    float *warp_norms = (float *)calloc(n_blocks, sizeof(float));
+    float beta = V8_MU_BETA;
+    float lattice_scale = 8.0f * (float)coord_bits;
+
+#ifdef __APPLE__
+    dispatch_apply(n_blocks, dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^(size_t b) {
+#else
+    #pragma omp parallel for schedule(dynamic, 64)
+    for (size_t b = 0; b < n_blocks; b++) {
+#endif
+        size_t b_offset = b * block_dim;
+        size_t b_dim = (b_offset + block_dim <= total) ? block_dim : (total - b_offset);
+
+        float buf[256];
+        memset(buf, 0, sizeof(buf));
+        memcpy(buf, W_residual + b_offset, b_dim * sizeof(float));
+
+        fpq_random_signs(buf, padded, tensor->haar_seed ^ (uint64_t)b);
+        fpq_fwht(buf, padded);
+
+        float rms = 0.0f;
+        for (size_t i = 0; i < padded; i++) rms += buf[i] * buf[i];
+        rms = sqrtf(rms / (float)padded);
+        if (rms < 1e-10f) rms = 1e-10f;
+        tensor->coord_scales[b] = rms;
+        for (size_t i = 0; i < padded; i++) buf[i] /= rms;
+
+        fwht_warped[b] = (float *)malloc(padded * sizeof(float));
+        for (size_t i = 0; i < padded; i++)
+            fwht_warped[b][i] = v7_warp_forward(buf[i], beta);
+
+        float wnorm = 0.0f;
+        for (size_t i = 0; i < padded; i++)
+            wnorm += fwht_warped[b][i] * fwht_warped[b][i];
+        wnorm = sqrtf(wnorm / (float)padded);
+        if (wnorm < 1e-10f) wnorm = 1e-10f;
+        warp_norms[b] = wnorm;
+
+        float *scaled = (float *)malloc(padded * sizeof(float));
+        for (size_t i = 0; i < padded; i++)
+            scaled[i] = fwht_warped[b][i] / wnorm * lattice_scale;
+
+        e8_points[b] = (float *)calloc(padded, sizeof(float));
+        for (int g = 0; g < V8_E8_GROUPS; g++)
+            E8_SNAP_FAST(scaled + g * V8_E8_DIM,
+                         e8_points[b] + g * V8_E8_DIM);
+
+        free(scaled);
+#ifdef __APPLE__
+    });
+#else
+    }
+#endif
+
+    /* ── Phase 1b: Pair residuals for 16D RVQ ── */
+    size_t total_pairs = n_blocks * V8_E8_PAIRS;
+    float *all_pair_residuals = (float *)calloc(total_pairs * V8_TILE_DIM, sizeof(float));
+
+#ifdef __APPLE__
+    dispatch_apply(n_blocks, dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^(size_t b) {
+#else
+    #pragma omp parallel for schedule(static)
+    for (size_t b = 0; b < n_blocks; b++) {
+#endif
+        float wnorm_b = warp_norms[b];
+        for (int p = 0; p < V8_E8_PAIRS; p++) {
+            size_t pair_base = (size_t)p * V8_TILE_DIM;
+            size_t ridx = (b * V8_E8_PAIRS + (size_t)p) * V8_TILE_DIM;
+            for (int d = 0; d < V8_TILE_DIM; d++) {
+                float scaled_orig = fwht_warped[b][pair_base + d] /
+                                    wnorm_b * lattice_scale;
+                all_pair_residuals[ridx + d] =
+                    scaled_orig - e8_points[b][pair_base + d];
+            }
+        }
+#ifdef __APPLE__
+    });
+#else
+    }
+#endif
+
+    int effective_k = V8_RVQ_TILES;
+    if (total_pairs < (size_t)effective_k * 4)
+        effective_k = (int)(total_pairs / 4);
+    if (effective_k < 16) effective_k = 16;
+    if (effective_k > V8_RVQ_TILES) effective_k = V8_RVQ_TILES;
+
+    float *tiles = (float *)calloc((size_t)effective_k * V8_TILE_DIM, sizeof(float));
+    v8_learn_tiles(all_pair_residuals, total_pairs, tiles, effective_k);
+
+    /* ── Phase 1c: Tile assignment + QJL + full-block reconstruction ── */
+    uint8_t **tile_indices = (uint8_t **)calloc(n_blocks, sizeof(uint8_t *));
+    for (size_t b = 0; b < n_blocks; b++)
+        tile_indices[b] = (uint8_t *)malloc(V8_E8_PAIRS * sizeof(uint8_t));
+
+    float *decoded_flat = (float *)calloc(total, sizeof(float));
+
+#ifdef __APPLE__
+    const float *_tiles_v9 = tiles;
+    const float *_wr_v9 = W_residual;
+    int _ek_v9 = effective_k;
+    dispatch_apply(n_blocks, dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^(size_t b) {
+#else
+    #pragma omp parallel for schedule(dynamic, 64)
+    for (size_t b = 0; b < n_blocks; b++) {
+#endif
+        size_t b_off = b * block_dim;
+        size_t b_dim = (b_off + block_dim <= total) ? block_dim : (total - b_off);
+        float b_rms = tensor->coord_scales[b];
+        float b_wnorm = warp_norms[b];
+
+        float corrected[256];
+        for (int p = 0; p < V8_E8_PAIRS; p++) {
+            size_t ridx = (b * V8_E8_PAIRS + (size_t)p) * V8_TILE_DIM;
+#ifdef __APPLE__
+            int ti = v8_find_nearest_tile(all_pair_residuals + ridx, _tiles_v9, _ek_v9);
+#else
+            int ti = v8_find_nearest_tile(all_pair_residuals + ridx, tiles, effective_k);
+#endif
+            tile_indices[b][p] = (uint8_t)ti;
+
+            size_t pair_base = (size_t)p * V8_TILE_DIM;
+            for (int d = 0; d < V8_TILE_DIM; d++)
+                corrected[pair_base + d] =
+#ifdef __APPLE__
+                    e8_points[b][pair_base + d] + _tiles_v9[ti * V8_TILE_DIM + d];
+#else
+                    e8_points[b][pair_base + d] + tiles[ti * V8_TILE_DIM + d];
+#endif
+        }
+
+        float fwht_recon[256];
+        for (size_t i = 0; i < padded; i++) {
+            float lat_val = corrected[i] / lattice_scale * b_wnorm;
+            float unwarp = v7_warp_inverse(lat_val, beta);
+            fwht_recon[i] = unwarp * b_rms;
+        }
+
+        /* QJL on FWHT-domain residual */
+        float orig_fwht[256];
+        memset(orig_fwht, 0, sizeof(orig_fwht));
+#ifdef __APPLE__
+        memcpy(orig_fwht, _wr_v9 + b_off, b_dim * sizeof(float));
+#else
+        memcpy(orig_fwht, W_residual + b_off, b_dim * sizeof(float));
+#endif
+        fpq_random_signs(orig_fwht, padded, tensor->haar_seed ^ (uint64_t)b);
+        fpq_fwht(orig_fwht, padded);
+
+        float fnorm_sq = 0.0f;
+        float final_residual[256];
+        for (size_t i = 0; i < padded; i++) {
+            final_residual[i] = orig_fwht[i] - fwht_recon[i];
+            fnorm_sq += final_residual[i] * final_residual[i];
+        }
+        tensor->coord_residual_norms[b] = sqrtf(fnorm_sq);
+        tensor->qjl[b] = fpq_qjl_encode(final_residual, padded,
+                                           tensor->haar_seed ^ (uint64_t)b ^ 0xC00DULL);
+
+        /* Reconstruct block for ghost error computation */
+        float recon_final[256];
+        memcpy(recon_final, fwht_recon, padded * sizeof(float));
+        if (tensor->coord_residual_norms[b] > 1e-10f) {
+            float resid_approx[256];
+            fpq_qjl_reconstruct(tensor->qjl[b],
+                                 tensor->coord_residual_norms[b], resid_approx);
+            for (size_t i = 0; i < padded; i++)
+                recon_final[i] += resid_approx[i];
+        }
+
+        fpq_fwht_inverse(recon_final, padded);
+        fpq_random_signs_inverse(recon_final, padded,
+                                  tensor->haar_seed ^ (uint64_t)b);
+        memcpy(decoded_flat + b_off, recon_final, b_dim * sizeof(float));
+#ifdef __APPLE__
+    });
+#else
+    }
+#endif
+
+    /* ════════════════════════════════════════════════════════════════
+     * PHASE 3: Ghost head on full reconstruction error
+     *   Speed optimization: skip ghost if pre-ghost cos > 0.99995
+     *   (ghost head can't meaningfully improve near-perfect reconstruction)
+     * ════════════════════════════════════════════════════════════════ */
+    float *full_decode = (float *)malloc(total * sizeof(float));
+    for (size_t i = 0; i < total; i++)
+        full_decode[i] = W_lr[i] + decoded_flat[i];
+
+    if (rows > 1 && cols > 1) {
+        float cos_pre = fpq_cosine_sim(weights, full_decode, total);
+        if (cos_pre < 0.99995f) {
+            /* Ghost correction worth computing */
+            float *err = (float *)malloc(total * sizeof(float));
+            for (size_t i = 0; i < total; i++)
+                err[i] = weights[i] - full_decode[i];
+            tensor->ghost = fpq_ghost_compute(err, rows, cols);
+            free(err);
+
+            fpq_ghost_apply(tensor->ghost, full_decode);
+            float cos_post = fpq_cosine_sim(weights, full_decode, total);
+            fprintf(stderr, "    Ghost: σ=%.6f, captures %.1f%% of error energy (%d iters)\n",
+                    tensor->ghost->sigma,
+                    100.0 * tensor->ghost->sigma * tensor->ghost->sigma /
+                    (total > 0 ? (double)frob_norm_sq_f(weights, full_decode, total) + 1e-30 : 1.0),
+                    20);
+            fprintf(stderr, "    v9 cos: %.6f → +ghost: %.6f\n", cos_pre, cos_post);
+        } else {
+            /* Skip ghost — already excellent reconstruction */
+            fprintf(stderr, "    v9 cos: %.6f (ghost skipped — above threshold)\n", cos_pre);
+        }
+    }
+
+    /* ════════════════════════════════════════════════════════════════
+     * PACK: LR factors + v8 data into sbb_scale_delta
+     * ════════════════════════════════════════════════════════════════ */
+    {
+        size_t lr_us_size = rows * (size_t)lr_rank;
+        size_t lr_vt_size = (size_t)lr_rank * cols;
+        size_t lr_header = 2;
+        size_t lr_total = lr_header + lr_us_size + lr_vt_size;
+
+        size_t e8_flat_size = n_blocks * padded;
+        size_t tile_cb_size = (size_t)effective_k * V8_TILE_DIM;
+        size_t tile_idx_size = n_blocks * V8_E8_PAIRS;
+        size_t v8_size = n_blocks + e8_flat_size + tile_cb_size +
+                         tile_idx_size + 1;
+
+        size_t sbb_total = lr_total + v8_size;
+        tensor->sbb_scale_delta = (float *)calloc(sbb_total, sizeof(float));
+
+        tensor->sbb_scale_delta[0] = (float)lr_rank;
+        tensor->sbb_scale_delta[1] = (float)lr_rank;
+
+        /* U*S (already quantized via σ-adaptive INT8/INT4) */
+        size_t us_off = lr_header;
+        memcpy(tensor->sbb_scale_delta + us_off, US_premul,
+               lr_us_size * sizeof(float));
+
+        /* Vt (already quantized in-place) */
+        size_t vt_off = us_off + lr_us_size;
+        for (int r = 0; r < lr_rank; r++)
+            memcpy(tensor->sbb_scale_delta + vt_off + r * cols,
+                   Vt + r * cols, cols * sizeof(float));
+
+        /* v8 data block */
+        size_t v8_base = lr_total;
+
+        memcpy(tensor->sbb_scale_delta + v8_base, warp_norms,
+               n_blocks * sizeof(float));
+
+        size_t e8_off = v8_base + n_blocks;
+        for (size_t b = 0; b < n_blocks; b++)
+            memcpy(tensor->sbb_scale_delta + e8_off + b * padded,
+                   e8_points[b], padded * sizeof(float));
+
+        size_t tile_off = e8_off + e8_flat_size;
+        memcpy(tensor->sbb_scale_delta + tile_off, tiles,
+               tile_cb_size * sizeof(float));
+
+        size_t idx_off = tile_off + tile_cb_size;
+        for (size_t b = 0; b < n_blocks; b++)
+            for (int p = 0; p < V8_E8_PAIRS; p++)
+                tensor->sbb_scale_delta[idx_off + b * V8_E8_PAIRS + p] =
+                    (float)tile_indices[b][p];
+
+        tensor->sbb_scale_delta[idx_off + tile_idx_size] = (float)effective_k;
+    }
+
+    /* ── Compact metadata: fp16 for multiplicative channels, INT8 for norms ──
+     *    coord_scales and warp_norms multiply into reconstruction → need
+     *    ~11 bits (fp16). residual_norms only scale QJL → INT8 is fine.  */
+    {
+        size_t v8b = 2 + rows * (size_t)lr_rank + (size_t)lr_rank * cols;
+        for (size_t b = 0; b < n_blocks; b++) {
+            tensor->sbb_scale_delta[v8b + b] = snap_fp16(tensor->sbb_scale_delta[v8b + b]);
+            tensor->coord_scales[b] = snap_fp16(tensor->coord_scales[b]);
+        }
+        /* Residual norms — INT8 absmax (feeds QJL only, less sensitive) */
+        float rn_max = 0.0f;
+        for (size_t b = 0; b < n_blocks; b++) {
+            float v = fabsf(tensor->coord_residual_norms[b]);
+            if (v > rn_max) rn_max = v;
+        }
+        if (rn_max > 1e-30f) {
+            float sc = rn_max / 127.0f;
+            for (size_t b = 0; b < n_blocks; b++) {
+                int q = (int)roundf(tensor->coord_residual_norms[b] / sc);
+                if (q < -127) q = -127; if (q > 127) q = 127;
+                tensor->coord_residual_norms[b] = q * sc;
+            }
+        }
+    }
+
+    /* Bit accounting (reflecting actual compressed storage per component) */
+    size_t lr_bits = 0;
+    for (int r = 0; r < lr_rank; r++)
+        lr_bits += (size_t)comp_bits[r] * (rows + cols) + 64; /* +64 for scale */
+    size_t ghost_bits = tensor->ghost ? (rows + cols) * 8 : 0;
+    size_t e8_bits = n_blocks * padded * (size_t)coord_bits;
+    size_t tile_idx_bits = n_blocks * V8_E8_PAIRS * 8;
+    size_t tile_cb_bits = (size_t)effective_k * V8_TILE_DIM * 32;
+    size_t scale_bits = n_blocks * 40 + 32;  /* fp16×2 + INT8×1 + 1 absmax */
+    size_t qjl_bits = n_blocks * (FPQ_QJL_PROJECTIONS + 32);
+    tensor->total_bits = lr_bits + e8_bits + tile_idx_bits + tile_cb_bits +
+                          scale_bits + qjl_bits + ghost_bits;
+    tensor->total_seed_nodes = 0;
+    tensor->avg_distortion = 0.0f;
+
+    float bpw = (float)tensor->total_bits / (float)total;
+    fprintf(stderr, "  v9@%d (LR(%d: %d×8+%d×6+%d×4)+E8+RVQ+QJL+Ghost) bpw: %.2f\n",
+            coord_bits, lr_rank, k_int8, k_int6, k_int4, bpw);
+
+    /* Cleanup */
+    for (size_t b = 0; b < n_blocks; b++) {
+        free(e8_points[b]);
+        free(fwht_warped[b]);
+        free(tile_indices[b]);
+    }
+    free(e8_points); free(fwht_warped); free(tile_indices);
+    free(all_pair_residuals); free(warp_norms);
+    free(decoded_flat); free(full_decode); free(tiles);
+    free(U); free(S); free(Vt);
+    free(US_premul);
+    free(W_lr); free(W_residual);
+
+    return tensor;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════
+ * v9 DECODE — Multiscale Reconstruction
+ * ═══════════════════════════════════════════════════════════════════ */
+
+void fpq_decode_tensor_v9(const fpq_tensor_t *tensor, float *output) {
+    size_t rows = tensor->original_rows;
+    size_t cols = tensor->original_cols;
+    size_t total = rows * cols;
+    size_t block_dim = FPQ_BLOCK_DIM;
+    size_t n_blocks = tensor->n_blocks;
+    size_t padded = 256;
+    float beta = V8_MU_BETA;
+    int coord_bits = (int)tensor->coord_bits;
+    float lattice_scale = 8.0f * (float)coord_bits;
+
+    /* ── Unpack LR factors ── */
+    int lr_rank = (int)tensor->sbb_scale_delta[0];
+    size_t us_off = 2;
+    size_t lr_us_size = rows * (size_t)lr_rank;
+    size_t vt_off = us_off + lr_us_size;
+    size_t lr_vt_size = (size_t)lr_rank * cols;
+    size_t v8_base = 2 + lr_us_size + lr_vt_size;
+
+    /* Reconstruct low-rank into output */
+    for (size_t i = 0; i < rows; i++) {
+        for (size_t j = 0; j < cols; j++) {
+            double val = 0.0;
+            for (int r = 0; r < lr_rank; r++)
+                val += (double)tensor->sbb_scale_delta[us_off + i * lr_rank + r] *
+                       (double)tensor->sbb_scale_delta[vt_off + r * cols + j];
+            output[i * cols + j] = (float)val;
+        }
+    }
+
+    /* ── Unpack v8 data offsets ── */
+    size_t e8_off = v8_base + n_blocks;
+    size_t e8_flat_size = n_blocks * padded;
+    size_t tile_cb_off = e8_off + e8_flat_size;
+
+    /* Recover effective_k */
+    int effective_k = V8_RVQ_TILES;
+    {
+        size_t test_cb = (size_t)effective_k * V8_TILE_DIM;
+        size_t test_ek = tile_cb_off + test_cb + n_blocks * V8_E8_PAIRS;
+        float stored = tensor->sbb_scale_delta[test_ek];
+        if (stored >= 16.0f && stored <= 256.0f)
+            effective_k = (int)stored;
+    }
+    if (effective_k == V8_RVQ_TILES) {
+        for (int try_k = 16; try_k <= 256; try_k *= 2) {
+            size_t off = tile_cb_off + (size_t)try_k * V8_TILE_DIM +
+                         n_blocks * V8_E8_PAIRS;
+            float stored = tensor->sbb_scale_delta[off];
+            if ((int)stored == try_k) { effective_k = try_k; break; }
+        }
+    }
+
+    size_t tile_cb_size = (size_t)effective_k * V8_TILE_DIM;
+    size_t tile_idx_off = tile_cb_off + tile_cb_size;
+    const float *tile_data = tensor->sbb_scale_delta + tile_cb_off;
+
+    /* ── Decode v8 residual and ADD to low-rank base ── */
+    for (size_t b = 0; b < n_blocks; b++) {
+        size_t offset = b * block_dim;
+        size_t this_dim = (offset + block_dim <= total) ? block_dim : (total - offset);
+        float rms = tensor->coord_scales[b];
+        float wnorm = tensor->sbb_scale_delta[v8_base + b];
+        const float *e8_pts = tensor->sbb_scale_delta + e8_off + b * padded;
+
+        float corrected[256];
+        for (int p = 0; p < V8_E8_PAIRS; p++) {
+            int ti = (int)tensor->sbb_scale_delta[tile_idx_off +
+                                                    b * V8_E8_PAIRS + p];
+            if (ti < 0) ti = 0;
+            if (ti >= effective_k) ti = effective_k - 1;
+            size_t pair_base = (size_t)p * V8_TILE_DIM;
+            for (int d = 0; d < V8_TILE_DIM; d++)
+                corrected[pair_base + d] =
+                    e8_pts[pair_base + d] +
+                    tile_data[ti * V8_TILE_DIM + d];
+        }
+
+        float fwht_recon[256];
+        for (size_t i = 0; i < padded; i++) {
+            float lat_val = corrected[i] / lattice_scale * wnorm;
+            float unwarp = v7_warp_inverse(lat_val, beta);
+            fwht_recon[i] = unwarp * rms;
+        }
+
+        if (tensor->qjl && tensor->qjl[b] &&
+            tensor->coord_residual_norms &&
+            tensor->coord_residual_norms[b] > 1e-10f) {
+            float *resid_approx = (float *)malloc(padded * sizeof(float));
+            fpq_qjl_reconstruct(tensor->qjl[b],
+                                 tensor->coord_residual_norms[b], resid_approx);
+            for (size_t i = 0; i < padded; i++)
+                fwht_recon[i] += resid_approx[i];
+            free(resid_approx);
+        }
+
+        fpq_fwht_inverse(fwht_recon, padded);
+        fpq_random_signs_inverse(fwht_recon, padded,
+                                  tensor->haar_seed ^ (uint64_t)b);
+
+        for (size_t i = 0; i < this_dim; i++)
+            output[offset + i] += fwht_recon[i];
+    }
+
+    fpq_ghost_apply(tensor->ghost, output);
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════
+ * v9 DEEP ANALYSIS — Rank sweep, factor quant sensitivity, entropy
+ * ═══════════════════════════════════════════════════════════════════ */
+
+/* Entropy of a discrete symbol stream stored as floats (e.g. tile IDs) */
+static float v9_entropy_u8_from_float(const float *data, size_t n, int alphabet) {
+    int *counts = (int *)calloc(alphabet, sizeof(int));
+    for (size_t i = 0; i < n; i++) {
+        int v = (int)data[i];
+        if (v >= 0 && v < alphabet) counts[v]++;
+    }
+    double H = 0.0;
+    for (int j = 0; j < alphabet; j++) {
+        if (counts[j] > 0) {
+            double p = (double)counts[j] / (double)n;
+            H -= p * log2(p);
+        }
+    }
+    free(counts);
+    return (float)H;
+}
+
+/* Entropy of a float stream bucketed into n_buckets uniform bins */
+static float v9_entropy_float_buckets(const float *data, size_t n, int n_buckets) {
+    if (n < 2) return 0.0f;
+    float lo = data[0], hi = data[0];
+    for (size_t i = 1; i < n; i++) {
+        if (data[i] < lo) lo = data[i];
+        if (data[i] > hi) hi = data[i];
+    }
+    float range = hi - lo;
+    if (range < 1e-10f) return 0.0f;
+
+    int *counts = (int *)calloc(n_buckets, sizeof(int));
+    for (size_t i = 0; i < n; i++) {
+        int b = (int)((data[i] - lo) / range * (float)(n_buckets - 1));
+        if (b >= n_buckets) b = n_buckets - 1;
+        if (b < 0) b = 0;
+        counts[b]++;
+    }
+    double H = 0.0;
+    for (int j = 0; j < n_buckets; j++) {
+        if (counts[j] > 0) {
+            double p = (double)counts[j] / (double)n;
+            H -= p * log2(p);
+        }
+    }
+    free(counts);
+    return (float)H;
+}
+
+void fpq_v9_analyze(const float *weights, size_t rows, size_t cols,
+                    const char *name, int coord_bits) {
+    size_t total = rows * cols;
+
+    fprintf(stderr,
+        "\n══════════════════════════════════════════════════════════\n"
+        "  v9 DEEP ANALYSIS: %s (%zu x %zu = %zu params)\n"
+        "══════════════════════════════════════════════════════════\n\n",
+        name, rows, cols, total);
+
+    /* ── A. SVD Spectrum ── */
+    int max_rank = 48;
+    if ((int)rows < max_rank) max_rank = (int)rows;
+    if ((int)cols < max_rank) max_rank = (int)cols;
+
+    float *U = (float *)calloc(rows * (size_t)max_rank, sizeof(float));
+    float *S_vals = (float *)calloc((size_t)max_rank, sizeof(float));
+    float *Vt = (float *)calloc((size_t)max_rank * cols, sizeof(float));
+
+    fprintf(stderr, "  Computing SVD (up to rank %d)...\n", max_rank);
+    int actual_rank = v9_truncated_svd(weights, rows, cols, max_rank, 0.999f,
+                                        U, S_vals, Vt);
+
+    double total_energy = 0.0;
+    for (size_t i = 0; i < total; i++)
+        total_energy += (double)weights[i] * (double)weights[i];
+
+    fprintf(stderr, "\n─── A. Singular Value Spectrum (%d extracted) ───\n\n", actual_rank);
+    fprintf(stderr, "    i |     sigma_i |  energy%%   |  cumul%%\n");
+    fprintf(stderr, "  ----+-------------+------------+----------\n");
+
+    double cumul = 0.0;
+    for (int r = 0; r < actual_rank; r++) {
+        double e = (double)S_vals[r] * (double)S_vals[r];
+        cumul += e;
+        if (r < 8 || (r + 1) % 8 == 0 || r == actual_rank - 1)
+            fprintf(stderr, "  %3d | %11.2f | %8.4f%%  | %8.4f%%\n",
+                    r + 1, S_vals[r], 100.0 * e / total_energy,
+                    100.0 * cumul / total_energy);
+    }
+    fprintf(stderr, "\n");
+
+    /* ── B. Residual Energy & LR BPW ── */
+    fprintf(stderr, "─── B. Residual Energy & Low-Rank BPW ───\n\n");
+    fprintf(stderr, "    k | captured%% | residual%% | bpw(fp32) | bpw(int8) | bpw(int4)\n");
+    fprintf(stderr, "  ----+-----------+-----------+-----------+-----------+----------\n");
+
+    double fr = (double)(rows + cols) / (double)total;
+    int rank_pts[] = {0, 1, 2, 4, 8, 16, 32, 48};
+    for (int p = 0; p < 8; p++) {
+        int k = rank_pts[p];
+        if (k > actual_rank) break;
+        double cap = 0.0;
+        for (int r = 0; r < k; r++)
+            cap += (double)S_vals[r] * (double)S_vals[r];
+        fprintf(stderr, "  %3d | %8.3f%% | %8.3f%% | %8.4f   | %8.4f   | %8.4f\n",
+                k, 100.0 * cap / total_energy,
+                100.0 * (1.0 - cap / total_energy),
+                32.0 * k * fr, 8.0 * k * fr, 4.0 * k * fr);
+    }
+    fprintf(stderr, "\n");
+
+    /* ── C. Actual Roundtrip at Selected Ranks ── */
+    fprintf(stderr, "─── C. Actual Roundtrip (v8 baseline vs LR+v8 at rank k) ───\n\n");
+    fprintf(stderr, "    k | cos(fp32)  | cos(int8)  | cos(int4)  | bpw(fp32) | bpw(int8) | bpw(int4)\n");
+    fprintf(stderr, "  ----+------------+------------+------------+-----------+-----------+----------\n");
+
+    /* v8 baseline */
+    fpq_tensor_t *t_base = fpq_encode_tensor_v8(weights, rows, cols, name, coord_bits);
+    float *dec_base = (float *)malloc(total * sizeof(float));
+    fpq_decode_tensor_v8(t_base, dec_base);
+    float cos_base = fpq_cosine_sim(weights, dec_base, total);
+    float bpw_base = (float)t_base->total_bits / (float)total;
+    free(dec_base);
+    fpq_tensor_free(t_base);
+
+    fprintf(stderr, "   v8 | %.6f   |     --     |     --     | %8.4f   |     --    |    --\n",
+            cos_base, bpw_base);
+
+    int test_ranks[] = {4, 8, 16, 32};
+    int n_test = 4;
+
+    /* Save last v8-on-residual tensor for entropy analysis */
+    fpq_tensor_t *entropy_tensor = NULL;
+
+    for (int t = 0; t < n_test; t++) {
+        int k = test_ranks[t];
+        if (k > actual_rank) continue;
+
+        /* Reconstruct LR at rank k */
+        float *W_lr = (float *)calloc(total, sizeof(float));
+        for (size_t i = 0; i < rows; i++)
+            for (size_t j = 0; j < cols; j++) {
+                double val = 0.0;
+                for (int r = 0; r < k; r++)
+                    val += (double)U[i * max_rank + r] * (double)S_vals[r] *
+                           (double)Vt[r * cols + j];
+                W_lr[i * cols + j] = (float)val;
+            }
+
+        /* Residual = W - LR */
+        float *W_res = (float *)malloc(total * sizeof(float));
+        for (size_t idx = 0; idx < total; idx++)
+            W_res[idx] = weights[idx] - W_lr[idx];
+
+        /* v8 encode the residual */
+        fpq_tensor_t *t_res = fpq_encode_tensor_v8(W_res, rows, cols, name, coord_bits);
+        float *dec_res = (float *)calloc(total, sizeof(float));
+        fpq_decode_tensor_v8(t_res, dec_res);
+
+        double v8_bpw = (double)t_res->total_bits / (double)total;
+
+        /* ── fp32 factors: LR + decoded residual ── */
+        float cos_fp32;
+        {
+            float *full = (float *)malloc(total * sizeof(float));
+            for (size_t idx = 0; idx < total; idx++)
+                full[idx] = W_lr[idx] + dec_res[idx];
+            cos_fp32 = fpq_cosine_sim(weights, full, total);
+            free(full);
+        }
+
+        /* ── INT8 factors: precompute quantized US and Vt, then reconstruct ── */
+        float cos_i8;
+        {
+            /* Precompute per-component absmax for US and Vt */
+            float *US_q = (float *)malloc(rows * (size_t)k * sizeof(float));
+            float *Vt_q = (float *)malloc((size_t)k * cols * sizeof(float));
+
+            for (int r = 0; r < k; r++) {
+                /* US column r: absmax + quantize */
+                float am = 0.0f;
+                for (size_t i = 0; i < rows; i++) {
+                    float v = fabsf(U[i * max_rank + r] * S_vals[r]);
+                    if (v > am) am = v;
+                }
+                float sc = am / 127.0f;
+                if (sc < 1e-15f) sc = 1e-15f;
+                for (size_t i = 0; i < rows; i++) {
+                    float v = U[i * max_rank + r] * S_vals[r];
+                    int q = (int)roundf(v / sc);
+                    if (q > 127) q = 127;
+                    if (q < -127) q = -127;
+                    US_q[i * k + r] = (float)q * sc;
+                }
+                /* Vt row r: absmax + quantize */
+                am = 0.0f;
+                for (size_t j = 0; j < cols; j++) {
+                    float v = fabsf(Vt[r * cols + j]);
+                    if (v > am) am = v;
+                }
+                sc = am / 127.0f;
+                if (sc < 1e-15f) sc = 1e-15f;
+                for (size_t j = 0; j < cols; j++) {
+                    int q = (int)roundf(Vt[r * cols + j] / sc);
+                    if (q > 127) q = 127;
+                    if (q < -127) q = -127;
+                    Vt_q[r * cols + j] = (float)q * sc;
+                }
+            }
+
+            /* Reconstruct: quantized_LR + decoded_residual */
+            float *full = (float *)calloc(total, sizeof(float));
+            for (size_t i = 0; i < rows; i++)
+                for (size_t j = 0; j < cols; j++) {
+                    double val = 0.0;
+                    for (int r = 0; r < k; r++)
+                        val += (double)US_q[i * k + r] * (double)Vt_q[r * cols + j];
+                    full[i * cols + j] = (float)val + dec_res[i * cols + j];
+                }
+            cos_i8 = fpq_cosine_sim(weights, full, total);
+            free(full);
+            free(US_q);
+            free(Vt_q);
+        }
+
+        /* ── INT4 factors: same pattern with 4-bit range ── */
+        float cos_i4;
+        {
+            float *US_q = (float *)malloc(rows * (size_t)k * sizeof(float));
+            float *Vt_q = (float *)malloc((size_t)k * cols * sizeof(float));
+
+            for (int r = 0; r < k; r++) {
+                float am = 0.0f;
+                for (size_t i = 0; i < rows; i++) {
+                    float v = fabsf(U[i * max_rank + r] * S_vals[r]);
+                    if (v > am) am = v;
+                }
+                float sc = am / 7.0f;
+                if (sc < 1e-15f) sc = 1e-15f;
+                for (size_t i = 0; i < rows; i++) {
+                    float v = U[i * max_rank + r] * S_vals[r];
+                    int q = (int)roundf(v / sc);
+                    if (q > 7) q = 7;
+                    if (q < -7) q = -7;
+                    US_q[i * k + r] = (float)q * sc;
+                }
+                am = 0.0f;
+                for (size_t j = 0; j < cols; j++) {
+                    float v = fabsf(Vt[r * cols + j]);
+                    if (v > am) am = v;
+                }
+                sc = am / 7.0f;
+                if (sc < 1e-15f) sc = 1e-15f;
+                for (size_t j = 0; j < cols; j++) {
+                    int q = (int)roundf(Vt[r * cols + j] / sc);
+                    if (q > 7) q = 7;
+                    if (q < -7) q = -7;
+                    Vt_q[r * cols + j] = (float)q * sc;
+                }
+            }
+
+            float *full = (float *)calloc(total, sizeof(float));
+            for (size_t i = 0; i < rows; i++)
+                for (size_t j = 0; j < cols; j++) {
+                    double val = 0.0;
+                    for (int r = 0; r < k; r++)
+                        val += (double)US_q[i * k + r] * (double)Vt_q[r * cols + j];
+                    full[i * cols + j] = (float)val + dec_res[i * cols + j];
+                }
+            cos_i4 = fpq_cosine_sim(weights, full, total);
+            free(full);
+            free(US_q);
+            free(Vt_q);
+        }
+
+        fprintf(stderr, "  %3d | %.6f   | %.6f   | %.6f   | %8.4f   | %8.4f   | %8.4f\n",
+                k, cos_fp32, cos_i8, cos_i4,
+                32.0 * k * fr + v8_bpw,
+                8.0 * k * fr + v8_bpw,
+                4.0 * k * fr + v8_bpw);
+
+        /* Keep last tensor for entropy analysis */
+        if (entropy_tensor) fpq_tensor_free(entropy_tensor);
+        entropy_tensor = t_res;  /* don't free t_res */
+
+        free(W_lr);
+        free(W_res);
+        free(dec_res);
+    }
+    fprintf(stderr, "\n");
+
+    /* ── D. Symbol Stream Entropy Analysis ── */
+    fprintf(stderr, "─── D. Symbol Stream Entropy Analysis ───\n\n");
+
+    if (entropy_tensor && entropy_tensor->sbb_scale_delta) {
+        size_t n_blk = entropy_tensor->n_blocks;
+        size_t padded = 256;
+
+        /* v8 sbb_scale_delta layout:
+         * [0..n_blk-1]:              warp_norms
+         * [n_blk..n_blk+n_blk*256]:  E8 points
+         * [+ek*16]:                  tile codebook
+         * [+n_blk*16]:              tile indices
+         * [last]:                   effective_k */
+        size_t e8_off = n_blk;
+        size_t e8_flat = n_blk * padded;
+        size_t tile_cb_off = e8_off + e8_flat;
+
+        /* Recover effective_k */
+        int ek = V8_RVQ_TILES;
+        {
+            size_t test_off = tile_cb_off + (size_t)ek * V8_TILE_DIM +
+                              n_blk * V8_E8_PAIRS;
+            float stored = entropy_tensor->sbb_scale_delta[test_off];
+            if (stored >= 16.0f && stored <= 256.0f) ek = (int)stored;
+        }
+
+        size_t tile_idx_off = tile_cb_off + (size_t)ek * V8_TILE_DIM;
+        size_t n_tile_sym = n_blk * V8_E8_PAIRS;
+
+        /* Tile ID entropy */
+        float H_tiles = v9_entropy_u8_from_float(
+            entropy_tensor->sbb_scale_delta + tile_idx_off, n_tile_sym, ek);
+        float raw_tile_bits = log2f((float)ek);
+
+        /* Warp norms entropy (bucketed to 256 levels ~ 8-bit) */
+        float H_warp = v9_entropy_float_buckets(
+            entropy_tensor->sbb_scale_delta, n_blk, 256);
+
+        /* Block scale entropy */
+        float H_scales = v9_entropy_float_buckets(
+            entropy_tensor->coord_scales, n_blk, 256);
+
+        /* Residual norms entropy */
+        float H_rnorms = v9_entropy_float_buckets(
+            entropy_tensor->coord_residual_norms, n_blk, 256);
+
+        fprintf(stderr, "  Stream           | symbols |  raw bits |  entropy  | compress | bpw_saved\n");
+        fprintf(stderr, "  -----------------+---------+-----------+-----------+----------+----------\n");
+
+        double tile_save = ((double)raw_tile_bits - (double)H_tiles) * (double)n_tile_sym / (double)total;
+        double warp_save = (32.0 - (double)H_warp) * (double)n_blk / (double)total;
+        double scale_save = (32.0 - (double)H_scales) * (double)n_blk / (double)total;
+        double rnorm_save = (32.0 - (double)H_rnorms) * (double)n_blk / (double)total;
+
+        fprintf(stderr, "  RVQ tile IDs     | %7zu | %8.1f   | %8.2f   | %5.2fx   | %8.4f\n",
+                n_tile_sym, raw_tile_bits, H_tiles,
+                H_tiles > 0.01f ? raw_tile_bits / H_tiles : 0.0f, tile_save);
+        fprintf(stderr, "  Warp norms       | %7zu |    32.0   | %8.2f   | %5.2fx   | %8.4f\n",
+                n_blk, H_warp, H_warp > 0.01f ? 32.0f / H_warp : 0.0f, warp_save);
+        fprintf(stderr, "  Block scales     | %7zu |    32.0   | %8.2f   | %5.2fx   | %8.4f\n",
+                n_blk, H_scales, H_scales > 0.01f ? 32.0f / H_scales : 0.0f, scale_save);
+        fprintf(stderr, "  Residual norms   | %7zu |    32.0   | %8.2f   | %5.2fx   | %8.4f\n",
+                n_blk, H_rnorms, H_rnorms > 0.01f ? 32.0f / H_rnorms : 0.0f, rnorm_save);
+
+        double total_free = tile_save + warp_save + scale_save + rnorm_save;
+        double current_bpw = (double)entropy_tensor->total_bits / (double)total;
+
+        fprintf(stderr, "\n  Current v8-on-residual bpw:   %8.4f\n", current_bpw);
+        fprintf(stderr, "  Free entropy savings:         %8.4f bpw\n", total_free);
+        fprintf(stderr, "  Entropy-coded estimate:       %8.4f bpw\n", current_bpw - total_free);
+        fprintf(stderr, "  (zero quality impact — identical decoded weights)\n");
+    }
+
+    if (entropy_tensor) fpq_tensor_free(entropy_tensor);
+    free(U); free(S_vals); free(Vt);
+
+    fprintf(stderr, "\n══════════════════════════════════════════════════════════\n\n");
 }

@@ -347,7 +347,52 @@ typedef struct {
 } fpq_raw_tensor_t;
 
 fpq_raw_tensor_t *fpq_ggml_read(const char *path, size_t *n_tensors);
+fpq_raw_tensor_t *fpq_safetensors_read(const char *path, size_t *n_tensors);
 void fpq_raw_tensor_free(fpq_raw_tensor_t *tensors, size_t n);
+
+/* Write tensors as BF16 safetensors file (fp32 data converted to bf16) */
+int fpq_safetensors_write(const char *path, const fpq_raw_tensor_t *tensors,
+                          size_t n_tensors);
+
+/* Write GGUF F16 file with FPQ v9 compression (llama.cpp compatible) */
+int fpq_gguf_write_v9(const char *input_path, const char *output_path,
+                       int coord_bits);
+
+
+/* ═══════════════════════════════════════════════════════════════════
+ * Native .fpq format — compact storage (~1.6 bpw = 20× from fp32)
+ *
+ * Stores v9 multiscale data in compact binary format:
+ *   - LR factors: INT8/INT6/INT4 quantized U*S and Vt
+ *   - Residual: E8 lattice indices + RVQ tile indices
+ *   - Ghost vectors: INT8 compressed u, v, sigma
+ *   - Metadata: fp16 scales + INT8 norms
+ *
+ * Reader reconstructs to FP32 on-the-fly for inference.
+ * ═══════════════════════════════════════════════════════════════════ */
+#define FPQ_NATIVE_MAGIC    0x46505130  /* "FPQ0" */
+#define FPQ_NATIVE_VERSION  10
+
+/*
+ * Write native .fpq format — compact binary storage per tensor.
+ * Input: already-processed fp32 data (post algebra-compress).
+ * Each tensor is stored as compact v9 multiscale encoding.
+ */
+int fpq_native_write(const char *path, const fpq_raw_tensor_t *tensors,
+                     size_t n_tensors);
+
+/*
+ * Read native .fpq format back into fp32 tensors.
+ * Returns allocated tensor array (caller frees with fpq_raw_tensor_free).
+ */
+fpq_raw_tensor_t *fpq_native_read(const char *path, size_t *n_tensors);
+
+/*
+ * Write native .fpq format from v9-encoded tensors (pre-compressed).
+ * Stores the compact representation directly without re-encoding.
+ */
+int fpq_native_write_v9(const char *path, fpq_tensor_t **tensors,
+                        size_t n_tensors, int coord_bits);
 
 
 /* ── Utility ── */
@@ -660,5 +705,22 @@ fpq_tensor_t *fpq_encode_tensor_v8(const float *weights, size_t rows, size_t col
  * v8 decode: E8 points + 16D tile correction + inverse warp + Ghost
  */
 void fpq_decode_tensor_v8(const fpq_tensor_t *tensor, float *output);
+
+/*
+ * v9 encode: Unified Multiscale — Low-rank SVD + v8 RLF on residual + QJL + Ghost
+ */
+fpq_tensor_t *fpq_encode_tensor_v9(const float *weights, size_t rows, size_t cols,
+                                     const char *name, int coord_bits);
+
+/*
+ * v9 decode: Low-rank reconstruction + v8 residual decode + Ghost
+ */
+void fpq_decode_tensor_v9(const fpq_tensor_t *tensor, float *output);
+
+/*
+ * v9 deep analysis: rank sweep, factor quant sensitivity, entropy measurement
+ */
+void fpq_v9_analyze(const float *weights, size_t rows, size_t cols,
+                    const char *name, int coord_bits);
 
 #endif /* BONFYRE_FPQ_H */

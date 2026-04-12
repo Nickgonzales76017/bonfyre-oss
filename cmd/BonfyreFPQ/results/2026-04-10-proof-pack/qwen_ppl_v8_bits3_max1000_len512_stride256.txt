@@ -1,0 +1,54 @@
+/Users/nickgonzales/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+═══════════════════════════════════════════════════════
+ FPQ PERPLEXITY BENCHMARK
+ Model:  Qwen/Qwen2.5-0.5B
+ Mode:   v8 (RLF)
+ Bits:   3
+ Device: mps
+═══════════════════════════════════════════════════════
+
+[1/5] Loading model and tokenizer...
+`torch_dtype` is deprecated! Use `dtype` instead!
+  Total params: 494,032,768
+  Weight params (2D+): 493,961,216
+
+[2/5] Loading WikiText-2 test set...
+  Dataset chars: 4,000
+
+[3/5] Computing BASELINE perplexity...
+  Baseline PPL: 14.2033  (994 tokens)
+
+[4/5] Applying FPQ RLF@3 quantization...
+    [1] model.embed_tokens.weight: cos=0.999588
+    [2] model.layers.0.self_attn.q_proj.weight: cos=0.999783
+    [3] model.layers.0.self_attn.k_proj.weight: cos=0.999815
+    [4] model.layers.0.self_attn.v_proj.weight: cos=0.999805
+    [5] model.layers.0.self_attn.o_proj.weight: cos=0.999783
+    [20] model.layers.2.mlp.gate_proj.weight: cos=0.999770
+    [40] model.layers.5.self_attn.o_proj.weight: cos=0.999782
+    [60] model.layers.8.self_attn.v_proj.weight: cos=0.999807
+    [80] model.layers.11.self_attn.k_proj.weight: cos=0.999804
+    [100] model.layers.14.self_attn.q_proj.weight: cos=0.999783
+    [120] model.layers.16.mlp.down_proj.weight: cos=0.999768
+    [140] model.layers.19.mlp.up_proj.weight: cos=0.999768
+    [160] model.layers.22.mlp.gate_proj.weight: cos=0.999767
+
+  Quantized 169 tensors
+  Average cosine: 0.999783
+  Worst cosine:   0.999588 (model.embed_tokens.weight)
+
+[5/5] Computing FPQ RLF@3 perplexity...
+  FPQ RLF@3 PPL: 14.4829  (994 tokens)
+
+═══════════════════════════════════════════════════════
+ PERPLEXITY BENCHMARK RESULTS
+═══════════════════════════════════════════════════════
+  Baseline PPL:          14.2033
+  FPQ RLF@3 PPL:      14.4829
+  PPL degradation:       +1.97%
+  Verdict:               NEAR-LOSSLESS (2.0% degradation)
+  Average cosine:        0.999783
+  Worst cosine:          0.999588
+  Tensors quantized:     169
+═══════════════════════════════════════════════════════

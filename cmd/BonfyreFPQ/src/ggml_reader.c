@@ -26,6 +26,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+#include <sys/stat.h>
 
 /* ── GGML type enum (subset) ── */
 enum {
@@ -146,6 +147,65 @@ static void dequant_q8_0(const uint8_t *src, float *dst, size_t n_elements) {
 
         for (size_t i = 0; i < 32; i++) {
             dst[b * 32 + i] = ((float)(int8_t)block[2 + i]) * scale;
+        }
+    }
+}
+
+/* ── Q5_0 dequantization ── */
+/* Block: 2 bytes (f16 scale) + 4 bytes (high bits) + 16 bytes (low nibbles) = 22 bytes → 32 floats */
+static void dequant_q5_0(const uint8_t *src, float *dst, size_t n_elements) {
+    size_t n_blocks = n_elements / 32;
+    for (size_t b = 0; b < n_blocks; b++) {
+        const uint8_t *block = src + b * 22;
+        uint16_t scale_fp16;
+        memcpy(&scale_fp16, block, 2);
+        float scale = fp16_to_fp32(scale_fp16);
+        uint32_t qh;
+        memcpy(&qh, block + 2, 4);
+        const uint8_t *qs = block + 6;
+
+        for (size_t j = 0; j < 16; j++) {
+            uint8_t xh_0 = ((qh >> j) & 1) << 4;
+            uint8_t xh_1 = ((qh >> (j + 16)) & 1) << 4;
+            int32_t x0 = (int32_t)(qs[j] & 0x0F) | xh_0;
+            int32_t x1 = (int32_t)(qs[j] >> 4) | xh_1;
+            dst[b * 32 + j]      = (float)(x0 - 16) * scale;
+            dst[b * 32 + j + 16] = (float)(x1 - 16) * scale;
+        }
+    }
+}
+
+/* ── Q5_K dequantization: 256-element superblocks ── */
+/* Block layout (176 bytes per 256 elements):
+ *   fp16 d (2) + fp16 dmin (2) + 12 bytes scales + 32 bytes qh + 128 bytes qs */
+static void dequant_q5_k(const uint8_t *src, float *dst, size_t n_elements) {
+    size_t n_blocks = n_elements / 256;
+    for (size_t b = 0; b < n_blocks; b++) {
+        const uint8_t *block = src + b * 176;
+        uint16_t d_fp16, dmin_fp16;
+        memcpy(&d_fp16, block, 2);
+        memcpy(&dmin_fp16, block + 2, 2);
+        float d = fp16_to_fp32(d_fp16);
+        float dmin = fp16_to_fp32(dmin_fp16);
+        const uint8_t *scales = block + 4;
+        const uint8_t *qh = block + 16;
+        const uint8_t *qs = block + 48;
+
+        for (int j = 0; j < 256; j++) {
+            int sub = j / 32;
+            float sc, m;
+            if (sub < 4) {
+                sc = d * (float)(scales[sub] & 0x3F);
+                m  = dmin * (float)(scales[sub + 4] & 0x3F);
+            } else {
+                sc = d * (float)(((scales[sub + 4] & 0xF) << 2) | ((scales[sub - 4] >> 6) & 3));
+                m  = dmin * (float)(((scales[sub + 4] >> 4) << 2) | ((scales[sub] >> 6) & 3));
+            }
+            uint8_t byte = qs[j / 2];
+            int lo = (j % 2 == 0) ? (byte & 0xF) : (byte >> 4);
+            int hi = (qh[j / 8] >> (j % 8)) & 1;
+            int q = lo | (hi << 4);
+            dst[b * 256 + j] = sc * (float)q - m;
         }
     }
 }
@@ -522,6 +582,16 @@ static fpq_raw_tensor_t *fpq_gguf_read(FILE *f, const char *path, size_t *n_tens
                 dequant_q8_0(buf, data, n_elements);
                 free(buf);
             }
+        } else if (info->type == GGML_TYPE_Q5_0) {
+            size_t raw_bytes = (n_elements / 32) * 22;
+            uint8_t *buf = (uint8_t *)malloc(raw_bytes);
+            data = (float *)malloc(n_elements * sizeof(float));
+            if (fread(buf, 1, raw_bytes, f) != raw_bytes) {
+                free(buf); free(data); data = NULL;
+            } else {
+                dequant_q5_0(buf, data, n_elements);
+                free(buf);
+            }
         } else if (info->type == GGML_TYPE_Q4_K) {
             size_t raw_bytes = (n_elements / 256) * 144;
             uint8_t *buf = (uint8_t *)malloc(raw_bytes);
@@ -530,6 +600,16 @@ static fpq_raw_tensor_t *fpq_gguf_read(FILE *f, const char *path, size_t *n_tens
                 free(buf); free(data); data = NULL;
             } else {
                 dequant_q4_k(buf, data, n_elements);
+                free(buf);
+            }
+        } else if (info->type == GGML_TYPE_Q5_K) {
+            size_t raw_bytes = (n_elements / 256) * 176;
+            uint8_t *buf = (uint8_t *)malloc(raw_bytes);
+            data = (float *)malloc(n_elements * sizeof(float));
+            if (fread(buf, 1, raw_bytes, f) != raw_bytes) {
+                free(buf); free(data); data = NULL;
+            } else {
+                dequant_q5_k(buf, data, n_elements);
                 free(buf);
             }
         } else if (info->type == GGML_TYPE_Q6_K) {
@@ -788,4 +868,372 @@ void fpq_raw_tensor_free(fpq_raw_tensor_t *tensors, size_t n) {
         free(tensors[i].data);
     }
     free(tensors);
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════
+ * GGUF v3 WRITER — FPQ v9 quantization with F16 output
+ *
+ * Reads an input GGUF file, processes weight tensors through FPQ v9,
+ * and writes a new GGUF file with F16 tensor data and all original
+ * metadata (architecture, tokenizer, etc.) preserved verbatim.
+ *
+ * The output is directly usable with llama.cpp and ggml-based tools.
+ * ═══════════════════════════════════════════════════════════════════ */
+
+/* fp32 → fp16 (IEEE 754 half-precision) */
+static uint16_t fp32_to_fp16(float f) {
+    union { uint32_t u; float v; } in;
+    in.v = f;
+    uint32_t s = (in.u >> 16) & 0x8000;          /* sign */
+    int32_t  e = ((in.u >> 23) & 0xFF) - 127;    /* unbiased exponent */
+    uint32_t m = in.u & 0x007FFFFF;               /* mantissa */
+
+    if (e > 15) {
+        /* overflow → infinity (preserves sign) */
+        return (uint16_t)(s | 0x7C00);
+    } else if (e > -15) {
+        /* normal — round to nearest even */
+        uint32_t round_bit = (m >> 12) & 1;
+        uint32_t sticky = (m & 0xFFF) ? 1 : 0;
+        uint32_t guard = (m >> 13) & 1;
+        uint32_t mant16 = m >> 13;
+        if (guard && (round_bit || sticky)) mant16++;
+        if (mant16 > 0x3FF) { mant16 = 0; e++; }
+        if (e > 15) return (uint16_t)(s | 0x7C00);
+        return (uint16_t)(s | ((e + 15) << 10) | mant16);
+    } else if (e >= -24) {
+        /* denormalized */
+        m |= 0x00800000;
+        int shift = -e - 1;
+        return (uint16_t)(s | (m >> (shift + 13)));
+    }
+    /* underflow → zero */
+    return (uint16_t)s;
+}
+
+/* Write a GGUF string: uint64 len + char[len] */
+static void gguf_write_string(FILE *f, const char *s) {
+    uint64_t len = (uint64_t)strlen(s);
+    fwrite(&len, 8, 1, f);
+    if (len > 0) fwrite(s, 1, (size_t)len, f);
+}
+
+int fpq_gguf_write_v9(const char *input_path, const char *output_path,
+                       int coord_bits) {
+    FILE *fin = fopen(input_path, "rb");
+    if (!fin) {
+        fprintf(stderr, "FPQ: Cannot open %s\n", input_path);
+        return 1;
+    }
+
+    /* ── Read & verify header ── */
+    uint32_t magic, version;
+    uint64_t tensor_count, n_kv;
+    if (fread(&magic, 4, 1, fin) != 1 || magic != GGUF_MAGIC) {
+        fprintf(stderr, "FPQ: Not a GGUF file: %s\n", input_path);
+        fclose(fin);
+        return 1;
+    }
+    fread(&version, 4, 1, fin);
+    fread(&tensor_count, 8, 1, fin);
+    fread(&n_kv, 8, 1, fin);
+
+    fprintf(stderr,
+        "═══════════════════════════════════════════════════════\n"
+        " FPQ v9 Quantize → GGUF F16 (llama.cpp compatible)\n"
+        " Input:  %s\n"
+        " Output: %s\n"
+        " GGUF v%u — %llu tensors, %llu metadata keys\n"
+        "═══════════════════════════════════════════════════════\n",
+        input_path, output_path, version,
+        (unsigned long long)tensor_count,
+        (unsigned long long)n_kv);
+
+    if (version < 2 || version > 3) {
+        fprintf(stderr, "FPQ: Unsupported GGUF version %u\n", version);
+        fclose(fin);
+        return 1;
+    }
+
+    /* ── Buffer metadata KV section (copy verbatim) ── */
+    long kv_start = ftell(fin);
+    for (uint64_t i = 0; i < n_kv; i++) {
+        char key[512];
+        if (gguf_read_string(fin, key, sizeof(key)) != 0) goto read_err;
+        uint32_t vtype;
+        if (fread(&vtype, 4, 1, fin) != 1) goto read_err;
+        if (gguf_skip_value(fin, vtype) != 0) goto read_err;
+    }
+    long kv_end = ftell(fin);
+    size_t kv_size = (size_t)(kv_end - kv_start);
+
+    uint8_t *kv_blob = (uint8_t *)malloc(kv_size);
+    fseek(fin, kv_start, SEEK_SET);
+    if (fread(kv_blob, 1, kv_size, fin) != kv_size) {
+        free(kv_blob);
+        goto read_err;
+    }
+
+    /* ── Parse tensor infos ── */
+    typedef struct {
+        char name[256];
+        uint32_t n_dims;
+        uint64_t dims[4];
+        uint32_t type;
+        uint64_t offset;
+    } gguf_tinfo_t;
+
+    gguf_tinfo_t *infos = (gguf_tinfo_t *)calloc(
+        (size_t)tensor_count, sizeof(gguf_tinfo_t));
+    if (!infos) { free(kv_blob); goto read_err; }
+
+    for (uint64_t i = 0; i < tensor_count; i++) {
+        if (gguf_read_string(fin, infos[i].name, sizeof(infos[i].name)) != 0) {
+            free(infos); free(kv_blob); goto read_err;
+        }
+        fread(&infos[i].n_dims, 4, 1, fin);
+        if (infos[i].n_dims > 4) { free(infos); free(kv_blob); goto read_err; }
+        for (uint32_t d = 0; d < infos[i].n_dims; d++)
+            fread(&infos[i].dims[d], 8, 1, fin);
+        fread(&infos[i].type, 4, 1, fin);
+        fread(&infos[i].offset, 8, 1, fin);
+    }
+
+    long input_data_start = (ftell(fin) + 31) & ~31L;
+
+    /* ── Write output GGUF ── */
+    FILE *fout = fopen(output_path, "wb");
+    if (!fout) {
+        fprintf(stderr, "FPQ: Cannot create %s\n", output_path);
+        free(infos); free(kv_blob); fclose(fin);
+        return 1;
+    }
+
+    /* Header */
+    fwrite(&magic, 4, 1, fout);
+    fwrite(&version, 4, 1, fout);
+    fwrite(&tensor_count, 8, 1, fout);
+    fwrite(&n_kv, 8, 1, fout);
+
+    /* Metadata KVs — verbatim copy */
+    fwrite(kv_blob, 1, kv_size, fout);
+    free(kv_blob);
+
+    /* Tensor infos — rewrite with F16 type and recomputed offsets */
+    uint64_t data_offset = 0;
+    uint64_t *new_offsets = (uint64_t *)calloc(
+        (size_t)tensor_count, sizeof(uint64_t));
+
+    for (uint64_t i = 0; i < tensor_count; i++) {
+        size_t n_elements = 1;
+        for (uint32_t d = 0; d < infos[i].n_dims; d++)
+            n_elements *= (size_t)infos[i].dims[d];
+
+        /* Output offset — aligned to 32 bytes */
+        uint64_t aligned = (data_offset + 31ULL) & ~31ULL;
+        new_offsets[i] = aligned;
+        data_offset = aligned + n_elements * 2;  /* F16 = 2 bytes */
+    }
+
+    for (uint64_t i = 0; i < tensor_count; i++) {
+        gguf_write_string(fout, infos[i].name);
+        fwrite(&infos[i].n_dims, 4, 1, fout);
+        for (uint32_t d = 0; d < infos[i].n_dims; d++)
+            fwrite(&infos[i].dims[d], 8, 1, fout);
+        uint32_t f16_type = GGML_TYPE_F16;
+        fwrite(&f16_type, 4, 1, fout);
+        fwrite(&new_offsets[i], 8, 1, fout);
+    }
+
+    /* Pad to 32-byte alignment before data section */
+    {
+        long pos = ftell(fout);
+        long aligned = (pos + 31) & ~31L;
+        if (aligned > pos) {
+            static const uint8_t zeros[32] = {0};
+            fwrite(zeros, 1, (size_t)(aligned - pos), fout);
+        }
+    }
+    long output_data_start = ftell(fout);
+
+    /* ── Process and write tensor data ── */
+    int cbits = coord_bits > 0 ? coord_bits : 3;
+    size_t n_encoded = 0, n_passthrough = 0;
+    double sum_cos = 0.0;
+    float worst_cos = 1.0f;
+    char worst_name[256] = "";
+
+    for (uint64_t i = 0; i < tensor_count; i++) {
+        size_t n_elements = 1;
+        for (uint32_t d = 0; d < infos[i].n_dims; d++)
+            n_elements *= (size_t)infos[i].dims[d];
+
+        /* Seek to correct output position */
+        fseek(fout, output_data_start + (long)new_offsets[i], SEEK_SET);
+
+        /* Read original data from input */
+        fseek(fin, input_data_start + (long)infos[i].offset, SEEK_SET);
+
+        float *f32_data = NULL;
+        if (infos[i].type == GGML_TYPE_F32) {
+            f32_data = (float *)malloc(n_elements * sizeof(float));
+            if (fread(f32_data, sizeof(float), n_elements, fin) != n_elements) {
+                free(f32_data); f32_data = NULL;
+            }
+        } else if (infos[i].type == GGML_TYPE_F16) {
+            uint16_t *buf = (uint16_t *)malloc(n_elements * 2);
+            f32_data = (float *)malloc(n_elements * sizeof(float));
+            if (fread(buf, 2, n_elements, fin) != n_elements) {
+                free(buf); free(f32_data); f32_data = NULL;
+            } else {
+                for (size_t j = 0; j < n_elements; j++)
+                    f32_data[j] = fp16_to_fp32(buf[j]);
+                free(buf);
+            }
+        } else if (infos[i].type == GGML_TYPE_Q4_0) {
+            size_t raw_bytes = (n_elements / 32) * 18;
+            uint8_t *buf = (uint8_t *)malloc(raw_bytes);
+            f32_data = (float *)malloc(n_elements * sizeof(float));
+            if (fread(buf, 1, raw_bytes, fin) != raw_bytes) {
+                free(buf); free(f32_data); f32_data = NULL;
+            } else { dequant_q4_0(buf, f32_data, n_elements); free(buf); }
+        } else if (infos[i].type == GGML_TYPE_Q8_0) {
+            size_t raw_bytes = (n_elements / 32) * 34;
+            uint8_t *buf = (uint8_t *)malloc(raw_bytes);
+            f32_data = (float *)malloc(n_elements * sizeof(float));
+            if (fread(buf, 1, raw_bytes, fin) != raw_bytes) {
+                free(buf); free(f32_data); f32_data = NULL;
+            } else { dequant_q8_0(buf, f32_data, n_elements); free(buf); }
+        } else if (infos[i].type == GGML_TYPE_Q5_0) {
+            size_t raw_bytes = (n_elements / 32) * 22;
+            uint8_t *buf = (uint8_t *)malloc(raw_bytes);
+            f32_data = (float *)malloc(n_elements * sizeof(float));
+            if (fread(buf, 1, raw_bytes, fin) != raw_bytes) {
+                free(buf); free(f32_data); f32_data = NULL;
+            } else { dequant_q5_0(buf, f32_data, n_elements); free(buf); }
+        } else if (infos[i].type == GGML_TYPE_Q4_K) {
+            size_t raw_bytes = (n_elements / 256) * 144;
+            uint8_t *buf = (uint8_t *)malloc(raw_bytes);
+            f32_data = (float *)malloc(n_elements * sizeof(float));
+            if (fread(buf, 1, raw_bytes, fin) != raw_bytes) {
+                free(buf); free(f32_data); f32_data = NULL;
+            } else { dequant_q4_k(buf, f32_data, n_elements); free(buf); }
+        } else if (infos[i].type == GGML_TYPE_Q5_K) {
+            size_t raw_bytes = (n_elements / 256) * 176;
+            uint8_t *buf = (uint8_t *)malloc(raw_bytes);
+            f32_data = (float *)malloc(n_elements * sizeof(float));
+            if (fread(buf, 1, raw_bytes, fin) != raw_bytes) {
+                free(buf); free(f32_data); f32_data = NULL;
+            } else { dequant_q5_k(buf, f32_data, n_elements); free(buf); }
+        } else if (infos[i].type == GGML_TYPE_Q6_K) {
+            size_t raw_bytes = (n_elements / 256) * 210;
+            uint8_t *buf = (uint8_t *)malloc(raw_bytes);
+            f32_data = (float *)malloc(n_elements * sizeof(float));
+            if (fread(buf, 1, raw_bytes, fin) != raw_bytes) {
+                free(buf); free(f32_data); f32_data = NULL;
+            } else { dequant_q6_k(buf, f32_data, n_elements); free(buf); }
+        } else {
+            /* Unsupported type → zero fill */
+            fprintf(stderr, "  [WARN] %s: unsupported type %u, zero-filling\n",
+                    infos[i].name, infos[i].type);
+            f32_data = (float *)calloc(n_elements, sizeof(float));
+        }
+
+        if (!f32_data) {
+            fprintf(stderr, "  [FAIL] %s: read error\n", infos[i].name);
+            /* Write zeros for this tensor */
+            uint16_t z = 0;
+            for (size_t j = 0; j < n_elements; j++) fwrite(&z, 2, 1, fout);
+            continue;
+        }
+
+        /* Determine FPQ eligibility */
+        size_t rows = (infos[i].n_dims >= 2) ? (size_t)infos[i].dims[1] : 1;
+        size_t cols = (size_t)infos[i].dims[0];
+        int eligible = (rows > 1 &&
+                        rows * cols >= FPQ_BLOCK_DIM * 2 &&
+                        n_elements >= FPQ_BLOCK_DIM * 2);
+
+        if (eligible) {
+            fprintf(stderr, "  [%llu/%llu] %s (%zu×%zu) ... ",
+                    (unsigned long long)(i + 1),
+                    (unsigned long long)tensor_count,
+                    infos[i].name, rows, cols);
+
+            /* Encode + decode through v9 */
+            fpq_tensor_t *t = fpq_encode_tensor_v9(
+                f32_data, rows, cols, infos[i].name, cbits);
+
+            float *decoded = (float *)malloc(rows * cols * sizeof(float));
+            if (t->pid_alpha == -9.0f)
+                fpq_decode_tensor_v9(t, decoded);
+            else if (t->sbb_scale_delta)
+                fpq_decode_tensor_v8(t, decoded);
+            else
+                fpq_decode_tensor_v4(t, decoded);
+
+            float cos = fpq_cosine_sim(f32_data, decoded, rows * cols);
+            if (cos < worst_cos) {
+                worst_cos = cos;
+                strncpy(worst_name, infos[i].name, sizeof(worst_name) - 1);
+            }
+            sum_cos += cos;
+            n_encoded++;
+
+            /* Write as F16 */
+            for (size_t j = 0; j < n_elements; j++) {
+                uint16_t f16 = fp32_to_fp16(decoded[j]);
+                fwrite(&f16, 2, 1, fout);
+            }
+
+            fprintf(stderr, "cos=%.6f\n", cos);
+
+            free(decoded);
+            fpq_tensor_free(t);
+        } else {
+            /* Passthrough — just convert to F16 */
+            for (size_t j = 0; j < n_elements; j++) {
+                uint16_t f16 = fp32_to_fp16(f32_data[j]);
+                fwrite(&f16, 2, 1, fout);
+            }
+            n_passthrough++;
+        }
+
+        free(f32_data);
+    }
+
+    fclose(fin);
+    fclose(fout);
+    free(infos);
+    free(new_offsets);
+
+    /* Summary */
+    double avg_cos = n_encoded > 0 ? sum_cos / n_encoded : 0.0;
+    long out_size = 0;
+    {
+        struct stat st;
+        if (stat(output_path, &st) == 0) out_size = (long)st.st_size;
+    }
+
+    fprintf(stderr,
+        "\n═══════════════════════════════════════════════════════\n"
+        " Done: %s\n"
+        " Encoded: %zu tensors (avg cos=%.6f, worst=%.6f)\n"
+        " Passthrough: %zu tensors (biases, 1D, small)\n"
+        " Worst: %s\n"
+        " Output: %.1f MB (F16 GGUF, llama.cpp compatible)\n"
+        "═══════════════════════════════════════════════════════\n",
+        output_path,
+        n_encoded, avg_cos, worst_cos,
+        n_passthrough,
+        worst_name,
+        out_size / (1024.0 * 1024.0));
+
+    return 0;
+
+read_err:
+    fprintf(stderr, "FPQ: GGUF parse error reading %s\n", input_path);
+    fclose(fin);
+    return 1;
 }

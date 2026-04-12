@@ -1,0 +1,312 @@
+═══════════════════════════════════════════════════════
+ FPQ v8 Roundtrip: Recursive Lattice-Flow (TCLQ+16D-RVQ)
+ Model: /Users/nickgonzales/.local/share/whisper/ggml-base.en.bin
+═══════════════════════════════════════════════════════
+FPQ: GGML model
+FPQ: Vocab parse error at token 184, len=990017651
+  [0] decoder.positional_embedding             2-D [512×448] type=0 n=229376
+  [1] encoder.positional_embedding             2-D [512×1500] type=0 n=768000
+  [2] decoder.token_embedding.weight           2-D [512×51864] type=1 n=26554368
+  [3] decoder.blocks.0.mlp_ln.weight           1-D [512] type=0 n=512
+  [4] decoder.blocks.0.mlp_ln.bias             1-D [512] type=0 n=512
+  [5] decoder.blocks.0.mlp.0.weight            2-D [512×2048] type=1 n=1048576
+  [6] decoder.blocks.0.mlp.0.bias              1-D [2048] type=0 n=2048
+  [7] decoder.blocks.0.mlp.2.weight            2-D [2048×512] type=1 n=1048576
+  [8] decoder.blocks.0.mlp.2.bias              1-D [512] type=0 n=512
+  [9] decoder.blocks.0.attn_ln.weight          1-D [512] type=0 n=512
+  [10] decoder.blocks.0.attn_ln.bias            1-D [512] type=0 n=512
+  [11] decoder.blocks.0.attn.query.weight       2-D [512×512] type=1 n=262144
+  [12] decoder.blocks.0.attn.query.bias         1-D [512] type=0 n=512
+  [13] decoder.blocks.0.attn.key.weight         2-D [512×512] type=1 n=262144
+  [14] decoder.blocks.0.attn.value.weight       2-D [512×512] type=1 n=262144
+  [15] decoder.blocks.0.attn.value.bias         1-D [512] type=0 n=512
+  [16] decoder.blocks.0.attn.out.weight         2-D [512×512] type=1 n=262144
+  [17] decoder.blocks.0.attn.out.bias           1-D [512] type=0 n=512
+  [18] decoder.blocks.0.cross_attn_ln.weight    1-D [512] type=0 n=512
+  [19] decoder.blocks.0.cross_attn_ln.bias      1-D [512] type=0 n=512
+  [20] decoder.blocks.0.cross_attn.query.weight 2-D [512×512] type=1 n=262144
+  [21] decoder.blocks.0.cross_attn.query.bias   1-D [512] type=0 n=512
+  [22] decoder.blocks.0.cross_attn.key.weight   2-D [512×512] type=1 n=262144
+  [23] decoder.blocks.0.cross_attn.value.weight 2-D [512×512] type=1 n=262144
+  [24] decoder.blocks.0.cross_attn.value.bias   1-D [512] type=0 n=512
+  [25] decoder.blocks.0.cross_attn.out.weight   2-D [512×512] type=1 n=262144
+  [26] decoder.blocks.0.cross_attn.out.bias     1-D [512] type=0 n=512
+  [27] decoder.blocks.1.mlp_ln.weight           1-D [512] type=0 n=512
+  [28] decoder.blocks.1.mlp_ln.bias             1-D [512] type=0 n=512
+  [29] decoder.blocks.1.mlp.0.weight            2-D [512×2048] type=1 n=1048576
+  [30] decoder.blocks.1.mlp.0.bias              1-D [2048] type=0 n=2048
+  [31] decoder.blocks.1.mlp.2.weight            2-D [2048×512] type=1 n=1048576
+  [32] decoder.blocks.1.mlp.2.bias              1-D [512] type=0 n=512
+  [33] decoder.blocks.1.attn_ln.weight          1-D [512] type=0 n=512
+  [34] decoder.blocks.1.attn_ln.bias            1-D [512] type=0 n=512
+  [35] decoder.blocks.1.attn.query.weight       2-D [512×512] type=1 n=262144
+  [36] decoder.blocks.1.attn.query.bias         1-D [512] type=0 n=512
+  [37] decoder.blocks.1.attn.key.weight         2-D [512×512] type=1 n=262144
+  [38] decoder.blocks.1.attn.value.weight       2-D [512×512] type=1 n=262144
+  [39] decoder.blocks.1.attn.value.bias         1-D [512] type=0 n=512
+  [40] decoder.blocks.1.attn.out.weight         2-D [512×512] type=1 n=262144
+  [41] decoder.blocks.1.attn.out.bias           1-D [512] type=0 n=512
+  [42] decoder.blocks.1.cross_attn_ln.weight    1-D [512] type=0 n=512
+  [43] decoder.blocks.1.cross_attn_ln.bias      1-D [512] type=0 n=512
+  [44] decoder.blocks.1.cross_attn.query.weight 2-D [512×512] type=1 n=262144
+  [45] decoder.blocks.1.cross_attn.query.bias   1-D [512] type=0 n=512
+  [46] decoder.blocks.1.cross_attn.key.weight   2-D [512×512] type=1 n=262144
+  [47] decoder.blocks.1.cross_attn.value.weight 2-D [512×512] type=1 n=262144
+  [48] decoder.blocks.1.cross_attn.value.bias   1-D [512] type=0 n=512
+  [49] decoder.blocks.1.cross_attn.out.weight   2-D [512×512] type=1 n=262144
+  [50] decoder.blocks.1.cross_attn.out.bias     1-D [512] type=0 n=512
+  [51] decoder.blocks.2.mlp_ln.weight           1-D [512] type=0 n=512
+  [52] decoder.blocks.2.mlp_ln.bias             1-D [512] type=0 n=512
+  [53] decoder.blocks.2.mlp.0.weight            2-D [512×2048] type=1 n=1048576
+  [54] decoder.blocks.2.mlp.0.bias              1-D [2048] type=0 n=2048
+  [55] decoder.blocks.2.mlp.2.weight            2-D [2048×512] type=1 n=1048576
+  [56] decoder.blocks.2.mlp.2.bias              1-D [512] type=0 n=512
+  [57] decoder.blocks.2.attn_ln.weight          1-D [512] type=0 n=512
+  [58] decoder.blocks.2.attn_ln.bias            1-D [512] type=0 n=512
+  [59] decoder.blocks.2.attn.query.weight       2-D [512×512] type=1 n=262144
+  [60] decoder.blocks.2.attn.query.bias         1-D [512] type=0 n=512
+  [61] decoder.blocks.2.attn.key.weight         2-D [512×512] type=1 n=262144
+  [62] decoder.blocks.2.attn.value.weight       2-D [512×512] type=1 n=262144
+  [63] decoder.blocks.2.attn.value.bias         1-D [512] type=0 n=512
+  [64] decoder.blocks.2.attn.out.weight         2-D [512×512] type=1 n=262144
+  [65] decoder.blocks.2.attn.out.bias           1-D [512] type=0 n=512
+  [66] decoder.blocks.2.cross_attn_ln.weight    1-D [512] type=0 n=512
+  [67] decoder.blocks.2.cross_attn_ln.bias      1-D [512] type=0 n=512
+  [68] decoder.blocks.2.cross_attn.query.weight 2-D [512×512] type=1 n=262144
+  [69] decoder.blocks.2.cross_attn.query.bias   1-D [512] type=0 n=512
+  [70] decoder.blocks.2.cross_attn.key.weight   2-D [512×512] type=1 n=262144
+  [71] decoder.blocks.2.cross_attn.value.weight 2-D [512×512] type=1 n=262144
+  [72] decoder.blocks.2.cross_attn.value.bias   1-D [512] type=0 n=512
+  [73] decoder.blocks.2.cross_attn.out.weight   2-D [512×512] type=1 n=262144
+  [74] decoder.blocks.2.cross_attn.out.bias     1-D [512] type=0 n=512
+  [75] decoder.blocks.3.mlp_ln.weight           1-D [512] type=0 n=512
+  [76] decoder.blocks.3.mlp_ln.bias             1-D [512] type=0 n=512
+  [77] decoder.blocks.3.mlp.0.weight            2-D [512×2048] type=1 n=1048576
+  [78] decoder.blocks.3.mlp.0.bias              1-D [2048] type=0 n=2048
+  [79] decoder.blocks.3.mlp.2.weight            2-D [2048×512] type=1 n=1048576
+  [80] decoder.blocks.3.mlp.2.bias              1-D [512] type=0 n=512
+  [81] decoder.blocks.3.attn_ln.weight          1-D [512] type=0 n=512
+  [82] decoder.blocks.3.attn_ln.bias            1-D [512] type=0 n=512
+  [83] decoder.blocks.3.attn.query.weight       2-D [512×512] type=1 n=262144
+  [84] decoder.blocks.3.attn.query.bias         1-D [512] type=0 n=512
+  [85] decoder.blocks.3.attn.key.weight         2-D [512×512] type=1 n=262144
+  [86] decoder.blocks.3.attn.value.weight       2-D [512×512] type=1 n=262144
+  [87] decoder.blocks.3.attn.value.bias         1-D [512] type=0 n=512
+  [88] decoder.blocks.3.attn.out.weight         2-D [512×512] type=1 n=262144
+  [89] decoder.blocks.3.attn.out.bias           1-D [512] type=0 n=512
+  [90] decoder.blocks.3.cross_attn_ln.weight    1-D [512] type=0 n=512
+  [91] decoder.blocks.3.cross_attn_ln.bias      1-D [512] type=0 n=512
+  [92] decoder.blocks.3.cross_attn.query.weight 2-D [512×512] type=1 n=262144
+  [93] decoder.blocks.3.cross_attn.query.bias   1-D [512] type=0 n=512
+  [94] decoder.blocks.3.cross_attn.key.weight   2-D [512×512] type=1 n=262144
+  [95] decoder.blocks.3.cross_attn.value.weight 2-D [512×512] type=1 n=262144
+  [96] decoder.blocks.3.cross_attn.value.bias   1-D [512] type=0 n=512
+  [97] decoder.blocks.3.cross_attn.out.weight   2-D [512×512] type=1 n=262144
+  [98] decoder.blocks.3.cross_attn.out.bias     1-D [512] type=0 n=512
+  [99] decoder.blocks.4.mlp_ln.weight           1-D [512] type=0 n=512
+  [100] decoder.blocks.4.mlp_ln.bias             1-D [512] type=0 n=512
+  [101] decoder.blocks.4.mlp.0.weight            2-D [512×2048] type=1 n=1048576
+  [102] decoder.blocks.4.mlp.0.bias              1-D [2048] type=0 n=2048
+  [103] decoder.blocks.4.mlp.2.weight            2-D [2048×512] type=1 n=1048576
+  [104] decoder.blocks.4.mlp.2.bias              1-D [512] type=0 n=512
+  [105] decoder.blocks.4.attn_ln.weight          1-D [512] type=0 n=512
+  [106] decoder.blocks.4.attn_ln.bias            1-D [512] type=0 n=512
+  [107] decoder.blocks.4.attn.query.weight       2-D [512×512] type=1 n=262144
+  [108] decoder.blocks.4.attn.query.bias         1-D [512] type=0 n=512
+  [109] decoder.blocks.4.attn.key.weight         2-D [512×512] type=1 n=262144
+  [110] decoder.blocks.4.attn.value.weight       2-D [512×512] type=1 n=262144
+  [111] decoder.blocks.4.attn.value.bias         1-D [512] type=0 n=512
+  [112] decoder.blocks.4.attn.out.weight         2-D [512×512] type=1 n=262144
+  [113] decoder.blocks.4.attn.out.bias           1-D [512] type=0 n=512
+  [114] decoder.blocks.4.cross_attn_ln.weight    1-D [512] type=0 n=512
+  [115] decoder.blocks.4.cross_attn_ln.bias      1-D [512] type=0 n=512
+  [116] decoder.blocks.4.cross_attn.query.weight 2-D [512×512] type=1 n=262144
+  [117] decoder.blocks.4.cross_attn.query.bias   1-D [512] type=0 n=512
+  [118] decoder.blocks.4.cross_attn.key.weight   2-D [512×512] type=1 n=262144
+  [119] decoder.blocks.4.cross_attn.value.weight 2-D [512×512] type=1 n=262144
+  [120] decoder.blocks.4.cross_attn.value.bias   1-D [512] type=0 n=512
+  [121] decoder.blocks.4.cross_attn.out.weight   2-D [512×512] type=1 n=262144
+  [122] decoder.blocks.4.cross_attn.out.bias     1-D [512] type=0 n=512
+  [123] decoder.blocks.5.mlp_ln.weight           1-D [512] type=0 n=512
+  [124] decoder.blocks.5.mlp_ln.bias             1-D [512] type=0 n=512
+  [125] decoder.blocks.5.mlp.0.weight            2-D [512×2048] type=1 n=1048576
+  [126] decoder.blocks.5.mlp.0.bias              1-D [2048] type=0 n=2048
+  [127] decoder.blocks.5.mlp.2.weight            2-D [2048×512] type=1 n=1048576
+  [128] decoder.blocks.5.mlp.2.bias              1-D [512] type=0 n=512
+  [129] decoder.blocks.5.attn_ln.weight          1-D [512] type=0 n=512
+  [130] decoder.blocks.5.attn_ln.bias            1-D [512] type=0 n=512
+  [131] decoder.blocks.5.attn.query.weight       2-D [512×512] type=1 n=262144
+  [132] decoder.blocks.5.attn.query.bias         1-D [512] type=0 n=512
+  [133] decoder.blocks.5.attn.key.weight         2-D [512×512] type=1 n=262144
+  [134] decoder.blocks.5.attn.value.weight       2-D [512×512] type=1 n=262144
+  [135] decoder.blocks.5.attn.value.bias         1-D [512] type=0 n=512
+  [136] decoder.blocks.5.attn.out.weight         2-D [512×512] type=1 n=262144
+  [137] decoder.blocks.5.attn.out.bias           1-D [512] type=0 n=512
+  [138] decoder.blocks.5.cross_attn_ln.weight    1-D [512] type=0 n=512
+  [139] decoder.blocks.5.cross_attn_ln.bias      1-D [512] type=0 n=512
+  [140] decoder.blocks.5.cross_attn.query.weight 2-D [512×512] type=1 n=262144
+  [141] decoder.blocks.5.cross_attn.query.bias   1-D [512] type=0 n=512
+  [142] decoder.blocks.5.cross_attn.key.weight   2-D [512×512] type=1 n=262144
+  [143] decoder.blocks.5.cross_attn.value.weight 2-D [512×512] type=1 n=262144
+  [144] decoder.blocks.5.cross_attn.value.bias   1-D [512] type=0 n=512
+  [145] decoder.blocks.5.cross_attn.out.weight   2-D [512×512] type=1 n=262144
+  [146] decoder.blocks.5.cross_attn.out.bias     1-D [512] type=0 n=512
+  [147] decoder.ln.weight                        1-D [512] type=0 n=512
+  [148] decoder.ln.bias                          1-D [512] type=0 n=512
+  [149] encoder.conv1.weight                     3-D [3×80×512] type=1 n=122880
+  [150] encoder.conv1.bias                       2-D [1×512] type=0 n=512
+  [151] encoder.conv2.weight                     3-D [3×512×512] type=1 n=786432
+  [152] encoder.conv2.bias                       2-D [1×512] type=0 n=512
+  [153] encoder.blocks.0.mlp_ln.weight           1-D [512] type=0 n=512
+  [154] encoder.blocks.0.mlp_ln.bias             1-D [512] type=0 n=512
+  [155] encoder.blocks.0.mlp.0.weight            2-D [512×2048] type=1 n=1048576
+  [156] encoder.blocks.0.mlp.0.bias              1-D [2048] type=0 n=2048
+  [157] encoder.blocks.0.mlp.2.weight            2-D [2048×512] type=1 n=1048576
+  [158] encoder.blocks.0.mlp.2.bias              1-D [512] type=0 n=512
+  [159] encoder.blocks.0.attn_ln.weight          1-D [512] type=0 n=512
+  [160] encoder.blocks.0.attn_ln.bias            1-D [512] type=0 n=512
+  [161] encoder.blocks.0.attn.query.weight       2-D [512×512] type=1 n=262144
+  [162] encoder.blocks.0.attn.query.bias         1-D [512] type=0 n=512
+  [163] encoder.blocks.0.attn.key.weight         2-D [512×512] type=1 n=262144
+  [164] encoder.blocks.0.attn.value.weight       2-D [512×512] type=1 n=262144
+  [165] encoder.blocks.0.attn.value.bias         1-D [512] type=0 n=512
+  [166] encoder.blocks.0.attn.out.weight         2-D [512×512] type=1 n=262144
+  [167] encoder.blocks.0.attn.out.bias           1-D [512] type=0 n=512
+  [168] encoder.blocks.1.mlp_ln.weight           1-D [512] type=0 n=512
+  [169] encoder.blocks.1.mlp_ln.bias             1-D [512] type=0 n=512
+  [170] encoder.blocks.1.mlp.0.weight            2-D [512×2048] type=1 n=1048576
+  [171] encoder.blocks.1.mlp.0.bias              1-D [2048] type=0 n=2048
+  [172] encoder.blocks.1.mlp.2.weight            2-D [2048×512] type=1 n=1048576
+  [173] encoder.blocks.1.mlp.2.bias              1-D [512] type=0 n=512
+  [174] encoder.blocks.1.attn_ln.weight          1-D [512] type=0 n=512
+  [175] encoder.blocks.1.attn_ln.bias            1-D [512] type=0 n=512
+  [176] encoder.blocks.1.attn.query.weight       2-D [512×512] type=1 n=262144
+  [177] encoder.blocks.1.attn.query.bias         1-D [512] type=0 n=512
+  [178] encoder.blocks.1.attn.key.weight         2-D [512×512] type=1 n=262144
+  [179] encoder.blocks.1.attn.value.weight       2-D [512×512] type=1 n=262144
+  [180] encoder.blocks.1.attn.value.bias         1-D [512] type=0 n=512
+  [181] encoder.blocks.1.attn.out.weight         2-D [512×512] type=1 n=262144
+  [182] encoder.blocks.1.attn.out.bias           1-D [512] type=0 n=512
+  [183] encoder.blocks.2.mlp_ln.weight           1-D [512] type=0 n=512
+  [184] encoder.blocks.2.mlp_ln.bias             1-D [512] type=0 n=512
+  [185] encoder.blocks.2.mlp.0.weight            2-D [512×2048] type=1 n=1048576
+  [186] encoder.blocks.2.mlp.0.bias              1-D [2048] type=0 n=2048
+  [187] encoder.blocks.2.mlp.2.weight            2-D [2048×512] type=1 n=1048576
+  [188] encoder.blocks.2.mlp.2.bias              1-D [512] type=0 n=512
+  [189] encoder.blocks.2.attn_ln.weight          1-D [512] type=0 n=512
+  [190] encoder.blocks.2.attn_ln.bias            1-D [512] type=0 n=512
+  [191] encoder.blocks.2.attn.query.weight       2-D [512×512] type=1 n=262144
+  [192] encoder.blocks.2.attn.query.bias         1-D [512] type=0 n=512
+  [193] encoder.blocks.2.attn.key.weight         2-D [512×512] type=1 n=262144
+  [194] encoder.blocks.2.attn.value.weight       2-D [512×512] type=1 n=262144
+  [195] encoder.blocks.2.attn.value.bias         1-D [512] type=0 n=512
+  [196] encoder.blocks.2.attn.out.weight         2-D [512×512] type=1 n=262144
+  [197] encoder.blocks.2.attn.out.bias           1-D [512] type=0 n=512
+  [198] encoder.blocks.3.mlp_ln.weight           1-D [512] type=0 n=512
+  [199] encoder.blocks.3.mlp_ln.bias             1-D [512] type=0 n=512
+  [200] encoder.blocks.3.mlp.0.weight            2-D [512×2048] type=1 n=1048576
+  [201] encoder.blocks.3.mlp.0.bias              1-D [2048] type=0 n=2048
+  [202] encoder.blocks.3.mlp.2.weight            2-D [2048×512] type=1 n=1048576
+  [203] encoder.blocks.3.mlp.2.bias              1-D [512] type=0 n=512
+  [204] encoder.blocks.3.attn_ln.weight          1-D [512] type=0 n=512
+  [205] encoder.blocks.3.attn_ln.bias            1-D [512] type=0 n=512
+  [206] encoder.blocks.3.attn.query.weight       2-D [512×512] type=1 n=262144
+  [207] encoder.blocks.3.attn.query.bias         1-D [512] type=0 n=512
+  [208] encoder.blocks.3.attn.key.weight         2-D [512×512] type=1 n=262144
+  [209] encoder.blocks.3.attn.value.weight       2-D [512×512] type=1 n=262144
+  [210] encoder.blocks.3.attn.value.bias         1-D [512] type=0 n=512
+  [211] encoder.blocks.3.attn.out.weight         2-D [512×512] type=1 n=262144
+  [212] encoder.blocks.3.attn.out.bias           1-D [512] type=0 n=512
+  [213] encoder.blocks.4.mlp_ln.weight           1-D [512] type=0 n=512
+  [214] encoder.blocks.4.mlp_ln.bias             1-D [512] type=0 n=512
+  [215] encoder.blocks.4.mlp.0.weight            2-D [512×2048] type=1 n=1048576
+  [216] encoder.blocks.4.mlp.0.bias              1-D [2048] type=0 n=2048
+  [217] encoder.blocks.4.mlp.2.weight            2-D [2048×512] type=1 n=1048576
+  [218] encoder.blocks.4.mlp.2.bias              1-D [512] type=0 n=512
+  [219] encoder.blocks.4.attn_ln.weight          1-D [512] type=0 n=512
+  [220] encoder.blocks.4.attn_ln.bias            1-D [512] type=0 n=512
+  [221] encoder.blocks.4.attn.query.weight       2-D [512×512] type=1 n=262144
+  [222] encoder.blocks.4.attn.query.bias         1-D [512] type=0 n=512
+  [223] encoder.blocks.4.attn.key.weight         2-D [512×512] type=1 n=262144
+  [224] encoder.blocks.4.attn.value.weight       2-D [512×512] type=1 n=262144
+  [225] encoder.blocks.4.attn.value.bias         1-D [512] type=0 n=512
+  [226] encoder.blocks.4.attn.out.weight         2-D [512×512] type=1 n=262144
+  [227] encoder.blocks.4.attn.out.bias           1-D [512] type=0 n=512
+  [228] encoder.blocks.5.mlp_ln.weight           1-D [512] type=0 n=512
+  [229] encoder.blocks.5.mlp_ln.bias             1-D [512] type=0 n=512
+  [230] encoder.blocks.5.mlp.0.weight            2-D [512×2048] type=1 n=1048576
+  [231] encoder.blocks.5.mlp.0.bias              1-D [2048] type=0 n=2048
+  [232] encoder.blocks.5.mlp.2.weight            2-D [2048×512] type=1 n=1048576
+  [233] encoder.blocks.5.mlp.2.bias              1-D [512] type=0 n=512
+  [234] encoder.blocks.5.attn_ln.weight          1-D [512] type=0 n=512
+  [235] encoder.blocks.5.attn_ln.bias            1-D [512] type=0 n=512
+  [236] encoder.blocks.5.attn.query.weight       2-D [512×512] type=1 n=262144
+  [237] encoder.blocks.5.attn.query.bias         1-D [512] type=0 n=512
+  [238] encoder.blocks.5.attn.key.weight         2-D [512×512] type=1 n=262144
+  [239] encoder.blocks.5.attn.value.weight       2-D [512×512] type=1 n=262144
+  [240] encoder.blocks.5.attn.value.bias         1-D [512] type=0 n=512
+  [241] encoder.blocks.5.attn.out.weight         2-D [512×512] type=1 n=262144
+  [242] encoder.blocks.5.attn.out.bias           1-D [512] type=0 n=512
+  [243] encoder.ln_post.weight                   1-D [512] type=0 n=512
+  [244] encoder.ln_post.bias                     1-D [512] type=0 n=512
+FPQ: Read 245 tensors from /Users/nickgonzales/.local/share/whisper/ggml-base.en.bin
+
+[1/3] decoder.positional_embedding (229376 params, 448×512)
+    Ghost: σ=0.122744, captures 2.4% of error energy
+  Mode: COORD@3+CHAOS+QJL+GHOST | 896 blocks
+    Ghost: σ=0.056206, captures 1.7% of error energy
+  Mode: v7 Holographic Lattice@3 (E8+Warp+RVQ+Trellis+QJL+Ghost)
+    896 blocks, 32 groups/block
+    E8-only RMSE: 0.267636
+    +RVQ RMSE:    0.205157 (23.3% reduction)
+    +Trellis RMSE: 0.000937
+    bpw: 4.18
+    Ghost: σ=0.010000, captures 1.5% of error energy
+  Mode: v8 Recursive Lattice-Flow@3 (TCLQ+16D-RVQ+QJL+Ghost)
+    896 blocks, Viterbi 8-state, 256 tiles (16D)
+    E8 greedy RMSE:  0.267602
+    E8 Viterbi RMSE: 0.267602 (0.0% improvement)
+    RVQ pre  RMSE:   0.267602
+    RVQ post RMSE:   0.194917 (27.2% reduction)
+    bpw: 4.73
+  ╔═══ v4 vs v7 vs v8 COMPARISON ════════════════╗
+  ║ v4 CHAOS+GHOST@3:                             ║
+  ║   cos=0.986910    bpw=3.56                       ║
+  ║ v7 Holographic@3:                             ║
+  ║   cos=0.996190    bpw=4.18                       ║
+  ║ v8 RLF@3:                                     ║
+  ║   cos=0.999852    bpw=4.73                       ║
+  ║ Δcos v8-v4: +0.012943                            ║
+  ║ Δcos v8-v7: +0.003662                            ║
+  ╚═══════════════════════════════════════════════╝
+
+[2/3] encoder.positional_embedding (768000 params, 1500×512)
+    Ghost: σ=15.361376, captures 2.0% of error energy
+  Mode: COORD@3+CHAOS+QJL+GHOST | 3000 blocks
+    Ghost: σ=4.420058, captures 0.7% of error energy
+  Mode: v7 Holographic Lattice@3 (E8+Warp+RVQ+Trellis+QJL+Ghost)
+    3000 blocks, 32 groups/block
+    E8-only RMSE: 0.267812
+    +RVQ RMSE:    0.205014 (23.4% reduction)
+    +Trellis RMSE: 0.065194
+    bpw: 4.15
+    Ghost: σ=0.748639, captures 0.5% of error energy
+  Mode: v8 Recursive Lattice-Flow@3 (TCLQ+16D-RVQ+QJL+Ghost)
+    3000 blocks, Viterbi 8-state, 256 tiles (16D)
+    E8 greedy RMSE:  0.267695
+    E8 Viterbi RMSE: 0.267695 (0.0% improvement)
+    RVQ pre  RMSE:   0.267695
+    RVQ post RMSE:   0.200514 (25.1% reduction)
+    bpw: 4.32
+  ╔═══ v4 vs v7 vs v8 COMPARISON ════════════════╗
+  ║ v4 CHAOS+GHOST@3:                             ║
+  ║   cos=0.984447    bpw=3.55                       ║
+  ║ v7 Holographic@3:                             ║
+  ║   cos=0.996096    bpw=4.15                       ║
+  ║ v8 RLF@3:                                     ║
+  ║   cos=0.999763    bpw=4.32                       ║
+  ║ Δcos v8-v4: +0.015316                            ║
+  ║ Δcos v8-v7: +0.003667                            ║
+  ╚═══════════════════════════════════════════════╝
+
+[3/3] decoder.token_embedding.weight (26554368 params, 51864×512)
