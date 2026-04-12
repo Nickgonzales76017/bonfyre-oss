@@ -57,9 +57,10 @@ apt-get install -y -qq git build-essential libopenblas-dev liblapack-dev wget cu
 
 # Clone bonfyre repo
 if [ ! -d /workspace/bonfyre ]; then
-    git clone https://github.com/Nickgonzales76017/bonfyre.git /workspace/bonfyre
+    git clone https://github.com/Nickgonzales76017/bonfyre-oss.git /workspace/bonfyre
 fi
 cd /workspace/bonfyre/10-Code/BonfyreFPQ
+git -C /workspace/bonfyre pull --ff-only 2>/dev/null || true
 
 # Build with OpenBLAS for Linux
 cat > Makefile.linux << 'MKEOF'
@@ -79,6 +80,7 @@ SRCS := $(SRC_DIR)/fwht.c \
         $(SRC_DIR)/safetensors_reader.c \
         $(SRC_DIR)/serialize.c \
         $(SRC_DIR)/v4_optimizations.c \
+        $(SRC_DIR)/weight_algebra.c \
         $(SRC_DIR)/main.c
 
 OBJS := $(patsubst $(SRC_DIR)/%.c,$(BUILD)/%.o,$(SRCS))
@@ -88,7 +90,7 @@ BIN  := bonfyre-fpq
 all: $(BIN)
 $(BIN): $(OBJS)
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
-$(BUILD)/%.o: $(SRC_DIR)/%.c include/fpq.h | $(BUILD)
+$(BUILD)/%.o: $(SRC_DIR)/%.c include/fpq.h include/weight_algebra.h | $(BUILD)
 	$(CC) $(CFLAGS) -c -o $@ $<
 $(BUILD):
 	mkdir -p $(BUILD)
