@@ -1056,8 +1056,9 @@ footer a:hover { color: var(--text); }
           </tr>
         </tbody>
       </table>
-      <p style="font-size:0.78rem;color:var(--text-dim);margin-top:8px;text-align:center">All tests at 3-bit (FPQ3). Artifacts are published in two tracks on <a href="https://huggingface.co/NICKO" style="color:var(--accent)">Hugging Face</a>: (1) compatibility safetensors (direct Transformers load, larger files), and (2) native <span style="color:var(--text)">.fpq</span> files (massive size reduction, requires BonfyreFPQ runtime).</p>
+      <p style="font-size:0.78rem;color:var(--text-dim);margin-top:8px;text-align:center">All tests at 3-bit (FPQ3). Artifacts are published in two tracks on <a href="https://huggingface.co/NICKO" style="color:var(--accent)">Hugging Face</a>: (1) compatibility safetensors (direct Transformers load, larger files), and (2) native <span style="color:var(--text)">.fpq</span> files (much smaller, but not yet directly usable in standard Transformers inference).</p>
       <p style="font-size:0.78rem;color:var(--red);margin-top:6px;text-align:center">Production bar: compressed artifacts only count as success if they run inference directly with no offline decompression step and no quality regression.</p>
+      <p style="font-size:0.78rem;color:var(--red);margin-top:6px;text-align:center">Current blocker: until native <span style="color:var(--text)">.fpq</span> closes that runtime gap, this is a storage result, not a finished inference innovation.</p>
       <p style="font-size:0.78rem;color:var(--text-dim);margin-top:6px;text-align:center">Verified example: <a href="https://huggingface.co/NICKO/Qwen2.5-3B-BonfyreAlgebra-FPQ3" style="color:var(--accent)">Qwen2.5-3B safetensors</a> = 6.18 GB total vs <a href="https://huggingface.co/NICKO/qwen2.5-3b-algebra-fpq3-BonfyreFPQ-Native" style="color:var(--accent)">Qwen2.5-3B native .fpq</a> = 692 MB total (~8.9x smaller).</p>
     </div>
 
@@ -1283,7 +1284,7 @@ footer a:hover { color: var(--text); }
         that compression error doesn't accumulate across deep transformer stacks or iterative diffusion processes.
       </p>
       <p style="font-size:0.95rem;color:var(--text-dim);line-height:1.7">
-        Current status: compatibility safetensors are inference-ready today. Native <span style="color:var(--text)">.fpq</span> is the smallest storage path but is not yet direct-inference-ready. Both are published on <a href="https://huggingface.co/NICKO" style="color:var(--accent);font-weight:600">Hugging Face</a> with explicit naming.
+        Current status: compatibility safetensors are inference-ready today. Native <span style="color:var(--text)">.fpq</span> is the smallest storage path but is not yet direct-inference-ready, which means the core product gap is still open. Both are published on <a href="https://huggingface.co/NICKO" style="color:var(--accent);font-weight:600">Hugging Face</a> with explicit naming.
       </p>
     </div>
 
@@ -2346,7 +2347,7 @@ footer a:hover { color: var(--text); }
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px;margin-bottom:24px">
       <div style="background:var(--surface);border:2px solid var(--green);border-radius:8px;padding:16px">
         <div style="font-size:0.75rem;color:var(--green);font-weight:700;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.05em">Hugging Face Model Hub</div>
-        <p style="font-size:0.85rem;color:var(--text-dim);line-height:1.6;margin-bottom:8px">Inference-ready track: BF16 safetensors (drop-in, no special loader). Native .fpq track is published separately for storage efficiency and currently requires runtime support.</p>
+        <p style="font-size:0.85rem;color:var(--text-dim);line-height:1.6;margin-bottom:8px">Inference-ready track: BF16 safetensors (drop-in, no special loader). Native .fpq track is published separately as an unfinished storage path until direct inference works without that extra runtime gap.</p>
         <div style="display:flex;flex-direction:column;gap:4px">
           <a href="https://huggingface.co/NICKO/Wan2.1-T2V-14B-BonfyreFPQ3" style="color:var(--accent);font-size:0.82rem">Wan2.1-T2V-14B (54→27 GB) →</a>
           <a href="https://huggingface.co/NICKO/phi-4-BonfyreFPQ3" style="color:var(--accent);font-size:0.82rem">Phi-4 14B (28 GB) →</a>
