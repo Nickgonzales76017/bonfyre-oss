@@ -2860,6 +2860,7 @@ static void v8_learn_tiles(const float *all_residuals, size_t n_pairs,
                 assignments[vi] = v8_find_nearest_tile(vec, _tiles_r, _ek);
             });
 #else
+        #pragma omp parallel for schedule(dynamic, 64)
         for (size_t vi = 0; vi < train_n; vi++) {
             size_t v = vi * train_step;
             if (v >= n_pairs) v = n_pairs - 1;
@@ -3015,10 +3016,11 @@ fpq_tensor_t *fpq_encode_tensor_v8(const float *weights, size_t rows, size_t col
 
     double greedy_mse = 0.0, viterbi_mse = 0.0;
 
-    /* ── Phase 1 block processing: parallel via GCD on Apple ── */
+    /* ── Phase 1 block processing: parallel via GCD on Apple, OpenMP on Linux ── */
 #ifdef __APPLE__
     dispatch_apply(n_blocks, dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^(size_t b) {
 #else
+    #pragma omp parallel for schedule(dynamic, 64)
     for (size_t b = 0; b < n_blocks; b++) {
 #endif
         size_t b_offset = b * block_dim;
@@ -3095,6 +3097,7 @@ fpq_tensor_t *fpq_encode_tensor_v8(const float *weights, size_t rows, size_t col
 #ifdef __APPLE__
     dispatch_apply(n_blocks, dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^(size_t b) {
 #else
+    #pragma omp parallel for schedule(static)
     for (size_t b = 0; b < n_blocks; b++) {
 #endif
         float wnorm_b = warp_norms[b];
@@ -3241,10 +3244,10 @@ fpq_tensor_t *fpq_encode_tensor_v8(const float *weights, size_t rows, size_t col
         }
     }
 #else
-    /* Track previous block's tile assignments for seeded search */
-    int prev_tile_seeds[V8_E8_PAIRS];
-    for (int p = 0; p < V8_E8_PAIRS; p++) prev_tile_seeds[p] = -1;
-
+    /* OpenMP parallel Phase 4: each block is independent.
+     * Use unseeded tile search (same as Apple path) — same quality,
+     * trades small early-exit benefit for multi-core parallelism. */
+    #pragma omp parallel for schedule(dynamic, 64)
     for (size_t b = 0; b < n_blocks; b++) {
         size_t offset = b * block_dim;
         size_t this_dim = (offset + block_dim <= total) ? block_dim : (total - offset);
@@ -3257,14 +3260,8 @@ fpq_tensor_t *fpq_encode_tensor_v8(const float *weights, size_t rows, size_t col
             size_t ridx = (b * V8_E8_PAIRS + (size_t)p) * V8_TILE_DIM;
             const float *pair_res = all_pair_residuals + ridx;
 
-            /* Pre-RVQ error */
-            for (int d = 0; d < V8_TILE_DIM; d++)
-                pre_rvq_mse += (double)(pair_res[d] * pair_res[d]);
-
-            int ti = v8_find_nearest_tile_seeded(pair_res, tiles, effective_k,
-                                                  prev_tile_seeds[p]);
+            int ti = v8_find_nearest_tile(pair_res, tiles, effective_k);
             tile_indices[b][p] = (uint8_t)ti;
-            prev_tile_seeds[p] = ti;
 
             /* Apply correction: e8 + tile */
             size_t pair_base = (size_t)p * V8_TILE_DIM;
@@ -3272,12 +3269,6 @@ fpq_tensor_t *fpq_encode_tensor_v8(const float *weights, size_t rows, size_t col
                 corrected[pair_base + d] =
                     e8_points[b][pair_base + d] +
                     tiles[ti * V8_TILE_DIM + d];
-
-                /* Post-RVQ error */
-                float scaled_orig = fwht_warped[b][pair_base + d] /
-                                    wnorm * lattice_scale;
-                float post_err = scaled_orig - corrected[pair_base + d];
-                post_rvq_mse += (double)(post_err * post_err);
             }
         }
 
@@ -3328,6 +3319,26 @@ fpq_tensor_t *fpq_encode_tensor_v8(const float *weights, size_t rows, size_t col
         free(orig_fwht);
     }
 #endif
+
+    /* ── Compute RVQ MSE (serial — safe after parallel Phase 4) ── */
+    for (size_t b = 0; b < n_blocks; b++) {
+        size_t offset = b * padded;
+        float wnorm = warp_norms[b];
+        float lattice_scale = wnorm / (float)padded;
+        for (int p = 0; p < V8_E8_PAIRS; p++) {
+            size_t ridx = b * V8_E8_PAIRS * V8_TILE_DIM + (size_t)p * V8_TILE_DIM;
+            const float *pair_res = all_pair_residuals + ridx;
+            size_t pair_base = (size_t)p * V8_TILE_DIM;
+            for (int d = 0; d < V8_TILE_DIM; d++) {
+                pre_rvq_mse += (double)(pair_res[d] * pair_res[d]);
+                float scaled_orig = fwht_warped[b][pair_base + d] /
+                                    wnorm * lattice_scale;
+                float post_err = scaled_orig - (e8_points[b][pair_base + d] +
+                    tiles[tile_indices[b][p] * V8_TILE_DIM + d]);
+                post_rvq_mse += (double)(post_err * post_err);
+            }
+        }
+    }
 
     /* ── Ghost Head ── */
     if (rows > 1 && cols > 1) {
@@ -3620,7 +3631,7 @@ extern void dgesvd_(char*, char*, int*, int*, double*, int*, double*, double*, i
 #define LAP_INT int
 #endif
 
-static int v9_truncated_svd(const float *A, size_t m, size_t n,
+int v9_truncated_svd(const float *A, size_t m, size_t n,
                             int max_rank, float energy_threshold,
                             float *U_out, float *S_out, float *Vt_out) {
 #ifdef FPQ_HAS_BLAS
@@ -3654,8 +3665,17 @@ static int v9_truncated_svd(const float *A, size_t m, size_t n,
 
     /* A stays float row-major — we'll use CblasRowMajor for big gemms */
     double total_energy = 0.0;
+    #if defined(HAVE_OPENBLAS) || defined(__APPLE__)
+    {
+        size_t mn = m * n;
+        #pragma omp parallel for reduction(+:total_energy) schedule(static)
+        for (size_t i = 0; i < mn; i++)
+            total_energy += (double)A[i] * (double)A[i];
+    }
+    #else
     for (size_t i = 0; i < m * n; i++)
         total_energy += (double)A[i] * (double)A[i];
+    #endif
 
     /* Skip SVD entirely for rank-0 (near-zero energy) tensors */
     if (total_energy < 1e-20) {
@@ -3707,8 +3727,11 @@ static int v9_truncated_svd(const float *A, size_t m, size_t n,
     LAP_INT l_lap = (LAP_INT)l;
     LAP_INT info  = 0;
 
-    /* ── 2. Power iterations (q=2) ── */
-    int q_pow = 2;
+    /* ── 2. Power iterations ──
+     * q=2 for normal tensors, q=1 for very large tensors (>100M elements)
+     * to avoid excessive sgemm time. The sketch is already high-quality
+     * with oversampling p=20, so 1 power iteration suffices. */
+    int q_pow = (m * n > 100000000UL) ? 1 : 2;
     for (int qi = 0; qi < q_pow; qi++) {
         /* Z = A^T * Y  [n × l] row-major float */
         cblas_sgemm(CblasRowMajor, CblasTrans, CblasNoTrans,
@@ -3808,19 +3831,30 @@ static int v9_truncated_svd(const float *A, size_t m, size_t n,
                 free(a_col);
             });
 #else
-        /* OpenMP parallel loop — same algorithm as GCD dispatch_apply */
-        #pragma omp parallel for schedule(dynamic)
-        for (size_t j = 0; j < n; j++) {
-            double *a_col = (double *)malloc(m * sizeof(double));
-            for (size_t i = 0; i < m; i++)
-                a_col[i] = (double)A[i * n + j];
-            cblas_dgemv(CblasColMajor, CblasTrans,
-                        (int)m, l,
-                        1.0, Yd, (int)m,
-                        a_col, 1,
-                        0.0, B + j * (size_t)l, 1);
-            free(a_col);
+        /* B = Q^T * A  via chunked dgemm (much faster than column-by-column dgemv).
+         * Promote A to double in column-chunks to limit memory, then dgemm.
+         * B is col-major [l × n], Q^T is [l × m], A_chunk is [m × chunk_cols]. */
+        size_t chunk_cols = 512;  /* ~m*512*8 bytes per chunk */
+        if (chunk_cols > n) chunk_cols = n;
+        double *A_chunk = (double *)malloc(m * chunk_cols * sizeof(double));
+
+        for (size_t c0 = 0; c0 < n; c0 += chunk_cols) {
+            size_t cc = (c0 + chunk_cols <= n) ? chunk_cols : (n - c0);
+            /* Promote A[:, c0:c0+cc] to double col-major */
+            #pragma omp parallel for schedule(static)
+            for (size_t j = 0; j < cc; j++)
+                for (size_t i = 0; i < m; i++)
+                    A_chunk[i + j * m] = (double)A[i * n + (c0 + j)];
+            /* B[:, c0:c0+cc] = Q^T * A_chunk
+             * Q is col-major [m × l], so Q^T is [l × m].
+             * cblas_dgemm: C = alpha * op(A) * op(B) + beta * C */
+            cblas_dgemm(CblasColMajor, CblasTrans, CblasNoTrans,
+                        l, (int)cc, (int)m,
+                        1.0, Yd, (int)m,            /* Q^T: [l × m] */
+                        A_chunk, (int)m,             /* A_chunk: [m × cc] */
+                        0.0, B + c0 * (size_t)l, l); /* B: [l × cc] */
         }
+        free(A_chunk);
 #endif
     }
 
@@ -4195,6 +4229,7 @@ fpq_tensor_t *fpq_encode_tensor_v9(const float *weights, size_t rows, size_t col
 #ifdef __APPLE__
     dispatch_apply(n_blocks, dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^(size_t b) {
 #else
+    #pragma omp parallel for schedule(dynamic, 64)
     for (size_t b = 0; b < n_blocks; b++) {
 #endif
         size_t b_offset = b * block_dim;
@@ -4248,6 +4283,7 @@ fpq_tensor_t *fpq_encode_tensor_v9(const float *weights, size_t rows, size_t col
 #ifdef __APPLE__
     dispatch_apply(n_blocks, dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^(size_t b) {
 #else
+    #pragma omp parallel for schedule(static)
     for (size_t b = 0; b < n_blocks; b++) {
 #endif
         float wnorm_b = warp_norms[b];
@@ -4289,6 +4325,7 @@ fpq_tensor_t *fpq_encode_tensor_v9(const float *weights, size_t rows, size_t col
     int _ek_v9 = effective_k;
     dispatch_apply(n_blocks, dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^(size_t b) {
 #else
+    #pragma omp parallel for schedule(dynamic, 64)
     for (size_t b = 0; b < n_blocks; b++) {
 #endif
         size_t b_off = b * block_dim;
