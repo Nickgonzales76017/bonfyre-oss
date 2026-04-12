@@ -4021,6 +4021,16 @@ static inline float snap_fp16(float x) {
     return v.f;
 }
 
+/* ── Frobenius norm of error (a-b) ── */
+static double frob_norm_sq_f(const float *a, const float *b, size_t n) {
+    double s = 0.0;
+    for (size_t i = 0; i < n; i++) {
+        double d = (double)a[i] - (double)b[i];
+        s += d * d;
+    }
+    return s;
+}
+
 fpq_tensor_t *fpq_encode_tensor_v9(const float *weights, size_t rows, size_t cols,
                                      const char *name, int coord_bits) {
     size_t total = rows * cols;
@@ -4404,25 +4414,35 @@ fpq_tensor_t *fpq_encode_tensor_v9(const float *weights, size_t rows, size_t col
 
     /* ════════════════════════════════════════════════════════════════
      * PHASE 3: Ghost head on full reconstruction error
+     *   Speed optimization: skip ghost if pre-ghost cos > 0.99995
+     *   (ghost head can't meaningfully improve near-perfect reconstruction)
      * ════════════════════════════════════════════════════════════════ */
     float *full_decode = (float *)malloc(total * sizeof(float));
     for (size_t i = 0; i < total; i++)
         full_decode[i] = W_lr[i] + decoded_flat[i];
 
     if (rows > 1 && cols > 1) {
-        float *err = (float *)malloc(total * sizeof(float));
-        for (size_t i = 0; i < total; i++)
-            err[i] = weights[i] - full_decode[i];
-        tensor->ghost = fpq_ghost_compute(err, rows, cols);
-        free(err);
-    }
-
-    /* Diagnostics */
-    {
         float cos_pre = fpq_cosine_sim(weights, full_decode, total);
-        fpq_ghost_apply(tensor->ghost, full_decode);
-        float cos_post = fpq_cosine_sim(weights, full_decode, total);
-        fprintf(stderr, "    v9 cos: %.6f → +ghost: %.6f\n", cos_pre, cos_post);
+        if (cos_pre < 0.99995f) {
+            /* Ghost correction worth computing */
+            float *err = (float *)malloc(total * sizeof(float));
+            for (size_t i = 0; i < total; i++)
+                err[i] = weights[i] - full_decode[i];
+            tensor->ghost = fpq_ghost_compute(err, rows, cols);
+            free(err);
+
+            fpq_ghost_apply(tensor->ghost, full_decode);
+            float cos_post = fpq_cosine_sim(weights, full_decode, total);
+            fprintf(stderr, "    Ghost: σ=%.6f, captures %.1f%% of error energy (%d iters)\n",
+                    tensor->ghost->sigma,
+                    100.0 * tensor->ghost->sigma * tensor->ghost->sigma /
+                    (total > 0 ? (double)frob_norm_sq_f(weights, full_decode, total) + 1e-30 : 1.0),
+                    20);
+            fprintf(stderr, "    v9 cos: %.6f → +ghost: %.6f\n", cos_pre, cos_post);
+        } else {
+            /* Skip ghost — already excellent reconstruction */
+            fprintf(stderr, "    v9 cos: %.6f (ghost skipped — above threshold)\n", cos_pre);
+        }
     }
 
     /* ════════════════════════════════════════════════════════════════

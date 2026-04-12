@@ -359,6 +359,42 @@ int fpq_gguf_write_v9(const char *input_path, const char *output_path,
                        int coord_bits);
 
 
+/* ═══════════════════════════════════════════════════════════════════
+ * Native .fpq format — compact storage (~1.6 bpw = 20× from fp32)
+ *
+ * Stores v9 multiscale data in compact binary format:
+ *   - LR factors: INT8/INT6/INT4 quantized U*S and Vt
+ *   - Residual: E8 lattice indices + RVQ tile indices
+ *   - Ghost vectors: INT8 compressed u, v, sigma
+ *   - Metadata: fp16 scales + INT8 norms
+ *
+ * Reader reconstructs to FP32 on-the-fly for inference.
+ * ═══════════════════════════════════════════════════════════════════ */
+#define FPQ_NATIVE_MAGIC    0x46505130  /* "FPQ0" */
+#define FPQ_NATIVE_VERSION  10
+
+/*
+ * Write native .fpq format — compact binary storage per tensor.
+ * Input: already-processed fp32 data (post algebra-compress).
+ * Each tensor is stored as compact v9 multiscale encoding.
+ */
+int fpq_native_write(const char *path, const fpq_raw_tensor_t *tensors,
+                     size_t n_tensors);
+
+/*
+ * Read native .fpq format back into fp32 tensors.
+ * Returns allocated tensor array (caller frees with fpq_raw_tensor_free).
+ */
+fpq_raw_tensor_t *fpq_native_read(const char *path, size_t *n_tensors);
+
+/*
+ * Write native .fpq format from v9-encoded tensors (pre-compressed).
+ * Stores the compact representation directly without re-encoding.
+ */
+int fpq_native_write_v9(const char *path, fpq_tensor_t **tensors,
+                        size_t n_tensors, int coord_bits);
+
+
 /* ── Utility ── */
 
 float fpq_mse(const float *a, const float *b, size_t n);
