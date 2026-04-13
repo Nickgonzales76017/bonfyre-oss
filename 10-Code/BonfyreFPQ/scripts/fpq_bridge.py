@@ -61,6 +61,22 @@ class FPQTensorInfoC(ctypes.Structure):
         ("bpw",     ctypes.c_float),
     ]
 
+class FPQXPolicyC(ctypes.Structure):
+    """Maps fpqx_policy_t (Λ-operator) — profiling output for adaptive routing."""
+    _fields_ = [
+        ("eta_L",            ctypes.c_float),
+        ("spectral_gap",     ctypes.c_float),
+        ("kurtosis",         ctypes.c_float),
+        ("outlier_fraction", ctypes.c_float),
+        ("recommended_bits", ctypes.c_int),
+        ("use_scale",        ctypes.c_int),
+        ("scale_rank",       ctypes.c_int),
+        ("use_predictor",    ctypes.c_int),
+        ("pred_rank",        ctypes.c_int),
+        ("adaptive_keep",    ctypes.c_float),
+        ("active_ops",       ctypes.c_uint32),
+    ]
+
 
 # ─── Load and bind ──────────────────────────────────────────────────────────
 
@@ -109,6 +125,45 @@ def _load_lib():
     # fpq_get_passthrough(model, name) → float*
     _lib.fpq_get_passthrough.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
     _lib.fpq_get_passthrough.restype = ctypes.POINTER(ctypes.c_float)
+
+    # ── FPQ-X operator bindings (fpqx_ops.c) ──────────────────────────────
+    # fpqx_profile — Λ adaptive policy (#4)
+    try:
+        _lib.fpqx_profile.argtypes = [
+            ctypes.POINTER(ctypes.c_float), ctypes.c_size_t, ctypes.c_size_t,
+            ctypes.c_char_p, ctypes.c_int,
+        ]
+        _lib.fpqx_profile.restype = FPQXPolicyC
+    except AttributeError:
+        pass
+
+    # fpqx_distill / reconstruct / free — D operator (#6)
+    try:
+        _lib.fpqx_distill.argtypes = [
+            ctypes.POINTER(ctypes.c_float), ctypes.c_size_t, ctypes.c_size_t,
+            ctypes.POINTER(ctypes.c_float), ctypes.c_int,
+        ]
+        _lib.fpqx_distill.restype = ctypes.c_void_p
+        _lib.fpqx_distill_reconstruct.argtypes = [
+            ctypes.c_void_p, ctypes.POINTER(ctypes.c_float), ctypes.c_size_t,
+        ]
+        _lib.fpqx_distill_reconstruct.restype = None
+        _lib.fpqx_distill_free.argtypes = [ctypes.c_void_p]
+        _lib.fpqx_distill_free.restype = None
+    except AttributeError:
+        pass
+
+    # fpqx_pack / pack_free — H operator (#11)
+    try:
+        _lib.fpqx_pack.argtypes = [
+            ctypes.POINTER(ctypes.c_float), ctypes.c_size_t, ctypes.c_size_t,
+            ctypes.c_int, ctypes.c_int, ctypes.c_size_t,
+        ]
+        _lib.fpqx_pack.restype = ctypes.c_void_p
+        _lib.fpqx_pack_free.argtypes = [ctypes.c_void_p]
+        _lib.fpqx_pack_free.restype = None
+    except AttributeError:
+        pass
 
     return _lib
 
@@ -245,8 +300,92 @@ class FPQModel:
             raise RuntimeError(f"fpq_decode_one failed for '{tensor_name}'")
         return out.reshape(rows, cols) if cols > 1 else out
 
+    # ── Λ-operator: tensor profiling (#4) ────────────────────────────
 
-# ─── PyTorch integration ─────────────────────────────────────────────────────
+    def profile_tensor(self, tensor_name, base_bits=4):
+        """
+        Run fpqx_profile on a tensor — returns dict with recommended policy.
+        Uses the Λ-operator to determine optimal bit budget and operator mix.
+        """
+        if not hasattr(self._lib, 'fpqx_profile'):
+            return None
+        W = self.decode_tensor(tensor_name)
+        if W.ndim < 2:
+            W = W.reshape(1, -1)
+        rows, cols = W.shape
+        W_c = np.ascontiguousarray(W, dtype=np.float32)
+        W_ptr = W_c.ctypes.data_as(ctypes.POINTER(ctypes.c_float))
+        pol = self._lib.fpqx_profile(W_ptr, rows, cols, tensor_name.encode(), base_bits)
+        return {
+            "eta_L":            pol.eta_L,
+            "spectral_gap":     pol.spectral_gap,
+            "kurtosis":         pol.kurtosis,
+            "outlier_fraction": pol.outlier_fraction,
+            "recommended_bits": pol.recommended_bits,
+            "use_scale":        bool(pol.use_scale),
+            "scale_rank":       pol.scale_rank,
+            "use_predictor":    bool(pol.use_predictor),
+            "pred_rank":        pol.pred_rank,
+            "adaptive_keep":    pol.adaptive_keep,
+            "active_ops":       pol.active_ops,
+        }
+
+    # ── H-operator: NEON pre-packing (#11) ───────────────────────────
+
+    def pack_tensors_neon(self, group_size=32, verbose=False):
+        """
+        Pre-pack all SLI tensors in NEON-aligned layout (H-operator).
+        Only effective on ARM platforms; stores void* handles for cleanup.
+        Primes the runtime for future fpq_matmul_packed calls.
+        """
+        import platform
+        if platform.machine() not in ("arm64", "aarch64"):
+            if verbose:
+                print("H-operator NEON packing: skipped (not ARM)")
+            return 0
+        if not hasattr(self._lib, 'fpqx_pack'):
+            if verbose:
+                print("H-operator NEON packing: fpqx_pack not in lib")
+            return 0
+
+        FPQX_PACK_NEON_128 = 3
+        self._packed_handles = getattr(self, '_packed_handles', {})
+        packed_count = 0
+        for tname in self.tensor_names():
+            ti = self.tensor_info(tname)
+            if not ti or not ti["has_sli"]:
+                continue
+            W = self.decode_tensor(tname)
+            if W.ndim < 2:
+                continue
+            rows, cols = W.shape
+            bits = max(2, min(8, int(round(ti["bpw"]))))
+            W_c = np.ascontiguousarray(W, dtype=np.float32)
+            W_ptr = W_c.ctypes.data_as(ctypes.POINTER(ctypes.c_float))
+            handle = self._lib.fpqx_pack(W_ptr, rows, cols, bits, FPQX_PACK_NEON_128, group_size)
+            if handle:
+                self._packed_handles[tname] = handle
+                packed_count += 1
+                if verbose:
+                    print(f"  [NEON] packed {tname} ({rows}×{cols})")
+        if verbose:
+            print(f"H-operator: packed {packed_count} tensors in NEON-128 layout")
+        return packed_count
+
+    def _free_packed(self):
+        """Release all NEON-packed handles."""
+        handles = getattr(self, '_packed_handles', {})
+        if handles and hasattr(self._lib, 'fpqx_pack_free'):
+            for h in handles.values():
+                if h:
+                    self._lib.fpqx_pack_free(h)
+        self._packed_handles = {}
+
+    def close(self):
+        self._free_packed()
+        if self._handle:
+            self._lib.fpq_close(self._handle)
+            self._handle = None
 
 try:
     import torch
@@ -266,6 +405,17 @@ try:
                 self.bias = nn.Parameter(bias_data, requires_grad=False)
             else:
                 self.bias = None
+            self._row_scale = None  # optional M-operator per-row scale correction (#10)
+
+        def attach_row_scale(self, scale: "torch.Tensor"):
+            """
+            Bind a per-row scale correction vector (M-operator, #10).
+            scale: [out_features] float tensor — applied as y *= scale after matmul.
+            Can be derived from: ||W_original[row]|| / ||W_sli[row]|| calibration.
+            """
+            assert scale.shape == (self.out_features,), \
+                f"Expected row_scale shape ({self.out_features},), got {scale.shape}"
+            self._row_scale = scale.float().detach()
 
         def forward(self, x):
             # x: [..., in_features] → [..., out_features]
@@ -283,6 +433,11 @@ try:
             y = torch.from_numpy(y_np).to(x.device, x.dtype)
             out_shape = orig_shape[:-1] + (self.out_features,)
             y = y.reshape(out_shape)
+
+            # (#10) M-operator: apply per-row scale correction if bound
+            if self._row_scale is not None:
+                rs = self._row_scale.to(y.device, y.dtype)
+                y = y * rs
 
             if self.bias is not None:
                 y = y + self.bias
@@ -439,12 +594,21 @@ try:
         kv: "torch.Tensor",
         bits: int = 4,
         layer_seed: int = 0,
+        attn_weights: "torch.Tensor" = None,  # per-block attention mass (#3)
+        shared_tiles: "torch.Tensor" = None,  # pre-learned tile codebook (#5)
     ) -> "torch.Tensor":
         """
         Simulate KV cache compression+decompression on a tensor.
 
         Uses the same E8+μ-law+16D RVQ pipeline as bonfyre-kvcache.
         Input: any shape — flattened to 1D then back.
+
+        attn_weights: optional [n_blocks] tensor weighting tile K-means by
+                      attention mass (#3). Blocks that attend more get higher
+                      priority in centroid updates.
+        shared_tiles: optional [k, 16] pre-learned codebook from
+                      learn_kv_shared_codebook() (#5). Skips per-call K-means.
+
         Returns tensor of same shape with quantization noise applied.
         """
         orig_shape = kv.shape
@@ -480,33 +644,79 @@ try:
         warped_n = warped / wnorm * lattice_scale  # [n_blocks, 256]
 
         # Step 4: E8 snap on 32 groups of 8
+        # (#9) LT_SMALL_INT fast path: blocks with all |values| ≤ 63 after
+        #      lattice scaling are rounded instead of E8-snapped, simulating
+        #      the 7-bit integer fast path from lambda-tensors LT_SMALL_INT.
+        small_mask = (warped_n.abs().max(dim=-1).values <= 63.0)  # [n_blocks]
         warped_g = warped_n.view(n_blocks * 32, 8)  # [n_blocks*32, 8]
-        e8_pts = _e8_snap(warped_g).view(n_blocks, 256)  # [n_blocks, 256]
+        e8_pts_full = _e8_snap(warped_g).view(n_blocks, 256)
+        rounded_pts = warped_n.round().clamp(-63, 63)   # 7-bit fast path
+        e8_pts = torch.where(
+            small_mask.unsqueeze(1).expand_as(warped_n),
+            rounded_pts, e8_pts_full,
+        )  # [n_blocks, 256]
 
         # ── RVQ tile correction ──────────────────────────────────────
+        # (#8) Huffman PMF weighting: proxy for code length = mean |e8 coord|.
+        #      Blocks with larger-magnitude coords are rarer in the E8 lattice
+        #      (Huffman codes are longer) → higher priority for tile correction.
+        coding_cost = e8_pts.abs().mean(dim=-1)          # [n_blocks]
+        mean_cost = coding_cost.mean().clamp(min=1e-10)
+        block_coding_w = (coding_cost / mean_cost).clamp(0.1, 10.0)  # [n_blocks]
+
         # Residuals: warped - e8 for each 16-dim pair
         residuals = warped_n - e8_pts  # [n_blocks, 256]
         res_pairs = residuals.view(n_blocks * _KV_PAIRS, _KV_TDIM)  # [n_blocks*16, 16]
         n_pairs = res_pairs.shape[0]
+
+        # (#3) Attention weights expanded to pair level, combined with coding priority
+        pair_coding_w = block_coding_w.repeat_interleave(_KV_PAIRS)  # [n_pairs]
+        if attn_weights is not None:
+            aw = attn_weights.float().to(res_pairs.device)
+            if aw.shape[0] >= n_blocks:
+                aw = aw[:n_blocks]
+            else:
+                aw_pad = torch.ones(n_blocks, device=res_pairs.device)
+                aw_pad[:aw.shape[0]] = aw
+                aw = aw_pad
+            pair_attn_w = aw.repeat_interleave(_KV_PAIRS) * pair_coding_w
+        else:
+            pair_attn_w = pair_coding_w
+        pair_attn_w = pair_attn_w / pair_attn_w.mean().clamp(min=1e-10)
 
         # Effective tile count (scale with data)
         ek = min(_KV_NTILES, max(16, n_pairs // 4))
 
         # K-means tile learning (CPU, lightweight)
         res_cpu = res_pairs.cpu().float()
-        step = max(1, n_pairs // ek)
-        tiles = res_cpu[torch.arange(ek) * step % n_pairs]  # [ek, 16] init
+        w_cpu   = pair_attn_w.cpu()
 
-        assign = torch.zeros(n_pairs, dtype=torch.long)
-        for _ in range(10):  # 10 K-means iterations (matches C code)
-            # Assign: nearest tile
-            d = ((res_cpu.unsqueeze(1) - tiles.unsqueeze(0)) ** 2).sum(-1)  # [n_pairs, ek]
-            assign = d.argmin(-1)
-            # Update: centroids
-            for t in range(ek):
-                mask = (assign == t)
-                if mask.any():
-                    tiles[t] = res_cpu[mask].mean(0)
+        if shared_tiles is not None:
+            # (#5) Pre-learned cross-layer codebook — skip K-means training
+            tiles = shared_tiles.cpu().float()
+            if tiles.shape[-1] != _KV_TDIM:
+                tiles = tiles[:, :_KV_TDIM] if tiles.shape[-1] > _KV_TDIM else tiles
+            ek = tiles.shape[0]
+        else:
+            step = max(1, n_pairs // ek)
+            tiles = res_cpu[torch.arange(ek) * step % n_pairs].clone()
+
+            assign = torch.zeros(n_pairs, dtype=torch.long)
+            for _ in range(10):  # 10 K-means iterations (matches C code)
+                # (#3+#8) Distance weighted by attn-mass × Huffman coding cost
+                d   = ((res_cpu.unsqueeze(1) - tiles.unsqueeze(0)) ** 2).sum(-1)
+                d_w = d * w_cpu.unsqueeze(1)
+                assign = d_w.argmin(-1)
+                # Update: weighted centroids
+                for t in range(ek):
+                    mask = (assign == t)
+                    if mask.any():
+                        wt = w_cpu[mask].unsqueeze(1)
+                        tiles[t] = (res_cpu[mask] * wt).sum(0) / wt.sum().clamp(min=1e-10)
+
+        # Final assignment (always recompute — applies to shared_tiles too)
+        d_final = ((res_cpu.unsqueeze(1) - tiles.unsqueeze(0)) ** 2).sum(-1)
+        assign  = d_final.argmin(-1)
 
         tile_correction = tiles[assign].to(kv_f.device)  # [n_pairs, 16]
         tile_correction = tile_correction.view(n_blocks, 256)
@@ -532,33 +742,61 @@ try:
         bits: int = 4,
         kv_suffixes: tuple = ("to_k", "to_v", "k_proj", "v_proj"),
         verbose: bool = True,
+        adaptive_bits: bool = False,
+        shared_tiles: "torch.Tensor" = None,
     ) -> dict:
         """
         Register forward hooks on K/V projection layers to simulate KV cache
         compression. Works alongside patch_model() SLI weight compression.
 
-        Each K/V Linear layer's output is passed through kv_compress_roundtrip(),
-        injecting the same quantization noise as runtime KV cache compression.
+        bits: default KV cache bits (3, 4, or 5). Default 4.
+        adaptive_bits: if True, call fpqx_profile per K/V layer and use
+                       policy.recommended_bits instead of fixed bits (#4).
+        shared_tiles: optional pre-learned tile codebook from
+                      learn_kv_shared_codebook() to pass to hooks (#5).
+        kv_suffixes: module name suffixes to treat as K/V projections.
 
-        Args:
-            model: HuggingFace or diffusers model (already SLI-patched or not).
-            bits: KV cache bits (3, 4, or 5). Default 4.
-            kv_suffixes: Module name suffixes to treat as K/V projections.
-            verbose: Print patched layer count.
-
-        Returns:
-            dict with:
-              "handles": list of hook handles (call h.remove() to undo)
-              "layers":  list of (module_path, module) for patched layers
-              "bits":    bits used
+        Returns dict: {handles, layers, bits}
         """
         handles = []
         layers = []
         seed_counter = [0]
 
-        def _make_hook(layer_seed: int):
+        def _resolve_bits(module, path, default_bits):
+            """Per-layer bit resolution via Λ-operator profiling (#4)."""
+            if not adaptive_bits:
+                return default_bits
+            # Try to get weight for profiling
+            W_np = None
+            if hasattr(module, 'fpq_model') and hasattr(module, 'tensor_name'):
+                try:
+                    W_np = module.fpq_model.decode_tensor(module.tensor_name)
+                    pol = module.fpq_model.profile_tensor(module.tensor_name, default_bits)
+                    if pol and pol["recommended_bits"]:
+                        return pol["recommended_bits"]
+                except Exception:
+                    pass
+            elif hasattr(module, 'weight') and module.weight is not None:
+                lib = _load_lib()
+                if hasattr(lib, 'fpqx_profile'):
+                    try:
+                        W_np = module.weight.data.float().cpu().numpy()
+                        W_c = np.ascontiguousarray(W_np)
+                        rows, cols = (W_c.shape[0], W_c.shape[1]) if W_c.ndim > 1 else (1, W_c.size)
+                        W_ptr = W_c.reshape(-1).ctypes.data_as(ctypes.POINTER(ctypes.c_float))
+                        pol = lib.fpqx_profile(W_ptr, rows, cols, path.encode(), default_bits)
+                        if pol.recommended_bits:
+                            return pol.recommended_bits
+                    except Exception:
+                        pass
+            return default_bits
+
+        def _make_hook(layer_seed: int, layer_bits: int):
             def hook(module, input, output):
-                return kv_compress_roundtrip(output, bits=bits, layer_seed=layer_seed)
+                return kv_compress_roundtrip(
+                    output, bits=layer_bits, layer_seed=layer_seed,
+                    shared_tiles=shared_tiles,
+                )
             return hook
 
         def _walk(module, path):
@@ -569,28 +807,249 @@ try:
                 if is_kv and is_linear:
                     seed = seed_counter[0]
                     seed_counter[0] += 1
-                    h = child.register_forward_hook(_make_hook(seed))
+                    layer_bits = _resolve_bits(child, full, bits)
+                    h = child.register_forward_hook(_make_hook(seed, layer_bits))
                     handles.append(h)
-                    layers.append((full, child))
+                    layers.append((full, child, layer_bits))
                 else:
                     _walk(child, full)
 
         _walk(model, "")
 
         if verbose:
-            print(f"\nKV cache compression hooks registered: {len(layers)} layers @ {bits}-bit")
-            for path, _ in layers[:8]:
-                print(f"  [KV] {path}")
+            print(f"\nKV cache compression hooks: {len(layers)} layers")
+            for path, _, lb in layers[:8]:
+                tag = f"{lb}b" + (" [adaptive]" if adaptive_bits else "")
+                print(f"  [KV] {path} @ {tag}")
             if len(layers) > 8:
                 print(f"  ... and {len(layers) - 8} more")
 
-        return {"handles": handles, "layers": layers, "bits": bits}
+        return {"handles": handles, "layers": [(p, m) for p, m, _ in layers], "bits": bits}
 
 
     def remove_kv_cache_hooks(hook_info: dict) -> None:
         """Remove all KV cache hooks registered by patch_kv_cache()."""
         for h in hook_info.get("handles", []):
             h.remove()
+
+
+    # ─── Cross-layer shared tile codebook (#5) ────────────────────────────
+
+    def learn_kv_shared_codebook(
+        model: "nn.Module",
+        bits: int = 4,
+        n_sample_layers: int = 8,
+        kv_suffixes: tuple = ("to_k", "to_v", "k_proj", "v_proj"),
+        n_tiles: int = 256,
+        n_iter: int = 20,
+    ) -> "torch.Tensor":
+        """
+        Learn a shared RVQ tile codebook from K/V projection weight matrices.
+        Uses weight columns as proxy for KV activation residual distribution.
+
+        Returns: [n_tiles, 16] tile codebook on CPU, suitable for passing as
+                 shared_tiles= to kv_compress_roundtrip().
+        """
+        samples = []
+        count = 0
+        lattice_scale = 8.0 * bits
+
+        for name, module in model.named_modules():
+            if count >= n_sample_layers:
+                break
+            is_kv = any(name.endswith(s) or f".{s}." in name + "." for s in kv_suffixes)
+            if not is_kv:
+                continue
+            # Obtain weight matrix
+            if hasattr(module, 'weight') and module.weight is not None:
+                W = module.weight.data.float().reshape(-1)
+            elif hasattr(module, 'fpq_model') and hasattr(module, 'tensor_name'):
+                W = torch.from_numpy(
+                    module.fpq_model.decode_tensor(module.tensor_name)
+                ).float().reshape(-1)
+            else:
+                continue
+
+            n = (W.numel() // _KV_BLOCK) * _KV_BLOCK
+            if n == 0:
+                continue
+            W_blocks = W[:n].view(-1, _KV_BLOCK)
+            nb = W_blocks.shape[0]
+            # Apply same normalization as kv_compress_roundtrip
+            enc = torch.stack([
+                _rand_signs(W_blocks[b:b+1], seed=count * 997 + b).squeeze(0)
+                for b in range(nb)
+            ])
+            enc = _fwht(enc)
+            rms = enc.pow(2).mean(-1, keepdim=True).sqrt().clamp(min=1e-10)
+            enc_n = enc / rms
+            warped = _mu_warp(enc_n)
+            wnorm = warped.pow(2).mean(-1, keepdim=True).sqrt().clamp(min=1e-10)
+            warped_n = warped / wnorm * lattice_scale
+            warped_g = warped_n.view(nb * 32, 8)
+            e8_pts = _e8_snap(warped_g).view(nb, 256)
+            residuals = warped_n - e8_pts
+            res_pairs = residuals.view(nb * _KV_PAIRS, _KV_TDIM)
+            samples.append(res_pairs.cpu())
+            count += 1
+
+        if not samples:
+            return torch.zeros(n_tiles, _KV_TDIM)
+
+        all_res = torch.cat(samples, dim=0)
+        n_total = all_res.shape[0]
+        step = max(1, n_total // n_tiles)
+        tiles = all_res[torch.arange(n_tiles) * step % n_total].clone()
+
+        for _ in range(n_iter):
+            d = ((all_res.unsqueeze(1) - tiles.unsqueeze(0)) ** 2).sum(-1)
+            assign = d.argmin(-1)
+            for t in range(n_tiles):
+                mask = (assign == t)
+                if mask.any():
+                    tiles[t] = all_res[mask].mean(0)
+
+        return tiles  # [n_tiles, 16]
+
+
+    # ─── D-operator: distillation bridge (#6) ────────────────────────────
+
+    def kv_distill_compress(
+        kv: "torch.Tensor",
+        n_atoms: int = 64,
+        attn_weights: "torch.Tensor" = None,
+    ) -> dict:
+        """
+        Compress a KV cache head via attention-weighted K-means distillation (D-operator).
+        Routes through fpqx_distill/reconstruct via ctypes when available, else pure Python.
+
+        kv: [seq_len, head_dim] float tensor — one head's K or V cache
+        n_atoms: number of distilled atoms (K ≪ seq_len)
+        attn_weights: [seq_len] optional per-position attention mass
+
+        Returns dict: {reconstructed, n_atoms, ratio, cosine}
+        """
+        assert kv.dim() == 2, "kv must be [seq_len, head_dim]"
+        seq_len, head_dim = kv.shape
+        n_atoms = min(n_atoms, seq_len)
+
+        lib = _load_lib()
+        if hasattr(lib, 'fpqx_distill'):
+            # C path
+            kv_np  = np.ascontiguousarray(kv.detach().float().cpu().numpy())
+            kv_ptr = kv_np.ctypes.data_as(ctypes.POINTER(ctypes.c_float))
+            aw_ptr = None
+            if attn_weights is not None:
+                aw_np  = np.ascontiguousarray(attn_weights.float().cpu().numpy(), dtype=np.float32)
+                aw_ptr = aw_np.ctypes.data_as(ctypes.POINTER(ctypes.c_float))
+            dc = lib.fpqx_distill(kv_ptr, seq_len, head_dim, aw_ptr, n_atoms)
+            if dc:
+                out_np  = np.zeros(seq_len * head_dim, dtype=np.float32)
+                out_ptr = out_np.ctypes.data_as(ctypes.POINTER(ctypes.c_float))
+                lib.fpqx_distill_reconstruct(dc, out_ptr, seq_len)
+                lib.fpqx_distill_free(dc)
+                recon = torch.from_numpy(out_np).reshape(seq_len, head_dim)
+                recon = recon.to(kv.device, kv.dtype)
+                cos = torch.nn.functional.cosine_similarity(
+                    kv.float().reshape(-1), recon.float().reshape(-1), dim=0
+                ).item()
+                return {"reconstructed": recon, "n_atoms": n_atoms,
+                        "ratio": n_atoms / seq_len, "cosine": cos}
+
+        # Python fallback path
+        return _kv_distill_python(kv, n_atoms, attn_weights)
+
+    def _kv_distill_python(kv, n_atoms, attn_weights):
+        """Pure Python K-means distillation fallback."""
+        seq_len, head_dim = kv.shape
+        kv_f = kv.float()
+        aw = (attn_weights.float() if attn_weights is not None
+              else torch.ones(seq_len, device=kv.device))
+        # K-means++ init
+        idx0 = aw.argmax().item()
+        atoms = [kv_f[idx0].clone()]
+        for _ in range(min(n_atoms - 1, seq_len - 1)):
+            dists = torch.stack([((kv_f - a) ** 2).sum(-1) for a in atoms]).min(0).values
+            probs = (dists * aw).clamp(min=0)
+            total = probs.sum()
+            if total < 1e-12:
+                break
+            idx = torch.multinomial(probs / total, 1).item()
+            atoms.append(kv_f[idx].clone())
+        atoms_t = torch.stack(atoms)
+        for _ in range(20):
+            d = ((kv_f.unsqueeze(1) - atoms_t.unsqueeze(0)) ** 2).sum(-1)
+            assign = d.argmin(-1)
+            for c in range(atoms_t.shape[0]):
+                mask = (assign == c)
+                if mask.any():
+                    w = aw[mask].unsqueeze(1)
+                    atoms_t[c] = (kv_f[mask] * w).sum(0) / w.sum().clamp(min=1e-10)
+        d = ((kv_f.unsqueeze(1) - atoms_t.unsqueeze(0)) ** 2).sum(-1)
+        assign = d.argmin(-1)
+        recon = atoms_t[assign].to(kv.dtype)
+        cos = torch.nn.functional.cosine_similarity(
+            kv_f.reshape(-1), recon.float().reshape(-1), dim=0
+        ).item()
+        return {"reconstructed": recon, "n_atoms": atoms_t.shape[0],
+                "ratio": atoms_t.shape[0] / seq_len, "cosine": cos}
+
+
+    # ─── Lambda-tensors KV delta encoding (#7) ───────────────────────────
+
+    def kv_delta_encode(
+        kv_frames: list,
+        bits: int = 4,
+        attn_weights_seq: list = None,
+        shared_tiles: "torch.Tensor" = None,
+    ) -> dict:
+        """
+        Delta-encode a sequence of KV cache states across decoding timesteps.
+        Stores compressed first frame + list of compressed frame deltas.
+
+        kv_frames: list of tensors of same shape (e.g. [batch, heads, seq, dim])
+        attn_weights_seq: optional list of [n_blocks] attn_weights per frame
+        shared_tiles: optional pre-learned tile codebook
+
+        Returns dict usable by kv_delta_decode().
+        (#7 lambda-tensors sequential delta encoding)
+        """
+        assert len(kv_frames) > 0, "kv_frames must be non-empty"
+        aw0 = attn_weights_seq[0] if attn_weights_seq else None
+        first_comp = kv_compress_roundtrip(
+            kv_frames[0], bits=bits, layer_seed=0,
+            attn_weights=aw0, shared_tiles=shared_tiles,
+        )
+        deltas = []
+        prev = kv_frames[0].float()
+        for i, frame in enumerate(kv_frames[1:], 1):
+            delta = frame.float() - prev
+            aw = attn_weights_seq[i] if attn_weights_seq else None
+            comp_delta = kv_compress_roundtrip(
+                delta, bits=bits, layer_seed=i,
+                attn_weights=aw, shared_tiles=shared_tiles,
+            )
+            deltas.append(comp_delta)
+            prev = frame.float()
+        return {
+            "first":          first_comp,
+            "deltas":         deltas,
+            "original_shape": kv_frames[0].shape,
+            "n_frames":       len(kv_frames),
+            "bits":           bits,
+        }
+
+    def kv_delta_decode(encoded: dict) -> list:
+        """
+        Reconstruct KV cache frames from kv_delta_encode() output.
+        Returns list of tensors of same shape as input frames.
+        """
+        frames  = [encoded["first"]]
+        running = encoded["first"].float()
+        for delta in encoded.get("deltas", []):
+            running = running + delta.float()
+            frames.append(running.to(encoded["first"].dtype))
+        return frames
 
 
     def load_fpq_model(fpq_paths, hf_model_id, device="cpu", dtype=torch.float32,
