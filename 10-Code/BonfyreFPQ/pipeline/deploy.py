@@ -172,6 +172,21 @@ if r['sweep']:
     cosines=[s['cosine'] for s in r['sweep']]
     print(f\"  Sweep range: {min(cosines):.8f} – {max(cosines):.8f}\")
 "
+'''
+
+
+def graphql(api_key, query, variables=None):
+    payload = {"query": query}
+    if variables:
+        payload["variables"] = variables
+    data = json.dumps(payload).encode()
+    req = urllib.request.Request(
+        "https://api.runpod.io/graphql?api_key=" + api_key,
+        data=data,
+        headers={
+            "Content-Type": "application/json",
+            "User-Agent": "BonfyreFPQ/1.0",
+        },
     )
     try:
         with urllib.request.urlopen(req, timeout=30) as resp:
@@ -180,6 +195,7 @@ if r['sweep']:
         body = e.read().decode() if e.fp else ""
         print(f"API error {e.code}: {body}")
         sys.exit(1)
+
 
 def cmd_launch(args):
     api_key = get_api_key()
