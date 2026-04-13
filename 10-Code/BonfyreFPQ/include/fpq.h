@@ -371,7 +371,15 @@ int fpq_gguf_write_v9(const char *input_path, const char *output_path,
  * Reader reconstructs to FP32 on-the-fly for inference.
  * ═══════════════════════════════════════════════════════════════════ */
 #define FPQ_NATIVE_MAGIC    0x46505130  /* "FPQ0" */
-#define FPQ_NATIVE_VERSION  10
+#define FPQ_NATIVE_VERSION  12
+
+/* Native format packing flags (file header .flags) */
+#define FPQ_FLAG_E8_INT7     0x01  /* E8 coords in 7-bit packed (vs INT8) */
+#define FPQ_FLAG_TILE_6BIT   0x02  /* Tile indices in 6-bit packed (vs uint8) */
+#define FPQ_FLAG_FP8_SCALES  0x04  /* Scales as FP8 E4M3 (vs FP16) */
+#define FPQ_FLAG_E8_ENTROPY  0x08  /* E8 coords entropy-coded via rANS (overrides INT7) */
+#define FPQ_FLAG_PACKED_V11  (FPQ_FLAG_E8_INT7 | FPQ_FLAG_TILE_6BIT)
+#define FPQ_FLAG_PACKED_V12  (FPQ_FLAG_E8_ENTROPY | FPQ_FLAG_TILE_6BIT)
 
 /*
  * Write native .fpq format — compact binary storage per tensor.
@@ -386,6 +394,22 @@ int fpq_native_write(const char *path, const fpq_raw_tensor_t *tensors,
  * Returns allocated tensor array (caller frees with fpq_raw_tensor_free).
  */
 fpq_raw_tensor_t *fpq_native_read(const char *path, size_t *n_tensors);
+
+/*
+ * Read native .fpq format into compressed fpq_tensor_t structs
+ * suitable for direct SLI inference — NO fp32 decode step.
+ *
+ * Each tensor's sbb_scale_delta is populated with the v9-layout data:
+ *   [0-1]: lr_rank, [2..]: US, Vt, warp_norms, E8, tile_cb, tile_idx
+ * plus coord_scales, qjl, ghost, haar_seed are set directly.
+ *
+ * Small/1D tensors get data stored in coord_scales as raw FP32
+ * with n_blocks=0 (SLI skips these — use fpq_native_read for decode).
+ *
+ * Returns array of fpq_tensor_t* (caller frees each with fpq_tensor_free).
+ * Sets *n_tensors to count. Returns NULL on error.
+ */
+fpq_tensor_t **fpq_native_read_compressed(const char *path, size_t *n_tensors);
 
 /*
  * Write native .fpq format from v9-encoded tensors (pre-compressed).
