@@ -767,6 +767,36 @@ footer a{color:var(--text-dim)}footer a:hover{color:var(--text)}
         Script: <code style="color:var(--accent)">scripts/train_e8_native.py</code> · Checkpoint: 4.2 GB · Proof run: v4 (Switch aux loss + frozen experts)
       </div>
     </div>
+
+    <!-- Pareto context: Bonsai 1.7B -->
+    <div style="max-width:760px;margin:40px auto 0;padding:20px 24px;background:rgba(255,255,255,.03);border:1px solid var(--border);border-left:3px solid var(--blue);border-radius:8px">
+      <div style="font-size:.7rem;text-transform:uppercase;letter-spacing:.06em;color:var(--blue);font-weight:700;margin-bottom:10px">Size/Quality Pareto — Where Bonsai 1.7B Fits</div>
+      <p style="font-size:.85rem;color:var(--text-dim);line-height:1.6;margin:0 0 12px">
+        Prism ML's <strong style="color:var(--text)">Bonsai 1.7B</strong> (April 2026) is a genuine engineering milestone: a Qwen3-1.7B trained with 1-bit weights end-to-end, packaged as a 0.29 GB GGUF Q1_0 and runnable in a browser tab via WebGPU. That is the lower bound of the size/quality Pareto frontier — the smallest point the field has proven works at all.
+      </p>
+      <p style="font-size:.85rem;color:var(--text-dim);line-height:1.6;margin:0 0 12px">
+        The community verdict (LocalLLaMA, 575 upvotes, &gt;100 comments) is consistent: <em>"performance good, intelligence extremely bad."</em> Hallucination rate at 8B is called "horrendous and unusable"; the 1.7B is acknowledged as cool but limited to narrow, domain-specific tasks. The 3× speed claim requires PrismML's custom llama.cpp AVX512 fork — without it, tested hardware showed Bonsai-8B at <strong style="color:var(--text)">0.3 t/s</strong> vs Qwen3.5-2B-IQ4_XS at <strong style="color:var(--text)">5–6 t/s</strong> on the same machine.
+      </p>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;font-size:.8rem">
+        <div style="background:rgba(255,255,255,.04);border-radius:6px;padding:12px 14px">
+          <div style="color:var(--text-dim);margin-bottom:6px;font-weight:600">Bonsai 1.7B — 1-bit</div>
+          <div style="color:var(--text)">0.29 GB · 1.125 bpw</div>
+          <div style="color:var(--text-dim);margin-top:4px">WebGPU browser demo ✓</div>
+          <div style="color:rgba(248,81,73,.8);margin-top:4px">Quality: "extremely bad"</div>
+          <div style="color:var(--text-dim);margin-top:4px">Requires custom kernels for speed</div>
+        </div>
+        <div style="background:rgba(63,185,80,.06);border:1px solid rgba(63,185,80,.2);border-radius:6px;padding:12px 14px">
+          <div style="color:var(--green);margin-bottom:6px;font-weight:600">FPQ v12 — E8 lattice</div>
+          <div style="color:var(--text)">~1.4 GB · 3-bit · 0.819 B/param</div>
+          <div style="color:var(--text-dim);margin-top:4px">Logit cos 0.9897 (Qwen 2.5 3B)</div>
+          <div style="color:var(--green);margin-top:4px">PPL 1,273 vs BitNet 2,708</div>
+          <div style="color:var(--text-dim);margin-top:4px">SLI: dot product without dequant</div>
+        </div>
+      </div>
+      <p style="font-size:.78rem;color:var(--text-dim);margin:12px 0 0;line-height:1.5">
+        The 5× size gap at 3-bit (1.4 GB vs 0.29 GB) is real. The quality gap is also real. Bonsai owns the "runs in a tab" use case. FPQ v12 targets the "still usable at minimum viable size" position — Q4_K_M territory, at a fraction of the parameter budget.
+      </p>
+    </div>
   </div>
 </section>
 
