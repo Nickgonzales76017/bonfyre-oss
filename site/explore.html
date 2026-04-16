@@ -84,6 +84,7 @@ footer a{color:var(--text-dim)}footer a:hover{color:var(--text)}
     <a href="index.html" class="nav-brand">🔥 Bonfyre</a>
     <div style="display:flex;gap:4px">
       <a href="#what-it-replaces">What It Replaces</a>
+      <a href="#edge" style="color:var(--blue)">Technical Edge</a>
       <a href="#solutions">Solutions</a>
       <a href="#hardware">Does My Hardware Work?</a>
       <a href="#use-cases">Use Cases</a>
@@ -186,6 +187,94 @@ footer a{color:var(--text-dim)}footer a:hover{color:var(--text)}
         <div class="ratio">100% private</div>
         <div class="detail">Your data never leaves your device. No OpenAI API key needed. Works offline.</div>
       </div>
+    </div>
+  </div>
+</section>
+
+<!-- Technical Edge -->
+<section id="edge" style="background:linear-gradient(135deg,rgba(88,166,255,.06) 0%,rgba(13,17,23,1) 60%)">
+  <div class="container">
+    <h2>Technical edge — real numbers</h2>
+    <p class="subtitle">These aren't marketing claims. They're benchmark results from actual experiments with real models. <a href="docs.html" style="color:var(--blue)">See the math →</a></p>
+
+    <!-- FPQ Compression row -->
+    <div style="margin-bottom:48px">
+      <div style="font-size:.7rem;text-transform:uppercase;letter-spacing:.08em;color:var(--blue);font-weight:700;margin-bottom:14px">FPQ — Functional Polar Quantization · model compression</div>
+      <div class="killer-grid">
+        <div class="killer-card" style="border-color:rgba(88,166,255,.3)">
+          <div class="vs">3-bit compression, production default</div>
+          <div class="ratio" style="color:var(--blue)">cosine 0.9999</div>
+          <div class="detail">v8 RLF: E8 lattice snap + 16D RVQ. PPL degrades only +0.9% vs FP32 baseline on Qwen 0.5B (11.95→12.07). Beats TurboQuant at the same bit budget.</div>
+        </div>
+        <div class="killer-card" style="border-color:rgba(88,166,255,.3)">
+          <div class="vs">model size reduction</div>
+          <div class="ratio" style="color:var(--blue)">~4× smaller</div>
+          <div class="detail">v12 native format: rANS entropy coding + 6-bit tiles + FP16 scales. 0.819 bytes/param. Qwen 3B shard: avg cosine 0.999714, 2.06 GB vs 6.17 GB BF16.</div>
+        </div>
+        <div class="killer-card" style="border-color:rgba(88,166,255,.3)">
+          <div class="vs">video diffusion — Wan2.1-T2V 1.3B output</div>
+          <div class="ratio" style="color:var(--blue)">PSNR 35.97 dB</div>
+          <div class="detail">30 DiT blocks, full timestep sweep (t=0→999). Output cosine 0.9976 everywhere — no timestep blowup. Same codec, any model type.</div>
+        </div>
+        <div class="killer-card" style="border-color:rgba(88,166,255,.3)">
+          <div class="vs">model coverage</div>
+          <div class="ratio" style="color:var(--blue)">Whisper → 753B</div>
+          <div class="detail">Tested on Whisper, Qwen 3B, Gemma 2B, Wan2.1 video diffusion, and GLM-5.1-FP8 (753B MoE, 142 shards). Same encoder, same quality profile across architectures.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLI + E8 training row -->
+    <div style="margin-bottom:48px">
+      <div style="font-size:.7rem;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);font-weight:700;margin-bottom:14px">SLI + E8-native training · inference &amp; learning in the compressed domain</div>
+      <div class="killer-grid">
+        <div class="killer-card" style="border-color:rgba(249,115,22,.3)">
+          <div class="vs">SLI — spectral lattice inference</div>
+          <div class="ratio">8× bandwidth</div>
+          <div class="detail">Dot products without dequantization. 64 bytes/block vs 512 bytes BF16. Cosine 1.0000 — lossless by construction. Score = z&#7488; · FWHT(signs ⊙ x). No quality tradeoff at all.</div>
+        </div>
+        <div class="killer-card" style="border-color:rgba(249,115,22,.3)">
+          <div class="vs">E8-native training vs BitNet (200 steps)</div>
+          <div class="ratio">2.1× better PPL</div>
+          <div class="detail">TinyLlama-1.1B fine-tuned with E8 weight constraints. Final PPL 1273 vs BitNet 2708 at the same step count on the same data. E8's 240-neighbor space is a better fine-tuning basin than BitNet's 3-neighbor.</div>
+        </div>
+        <div class="killer-card" style="border-color:rgba(249,115,22,.3)">
+          <div class="vs">E8 inference — exact integer lattice</div>
+          <div class="ratio">4× stored weight size</div>
+          <div class="detail">1 byte/weight in production (int8 E8 coords). K-FAC rotated checkpoint eval PPL 1211 — better than training PPL 1536, because exact lattice representation is cleaner than noisy STE gradient accumulation.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Pipeline + stack row -->
+    <div>
+      <div style="font-size:.7rem;text-transform:uppercase;letter-spacing:.08em;color:var(--green);font-weight:700;margin-bottom:14px">Pipeline &amp; stack · speed and footprint</div>
+      <div class="killer-grid">
+        <div class="killer-card" style="border-color:rgba(63,185,80,.3)">
+          <div class="vs">BonfyrePipeline vs baseline (7-binary chain)</div>
+          <div class="ratio" style="color:var(--green)">5–8 ms</div>
+          <div class="detail">Single-process binary vs 76 ms baseline fork chain — 90–93% latency reduction. Peak RSS 2.36 MB on a 3,000-artifact corpus. 7/7 test cases byte-for-byte match.</div>
+        </div>
+        <div class="killer-card" style="border-color:rgba(63,185,80,.3)">
+          <div class="vs">BonfyreTel — transcription per call</div>
+          <div class="ratio" style="color:var(--green)">~0 ms load</div>
+          <div class="detail">Persistent daemon loads Whisper once at startup (800 ms, one time). Every subsequent call uses the warm context. No model fork, no repeated 800 ms penalty per recording.</div>
+        </div>
+        <div class="killer-card" style="border-color:rgba(63,185,80,.3)">
+          <div class="vs">full stack footprint</div>
+          <div class="ratio" style="color:var(--green)">15 MB Docker</div>
+          <div class="detail">49 C binaries in a Debian slim multi-stage image. API + worker + queue in docker-compose. SSE event streaming, token-bucket rate limiting, SQLite WAL persistence. Entire backend runs in a container smaller than a JPEG.</div>
+        </div>
+        <div class="killer-card" style="border-color:rgba(63,185,80,.3)">
+          <div class="vs">BonfyrePipeline — full 5-layer chain</div>
+          <div class="ratio" style="color:var(--green)">23 steps, $0</div>
+          <div class="detail">SUBSTRATE → TRANSFORM → SURFACE → VALUE → ACCOUNTING. yt-dlp → transcribe → clean → brief → tag → embed → render → offer → pack → repurpose → index → compress → stitch → ledger. Zero cloud dependencies.</div>
+        </div>
+      </div>
+    </div>
+
+    <div style="text-align:center;margin-top:40px">
+      <a href="docs.html" class="btn btn-outline" style="border-color:var(--blue);color:var(--blue)">Read the deep-dive: math, proofs, benchmarks →</a>
     </div>
   </div>
 </section>
