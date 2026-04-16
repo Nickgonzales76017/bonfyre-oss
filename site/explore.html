@@ -90,7 +90,7 @@ footer a{color:var(--text-dim)}footer a:hover{color:var(--text)}
       <a href="#wordpress">WordPress</a>
       <a href="#recipes">Recipes</a>
       <a href="#apps">Live Apps</a>
-      <a href="docs.html#relay" style="color:#b392f0">MoQ Relay →</a>
+      <a href="docs.html#relay" style="color:#b392f0">Realtime Relay →</a>
       <a href="docs.html" style="color:var(--green)">Technical Docs →</a>
     </div>
   </div>
@@ -119,7 +119,7 @@ footer a{color:var(--text-dim)}footer a:hover{color:var(--text)}
       <div style="text-align:center"><span style="display:block;font-size:2rem;font-weight:700;color:var(--green)">100% private</span><span style="font-size:.85rem;color:var(--text-dim)">Data never leaves</span></div>
       <div style="text-align:center"><span style="display:block;font-size:2rem;font-weight:700">20</span><span style="font-size:.85rem;color:var(--text-dim)">Live apps running now</span></div>
       <div style="text-align:center"><span style="display:block;font-size:2rem;font-weight:700">15</span><span style="font-size:.85rem;color:var(--text-dim)"><a href="https://huggingface.co/NICKO" style="color:inherit">AI models published</a></span></div>
-      <div style="text-align:center"><span style="display:block;font-size:2rem;font-weight:700;color:#b392f0">Relay</span><span style="font-size:.85rem;color:var(--text-dim)">MoQ + mesh + RL</span></div>
+      <div style="text-align:center"><span style="display:block;font-size:2rem;font-weight:700;color:#b392f0">Relay</span><span style="font-size:.85rem;color:var(--text-dim)">Private realtime media in C</span></div>
     </div>
 
     <div class="btn-row">
@@ -191,7 +191,7 @@ footer a{color:var(--text-dim)}footer a:hover{color:var(--text)}
       <div class="killer-card" style="border-color:rgba(179,146,240,.5)">
         <div class="vs">vs LiveKit / Twilio Media (real-time relay)</div>
         <div class="ratio" style="color:#b392f0">$0 / stream</div>
-        <div class="detail">bonfyre-moq is a pure C MoQ/WebTransport relay. No SaaS fees, no Node.js runtime, no per-stream billing. Self-tunes via RL, meshes with peers via gossip, elects a consensus leader automatically. <a href="docs.html#relay" style="color:#b392f0">Details →</a></div>
+        <div class="detail">bonfyre-moq is a pure C WebTransport/MoQ relay for private realtime audio and media fan-out. No SaaS relay bill, no Node.js in production, no per-stream markup. It fits the same local-backend story as the rest of Bonfyre instead of pushing you into a separate realtime vendor stack. <a href="docs.html#relay" style="color:#b392f0">Details →</a></div>
       </div>
     </div>
   </div>
@@ -253,9 +253,9 @@ footer a{color:var(--text-dim)}footer a:hover{color:var(--text)}
       </div>
 
       <div style="background:var(--surface);border:2px solid rgba(179,146,240,.4);border-radius:10px;padding:24px;transition:border-color .15s" onmouseover="this.style.borderColor='#b392f0'" onmouseout="this.style.borderColor='rgba(179,146,240,.4)'">
-        <div style="font-size:1rem;font-weight:700;color:#b392f0;margin-bottom:8px">📡 Real-Time AI Relay: Self-Tuning + Distributed</div>
-        <p style="font-size:.85rem;color:var(--text-dim);line-height:1.5;margin-bottom:10px">bonfyre-moq is a pure C MoQ/WebTransport relay that runs inline AI inference on every media object, tunes its own buffer and routing policy via a live RL agent, discovers peers via gossip multicast, and elects a consensus leader for distributed announce/subscribe. No Node.js. No SaaS relay fees.</p>
-        <div style="font-size:.78rem;color:var(--green)">Previously required: LiveKit cloud + media SaaS at per-stream cost</div>
+        <div style="font-size:1rem;font-weight:700;color:#b392f0;margin-bottom:8px">Real-Time Media, Still In The Bonfyre Style</div>
+        <p style="font-size:.85rem;color:var(--text-dim);line-height:1.5;margin-bottom:10px">bonfyre-moq is the realtime version of the same idea as the rest of Bonfyre: a small C binary you can run yourself. It terminates WebTransport, speaks MoQ, records stream events to SQLite, and gives you a private relay primitive for live audio, agent calls, and browser-native media flows.</p>
+        <div style="font-size:.78rem;color:var(--green)">Previously required: LiveKit/Twilio-style media infrastructure or a custom relay team</div>
         <div style="margin-top:10px"><a href="docs.html#relay" style="color:#b392f0;font-size:.82rem">Technical details →</a></div>
       </div>
 
@@ -351,12 +351,12 @@ footer a{color:var(--text-dim)}footer a:hover{color:var(--text)}
         <p>Process entire 90-minute lectures or long documents in a single AI pass — 4× more context than before in the same hardware budget.</p>
       </div>
       <div class="use-case" style="border-color:rgba(179,146,240,.4)">
-        <h3 style="color:#b392f0">Self-Tuning Real-Time Relay</h3>
-        <p>Run a private WebTransport/MoQ relay that scores every media object with inline AI, auto-tunes routing via RL, and forms a gossip mesh with other nodes. No cloud. No per-stream fee. <a href="docs.html#relay">Docs →</a></p>
+        <h3 style="color:#b392f0">Private Realtime Relay</h3>
+        <p>Run a private WebTransport/MoQ relay in C for browser-native audio, live agent sessions, and local media fan-out. Same Bonfyre values: local-first, low overhead, SQLite logs, no recurring relay vendor tax. <a href="docs.html#relay">Docs →</a></p>
       </div>
       <div class="use-case" style="border-color:rgba(88,166,255,.4)">
-        <h3 style="color:var(--blue)">Distributed Consensus Routing</h3>
-        <p>Run multiple bonfyre-moq relays that automatically elect a leader via Raft-style consensus and distribute MoQ announce/subscribe traffic without a central broker.</p>
+        <h3 style="color:var(--blue)">Browser-Native Audio Infrastructure</h3>
+        <p>Use modern browser transport instead of forcing every live workflow through SIP or hosted WebRTC platforms. The relay is the primitive; call recording, streaming AI, and live workflows can be built on top of it.</p>
       </div>
     </div>
   </div>
