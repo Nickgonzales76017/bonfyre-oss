@@ -11,7 +11,7 @@
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link href="https://api.fontshare.com/v2/css?f[]=cabinet-grotesk@400,500,700,800,900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="assets/site.css">
-  <title>Bonfyre | Explore</title>
+  <title>Bonfyre | Explore — What It Does, Who It's For, What It Replaces</title>
 </head>
 <body>
   <div class="site-shell">
@@ -30,15 +30,13 @@
       </div>
       <div class="ticker-bar">
         <div class="shell-container ticker-row">
-          <span>Local-first backend</span>
+          <span>53</span><span>binaries</span>
           <span class="dot">•</span>
-          <span data-status-key="total_binaries">53</span><span>binaries</span>
+          <span>20</span><span>live apps</span>
           <span class="dot">•</span>
-          <span data-status-key="live_apps">20</span><span>live apps</span>
+          <span>$0/month</span><span>cloud bill</span>
           <span class="dot">•</span>
-          <span>10 recipe patterns</span>
-          <span class="dot">•</span>
-          <span>No cloud bill required</span>
+          <span>Ingest → brief → proof → price → distribute</span>
         </div>
       </div>
     </header>
@@ -89,34 +87,46 @@
         </div>
       </section>
 
+      <!-- What it replaces -->
       <section class="section">
         <div class="shell-container">
           <div class="section-header">
             <div>
               <span class="section-kicker">What it replaces</span>
-              <h2 class="section-title">The pitch is simpler when the tradeoff is visible.</h2>
+              <h2 class="section-title">Real tradeoffs. Real numbers.</h2>
+              <p class="section-copy">Not "AI-powered" marketing. Actual replacement comparisons with the tools people already pay for.</p>
             </div>
           </div>
           <div class="compare-grid">
             <article class="compare-card">
-              <span class="card-meta">CMS and backend sprawl</span>
-              <span class="compare-value">1,742x smaller</span>
-              <p>Tiny local binaries for content, auth, API access, and publishing instead of a half-gigabyte CMS and a dependency tree.</p>
-            </article>
-            <article class="compare-card">
-              <span class="card-meta">Cloud transcription</span>
+              <span class="card-meta">vs Deepgram / OpenAI Whisper API</span>
               <span class="compare-value">$0 / minute</span>
-              <p>Transcribe, summarize, and publish locally. No recurring API cost. No cloud privacy tradeoff.</p>
+              <p>BonfyreTranscribe runs HCP-enhanced Whisper locally. Speaker segmentation, hallucination filtering via Hyperscan (>1 GB/s), filler detection, and eGeMAPSv02 quality scoring (88 audio features). No API key. No per-minute charge. No privacy tradeoff.</p>
             </article>
             <article class="compare-card">
-              <span class="card-meta">Hosted search</span>
+              <span class="card-meta">vs Strapi / Contentful (CMS)</span>
+              <span class="compare-value">1,742× smaller</span>
+              <p>BonfyreCMS is 287 KB — compared to 500 MB for a standard Strapi install with its npm tree. Dynamic schemas, token auth, REST API, full-text search, and structured logging. Zero npm packages. Cold start is instant.</p>
+            </article>
+            <article class="compare-card">
+              <span class="card-meta">vs Pinecone / Weaviate Cloud</span>
               <span class="compare-value">5 ms local search</span>
-              <p>Embeddings, indexing, and vector search in a local archive instead of a hosted memory layer.</p>
+              <p>BonfyreVec + BonfyreEmbed give you NEON SIMD cosine similarity and BM25 hybrid ranking. Embeddings stored in zero-copy LMDB. BonfyreWeaviateIndex connects to self-hosted Weaviate. $70–$250/month hosted → $0/month local.</p>
             </article>
             <article class="compare-card">
-              <span class="card-meta">Realtime relay bills</span>
-              <span class="compare-value">Pure C relay</span>
-              <p>MoQ relay, private media fan-out, and inline inference in the same stack instead of a separate realtime vendor bill.</p>
+              <span class="card-meta">vs Twilio / LiveKit (realtime)</span>
+              <span class="compare-value">$0 / stream</span>
+              <p>BonfyreMoQ is a pure C WebTransport/MoQ relay for private realtime audio and media fan-out. No SaaS relay bill, no Node.js in the media path, no per-stream markup. Inline AI scoring via BonfyreTone and BonfyreSpeechLoop.</p>
+            </article>
+            <article class="compare-card">
+              <span class="card-meta">vs full SaaS backend</span>
+              <span class="compare-value">~$2,500/mo → $0</span>
+              <p>BonfyreAuth (BLAKE2b + Ed25519) + BonfyrePay + BonfyreMeter + BonfyreAPI + BonfyreCMS + BonfyreProxy (OpenAI-compatible) + BonfyreGate + BonfyreOffer + BonfyreFinance. All of it. ~2.1 MB total disk. Zero recurring vendor bills.</p>
+            </article>
+            <article class="compare-card">
+              <span class="card-meta">vs cloud GPU for AI inference</span>
+              <span class="compare-value">Runs on your laptop</span>
+              <p>FPQ 4× compression means a model that required a $10K cloud GPU runs on a $500 laptop instead. 99.97% cosine similarity preserved. 15 models already published on HuggingFace. KV cache compression gives 4× more context in the same VRAM.</p>
             </article>
             <article class="compare-card">
               <span class="card-meta">Cloud AI glue</span>
@@ -127,34 +137,85 @@
         </div>
       </section>
 
+      <!-- Pipeline flows -->
       <section class="section">
         <div class="shell-container">
           <div class="section-header">
             <div>
-              <span class="section-kicker">Who it is for</span>
-              <h2 class="section-title">Bonfyre fits best where raw input needs to become something people can trust and reuse.</h2>
+              <span class="section-kicker">Pipeline flows</span>
+              <h2 class="section-title">How the binaries chain together.</h2>
+              <p class="section-copy">Each binary handles one job. Content-addressed artifacts flow between stages. Re-runs skip unchanged work automatically.</p>
+            </div>
+          </div>
+          <div class="feature-grid">
+            <article class="feature-card">
+              <span class="card-meta">Audio → packaged deliverable</span>
+              <h3>Ingest · Transcribe · Brief · Proof · Offer · Pack · Distribute</h3>
+              <p>Audio normalized by BonfyreIngest or BonfyreMediaPrep → HCP transcription with speaker segmentation → structured brief → BLAKE2b proof bundle → dynamic pricing → packaged artifact → QUIC distribution or swarm delivery. 5–8 ms per stage.</p>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">Recording → searchable knowledge</span>
+              <h3>Transcribe · TranscriptClean · Paragraph · Embed · Vec · Index · Query</h3>
+              <p>Raw recording → clean transcript → paragraphs → sentence embeddings → SIMD vector index → hybrid BM25+cosine search. BonfyreTranscriptFamily clusters related recordings into a searchable family. Everything stored in zero-copy LMDB.</p>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">Content → published pages</span>
+              <h3>Brief · Repurpose · Render · Emit · Sync</h3>
+              <p>Brief generated by BonfyreBrief → BonfyreRepurpose extracts multi-format content (show notes, social clips, email copy) → BonfyreRender builds HTML → BonfyreEmit produces PDF/EPUB/JSON → BonfyreSync publishes to your target.</p>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">Work → revenue</span>
+              <h3>Proof · Offer · Finance · Pay · Meter · Ledger · Outreach</h3>
+              <p>Content-addressed proof bundle → dynamic offer pricing via BonfyreOffer → BonfyreFinance calculates margins → BonfyrePay handles checkout → BonfyreMeter tracks usage → BonfyreLedger maintains the audit trail → BonfyreOutreach sequences follow-up.</p>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">Repo → onboarding guide</span>
+              <h3>Ingest · Tag · Canon · Brief · Graph · Render · Emit</h3>
+              <p>Source tree ingested → BonfyreTag extracts topics → BonfyreCanon deduplicates → BonfyreBrief generates structured overview → BonfyreGraph maps relationships → BonfyreRender produces an HTML onboarding guide → BonfyreEmit publishes it.</p>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">Pipeline execution</span>
+              <h3>BonfyrePipeline · Queue · Orchestrate · Runtime</h3>
+              <p>BonfyrePipeline runs stages with hot-load swap (32-stage registry, 16 A/B pairs). BonfyreQueue buffers work. BonfyreOrchestrate manages multi-pipeline flows. BonfyreRuntime is the shared execution environment for in-process coroutine paths.</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <!-- Who it fits -->
+      <section class="section">
+        <div class="shell-container">
+          <div class="section-header">
+            <div>
+              <span class="section-kicker">Who it fits</span>
+              <h2 class="section-title">Bonfyre fits anywhere raw input needs to become trusted, reusable output.</h2>
             </div>
           </div>
           <div class="feature-grid">
             <article class="feature-card">
               <span class="card-meta">Legal and professional services</span>
-              <h3>Calls become structured prep</h3>
-              <p>Client intake, matter updates, and call recordings turned into summaries, binders, proof bundles, and clean follow-up material without pushing sensitive data to third parties.</p>
+              <h3>Private intake → structured briefs</h3>
+              <p>Client calls transcribed locally (zero cloud exposure), structured by speaker, quality-scored, and packaged into proof bundles with BLAKE2b provenance. Ed25519 signatures for audit trails. HIPAA-compliant by default — nothing leaves the building.</p>
             </article>
             <article class="feature-card">
-              <span class="card-meta">Media and publishing</span>
-              <h3>Audio becomes pages and feeds</h3>
-              <p>Source material turned into sites, RSS outputs, clip sets, and supporting content.</p>
+              <span class="card-meta">Media and podcasting</span>
+              <h3>Raw audio → published, monetized asset</h3>
+              <p>Episode in → transcript + show notes + social clips + RSS feed + checkout page, all locally in under 5 minutes. BonfyreClips, BonfyreNarrate, BonfyreStitch, BonfyreRepurpose, BonfyreOffer in one pipeline. No Descript. No GPT-4 API key.</p>
             </article>
             <article class="feature-card">
-              <span class="card-meta">Ops and internal knowledge</span>
-              <h3>Meetings become usable memory</h3>
-              <p>Shift handoffs, postmortems, standups, and town updates turned into searchable systems people can return to later.</p>
+              <span class="card-meta">Field research and archives</span>
+              <h3>Offline capture → searchable archive</h3>
+              <p>Record in the field with no internet. Bonfyre transcribes on-device, embeds for SIMD vector search, creates a LMDB-backed searchable archive, and publishes a static site. Fountain codes handle lossy syncs via BonfyreDistribute.</p>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">Ops and internal teams</span>
+              <h3>Meetings → actionable memory</h3>
+              <p>Standups, postmortems, shift handoffs, and town halls — transcribed, summarised, tagged, and made searchable. BonfyreProject tracks follow-up items. BonfyreGraph links related records. Teams can find last month's incident in seconds.</p>
             </article>
             <article class="feature-card">
               <span class="card-meta">Sales and growth</span>
-              <h3>Conversations become pricing surfaces</h3>
-              <p>Summaries, offers, pack, finance, and outreach in one flow instead of transcript-only tooling.</p>
+              <h3>Conversations → pricing surfaces</h3>
+              <p>Sales calls distilled by BonfyreBrief → offer priced by BonfyreOffer → usage metered by BonfyreMeter → outreach sequenced by BonfyreOutreach → ledger updated by BonfyreLedger. Full pipeline, not just transcripts.</p>
             </article>
             <article class="feature-card">
               <span class="card-meta">Operations and support</span>
@@ -175,27 +236,68 @@
         </div>
       </section>
 
+      <!-- Industry recipes -->
       <section class="section">
         <div class="shell-container">
           <div class="section-header">
             <div>
               <span class="section-kicker">Industry recipes</span>
-              <h2 class="section-title">Simple inputs, clear outputs, believable results.</h2>
-              <p class="section-copy">Repeatable patterns, not abstract AI categories.</p>
+              <h2 class="section-title">What you already have → what you get.</h2>
+              <p class="section-copy">Each recipe maps your existing inputs to a Bonfyre pipeline and a concrete output. No new tools to learn — just a different place for the work to happen.</p>
             </div>
           </div>
-          <div id="recipes-grid" class="recipe-grid">
-            <div class="notice">Loading recipe cards…</div>
+          <div class="feature-grid">
+            <article class="feature-card">
+              <span class="card-meta">Property management</span>
+              <h3>Voicemail → maintenance packet</h3>
+              <p>Resident leaves a voicemail → BonfyreTranscribe → BonfyreBrief extracts issue type and follow-up items → BonfyrePack bundles a vendor-ready maintenance packet → BonfyreSync delivers to your system.</p>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">Law office</span>
+              <h3>Client intake call → organised binder</h3>
+              <p>Intake call → speaker-segmented transcript → BonfyreBrief structures issues → BonfyreProof hashes the original recording → BonfyrePack assembles a review-ready binder. Data never leaves the office.</p>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">Healthcare / dental</span>
+              <h3>Staff recording → SOP and patient handout</h3>
+              <p>Office manager records a procedure → BonfyreTranscribe + BonfyreParagraph → BonfyreBrief creates structured SOP → BonfyreRender produces a staff guide + printable patient handout → BonfyreEmit publishes both.</p>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">Podcast / media</span>
+              <h3>Episode → monetised page</h3>
+              <p>Raw episode → BonfyreTranscribe + BonfyreClips → BonfyreBrief + BonfyreRepurpose → show notes + social clips + BonfyreOffer pricing page + BonfyreEmit RSS feed. All local. All in one pipeline run.</p>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">Nonprofit / grant work</span>
+              <h3>Program debrief → grant-language draft</h3>
+              <p>Debrief recording → BonfyreTranscribe → BonfyreBrief extracts outcomes → BonfyreRepurpose generates grant-language draft + board update + impact summary → BonfyreEmit publishes to your site.</p>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">Agency / consultant</span>
+              <h3>Discovery call → proposal packet</h3>
+              <p>Discovery call → BonfyreTranscribe + BonfyreBrief → BonfyreOffer applies dynamic pricing → BonfyrePack assembles a PDF/HTML proposal with scope, price, and proof summary → BonfyreOutreach queues follow-up.</p>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">Sales team</span>
+              <h3>Sales call → CRM-ready summary</h3>
+              <p>Call → BonfyreTranscribe → BonfyreBrief extracts stage, objections, and next steps → BonfyreTag applies custom tags → BonfyreMeter records the engagement → BonfyreSync pushes a structured summary to your CRM.</p>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">Engineering team</span>
+              <h3>Incident recording → searchable postmortem</h3>
+              <p>War room call → BonfyreTranscribe → BonfyreBrief extracts timeline + root cause + action items → BonfyreGraph links to related incidents → BonfyreRender produces a structured postmortem atlas page → BonfyreIndex makes it searchable.</p>
+            </article>
           </div>
         </div>
       </section>
 
+      <!-- Why pages matter -->
       <section class="section">
         <div class="shell-container">
           <div class="section-header">
             <div>
-              <span class="section-kicker">Why pages matter</span>
-              <h2 class="section-title">Bonfyre starts looking real when the output becomes a page, not just a log file.</h2>
+              <span class="section-kicker">Why the output is a page, not just a log</span>
+              <h2 class="section-title">Infrastructure becomes a product when the output is something you can hand someone.</h2>
             </div>
           </div>
           <div class="story-grid">
@@ -206,8 +308,8 @@
             </article>
             <article class="story-card">
               <span class="card-meta">Shareability</span>
-              <h3>The result is something you can hand someone</h3>
-              <p>Pages give teams something readable and usable, which matters more than another model demo.</p>
+              <h3>The result is something to hand someone</h3>
+              <p>BonfyreRender and BonfyreEmit produce HTML, PDF, and EPUB pages your team, clients, and stakeholders can open without installing anything.</p>
             </article>
             <article class="story-card">
               <span class="card-meta">Product feeling</span>
@@ -217,7 +319,7 @@
           </div>
           <div class="cta-row">
             <a class="primary-btn" href="apps.html">Open the live app catalog</a>
-            <a class="secondary-btn" href="https://nickgonzales76017.github.io/pages-shift-handoff/" target="_blank" rel="noreferrer">Open live proof app</a>
+            <a class="secondary-btn" href="https://nickgonzales76017.github.io/pages-shift-handoff/" target="_blank" rel="noreferrer">Open Shift Handoff live</a>
           </div>
         </div>
       </section>
@@ -225,11 +327,12 @@
 
     <footer class="footer">
       <div class="shell-container footer-row">
-        <div>Explore Bonfyre as a product story, then jump into the docs or the proof pages.</div>
+        <div>Explore the product story. Jump to docs for numbers. Hit Live Apps for proof.</div>
         <div class="footer-links">
           <a href="index.html">Overview</a>
           <a href="docs.html">Technical Docs</a>
           <a href="apps.html">Live Apps</a>
+          <a href="https://github.com/Nickgonzales76017/bonfyre-oss" target="_blank" rel="noreferrer">GitHub</a>
         </div>
       </div>
     </footer>

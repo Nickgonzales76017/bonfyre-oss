@@ -11,7 +11,7 @@
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link href="https://api.fontshare.com/v2/css?f[]=cabinet-grotesk@400,500,700,800,900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="assets/site.css">
-  <title>Bonfyre | AI That Runs On Your Machine</title>
+  <title>Bonfyre | 53 C Binaries. Local AI. No Cloud Bill.</title>
 </head>
 <body>
   <div class="site-shell">
@@ -30,19 +30,19 @@
       </div>
       <div class="ticker-bar">
         <div class="shell-container ticker-row">
-          <span data-status-key="total_binaries">53</span><span>binaries</span>
+          <span>53</span><span>C11 binaries</span>
           <span class="dot">•</span>
-          <span>Pure C11</span>
+          <span>26</span><span>runtime modules</span>
           <span class="dot">•</span>
-          <span data-status-key="total_disk">~2.1 MB</span><span>total</span>
+          <span>~2.1 MB</span><span>total</span>
           <span class="dot">•</span>
-          <span data-status-key="uptime">99.97%</span><span>SLI cosine</span>
+          <span>4×</span><span>model compression</span>
           <span class="dot">•</span>
-          <span>4x compression</span>
+          <span>15</span><span>HF models</span>
           <span class="dot">•</span>
-          <span data-status-key="models_compressed">15</span><span>HF models</span>
+          <span>20</span><span>live apps</span>
           <span class="dot">•</span>
-          <span data-status-key="live_apps">20</span><span>live apps</span>
+          <span>$0/month</span><span>cloud bill</span>
         </div>
       </div>
     </header>
@@ -55,8 +55,8 @@
             <h1 class="hero-title">AI That Runs <span class="accent">On Your Machine</span></h1>
             <p>53 C binaries. Local inference. Local APIs. Local distribution. Proxy, orchestration, telephony, relay, narration, and page output in the same stack instead of another chain of services.</p>
             <div class="hero-actions">
-              <a class="primary-btn" href="explore.html">Explore Bonfyre</a>
-              <a class="secondary-btn" href="docs.html">Open Technical Docs</a>
+              <a class="primary-btn" href="explore.html">Explore what it does</a>
+              <a class="secondary-btn" href="docs.html">Technical docs</a>
             </div>
             <div class="install-box">
               <span class="label">Quick install</span>
@@ -65,29 +65,30 @@
           </div>
           <div class="stats-grid" aria-label="Bonfyre metrics">
             <article class="metric-card">
-              <span class="metric-value orange">4x</span>
-              <span class="metric-label">Compression</span>
+              <span class="metric-value orange">4×</span>
+              <span class="metric-label">Compression ratio</span>
             </article>
             <article class="metric-card">
-              <span class="metric-value blue" data-status-key="uptime">99.97%</span>
-              <span class="metric-label">SLI cosine</span>
+              <span class="metric-value blue">99.97%</span>
+              <span class="metric-label">Inference cosine</span>
             </article>
             <article class="metric-card">
-              <span class="metric-value" data-status-key="models_compressed">15</span>
-              <span class="metric-label">HF models</span>
+              <span class="metric-value">53</span>
+              <span class="metric-label">C11 binaries</span>
             </article>
             <article class="metric-card">
               <span class="metric-value" data-status-key="total_binaries">53</span>
               <span class="metric-label">Stack binaries</span>
             </article>
             <article class="metric-card wide">
-              <span class="metric-value" data-status-key="total_disk">~2.1 MB</span>
-              <span class="metric-label">Total disk</span>
+              <span class="metric-value">~2.1 MB</span>
+              <span class="metric-label">Complete stack on disk</span>
             </article>
           </div>
         </div>
       </section>
 
+      <!-- What Bonfyre is -->
       <section class="section">
         <div class="shell-container">
           <div class="section-header">
@@ -99,9 +100,9 @@
           </div>
           <div class="feature-grid">
             <article class="feature-card">
-              <span class="card-meta">API runtime</span>
-              <h3>Per-core serving</h3>
-              <p>Shared-nothing reactor loops, faster HTTP parsing, SSE support, and per-reactor heaps where mimalloc is available.</p>
+              <span class="card-meta">Ingest &amp; signal</span>
+              <h3>BonfyreIngest · MediaPrep · MFADict · SpeechLoop · Segment</h3>
+              <p>Audio and media in. Codec normalization, sample-rate conversion, silence trimming, forced-alignment MFA dictionary prep, and speaker segmentation before anything touches a model.</p>
             </article>
             <article class="feature-card">
               <span class="card-meta">Pipeline runtime</span>
@@ -109,19 +110,19 @@
               <p>Swap stages, route A/B traffic, and run coroutine paths in process instead of rebuilding the whole pipeline around every change.</p>
             </article>
             <article class="feature-card">
-              <span class="card-meta">Transport</span>
-              <h3>QUIC family streams</h3>
-              <p>Artifact families move over multiplexed streams with priority delivery and reconnect behavior built for sync-heavy flows.</p>
+              <span class="card-meta">Knowledge &amp; memory</span>
+              <h3>BonfyreEmbed · Vec · Index · WeaviateIndex · Query · Graph · TranscriptFamily · Tag · Canon</h3>
+              <p>Sentence embeddings, NEON SIMD cosine similarity, BM25 hybrid ranking, LMDB zero-copy storage, graph relationships, Weaviate integration, canonical de-duplication, and tag extraction — all local.</p>
             </article>
             <article class="feature-card">
-              <span class="card-meta">P2P distribution</span>
-              <h3>Swarm delivery</h3>
-              <p>BitTorrent v2 path for artifact bundles, tied back to Bonfyre hash, gate, and meter instead of bolted on beside them.</p>
+              <span class="card-meta">Production &amp; publishing</span>
+              <h3>BonfyreBrief · Repurpose · Render · Emit · Pack · Proof · Project · Paragraph</h3>
+              <p>Structured brief generation, multi-format repurposing, static HTML rendering, multi-format emission (PDF, EPUB, JSON), artifact packaging, content-addressed proof bundles with BLAKE2b hashes, and project management.</p>
             </article>
             <article class="feature-card">
-              <span class="card-meta">Zero-copy data path</span>
-              <h3>Read-hot cache</h3>
-              <p>LMDB and FlatBuffer manifests cut repeated parse and lookup overhead where the same artifacts get touched again and again.</p>
+              <span class="card-meta">Revenue &amp; ops</span>
+              <h3>BonfyreOffer · Finance · Pay · Meter · Outreach · Ledger · Hash · Gate · Sync</h3>
+              <p>Dynamic pricing, financial calculations, payment processing, usage metering, outreach sequencing, ledger management, cryptographic hashing for provenance, access gating, and cross-node sync.</p>
             </article>
             <article class="feature-card">
               <span class="card-meta">Newer surfaces</span>
@@ -132,13 +133,103 @@
         </div>
       </section>
 
+      <!-- Runtime internals -->
       <section class="section">
         <div class="shell-container">
           <div class="section-header">
             <div>
-              <span class="section-kicker">Start Here</span>
-              <h2 class="section-title">Three ways into Bonfyre.</h2>
-              <p class="section-copy">Overview for the product story. Docs for the numbers. Live apps for proof.</p>
+              <span class="section-kicker">26-module shared runtime</span>
+              <h2 class="section-title">What every binary links against.</h2>
+              <p class="section-copy">The 26-module C library replaces the npm/pip dependencies most backends accumulate. Every binary gets it for free. Zero external dependencies beyond libc.</p>
+            </div>
+          </div>
+          <div class="feature-grid">
+            <article class="feature-card">
+              <span class="card-meta">I/O and concurrency</span>
+              <h3>bf_reactor · bf_pool · bf_pipeline · bf_queue</h3>
+              <p>Per-core event loops with kqueue/io_uring, coroutine-based pipeline execution with channels and deadlines, worker pool with work-stealing, and async artifact queue.</p>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">Storage and data</span>
+              <h3>bf_lmdb · bf_mmap · bf_hashmap · bf_csv · bf_flatbuf</h3>
+              <p>Zero-copy LMDB reads (pointer casts directly into mmap), custom open-addressing hashmap, CSV parsing, and FlatBuffer manifest handling for repeated-access hot paths.</p>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">Encoding and serialisation</span>
+              <h3>bf_json · bf_msgpack · bf_lz4 · bf_utf8 · bf_base64</h3>
+              <p>SIMD JSON parser, MessagePack serialisation, LZ4 streaming compression, Unicode validation and normalisation, and base64 encode/decode.</p>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">Security and identity</span>
+              <h3>bf_crypto · bf_bloom · bf_opts · bf_conf</h3>
+              <p>BLAKE2b hashing, XSalsa20-Poly1305 encryption, Ed25519 signing, Bloom filter for dedup, CLI option parsing, and structured config management.</p>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">Networking and HTTP</span>
+              <h3>bf_picohttpparser · bf_log · bf_mimalloc</h3>
+              <p>Zero-copy HTTP/1.1 request parsing, structured levelled logging with caller context, and optional mimalloc heap integration for per-reactor allocation.</p>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">Why this matters</span>
+              <h3>One shared library. 180 KB.</h3>
+              <p>The entire runtime fits in 180 KB. Every binary links the same modules. That means one security patch propagates to all 53 binaries at build time, not 53 separate dependency upgrades across 53 package managers.</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <!-- Recent work -->
+      <section class="section">
+        <div class="shell-container">
+          <div class="section-header">
+            <div>
+              <span class="section-kicker">Recent additions</span>
+              <h2 class="section-title">What got added this cycle.</h2>
+              <p class="section-copy">Swarm delivery, QUIC transport, shared-nothing API reactor, hot-load pipeline stages, zero-copy LMDB cache, and SIMD decode upgrades.</p>
+            </div>
+          </div>
+          <div class="feature-grid">
+            <article class="feature-card">
+              <span class="card-meta">BonfyreSwarm</span>
+              <h3>BitTorrent v2 artifact CDN</h3>
+              <p>SHA-256 piece trees, 256 KB pieces, local peer knowledge, and Gate plus Meter hooks baked in. Artifact bundles don't need a CDN vendor. They self-distribute.</p>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">BonfyreDistribute</span>
+              <h3>QUIC family streams</h3>
+              <p>Artifact families multiplex over QUIC with surface-first priority, reconnect logic, and flow control tuned for sync-heavy artifact sets. No separate transport vendor needed.</p>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">bf_reactor</span>
+              <h3>Shared-nothing API runtime</h3>
+              <p>Per-core event loops, faster HTTP/1.1 request decode via bf_picohttpparser, SSE push support, and per-reactor mimalloc heaps. 4,096 concurrent connections per reactor core.</p>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">BonfyrePipeline hot-load</span>
+              <h3>Swap stages without rebuilding</h3>
+              <p>32-stage plugin registry, 16 live A/B pairs, and a coroutine-based execution path with channels and deadlines. Iterate on a stage without touching the rest of the pipeline.</p>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">bf_lmdb + bf_flatbuf</span>
+              <h3>Zero-copy read-hot cache</h3>
+              <p>Repeated artifact fetches pointer-cast directly into LMDB mmap pages. FlatBuffer manifests cut repeated JSON parse overhead. 512 MB default map, 4 named sub-databases.</p>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">FPQ SIMD + HE-SLI</span>
+              <h3>Faster decode, private scoring</h3>
+              <p>SIMD BP128 decodes 128 E8 INT7 values per block. HE-SLI adds depth-1 homomorphic encrypted linear scoring — inference stays in the encrypted domain for privacy-critical flows.</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <!-- Nav cards -->
+      <section class="section">
+        <div class="shell-container">
+          <div class="section-header">
+            <div>
+              <span class="section-kicker">Start here</span>
+              <h2 class="section-title">Three ways into the stack.</h2>
             </div>
           </div>
           <div class="path-grid">
@@ -147,9 +238,10 @@
               <h3>Use cases and recipes</h3>
               <p>What it replaces, who it is for, and how local AI, search, proxy, phone edge, relay, and delivery fit into one usable product story.</p>
               <div class="pill-row">
-                <span class="pill">What it replaces</span>
+                <span class="pill">Replacement costs</span>
                 <span class="pill">Industry recipes</span>
-                <span class="pill">WordPress and ops</span>
+                <span class="pill">Pipeline flows</span>
+                <span class="pill">Live proof</span>
               </div>
               <div class="cta-row"><a class="primary-btn" href="explore.html">Open Explore</a></div>
             </article>
@@ -158,9 +250,10 @@
               <h3>Benchmarks and internals</h3>
               <p>FPQ results, hardware fit, transport work, runtime modules, proxy and orchestration surfaces, and the binary inventory behind the claims.</p>
               <div class="pill-row">
-                <span class="pill">FPQ</span>
-                <span class="pill">Binaries</span>
-                <span class="pill">Hardware fits</span>
+                <span class="pill">FPQ benchmarks</span>
+                <span class="pill">53 binary reference</span>
+                <span class="pill">Hardware fit</span>
+                <span class="pill">MoQ relay</span>
               </div>
               <div class="cta-row"><a class="secondary-btn" href="docs.html">Open Docs</a></div>
             </article>
@@ -170,8 +263,8 @@
               <p>Twenty live apps and ten recipe patterns showing what the stack looks like when it ships as a usable surface instead of staying trapped in backend demos.</p>
               <div class="pill-row">
                 <span class="pill">20 live apps</span>
-                <span class="pill">10 recipes</span>
-                <span class="pill">Pages system</span>
+                <span class="pill">10 recipe patterns</span>
+                <span class="pill">Click and verify</span>
               </div>
               <div class="cta-row"><a class="secondary-btn" href="apps.html">Open Live Apps</a></div>
             </article>
@@ -179,6 +272,7 @@
         </div>
       </section>
 
+      <!-- Proof -->
       <section class="section">
         <div class="shell-container">
           <div class="section-header">
@@ -233,29 +327,29 @@
           </div>
           <div class="proof-grid">
             <article class="proof-callout">
-              <span class="card-meta">Business proof</span>
-              <h3>Customer Voice, Sales Distiller, Procurement Memory</h3>
-              <p>Searchable summaries, evidence packs, follow-up materials, and pricing surfaces.</p>
+              <span class="card-meta">Business ops</span>
+              <h3>Shift Handoff · Customer Voice · Sales Distiller · Procurement Memory</h3>
+              <p>Calls and handoffs become searchable summaries, evidence packs, follow-up packages, and traceable procurement records.</p>
             </article>
             <article class="proof-callout">
-              <span class="card-meta">Media proof</span>
-              <h3>Podcast Plant, Release Radio, Museum Exhibit</h3>
-              <p>Audio and changelogs turned into pages, feeds, clips, and publishable surfaces.</p>
+              <span class="card-meta">Media and publishing</span>
+              <h3>Podcast Plant · Release Radio · Museum Exhibit · Async Standup</h3>
+              <p>Audio and changelogs become RSS-fed sites, audio narration pages, interactive exhibit builders, and daily team newspapers.</p>
             </article>
             <article class="proof-callout">
-              <span class="card-meta">Trust proof</span>
-              <h3>Memory Atlas, Family History, Legal Prep</h3>
-              <p>Traceable transcripts, summaries, and derived artifacts tied back to source.</p>
+              <span class="card-meta">Trust and archives</span>
+              <h3>Memory Atlas · Family History · Legal Prep · Grant Evidence</h3>
+              <p>Traceable transcripts and summaries become timelines, oral history museums, legal binders, and grant-ready evidence packs.</p>
             </article>
             <article class="proof-callout">
-              <span class="card-meta">Developer proof</span>
-              <h3>Explain This Repo, OSS Cockpit, Postmortem Atlas</h3>
-              <p>Onboarding guides, searchable retrospectives, and maintainer-facing knowledge surfaces.</p>
+              <span class="card-meta">Developer and org</span>
+              <h3>Explain This Repo · OSS Cockpit · Postmortem Atlas · Competitive Intel</h3>
+              <p>Repos, incidents, and market data become onboarding guides, maintainer dashboards, searchable post-mortems, and structured intel archives.</p>
             </article>
           </div>
           <div class="cta-row">
-            <a class="primary-btn" href="apps.html">Browse live apps</a>
-            <a class="secondary-btn" href="explore.html">Read the use-case story</a>
+            <a class="primary-btn" href="apps.html">Browse all 20 apps</a>
+            <a class="secondary-btn" href="https://nickgonzales76017.github.io/pages-shift-handoff/" target="_blank" rel="noreferrer">Open Shift Handoff live</a>
           </div>
         </div>
       </section>
@@ -263,12 +357,13 @@
 
     <footer class="footer">
       <div class="shell-container footer-row">
-        <div>Bonfyre OSS site for the product overview, technical docs, and live page proofs.</div>
+        <div>Bonfyre — 53 C11 binaries, 26-module runtime, 4× model compression. MIT licensed. Runs offline.</div>
         <div class="footer-links">
           <a href="explore.html">Explore</a>
           <a href="docs.html">Technical Docs</a>
           <a href="apps.html">Live Apps</a>
           <a href="https://github.com/Nickgonzales76017/bonfyre-oss" target="_blank" rel="noreferrer">GitHub</a>
+          <a href="https://huggingface.co/NICKO" target="_blank" rel="noreferrer">HuggingFace</a>
         </div>
       </div>
     </footer>
