@@ -61,24 +61,24 @@
           <div class="section-header">
             <div>
               <span class="section-kicker">What changed recently</span>
-              <h2 class="section-title">The product story got stronger because the infrastructure underneath it got weirder in a good way.</h2>
+              <h2 class="section-title">The product story got stronger because the infrastructure underneath it kept getting weirder in a good way.</h2>
             </div>
           </div>
           <div class="feature-grid">
             <article class="feature-card">
               <span class="card-meta">Faster serving</span>
               <h3>Shared-nothing API runtime</h3>
-              <p>The API layer now has a per-core reactor model instead of a simpler connection strategy, which matters when Bonfyre pages need live events, SSE, and lower-latency delivery at higher concurrency.</p>
+              <p>The API layer now has a per-core reactor model with a faster parser path and better allocator story, which matters when Bonfyre pages need live events, SSE, and lower-latency delivery at higher concurrency.</p>
             </article>
             <article class="feature-card">
               <span class="card-meta">Faster distribution</span>
               <h3>QUIC, swarm, and metered P2P</h3>
-              <p>Bonfyre is not only generating artifacts now. It is getting better at moving them too, with in-tree QUIC transport hooks and a BitTorrent v2 swarm path tied back to Gate and Meter.</p>
+              <p>Bonfyre is not only generating artifacts now. It is getting better at moving them too, with in-tree QUIC transport hooks, a BitTorrent v2 swarm path, and a delivery story that is more artifact-native than plain webhook fan-out.</p>
             </article>
             <article class="feature-card">
               <span class="card-meta">Faster iteration</span>
-              <h3>Hot-swappable pipeline stages</h3>
-              <p>Stage plugins and A/B routing make the pipeline easier to evolve without treating every change like a full redeploy. That changes how quickly Bonfyre can adapt to new page types and workflows.</p>
+              <h3>Hot-swappable and zero-copy internals</h3>
+              <p>Stage plugins, coroutine flow, LMDB cache reads, and FlatBuffer manifests all push Bonfyre toward a system that can evolve and reuse work without re-paying every parse and orchestration cost on every run.</p>
             </article>
           </div>
         </div>

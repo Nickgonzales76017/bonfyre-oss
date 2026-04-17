@@ -93,20 +93,20 @@
           <div class="section-header">
             <div>
               <span class="section-kicker">New in the stack</span>
-              <h2 class="section-title">Seven infra upgrades changed what Bonfyre can honestly claim.</h2>
-              <p class="section-copy">The newest pass added more than polish. It expanded the operating model underneath the site with shared-nothing serving, hot-loaded pipeline stages, artifact-family transport work, a swarm binary, and faster decode paths on the FPQ side.</p>
+              <h2 class="section-title">Recent runtime upgrades changed what Bonfyre can honestly claim.</h2>
+              <p class="section-copy">The recent passes added more than polish. They widened the operating model underneath the site with shared-nothing serving, hot-loaded and coroutine-friendly pipelines, zero-copy cache and manifest paths, stronger transport options, and faster decode and parse paths.</p>
             </div>
           </div>
           <div class="feature-grid">
             <article class="feature-card">
               <span class="card-meta">API runtime</span>
-              <h3>Per-core reactor</h3>
-              <p><code>bf_reactor</code> brings a shared-nothing event loop to BonfyreApi with <code>SO_REUSEPORT</code>, kqueue on macOS, io_uring or epoll on Linux, SSE support, and room for up to 4,096 connections per reactor.</p>
+              <h3>Per-core reactor path</h3>
+              <p><code>bf_reactor</code> now sits on a stronger request path with shared-nothing event loops, PicoHTTPParser request decoding, and per-reactor heap arenas when mimalloc is present.</p>
             </article>
             <article class="feature-card">
               <span class="card-meta">Pipeline runtime</span>
-              <h3>Hot-load stages + A/B routing</h3>
-              <p><code>bf_hotload</code> turns BonfyrePipeline stages into swappable plugins with <code>dlopen</code>/<code>dlsym</code>, file watching, ABI checks, and hash-based A/B routing for live pipeline experiments.</p>
+              <h3>Hot-load and coroutine stages</h3>
+              <p><code>bf_hotload</code> makes stages swappable, while <code>bf_pipeline_coro</code> adds a structured-concurrency path for in-process stage flow instead of treating everything like fork-and-wait orchestration.</p>
             </article>
             <article class="feature-card">
               <span class="card-meta">Transport</span>
@@ -119,14 +119,14 @@
               <p><code>bonfyre-swarm</code> uses SHA-256 piece trees, BonfyreIndex as the local peer map, and Gate plus Meter as the credential and accounting plane for metered artifact distribution.</p>
             </article>
             <article class="feature-card">
-              <span class="card-meta">Decode path</span>
-              <h3>SIMD BP128 for E8 blocks</h3>
-              <p>The FPQ tree now includes a SIMD-BP128 codec that decodes 128 integers per block with NEON or AVX2 paths, pushing E8 block unpacking closer to memory-bandwidth territory.</p>
+              <span class="card-meta">Zero-copy data path</span>
+              <h3>LMDB cache + FlatBuffer manifests</h3>
+              <p>The stack now has a read-hot LMDB cache path and FlatBuffer artifact manifests, which makes Bonfyre feel less JSON-bound in the places where repeated manifest and artifact reads were stacking up.</p>
             </article>
             <article class="feature-card">
-              <span class="card-meta">Encrypted inference</span>
-              <h3>HE-compatible SLI bridge</h3>
-              <p>The HE-SLI bridge validates the linear scoring path for encrypted weights, making the compression story more defensible around privacy-sensitive model evaluation and secure deployment experiments.</p>
+              <span class="card-meta">FPQ and privacy</span>
+              <h3>Faster decode, stranger inference</h3>
+              <p>On the FPQ side, SIMD BP128 speeds up E8 block decode and the HE-SLI bridge keeps the encrypted linear-scoring idea grounded enough to talk about without pretending it is already the whole production story.</p>
             </article>
           </div>
         </div>
