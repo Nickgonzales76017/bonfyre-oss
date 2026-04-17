@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#ff6b35">
+  <meta name="description" content="How Bonfyre turns source code repositories and incident recordings into navigable onboarding guides, searchable postmortem atlases, and explainable team knowledge bases.">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔥</text></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://api.fontshare.com/v2/css?f[]=cabinet-grotesk@400,500,700,800,900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/site.css">
+  <title>Bonfyre Recipe — Developer Organizations: Repos & Incidents → Explainable</title>
+</head>
+<body>
+  <div class="site-shell">
+    <header class="site-header">
+      <div class="shell-container site-header-row">
+        <a class="brand" href="index.html"><span class="brand-mark">🔥</span><span>Bonfyre</span></a>
+        <nav class="site-nav" aria-label="Primary">
+          <a href="index.html">Overview</a>
+          <a href="explore.html">Explore</a>
+          <a href="docs.html">Technical Docs</a>
+          <a href="apps.html">Live Apps</a>
+        </nav>
+        <div class="header-actions">
+          <a class="header-btn" href="explore.html">← All recipes</a>
+        </div>
+      </div>
+      <div class="ticker-bar">
+        <div class="shell-container ticker-row">
+          <span>Dev recipe</span>
+          <span class="dot">•</span>
+          <span>Repos and incidents → explainable</span>
+          <span class="dot">•</span>
+          <span>local knowledge layer</span>
+          <span class="dot">•</span>
+          <span>no README maintenance required</span>
+        </div>
+      </div>
+    </header>
+
+    <main>
+      <section class="page-hero">
+        <div class="shell-container">
+          <span class="hero-kicker">Pipeline recipe · Developer organizations</span>
+          <h1 class="hero-title">Repos and incidents → <span class="accent">team knowledge base.</span></h1>
+          <p class="lede">New engineers spend their first two weeks reading READMEs, watching onboarding videos, and asking the same questions in Slack. Bonfyre ingests the repository and the incident recordings and produces a navigable, searchable, always-current knowledge layer — so onboarding takes days, not weeks.</p>
+          <div class="hero-actions">
+            <a class="primary-btn" href="https://nickgonzales76017.github.io/pages-explain-this-repo/" target="_blank" rel="noreferrer">Open Explain This Repo live</a>
+            <a class="secondary-btn" href="https://nickgonzales76017.github.io/pages-incident-postmortem-atlas/" target="_blank" rel="noreferrer">Open Postmortem Atlas live</a>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="shell-container">
+          <div class="section-header">
+            <div>
+              <span class="section-kicker">Two pipelines, one output</span>
+              <h2 class="section-title">The repo path and the incident path converge into one knowledge base.</h2>
+              <p class="section-copy">Developer organisations have two primary knowledge sources: the codebase itself, and the incident history. Both are typically locked up in formats that don't answer questions. Bonfyre processes each via a separate path and merges them into a unified knowledge base.</p>
+            </div>
+          </div>
+          <div class="compare-grid">
+            <article class="compare-card">
+              <span class="card-meta">Repo path</span>
+              <h3>Source code → navigable onboarding guide</h3>
+              <p class="compare-value">BonfyreIngest ingests the repo. BonfyreTag + BonfyreCanon extract and resolve services, APIs, patterns. BonfyreBrief distils each module. BonfyreGraph maps dependencies. BonfyreRender builds an always-current architecture guide and glossary.</p>
+            </article>
+            <article class="compare-card">
+              <span class="card-meta">Incident path</span>
+              <h3>Postmortem recordings → searchable atlas</h3>
+              <p class="compare-value">BonfyreTranscribe processes each postmortem recording. BonfyreBrief extracts root cause, timeline, actions. BonfyreGraph links related incidents. BonfyreIndex builds semantic search. BonfyreProof hashes each record for audit integrity.</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="shell-container">
+          <div class="section-header">
+            <div>
+              <span class="section-kicker">Worked example — repo path</span>
+              <h2 class="section-title">A backend service repo turned into an onboarding guide.</h2>
+              <p class="section-copy">The scenario: a 15-service backend codebase, 3 years old, 4 engineers who know it well and 1 new hire starting Monday. Here's what Bonfyre produces from the codebase.</p>
+            </div>
+          </div>
+          <div class="feature-grid">
+
+            <article class="feature-card">
+              <span class="card-meta">Step 1 — BonfyreIngest (repo)</span>
+              <h3>Codebase ingested and fingerprinted</h3>
+              <p>BonfyreIngest processes every source file in the repo: normalises line endings, stores BLAKE2b hashes. Future runs over the same codebase skip unchanged files — only modified or added code is re-processed. The knowledge base updates incrementally on each merge to main.</p>
+            </article>
+
+            <article class="feature-card">
+              <span class="card-meta">Step 2 — BonfyreTag + BonfyreCanon (repo)</span>
+              <h3>15 services, their APIs, and their dependencies resolved</h3>
+              <p>BonfyreTag identifies service names, API endpoints, configuration keys, shared libraries, and environment variables across the full codebase. BonfyreCanon resolves aliases — if the auth service is referred to as "auth-svc", "the auth service", and "svc-auth" in different files, Canon resolves these to a single entity.</p>
+            </article>
+
+            <article class="feature-card">
+              <span class="card-meta">Step 3 — BonfyreBrief (per module)</span>
+              <h3>Plain-English brief generated for each service</h3>
+              <p>BonfyreBrief processes each service's source and config files and produces: what this service does, what it depends on, what depends on it, what configuration it requires, known failure modes in the code comments, and where to look first when something breaks. The output is the README that nobody ever writes but every new engineer needs.</p>
+            </article>
+
+            <article class="feature-card">
+              <span class="card-meta">Step 4 — BonfyreGraph (dependencies)</span>
+              <h3>Service dependency graph built automatically</h3>
+              <p>BonfyreGraph maps the service-to-service dependency graph from the entity relationships extracted by Tag and Canon. The graph shows: which services are called by which, which share database schemas, which have circular dependencies. New engineers see the architecture before they write a single line of code.</p>
+            </article>
+
+            <article class="feature-card">
+              <span class="card-meta">Step 5 — BonfyreRender + BonfyreEmit (repo output)</span>
+              <h3>Onboarding site generated: service map, briefs, glossary</h3>
+              <p>BonfyreRender generates the full onboarding site: a landing page with the service dependency graph, individual pages per service with the generated briefs, a cross-service glossary sourced from Canon's entity list, and a "where to start" guide weighted by the dependency graph. BonfyreEmit produces JSON and Markdown exports for import into other tools.</p>
+            </article>
+
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="shell-container">
+          <div class="section-header">
+            <div>
+              <span class="section-kicker">Worked example — incident path</span>
+              <h2 class="section-title">18 months of postmortem recordings turned into a searchable atlas.</h2>
+              <p class="section-copy">The scenario: 24 postmortem recordings from the past 18 months, each 30–60 minutes, stored in Zoom cloud. Export them once, run Bonfyre, and they become a searchable institutional memory. Here's the pipeline.</p>
+            </div>
+          </div>
+          <div class="feature-grid">
+
+            <article class="feature-card">
+              <span class="card-meta">Step 6 — BonfyreIngest + BonfyreTranscribe (batch)</span>
+              <h3>24 postmortem recordings → transcripts overnight</h3>
+              <p>BonfyrePipeline queues all 24 recordings. BonfyreIngest normalises each. BonfyreTranscribe processes them locally at 15× real-time — 24 sessions averaging 45 minutes each take roughly 90 minutes of compute, run overnight. All 24 transcripts produced before morning without a single API call.</p>
+            </article>
+
+            <article class="feature-card">
+              <span class="card-meta">Step 7 — BonfyreSegment + BonfyreBrief (incidents)</span>
+              <h3>Each postmortem: root cause, timeline, actions, services named</h3>
+              <p>BonfyreSegment labels speakers per postmortem. BonfyreBrief produces a structured incident record: root cause, timeline of events, affected services, mitigation steps taken, open follow-up items, and contributing factors. Every postmortem becomes a structured data record — not a human's notes.</p>
+            </article>
+
+            <article class="feature-card">
+              <span class="card-meta">Step 8 — BonfyreGraph (incidents)</span>
+              <h3>24 incidents linked by shared services and failure patterns</h3>
+              <p>BonfyreGraph builds edges between incidents that share entities: same service, same failure mode, same contributing factor. A new incident involving redis timeouts automatically surfaces the 4 prior incidents that also involved redis timeouts — without any manual tagging.</p>
+            </article>
+
+            <article class="feature-card">
+              <span class="card-meta">Step 9 — BonfyreProof + BonfyreIndex</span>
+              <h3>Each incident record hashed and indexed for semantic search</h3>
+              <p>BonfyreProof signs each incident brief with Ed25519. The hash proves this brief was generated from this exact recording at this timestamp — useful for audit purposes and for future disputes about what was said in a postmortem. BonfyreIndex builds semantic search across all 24 records.</p>
+            </article>
+
+            <article class="feature-card">
+              <span class="card-meta">Step 10 — BonfyreRender + BonfyreSync (atlas output)</span>
+              <h3>Incident atlas published internally with graph navigation</h3>
+              <p>BonfyreRender generates the incident atlas: a landing page with an incident timeline and service-incident heatmap, individual pages per incident with the structured brief and related-incident graph, and a cross-incident search interface. BonfyreSync pushes to an internal server — accessible to the whole engineering team without a SaaS login.</p>
+            </article>
+
+          </div>
+          <div class="cta-row">
+            <p style="color:var(--text-2);font-size:0.9rem;margin:0">A codebase + 24 postmortem recordings → current architecture docs, service dependency map, structured incident atlas, semantic search, graph-linked history. All on your infrastructure.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="shell-container">
+          <div class="section-header">
+            <div><span class="section-kicker">What you end up with</span><h2 class="section-title">After both pipelines run.</h2></div>
+          </div>
+          <div class="feature-grid">
+            <article class="feature-card"><span class="card-meta">Living onboarding guide</span><h3>Architecture docs that update on every merge</h3><p>BonfyreIngest runs on each CI merge. BonfyreBrief and BonfyreGraph re-process changed modules. The onboarding guide is always current — it reflects the actual codebase, not a stale wiki nobody updates.</p></article>
+            <article class="feature-card"><span class="card-meta">Searchable incident atlas</span><h3>"Did we ever see this failure before?" has an answer</h3><p>BonfyreEmbed + BonfyreVec + BonfyreIndex give engineers semantic search across 18 months of postmortems. Pattern queries work: "services that failed after redis timeout" or "incidents involving the payment service on deploy day" return relevant results immediately.</p></article>
+            <article class="feature-card"><span class="card-meta">Tamper-evident record</span><h3>Every incident hashed and verifiable</h3><p>BonfyreProof signs each incident record. If a postmortem's conclusions are ever questioned, the hash proves this brief was generated from this exact recording. The audit trail is built into the pipeline, not retrofitted after the fact.</p></article>
+          </div>
+          <div class="cta-row">
+            <a class="primary-btn" href="https://nickgonzales76017.github.io/pages-explain-this-repo/" target="_blank" rel="noreferrer">Open Explain This Repo live</a>
+            <a class="secondary-btn" href="https://nickgonzales76017.github.io/pages-incident-postmortem-atlas/" target="_blank" rel="noreferrer">Open Postmortem Atlas live</a>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <div class="shell-container footer-row">
+        <div>Bonfyre — 53 C binaries. Local AI. No cloud bill.</div>
+        <div class="footer-links">
+          <a href="index.html">Overview</a>
+          <a href="explore.html">Explore</a>
+          <a href="docs.html">Technical Docs</a>
+          <a href="apps.html">Live Apps</a>
+        </div>
+      </div>
+    </footer>
+  </div>
+  <script src="assets/site.js"></script>
+</body>
+</html>

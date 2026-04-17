@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#ff6b35">
+  <meta name="description" content="How Bonfyre turns meeting recordings, standups, and postmortems into a searchable, actionable team memory — entirely on your infrastructure.">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔥</text></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://api.fontshare.com/v2/css?f[]=cabinet-grotesk@400,500,700,800,900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/site.css">
+  <title>Bonfyre Recipe — Ops & Internal Teams: Meetings → Actionable Memory</title>
+</head>
+<body>
+  <div class="site-shell">
+    <header class="site-header">
+      <div class="shell-container site-header-row">
+        <a class="brand" href="index.html"><span class="brand-mark">🔥</span><span>Bonfyre</span></a>
+        <nav class="site-nav" aria-label="Primary">
+          <a href="index.html">Overview</a>
+          <a href="explore.html">Explore</a>
+          <a href="docs.html">Technical Docs</a>
+          <a href="apps.html">Live Apps</a>
+        </nav>
+        <div class="header-actions">
+          <a class="header-btn" href="explore.html">← All recipes</a>
+        </div>
+      </div>
+      <div class="ticker-bar">
+        <div class="shell-container ticker-row">
+          <span>Ops recipe</span>
+          <span class="dot">•</span>
+          <span>Meetings → actionable memory</span>
+          <span class="dot">•</span>
+          <span>on your infrastructure</span>
+          <span class="dot">•</span>
+          <span>searchable across months of meetings</span>
+        </div>
+      </div>
+    </header>
+
+    <main>
+      <section class="page-hero">
+        <div class="shell-container">
+          <span class="hero-kicker">Pipeline recipe · Ops &amp; internal teams</span>
+          <h1 class="hero-title">Meetings → <span class="accent">actionable memory.</span></h1>
+          <p class="lede">Your team records standups, postmortems, and handoff calls. Bonfyre processes recordings on your own infrastructure: action items tracked, incidents linked, every meeting searchable by meaning — not by groping through video timecodes.</p>
+          <div class="hero-actions">
+            <a class="primary-btn" href="https://nickgonzales76017.github.io/pages-shift-handoff/" target="_blank" rel="noreferrer">Open Shift Handoff live</a>
+            <a class="secondary-btn" href="explore.html">All use cases</a>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="shell-container">
+          <div class="section-header">
+            <div>
+              <span class="section-kicker">What this replaces</span>
+              <h2 class="section-title">What most teams use instead — and what it costs.</h2>
+            </div>
+          </div>
+          <div class="compare-grid">
+            <article class="compare-card">
+              <span class="card-meta">Otter.ai / Fireflies</span>
+              <h3>$20–40/user/month per seat</h3>
+              <p class="compare-value">Transcription + summary. No graph linking between incidents. No action item tracking. Data leaves your servers. At 20-person team = $400–$800/month.</p>
+            </article>
+            <article class="compare-card">
+              <span class="card-meta">Notion AI</span>
+              <h3>$10/user/month on top of Notion</h3>
+              <p class="compare-value">Summarises documents you paste in. No audio pipeline. No entity resolution across meetings. You still have to do the work of linking related incidents.</p>
+            </article>
+            <article class="compare-card">
+              <span class="card-meta">Video storage</span>
+              <h3>Zoom recordings you never watch again</h3>
+              <p class="compare-value">Three months later, an engineer asks "didn't we have a similar incident in Q2?" Nobody can find it. The Zoom archive is a $0 black hole. BonfyreGraph would have linked Q2 to Q4 automatically.</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="shell-container">
+          <div class="section-header">
+            <div>
+              <span class="section-kicker">Worked example</span>
+              <h2 class="section-title">A postmortem recording turned into a tracked, searchable incident record.</h2>
+              <p class="section-copy">The scenario: a 60-minute postmortem call is recorded. Three engineers, a PM, and a support lead are present. Here's exactly what happens next.</p>
+            </div>
+          </div>
+          <div class="feature-grid">
+
+            <article class="feature-card">
+              <span class="card-meta">Step 1 — BonfyreIngest</span>
+              <h3>Recording normalised and fingerprinted</h3>
+              <p>BonfyreIngest pulls the recording from local disk, normalises loudness, resamples to 16 kHz mono, trims silence at edges. BLAKE2b hash stored. If the same file is ever submitted again — from a duplicate export, for example — it's silently deduplicated. No double-processing.</p>
+            </article>
+
+            <article class="feature-card">
+              <span class="card-meta">Step 2 — BonfyreTranscribe</span>
+              <h3>60-minute call → transcript in 4 minutes</h3>
+              <p>FPQ-compressed Whisper processes the recording locally at ~15× real-time speed. A 60-minute postmortem produces a transcript in roughly 4 minutes. No internet. No Zoom transcription add-on. The transcript stays on your infrastructure.</p>
+            </article>
+
+            <article class="feature-card">
+              <span class="card-meta">Step 3 — BonfyreSegment</span>
+              <h3>5 speakers attributed by voice</h3>
+              <p>Speaker diarisation labels each turn by speaker ID. The transcript now carries "Speaker A: …" labels across the full call. Subsequent steps can distinguish a support lead's reproduction steps from an engineer's mitigation steps — the structural difference matters for action item extraction.</p>
+            </article>
+
+            <article class="feature-card">
+              <span class="card-meta">Step 4 — BonfyreBrief</span>
+              <h3>Incident summary with action items extracted</h3>
+              <p>BonfyreBrief produces a structured incident brief: root cause, timeline, impact, mitigation steps taken, open questions. Critically, action items are extracted with owner attribution — "Alice will update the rate limiter by EOW" appears as a distinct tracked item, not buried in a wall of text.</p>
+            </article>
+
+            <article class="feature-card">
+              <span class="card-meta">Step 5 — BonfyreTag + BonfyreCanon</span>
+              <h3>Services, systems, and people named and resolved</h3>
+              <p>BonfyreTag extracts every named entity: services mentioned ("the auth service", "redis"), engineers, deployment identifiers, error codes. BonfyreCanon resolves these across your archive — if this is the third postmortem mentioning "the auth service rate limit," those three incidents are now linked in the entity graph.</p>
+            </article>
+
+            <article class="feature-card">
+              <span class="card-meta">Step 6 — BonfyreGraph</span>
+              <h3>This incident linked to related incidents automatically</h3>
+              <p>BonfyreGraph builds a causal linkage graph. This postmortem shares 4 entities with a Q2 incident and 2 entities with a production issue from 3 months ago. Those connections appear as graph edges. An engineer reviewing this postmortem can follow graph edges to the related incidents without remembering they happened — the graph remembers.</p>
+            </article>
+
+            <article class="feature-card">
+              <span class="card-meta">Step 7 — BonfyreProject</span>
+              <h3>Action items added to the project tracker</h3>
+              <p>BonfyreProject creates tracked items from the brief's action item list. Each item has an owner, a deadline (if stated), a status (open/resolved/blocked), and a link back to the source incident brief. The project board shows all open action items across all postmortems in one view.</p>
+            </article>
+
+            <article class="feature-card">
+              <span class="card-meta">Step 8 — BonfyreEmbed + BonfyreVec + BonfyreIndex</span>
+              <h3>The brief indexed for semantic search</h3>
+              <p>BonfyreEmbed generates vectors for the incident brief. BonfyreVec stores them. BonfyreIndex builds full-text alongside. An engineer can now ask: "all incidents where redis timeout caused downstream auth failures" and get back the 3 relevant postmortems ranked by semantic proximity — whether or not "redis" was the exact word used each time.</p>
+            </article>
+
+            <article class="feature-card">
+              <span class="card-meta">Step 9 — BonfyreRender + BonfyreSync</span>
+              <h3>Incident page published internally; graph updated</h3>
+              <p>BonfyreRender builds an HTML incident page with the structured brief, the speaker-attributed transcript, related incidents via graph edges, and open action items. BonfyreSync pushes the update to your internal server. Any team member can navigate the incident atlas in a browser — no SaaS login required.</p>
+            </article>
+
+          </div>
+          <div class="cta-row">
+            <p style="color:var(--text-2);font-size:0.9rem;margin:0">One postmortem recording → structured incident record, tracked action items, linked to prior incidents, searchable by meaning. Processed in under 10 minutes on local hardware.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="shell-container">
+          <div class="section-header">
+            <div><span class="section-kicker">What you end up with</span><h2 class="section-title">After the pipeline runs.</h2></div>
+          </div>
+          <div class="feature-grid">
+            <article class="feature-card"><span class="card-meta">Incident atlas</span><h3>Every postmortem linked and browsable</h3><p>Not a folder of docs. A graph-linked atlas: navigate from any incident to related incidents via shared entities. BonfyreGraph makes patterns visible over months of postmortems.</p></article>
+            <article class="feature-card"><span class="card-meta">Live action board</span><h3>Open items tracked across all meetings</h3><p>BonfyreProject surfaces every open action item from every postmortem, standup, and handoff call in a single board. Nothing falls through the gap between "it was mentioned in a meeting" and "it's tracked."</p></article>
+            <article class="feature-card"><span class="card-meta">Semantic search</span><h3>"Find every incident about X" just works</h3><p>BonfyreEmbed + BonfyreVec mean you search by meaning. A query for "payment timeout cascade" finds incidents that describe the same failure pattern even if they used different words.</p></article>
+          </div>
+          <div class="cta-row">
+            <a class="primary-btn" href="https://nickgonzales76017.github.io/pages-shift-handoff/" target="_blank" rel="noreferrer">Open Shift Handoff live</a>
+            <a class="secondary-btn" href="explore.html">See all recipes</a>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <div class="shell-container footer-row">
+        <div>Bonfyre — 53 C binaries. Local AI. No cloud bill.</div>
+        <div class="footer-links">
+          <a href="index.html">Overview</a>
+          <a href="explore.html">Explore</a>
+          <a href="docs.html">Technical Docs</a>
+          <a href="apps.html">Live Apps</a>
+        </div>
+      </div>
+    </footer>
+  </div>
+  <script src="assets/site.js"></script>
+</body>
+</html>

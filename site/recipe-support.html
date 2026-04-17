@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#ff6b35">
+  <meta name="description" content="How Bonfyre turns support and ops call recordings into tracked action items, live queues, and orchestrated delivery — no ticket system needed as a starting point.">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔥</text></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://api.fontshare.com/v2/css?f[]=cabinet-grotesk@400,500,700,800,900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/site.css">
+  <title>Bonfyre Recipe — Operations & Support: Calls Become Actions</title>
+</head>
+<body>
+  <div class="site-shell">
+    <header class="site-header">
+      <div class="shell-container site-header-row">
+        <a class="brand" href="index.html"><span class="brand-mark">🔥</span><span>Bonfyre</span></a>
+        <nav class="site-nav" aria-label="Primary">
+          <a href="index.html">Overview</a>
+          <a href="explore.html">Explore</a>
+          <a href="docs.html">Technical Docs</a>
+          <a href="apps.html">Live Apps</a>
+        </nav>
+        <div class="header-actions">
+          <a class="header-btn" href="explore.html">← All recipes</a>
+        </div>
+      </div>
+      <div class="ticker-bar">
+        <div class="shell-container ticker-row">
+          <span>Support recipe</span>
+          <span class="dot">•</span>
+          <span>Calls become actions, not just logs</span>
+          <span class="dot">•</span>
+          <span>queue → orchestrate → relay → confirm</span>
+          <span class="dot">•</span>
+          <span>operates over MoQ transport</span>
+        </div>
+      </div>
+    </header>
+
+    <main>
+      <section class="page-hero">
+        <div class="shell-container">
+          <span class="hero-kicker">Pipeline recipe · Operations &amp; support</span>
+          <h1 class="hero-title">Support calls → <span class="accent">active operating surface.</span></h1>
+          <p class="lede">A support or ops call is a commitment: a customer described a problem, your team said it would be resolved. Bonfyre extracts that commitment from the recording, puts it in a tracked queue, routes it to the right handler, confirms delivery, and closes the loop — entirely on your infrastructure.</p>
+          <div class="hero-actions">
+            <a class="primary-btn" href="explore.html">Explore all use cases</a>
+            <a class="secondary-btn" href="apps.html">Live apps</a>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="shell-container">
+          <div class="section-header">
+            <div>
+              <span class="section-kicker">The support ops problem</span>
+              <h2 class="section-title">What happens to commitments made on calls without a pipeline like this.</h2>
+            </div>
+          </div>
+          <div class="feature-grid">
+            <article class="feature-card">
+              <span class="card-meta">The lost commitment</span>
+              <h3>The action item lives in a Zoom recording nobody watches</h3>
+              <p>A support rep said "I'll escalate this to the ops team by Tuesday." That commitment is now in a video at timestamp 14:32. Nobody will find it unless someone watches the whole recording. BonfyreBrief extracts the commitment in under 5 seconds. BonfyreProject tracks it immediately.</p>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">Handoff friction</span>
+              <h3>The rep manually copies notes between 3 systems</h3>
+              <p>Call ends → write summary in CRM → create ticket in Jira → send Slack message to ops channel. BonfyrePipeline reduces this to zero manual steps. The transcript goes in; the queue item and the relay message come out.</p>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">No delivery confirmation</span>
+              <h3>Nobody knows if the action was actually taken</h3>
+              <p>The ticket was created. Was it resolved? BonfyreTel confirms delivery of communications. BonfyreProject closes the item on confirmation. The loop is closed — you know whether the commitment was kept, not just whether it was logged.</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="shell-container">
+          <div class="section-header">
+            <div>
+              <span class="section-kicker">Worked example</span>
+              <h2 class="section-title">A support escalation call → queued, routed, and confirmed resolved.</h2>
+              <p class="section-copy">The scenario: a 20-minute support call is recorded. A customer describes a billing discrepancy. The rep makes 3 commitments: investigate, escalate to finance, follow up by Friday. Here's the pipeline.</p>
+            </div>
+          </div>
+          <div class="feature-grid">
+
+            <article class="feature-card">
+              <span class="card-meta">Step 1 — BonfyreIngest</span>
+              <h3>Support call normalised and fingerprinted</h3>
+              <p>BonfyreIngest normalises the recording, resamples and trims, and stores a BLAKE2b hash. Deduplication means if the call is exported from both the phone system and the screen recorder, only one version enters the pipeline.</p>
+            </article>
+
+            <article class="feature-card">
+              <span class="card-meta">Step 2 — BonfyreTranscribe</span>
+              <h3>20-minute call → transcript in 80 seconds</h3>
+              <p>Local Whisper at 15× real-time processes a 20-minute call in under 90 seconds. The transcript does not leave your network — it's processed on the support team's infrastructure, not passed through a cloud transcription API.</p>
+            </article>
+
+            <article class="feature-card">
+              <span class="card-meta">Step 3 — BonfyreBrief</span>
+              <h3>3 commitments extracted with owner, deadline, and context</h3>
+              <p>BonfyreBrief produces a structured brief: customer's stated problem, supporting context, and every commitment made by the rep — each with the stated deadline and the responsible party. "Investigate the April 3rd charge" becomes a structured item: action=investigate, target=April-03-charge, owner=rep, deadline=EOD.</p>
+            </article>
+
+            <article class="feature-card">
+              <span class="card-meta">Step 4 — BonfyreTag + BonfyreProject</span>
+              <h3>Commitments become tracked project items</h3>
+              <p>BonfyreTag extracts entities: account ID, billing date, product referenced. BonfyreProject creates tracked items from the brief's commitment list. Each item appears on the ops board immediately. The rep doesn't need to open Jira or send a Slack message — the items are created from the call.</p>
+            </article>
+
+            <article class="feature-card">
+              <span class="card-meta">Step 5 — BonfyreQueue</span>
+              <h3>Finance escalation added to the ops queue</h3>
+              <p>The escalation commitment creates a queue item via BonfyreQueue. The item has a priority level (derived from the customer's stated urgency), a deadline, a payload (the brief context), and a target handler (the finance team). It sits in the queue until dispatched.</p>
+            </article>
+
+            <article class="feature-card">
+              <span class="card-meta">Step 6 — BonfyrePipeline + BonfyreOrchestrate</span>
+              <h3>Queue dispatched to the right handler; state tracked</h3>
+              <p>BonfyrePipeline dispatches the queue item to the finance handler. BonfyreOrchestrate manages execution state: the item moves from queued → in-progress → completed. If the handler takes no action within 24 hours, BonfyreOrchestrate flags the item as stalled and notifies the support lead.</p>
+            </article>
+
+            <article class="feature-card">
+              <span class="card-meta">Step 7 — BonfyreTel</span>
+              <h3>Customer follow-up sent; delivery confirmed</h3>
+              <p>BonfyreTel sends the follow-up communication to the customer on the committed timeline (Friday). Delivery is confirmed — not just logged as "sent." If delivery fails, the pipeline retries and escalates. The loop is closed: commitment made → action taken → customer notified → delivery confirmed.</p>
+            </article>
+
+            <article class="feature-card">
+              <span class="card-meta">Step 8 — BonfyreSync</span>
+              <h3>All state synced to internal systems</h3>
+              <p>BonfyreSync pushes the completed brief, project items, queue resolution, and delivery confirmation to your CRM and internal ops dashboard. The call record becomes a complete audit trail: what was said, what was committed, what was done, and when.</p>
+            </article>
+
+          </div>
+          <div class="cta-row">
+            <p style="color:var(--text-2);font-size:0.9rem;margin:0">One 20-minute support call → 3 commitments tracked, 1 escalation queued and dispatched, customer follow-up confirmed delivered. Zero manual steps.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="shell-container">
+          <div class="section-header">
+            <div><span class="section-kicker">What you end up with</span><h2 class="section-title">After the pipeline runs.</h2></div>
+          </div>
+          <div class="feature-grid">
+            <article class="feature-card"><span class="card-meta">Zero lost commitments</span><h3>Every "I'll follow up" becomes a tracked item</h3><p>BonfyreBrief extracts commitments. BonfyreProject tracks them. BonfyreOrchestrate flags stalled items. The support team's word is automatically backed by infrastructure.</p></article>
+            <article class="feature-card"><span class="card-meta">Active queue surface</span><h3>Ops queue built from calls, not from manual entry</h3><p>BonfyreQueue consumes items from briefs. No one opens a tool to create a ticket — the ticket creates itself from the conversation. The queue is accurate because it's sourced from what was actually said.</p></article>
+            <article class="feature-card"><span class="card-meta">Confirmed delivery</span><h3>You know the loop was closed, not just that it was opened</h3><p>BonfyreTel confirms delivery. BonfyreProject closes items on confirmation. The audit trail shows: call recorded, commitment extracted, action dispatched, follow-up delivered. Every step timestamped.</p></article>
+          </div>
+          <div class="cta-row">
+            <a class="primary-btn" href="explore.html">See all recipes</a>
+            <a class="secondary-btn" href="apps.html">Live apps</a>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <div class="shell-container footer-row">
+        <div>Bonfyre — 53 C binaries. Local AI. No cloud bill.</div>
+        <div class="footer-links">
+          <a href="index.html">Overview</a>
+          <a href="explore.html">Explore</a>
+          <a href="docs.html">Technical Docs</a>
+          <a href="apps.html">Live Apps</a>
+        </div>
+      </div>
+    </footer>
+  </div>
+  <script src="assets/site.js"></script>
+</body>
+</html>

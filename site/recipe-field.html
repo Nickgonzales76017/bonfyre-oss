@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#ff6b35">
+  <meta name="description" content="How Bonfyre turns field recordings with no internet into a searchable, embeddable, publish-ready archive — entirely on-device.">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔥</text></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://api.fontshare.com/v2/css?f[]=cabinet-grotesk@400,500,700,800,900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/site.css">
+  <title>Bonfyre Recipe — Field Research: Offline Capture → Searchable Archive</title>
+</head>
+<body>
+  <div class="site-shell">
+    <header class="site-header">
+      <div class="shell-container site-header-row">
+        <a class="brand" href="index.html"><span class="brand-mark">🔥</span><span>Bonfyre</span></a>
+        <nav class="site-nav" aria-label="Primary">
+          <a href="index.html">Overview</a>
+          <a href="explore.html">Explore</a>
+          <a href="docs.html">Technical Docs</a>
+          <a href="apps.html">Live Apps</a>
+        </nav>
+        <div class="header-actions">
+          <a class="header-btn" href="explore.html">← All recipes</a>
+        </div>
+      </div>
+      <div class="ticker-bar">
+        <div class="shell-container ticker-row">
+          <span>Field recipe</span>
+          <span class="dot">•</span>
+          <span>Offline capture → searchable archive</span>
+          <span class="dot">•</span>
+          <span>no internet required</span>
+          <span class="dot">•</span>
+          <span>fountain codes for lossy sync</span>
+        </div>
+      </div>
+    </header>
+
+    <main>
+      <section class="page-hero">
+        <div class="shell-container">
+          <span class="hero-kicker">Pipeline recipe · Field research &amp; archives</span>
+          <h1 class="hero-title">Offline recordings → <span class="accent">searchable archive.</span></h1>
+          <p class="lede">You record in the field with no internet. When you return, Bonfyre processes everything on-device: transcription, embedding, vector indexing, and a static browse-and-search site — all without sending a single byte to a cloud service.</p>
+          <div class="hero-actions">
+            <a class="primary-btn" href="explore.html">Explore all use cases</a>
+            <a class="secondary-btn" href="apps.html">See the Family History app live</a>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="shell-container">
+          <div class="section-header">
+            <div>
+              <span class="section-kicker">The field research problem</span>
+              <h2 class="section-title">Why cloud tools break for serious field work.</h2>
+            </div>
+          </div>
+          <div class="feature-grid">
+            <article class="feature-card">
+              <span class="card-meta">No connectivity</span>
+              <h3>Cloud tools require the cloud to be there</h3>
+              <p>Oral history interviews, ethnographic recordings, archaeological site audio, remote field notes — this work happens where there's no internet. Cloud transcription and cloud search require connectivity at processing time. Bonfyre runs everything on the laptop in your bag.</p>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">Volume and cost</span>
+              <h3>200 field recordings at $0.006/minute = $200+ just to transcribe</h3>
+              <p>A week of field work produces dozens of recordings. At Deepgram's standard rate, transcribing 200 × 30-minute recordings costs roughly $360. BonfyreTranscribe costs nothing per recording after the hardware. A single local run processes all 200 overnight without an API key.</p>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">Findability</span>
+              <h3>File systems don't answer research questions</h3>
+              <p>A folder of 200 recordings labelled by date and location answers "what did I record on Tuesday" — it doesn't answer "all interviews where the subject mentioned the 1973 drought." BonfyreVec + BonfyreQuery give you semantic search across the entire archive.</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="shell-container">
+          <div class="section-header">
+            <div>
+              <span class="section-kicker">Worked example</span>
+              <h2 class="section-title">A week of oral history interviews, processed and published.</h2>
+              <p class="section-copy">The scenario: 15 oral history interviews recorded during a week-long field trip, no internet access. You return to the office. Here's exactly what happens.</p>
+            </div>
+          </div>
+          <div class="feature-grid">
+
+            <article class="feature-card">
+              <span class="card-meta">Step 1 — BonfyreIngest (batch)</span>
+              <h3>15 recordings normalised and fingerprinted overnight</h3>
+              <p>BonfyrePipeline queues all 15 recordings. BonfyreIngest processes each: normalise loudness, resample to 16 kHz mono, trim silence, store BLAKE2b hash. This runs overnight while you sleep. If you add 5 more recordings next week and re-run, only the 5 new files are processed — the existing 15 hash to the same values and are skipped.</p>
+            </article>
+
+            <article class="feature-card">
+              <span class="card-meta">Step 2 — BonfyreTranscribe (batch)</span>
+              <h3>15 × 45-minute interviews → transcripts, no internet</h3>
+              <p>BonfyreTranscribe processes each recording with your local FPQ-compressed Whisper model. No internet. No API key. At 15× faster than real-time, 15 × 45 minutes of audio takes about 45 minutes of compute on M2 Pro. All 15 transcripts produced before morning.</p>
+            </article>
+
+            <article class="feature-card">
+              <span class="card-meta">Step 3 — BonfyreSegment + BonfyreTranscriptClean</span>
+              <h3>Interviewer and subject labelled, fillers removed</h3>
+              <p>Each transcript goes through speaker diarisation (interviewer voice vs. subject voice) and Hyperscan pattern cleaning. Hallucinations and fillers removed in under 30 ms per transcript. The subject's voice — the historically significant content — is now cleanly separated from the researcher's questions.</p>
+            </article>
+
+            <article class="feature-card">
+              <span class="card-meta">Step 4 — BonfyreParagraph + BonfyreBrief</span>
+              <h3>Each interview becomes a structured record</h3>
+              <p>Paragraph groups each transcript into thematic sections: "Early Life", "Key Events", "Community Memory", "Personal Reflection". BonfyreBrief extracts a structured summary for each interview: subject biography, key dates mentioned, themes, notable quotes, and recommended follow-up questions for a return visit.</p>
+            </article>
+
+            <article class="feature-card">
+              <span class="card-meta">Step 5 — BonfyreTag + BonfyreCanon</span>
+              <h3>Named entities extracted and resolved across all 15 interviews</h3>
+              <p>BonfyreTag extracts named entities from every brief: people, places, dates, events, organisations. BonfyreCanon runs across the full batch — if 7 of the 15 interviews mention "the old mill" and "the Miller property" and "that building on Route 9," Canon resolves these to a single entity. Cross-interview connections become visible.</p>
+            </article>
+
+            <article class="feature-card">
+              <span class="card-meta">Step 6 — BonfyreTranscriptFamily</span>
+              <h3>15 interviews clustered into a searchable family</h3>
+              <p>BonfyreTranscriptFamily analyses the 15 transcripts as a collection, grouping interviews by shared entities, overlapping themes, and referenced events. The output is a family structure: this interview is related to these 4 others, those 3 form a cluster around the 1973 flood. The family structure becomes the navigation backbone of the published archive.</p>
+            </article>
+
+            <article class="feature-card">
+              <span class="card-meta">Step 7 — BonfyreEmbed + BonfyreVec + BonfyreIndex</span>
+              <h3>All 15 briefs indexed for semantic search</h3>
+              <p>BonfyreEmbed generates sentence vectors for every brief. BonfyreVec stores them in a zero-copy LMDB index. BonfyreIndex builds full-text search alongside it. Together these let you ask: "all interviews where the subject mentioned farming practices before 1960" — and get back the 4 relevant interviews ranked by semantic relevance, not keyword frequency.</p>
+            </article>
+
+            <article class="feature-card">
+              <span class="card-meta">Step 8 — BonfyreRender + BonfyreEmit</span>
+              <h3>A browsable archive site generated from the family structure</h3>
+              <p>BonfyreRender builds an HTML archive: a landing page with the family cluster view, individual pages per interview with the structured brief, related-interview links, and the full transcript. BonfyreEmit produces a JSON export of the full archive — for importing into other research tools — and a PDF packet per interview for printing or sharing.</p>
+            </article>
+
+            <article class="feature-card">
+              <span class="card-meta">Step 9 — BonfyrePack + BonfyreProof</span>
+              <h3>Archive bundle signed and preserved</h3>
+              <p>BonfyrePack assembles the entire archive — all transcripts, briefs, HTML pages, audio files, JSON export — into a content-addressed bundle. BonfyreProof signs it with Ed25519. The bundle ID is a stable identifier for this exact state of the archive. Future deposits to an institutional repository can reference this bundle ID as the version deposited.</p>
+            </article>
+
+            <article class="feature-card">
+              <span class="card-meta">Step 10 — BonfyreDistribute (lossy sync)</span>
+              <h3>Synced to institutional server even over flaky field internet</h3>
+              <p>BonfyreDistribute delivers the pack using fountain codes over QUIC. If you're syncing from a field site with 40% packet loss, the transfer still completes — fountain codes make any subset of received chunks sufficient to reconstruct the full pack. The archive is preserved at the institution without requiring a stable connection to finish the transfer.</p>
+            </article>
+
+          </div>
+          <div class="cta-row">
+            <p style="color:var(--text-2);font-size:0.9rem;margin:0">All 15 interviews processed, indexed, and published without a single API call or cloud dependency.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="shell-container">
+          <div class="section-header">
+            <div><span class="section-kicker">Also fits</span><h2 class="section-title">Other field and archive scenarios.</h2></div>
+          </div>
+          <div class="feature-grid">
+            <article class="feature-card"><span class="card-meta">Oral history preservation</span><h3>Family histories, community archives</h3><p>Family interview recordings + BonfyreTranscriptFamily + BonfyreRender = a browsable, searchable museum the whole family can use. See the live Family Oral History Museum app.</p></article>
+            <article class="feature-card"><span class="card-meta">Environmental monitoring</span><h3>Audio logs and field notes</h3><p>Periodic site recordings embedded and indexed across the archive. BonfyreQuery searches across years of observations by meaning — not filename.</p></article>
+            <article class="feature-card"><span class="card-meta">Journalism</span><h3>Source interview archive</h3><p>Every source interview transcribed, attributed, tagged, and indexed. BonfyreProof hashes the original recording so the transcript's accuracy is verifiable if challenged.</p></article>
+          </div>
+          <div class="cta-row">
+            <a class="primary-btn" href="https://nickgonzales76017.github.io/pages-family-oral-history/" target="_blank" rel="noreferrer">Open Family History live</a>
+            <a class="secondary-btn" href="explore.html">See all recipes</a>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <div class="shell-container footer-row">
+        <div>Bonfyre — 53 C binaries. Local AI. No cloud bill.</div>
+        <div class="footer-links">
+          <a href="index.html">Overview</a>
+          <a href="explore.html">Explore</a>
+          <a href="docs.html">Technical Docs</a>
+          <a href="apps.html">Live Apps</a>
+        </div>
+      </div>
+    </footer>
+  </div>
+  <script src="assets/site.js"></script>
+</body>
+</html>

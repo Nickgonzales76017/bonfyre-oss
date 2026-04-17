@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#ff6b35">
+  <meta name="description" content="How Bonfyre turns lecture recordings and oral histories into structured notes, searchable public archives, and publish-ready static sites.">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔥</text></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://api.fontshare.com/v2/css?f[]=cabinet-grotesk@400,500,700,800,900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/site.css">
+  <title>Bonfyre Recipe — Education & Archives: Recorded Material → Public Memory</title>
+</head>
+<body>
+  <div class="site-shell">
+    <header class="site-header">
+      <div class="shell-container site-header-row">
+        <a class="brand" href="index.html"><span class="brand-mark">🔥</span><span>Bonfyre</span></a>
+        <nav class="site-nav" aria-label="Primary">
+          <a href="index.html">Overview</a>
+          <a href="explore.html">Explore</a>
+          <a href="docs.html">Technical Docs</a>
+          <a href="apps.html">Live Apps</a>
+        </nav>
+        <div class="header-actions">
+          <a class="header-btn" href="explore.html">← All recipes</a>
+        </div>
+      </div>
+      <div class="ticker-bar">
+        <div class="shell-container ticker-row">
+          <span>Education recipe</span>
+          <span class="dot">•</span>
+          <span>Recorded material → public memory</span>
+          <span class="dot">•</span>
+          <span>searchable across the full archive</span>
+          <span class="dot">•</span>
+          <span>no CMS required</span>
+        </div>
+      </div>
+    </header>
+
+    <main>
+      <section class="page-hero">
+        <div class="shell-container">
+          <span class="hero-kicker">Pipeline recipe · Education &amp; archives</span>
+          <h1 class="hero-title">Lectures and oral histories → <span class="accent">public memory.</span></h1>
+          <p class="lede">A recorded lecture or oral history interview holds knowledge that shouldn't live only in one person's Google Drive. Bonfyre processes it into structured notes, a semantic search index, and a publish-ready static site — so it becomes findable, browsable, and shareable institutional memory.</p>
+          <div class="hero-actions">
+            <a class="primary-btn" href="https://nickgonzales76017.github.io/pages-family-oral-history/" target="_blank" rel="noreferrer">Open Family Oral History live</a>
+            <a class="secondary-btn" href="explore.html">All use cases</a>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="shell-container">
+          <div class="section-header">
+            <div>
+              <span class="section-kicker">What this replaces</span>
+              <h2 class="section-title">The typical educational archive — and its friction.</h2>
+            </div>
+          </div>
+          <div class="compare-grid">
+            <article class="compare-card">
+              <span class="card-meta">YouTube + docs</span>
+              <h3>Videos unlisted behind a course platform</h3>
+              <p class="compare-value">$99–$399/year for a course platform. Students can watch but not search. No structured notes generated automatically. If the platform disappears, the archive is gone.</p>
+            </article>
+            <article class="compare-card">
+              <span class="card-meta">Manual transcription</span>
+              <h3>Rev.com at $1.50/minute</h3>
+              <p class="compare-value">A 10-hour lecture series costs $900 to transcribe manually. BonfyreTranscribe costs zero per recording. The transcripts are produce in a fraction of the time, on local hardware, with no API key.</p>
+            </article>
+            <article class="compare-card">
+              <span class="card-meta">Static site builders</span>
+              <h3>Manually building course pages</h3>
+              <p class="compare-value">BonfyreRender generates all HTML pages from the processed transcripts automatically. The semantic search index is built alongside. No CMS. No page builder. No Notion-to-HTML export pipeline.</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="shell-container">
+          <div class="section-header">
+            <div>
+              <span class="section-kicker">Worked example</span>
+              <h2 class="section-title">A 12-lecture course series converted to a searchable public archive.</h2>
+              <p class="section-copy">The scenario: a professor records 12 lectures over a semester, each 50 minutes. They want the lectures accessible to future students as structured notes and a searchable archive, not just a playlist of videos.</p>
+            </div>
+          </div>
+          <div class="feature-grid">
+
+            <article class="feature-card">
+              <span class="card-meta">Step 1 — BonfyreIngest (batch)</span>
+              <h3>12 lecture recordings normalised overnight</h3>
+              <p>BonfyrePipeline queues all 12 recordings. BonfyreIngest normalises each: loudness, 16 kHz mono, silence trim, BLAKE2b hash. New lectures added at the start of the next semester will only be processed if their hash is new — existing lectures are skipped. The archive is incremental.</p>
+            </article>
+
+            <article class="feature-card">
+              <span class="card-meta">Step 2 — BonfyreTranscribe (batch)</span>
+              <h3>12 × 50-minute lectures → transcripts in under an hour</h3>
+              <p>Local Whisper at 15× real-time processes the full 10-hour lecture series in approximately 40 minutes. No API key. No $900 Rev.com bill. The professor runs this overnight and has all 12 transcripts by morning.</p>
+            </article>
+
+            <article class="feature-card">
+              <span class="card-meta">Step 3 — BonfyreTranscriptClean</span>
+              <h3>Hallucinations and repeated fillers removed from all 12</h3>
+              <p>Hyperscan pattern matching removes false transcription artifacts and repeated verbal tics in under 30 ms per transcript. The clean transcripts are what students will read — they don't contain the noise that makes raw Whisper output hard to follow.</p>
+            </article>
+
+            <article class="feature-card">
+              <span class="card-meta">Step 4 — BonfyreParagraph</span>
+              <h3>Each lecture grouped into topical sections</h3>
+              <p>BonfyreParagraph groups each lecture's transcript into thematic sections: "Introduction and context", "Core concept", "Case study", "Questions raised." Each section gets a header. The lecture is now structured content, not a wall of speech.</p>
+            </article>
+
+            <article class="feature-card">
+              <span class="card-meta">Step 5 — BonfyreBrief</span>
+              <h3>Structured lecture notes extracted from each transcript</h3>
+              <p>BonfyreBrief produces lecture notes per session: key concepts introduced, definitions given, examples used, questions posed, references cited, and suggested readings. These are the structured notes a student would produce manually from attending — generated automatically from the transcript.</p>
+            </article>
+
+            <article class="feature-card">
+              <span class="card-meta">Step 6 — BonfyreTag + BonfyreCanon</span>
+              <h3>Concepts and people named across all 12 lectures</h3>
+              <p>BonfyreTag extracts named concepts, theorists, works cited, and events across all 12 lectures. BonfyreCanon resolves across the batch — if "the tragedy of the commons" is referenced in 4 lectures, Canon creates a single entity node linking all 4 references. Students can navigate by concept, not just by lecture number.</p>
+            </article>
+
+            <article class="feature-card">
+              <span class="card-meta">Step 7 — BonfyreTranscriptFamily</span>
+              <h3>12 lectures organised into a thematic curriculum structure</h3>
+              <p>BonfyreTranscriptFamily analyses the 12 transcripts as a collection: which lectures form thematic clusters, which build on each other, which share primary sources. The output is a curriculum graph — the navigation backbone of the published course site.</p>
+            </article>
+
+            <article class="feature-card">
+              <span class="card-meta">Step 8 — BonfyreEmbed + BonfyreVec + BonfyreIndex</span>
+              <h3>Full semantic search across the course</h3>
+              <p>BonfyreEmbed vectorises all 12 briefs. BonfyreVec stores them in LMDB. BonfyreIndex builds full-text alongside. Students can now ask "explain the lecture that covered collective action problems" and get the relevant lecture, the relevant section, and related lectures — not just a keyword match.</p>
+            </article>
+
+            <article class="feature-card">
+              <span class="card-meta">Step 9 — BonfyreRender + BonfyreEmit</span>
+              <h3>Static course site generated: per-lecture pages, search, curriculum map</h3>
+              <p>BonfyreRender generates the complete course site: a landing page with the curriculum graph, individual lecture pages with structured notes and clean transcript, a concept index, and cross-lecture navigation. BonfyreEmit produces a JSON export of the full archive for institutional deposit or import into another system.</p>
+            </article>
+
+            <article class="feature-card">
+              <span class="card-meta">Step 10 — BonfyreSync</span>
+              <h3>Course site published to GitHub Pages or internal server</h3>
+              <p>BonfyreSync pushes the generated site to its target host. Public courses go to GitHub Pages — free, fast, no server to maintain. Restricted institutional archives go to an internal server with access controls. The same pipeline, different sync target.</p>
+            </article>
+
+          </div>
+          <div class="cta-row">
+            <p style="color:var(--text-2);font-size:0.9rem;margin:0">A 10-hour lecture series → structured notes, concept index, searchable archive, and published course site. Processed on local hardware in under an hour.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="shell-container">
+          <div class="section-header">
+            <div><span class="section-kicker">What you end up with</span><h2 class="section-title">After the pipeline runs.</h2></div>
+          </div>
+          <div class="feature-grid">
+            <article class="feature-card"><span class="card-meta">Searchable course site</span><h3>Students find what they need by meaning, not lecture number</h3><p>BonfyreEmbed + BonfyreVec give the course site semantic search. A student preparing an essay asks "which lecture discussed Ostrom's work on resource governance" and gets the answer immediately — not "watch all 12 lectures and find it yourself."</p></article>
+            <article class="feature-card"><span class="card-meta">Structured lecture notes</span><h3>Auto-generated notes students actually want to read</h3><p>BonfyreBrief produces the structured-notes output students would pay a note-service to generate. Key concepts, definitions, examples, questions. Generated automatically. Available alongside the full transcript for students who want the full record.</p></article>
+            <article class="feature-card"><span class="card-meta">Durable institutional memory</span><h3>Lives on GitHub Pages for free, no CMS to maintain</h3><p>Static HTML files. No CMS. No server. No SaaS subscription. The course archive exists as a folder of files that can be hosted anywhere for free. Oral history museums, public curricula, research documentation — built once, maintained forever.</p></article>
+          </div>
+          <div class="cta-row">
+            <a class="primary-btn" href="https://nickgonzales76017.github.io/pages-family-oral-history/" target="_blank" rel="noreferrer">Open Family Oral History live</a>
+            <a class="secondary-btn" href="explore.html">See all recipes</a>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <div class="shell-container footer-row">
+        <div>Bonfyre — 53 C binaries. Local AI. No cloud bill.</div>
+        <div class="footer-links">
+          <a href="index.html">Overview</a>
+          <a href="explore.html">Explore</a>
+          <a href="docs.html">Technical Docs</a>
+          <a href="apps.html">Live Apps</a>
+        </div>
+      </div>
+    </footer>
+  </div>
+  <script src="assets/site.js"></script>
+</body>
+</html>

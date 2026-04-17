@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#ff6b35">
+  <meta name="description" content="How Bonfyre turns sales call recordings into structured briefs, priced offers, and ledger entries — the full revenue pipeline from conversation to close.">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔥</text></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://api.fontshare.com/v2/css?f[]=cabinet-grotesk@400,500,700,800,900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/site.css">
+  <title>Bonfyre Recipe — Sales & Growth: Conversations → Pricing Surfaces</title>
+</head>
+<body>
+  <div class="site-shell">
+    <header class="site-header">
+      <div class="shell-container site-header-row">
+        <a class="brand" href="index.html"><span class="brand-mark">🔥</span><span>Bonfyre</span></a>
+        <nav class="site-nav" aria-label="Primary">
+          <a href="index.html">Overview</a>
+          <a href="explore.html">Explore</a>
+          <a href="docs.html">Technical Docs</a>
+          <a href="apps.html">Live Apps</a>
+        </nav>
+        <div class="header-actions">
+          <a class="header-btn" href="explore.html">← All recipes</a>
+        </div>
+      </div>
+      <div class="ticker-bar">
+        <div class="shell-container ticker-row">
+          <span>Sales recipe</span>
+          <span class="dot">•</span>
+          <span>Conversations → pricing surfaces</span>
+          <span class="dot">•</span>
+          <span>full revenue pipeline</span>
+          <span class="dot">•</span>
+          <span>conversation to ledger in one run</span>
+        </div>
+      </div>
+    </header>
+
+    <main>
+      <section class="page-hero">
+        <div class="shell-container">
+          <span class="hero-kicker">Pipeline recipe · Sales &amp; growth</span>
+          <h1 class="hero-title">Sales calls → <span class="accent">pricing surfaces.</span></h1>
+          <p class="lede">A sales call is already most of the context you need to build a proposal. Bonfyre takes that recording and runs it through: transcription, brief, entity extraction, offer generation, payment link, metered follow-up, and a ledger entry — the full revenue pipeline from conversation to close.</p>
+          <div class="hero-actions">
+            <a class="primary-btn" href="explore.html">Explore all use cases</a>
+            <a class="secondary-btn" href="apps.html">See live apps</a>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="shell-container">
+          <div class="section-header">
+            <div>
+              <span class="section-kicker">The sales ops problem</span>
+              <h2 class="section-title">What the post-call flow looks like without Bonfyre.</h2>
+            </div>
+          </div>
+          <div class="stats-grid">
+            <article class="metric-card">
+              <span class="metric-number">47 min</span>
+              <span class="metric-label">average time to write a post-call summary and paste it into CRM</span>
+            </article>
+            <article class="metric-card">
+              <span class="metric-number">3 tools</span>
+              <span class="metric-label">transcription service, proposal tool, payment processor — before a proposal is sent</span>
+            </article>
+            <article class="metric-card">
+              <span class="metric-number">$0 tracked</span>
+              <span class="metric-label">until someone manually enters the deal; pipeline rot starts before the call ends</span>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="shell-container">
+          <div class="section-header">
+            <div>
+              <span class="section-kicker">Worked example</span>
+              <h2 class="section-title">A discovery call → structured brief → priced proposal → ledger entry.</h2>
+              <p class="section-copy">The scenario: a 30-minute discovery call is recorded. A prospect has described their needs, mentioned a budget range, and been asked 5 qualifying questions. Here's what runs next.</p>
+            </div>
+          </div>
+          <div class="feature-grid">
+
+            <article class="feature-card">
+              <span class="card-meta">Step 1 — BonfyreIngest</span>
+              <h3>Call recording normalised and fingerprinted</h3>
+              <p>BonfyreIngest pulls the recording, normalises loudness, resamples to 16 kHz mono, trims silence. BLAKE2b hash stored. If the same call file is uploaded twice — from a video platform and a local export — only one version is processed.</p>
+            </article>
+
+            <article class="feature-card">
+              <span class="card-meta">Step 2 — BonfyreTranscribe</span>
+              <h3>30-minute discovery call → transcript in under 2 minutes</h3>
+              <p>Local Whisper processes the call at 15× real-time. A 30-minute call produces a transcript in under 2 minutes. The transcript stays on your machine — it doesn't pass through a third-party transcription API.</p>
+            </article>
+
+            <article class="feature-card">
+              <span class="card-meta">Step 3 — BonfyreSegment + BonfyreTranscriptClean</span>
+              <h3>Your rep and the prospect labelled separately; fillers removed</h3>
+              <p>Speaker diarisation separates rep from prospect. BonfyreTranscriptClean removes hallucinations and repeated fillers. Prospect statements — the ones that matter for proposal generation — are now cleanly separated from rep questions.</p>
+            </article>
+
+            <article class="feature-card">
+              <span class="card-meta">Step 4 — BonfyreBrief</span>
+              <h3>Structured sales brief: pain, budget, timeline, objections</h3>
+              <p>BonfyreBrief extracts a structured brief from the transcript: primary pain points stated by the prospect, budget signals mentioned, decision timeline, stakeholders named, objections raised, and recommended next steps. CRM-ready in structured JSON — no manual data entry.</p>
+            </article>
+
+            <article class="feature-card">
+              <span class="card-meta">Step 5 — BonfyreTag + BonfyreEmbed</span>
+              <h3>Prospect's company, stack, and problems tagged and vectorised</h3>
+              <p>BonfyreTag extracts named entities: company name, tech stack mentioned, competitors referenced, use-case categories. BonfyreEmbed vectorises the brief. This embedding is what lets you ask "find all prospects with similar pain to ACME Corp" and get ranked results across your entire call archive.</p>
+            </article>
+
+            <article class="feature-card">
+              <span class="card-meta">Step 6 — BonfyreOffer</span>
+              <h3>Proposed package assembled from brief context</h3>
+              <p>BonfyreOffer generates a structured proposal from the brief: service package, delivery timeline, pricing tiers based on the budget signals stated in the call, and an expiry date. The output is a proposal object — not a document, but a machine-readable structure that downstream steps can price, attach payment to, and track in the ledger.</p>
+            </article>
+
+            <article class="feature-card">
+              <span class="card-meta">Step 7 — BonfyreFinance + BonfyrePay</span>
+              <h3>Proposal priced and payment link generated</h3>
+              <p>BonfyreFinance applies pricing rules to the offer: volume discounts, payment terms, tax-inclusive amounts. BonfyrePay generates a checkout session. The prospect receives a link to a payment page — no manual Stripe dashboard work, no forwarding the brief to a separate billing team.</p>
+            </article>
+
+            <article class="feature-card">
+              <span class="card-meta">Step 8 — BonfyreMeter + BonfyreOutreach</span>
+              <h3>Follow-up cadence activated; usage tracked from day one</h3>
+              <p>BonfyreMeter activates metered tracking on the account — if the offer includes usage-based pricing, the meter starts at proposal acceptance. BonfyreOutreach schedules follow-up touches: a 48-hour no-response ping, a 7-day check-in, and a 14-day expiry reminder — all triggered from the proposal issue date without calendar work.</p>
+            </article>
+
+            <article class="feature-card">
+              <span class="card-meta">Step 9 — BonfyreLedger + BonfyreSync</span>
+              <h3>Deal recorded in the ledger; CRM synced</h3>
+              <p>On acceptance, BonfyreLedger records the transaction: deal value, payment terms, associated account, source call reference. BonfyreSync pushes the ledger entry and brief to your internal CRM or data store. The pipeline from "recorded discovery call" to "CRM deal entry" requires zero manual steps.</p>
+            </article>
+
+          </div>
+          <div class="cta-row">
+            <p style="color:var(--text-2);font-size:0.9rem;margin:0">One 30-minute discovery call → structured brief, priced proposal, payment link, follow-up cadence, and ledger entry. Processed in under 5 minutes.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="shell-container">
+          <div class="section-header">
+            <div><span class="section-kicker">What you end up with</span><h2 class="section-title">After the pipeline runs.</h2></div>
+          </div>
+          <div class="feature-grid">
+            <article class="feature-card"><span class="card-meta">Revenue intelligence</span><h3>Entire call archive searchable by pain and fit</h3><p>Every discovery call embedded and indexed. Ask "which accounts mentioned security concerns as a blocker" and get ranked results across 200 past calls. Pattern recognition your pipeline reviews have never had.</p></article>
+            <article class="feature-card"><span class="card-meta">Zero-friction proposals</span><h3>From call to payment link in one run</h3><p>BonfyreOffer → BonfyreFinance → BonfyrePay removes the 47-minute manual post-call flow. The rep reviews the generated brief, approves the proposal, and the link is sent. No doc editor. No copy-paste from transcript to CRM.</p></article>
+            <article class="feature-card"><span class="card-meta">Complete audit trail</span><h3>Every deal traceable to the source call</h3><p>BonfyreLedger entries link to the source call ID, the brief ID, and the offer ID. Three months later, you can reconstruct exactly what was said, what was proposed, and what was accepted — with hash-verified originals.</p></article>
+          </div>
+          <div class="cta-row">
+            <a class="primary-btn" href="explore.html">See all recipes</a>
+            <a class="secondary-btn" href="apps.html">Live apps</a>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <div class="shell-container footer-row">
+        <div>Bonfyre — 53 C binaries. Local AI. No cloud bill.</div>
+        <div class="footer-links">
+          <a href="index.html">Overview</a>
+          <a href="explore.html">Explore</a>
+          <a href="docs.html">Technical Docs</a>
+          <a href="apps.html">Live Apps</a>
+        </div>
+      </div>
+    </footer>
+  </div>
+  <script src="assets/site.js"></script>
+</body>
+</html>

@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#ff6b35">
+  <meta name="description" content="How Bonfyre turns a client intake call into a structured, signed, HIPAA-compliant proof binder — step by step.">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔥</text></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://api.fontshare.com/v2/css?f[]=cabinet-grotesk@400,500,700,800,900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/site.css">
+  <title>Bonfyre Recipe — Legal: Client Intake Call → Signed Proof Binder</title>
+</head>
+<body>
+  <div class="site-shell">
+    <header class="site-header">
+      <div class="shell-container site-header-row">
+        <a class="brand" href="index.html"><span class="brand-mark">🔥</span><span>Bonfyre</span></a>
+        <nav class="site-nav" aria-label="Primary">
+          <a href="index.html">Overview</a>
+          <a href="explore.html">Explore</a>
+          <a href="docs.html">Technical Docs</a>
+          <a href="apps.html">Live Apps</a>
+        </nav>
+        <div class="header-actions">
+          <a class="header-btn" href="explore.html">← All recipes</a>
+        </div>
+      </div>
+      <div class="ticker-bar">
+        <div class="shell-container ticker-row">
+          <span>Legal recipe</span>
+          <span class="dot">•</span>
+          <span>Intake call → signed proof binder</span>
+          <span class="dot">•</span>
+          <span>zero cloud exposure</span>
+          <span class="dot">•</span>
+          <span>HIPAA-compliant by default</span>
+        </div>
+      </div>
+    </header>
+
+    <main>
+      <section class="page-hero">
+        <div class="shell-container">
+          <span class="hero-kicker">Pipeline recipe · Legal &amp; professional services</span>
+          <h1 class="hero-title">Client intake call → <span class="accent">signed proof binder.</span></h1>
+          <p class="lede">A 40-minute client intake call comes in. Within 5 minutes it becomes a speaker-attributed transcript, a structured brief, a BLAKE2b-hashed proof bundle, and a review-ready binder — all locally, nothing leaving the building. Here's every step.</p>
+          <div class="hero-actions">
+            <a class="primary-btn" href="explore.html">Explore all use cases</a>
+            <a class="secondary-btn" href="docs.html">Technical docs</a>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="shell-container">
+          <div class="section-header">
+            <div>
+              <span class="section-kicker">Why this matters for legal</span>
+              <h2 class="section-title">The problem with cloud transcription in a law practice.</h2>
+            </div>
+          </div>
+          <div class="feature-grid">
+            <article class="feature-card">
+              <span class="card-meta">The cloud transcription problem</span>
+              <h3>Attorney-client privilege ends at the API boundary</h3>
+              <p>Every cloud transcription service — Deepgram, Otter.ai, Rev — requires your audio to leave your network. That audio contains privileged communications. Once it crosses an API boundary, privilege analysis becomes complex and jurisdiction-dependent. Bonfyre runs entirely on your hardware. The audio never leaves.</p>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">The billing problem</span>
+              <h3>$15–$30/hour for transcription is a line item that adds up</h3>
+              <p>A busy practice with 20 intake calls per week at $20/call is spending $400/week — $20,000/year — on transcription. BonfyreTranscribe on a local machine costs $0/call after the one-time hardware. For a 40-minute intake call, it takes about 2.5 minutes on an M2 Pro.</p>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">The provenance problem</span>
+              <h3>Unsigned summaries have no chain of custody</h3>
+              <p>If a summary of a client conversation later becomes evidence — in a malpractice claim, a billing dispute, a grievance — an unsigned Word document has no provenance. BonfyreProof produces an Ed25519-signed BLAKE2b bundle that proves the summary was generated from a specific recording at a specific time and hasn't been modified since.</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="shell-container">
+          <div class="section-header">
+            <div>
+              <span class="section-kicker">Worked example</span>
+              <h2 class="section-title">A 40-minute client intake call, start to finish.</h2>
+              <p class="section-copy">The scenario: a new client calls in for an initial consultation. The call is recorded locally. Here's exactly what Bonfyre does with it.</p>
+            </div>
+          </div>
+          <div class="feature-grid">
+
+            <article class="feature-card">
+              <span class="card-meta">Step 1 — BonfyreIngest</span>
+              <h3>Raw call recording normalised and fingerprinted</h3>
+              <p>The call recording arrives as whatever format your phone system or recorder produces — MP3, WAV, OGG, AAC. BonfyreIngest normalises it to -14 LUFS, resamples to 16 kHz mono (the format Whisper performs best on), and trims leading/trailing silence. It stores a BLAKE2b hash of the cleaned file. If this same call is processed again, every downstream step that hashes to the same value is skipped. The cleaned file is the canonical artifact — the original is preserved untouched alongside it.</p>
+            </article>
+
+            <article class="feature-card">
+              <span class="card-meta">Step 2 — BonfyreTranscribe</span>
+              <h3>40 minutes → 7,200 words in ~2.5 minutes, locally</h3>
+              <p>HCP-enhanced Whisper runs on your machine. No API key. No audio leaving your network. On an M2 Pro the model processes roughly 15× faster than real-time — 40 minutes of audio takes about 2.5 minutes. The output is a word-by-word transcript with timestamps accurate to 50 ms. This transcript is legally equivalent to hiring a human transcriptionist, but it happened on your hardware and cost nothing per call.</p>
+            </article>
+
+            <article class="feature-card">
+              <span class="card-meta">Step 3 — BonfyreSegment</span>
+              <h3>Attorney and client labelled automatically</h3>
+              <p>BonfyreSegment runs speaker diarisation on the timestamped transcript. It identifies voice boundaries and assigns [Attorney] and [Client] labels to each turn based on acoustic fingerprinting — not voice recognition trained on specific people. The result is a transcript where every statement is attributed. This turns a word dump into something you can search by speaker: "show me all statements by the client about the incident date."</p>
+            </article>
+
+            <article class="feature-card">
+              <span class="card-meta">Step 4 — BonfyreTranscriptClean</span>
+              <h3>Filler words and Whisper hallucinations removed in &lt; 30 ms</h3>
+              <p>BonfyreTranscriptClean runs Intel Hyperscan pattern matching at over 1 GB/s over the raw transcript. It removes confirmed filler words ("um", "uh", "you know"), false starts, repeated words, and hallucination markers — the phrases Whisper commonly invents for sections of background noise or silence. On a 7,200-word transcript this takes under 30 ms. The cleaned transcript is what all downstream steps see. A copy of the raw transcript is preserved alongside it for reference.</p>
+            </article>
+
+            <article class="feature-card">
+              <span class="card-meta">Step 5 — BonfyreParagraph</span>
+              <h3>Raw turns → readable sections with implied headings</h3>
+              <p>Legal transcripts are typically one continuous stream of turns with no structural breaks. BonfyreParagraph groups transcript turns into logical sections using topic-transition signals — speaker switches combined with semantic drift between consecutive sentences. It infers section headings: "Background and Context", "Key Dates and Timeline", "Current Status", "Client Concerns". A paralegal can scan the structure without reading the full transcript first.</p>
+            </article>
+
+            <article class="feature-card">
+              <span class="card-meta">Step 6 — BonfyreBrief</span>
+              <h3>Full transcript → structured brief in &lt; 1 second</h3>
+              <p>BonfyreBrief runs via BonfyreProxy against your local FPQ-compressed model — no OpenAI API call, no data leaving the machine. Output for a client intake brief: (1) a 3-sentence matter summary, (2) identified key dates and timeline, (3) client's stated concerns in their own words, (4) potential causes of action identified from the conversation, (5) immediate follow-up items, (6) speaker breakdown showing talk-time percentages. This is the document that gets reviewed, not the full transcript.</p>
+            </article>
+
+            <article class="feature-card">
+              <span class="card-meta">Step 7 — BonfyreTag + BonfyreCanon</span>
+              <h3>Entities extracted and deduplicated</h3>
+              <p>BonfyreTag extracts named entities from the brief: dates, people, organisations, locations, claim types, cited statutes. BonfyreCanon deduplicates — if the client refers to "Dr. Johnson" and "the doctor" and "him" across the transcript, Canon resolves them to a single canonical entity record. These tag and entity records are stored in LMDB and linked to this brief, so when you later search "all matters involving Dr. Johnson" this call surfaces correctly.</p>
+            </article>
+
+            <article class="feature-card">
+              <span class="card-meta">Step 8 — BonfyreProof</span>
+              <h3>Every artifact signed with Ed25519 — hash chain finalisied</h3>
+              <p>BonfyreProof runs BLAKE2b over every artifact produced so far: the cleaned audio, the raw transcript, the cleaned transcript, and the brief. It builds a manifest of all hashes and signs the manifest with your Ed25519 key. The result is a cryptographic receipt: a signed file that proves (a) the brief was generated from this specific recording, (b) neither has been modified since this signature was produced, and (c) the signature matches your key. This proof bundle is what you'd attach to the file if the brief is ever challenged.</p>
+            </article>
+
+            <article class="feature-card">
+              <span class="card-meta">Step 9 — BonfyrePack</span>
+              <h3>All artifacts bundled into one reviewable binder</h3>
+              <p>BonfyrePack assembles everything into a single content-addressed bundle: the proof manifest, the structured brief (HTML + PDF), the cleaned transcript, the entity and tag records, and the original recording reference. The bundle has a stable BLAKE2b identifier — storing the bundle ID is equivalent to storing a reference to all its contents at their exact current state. This is your intake binder.</p>
+            </article>
+
+            <article class="feature-card">
+              <span class="card-meta">Step 10 — BonfyreSync</span>
+              <h3>Binder delivered to your matter management system</h3>
+              <p>BonfyreSync delivers the pack to your target — a local folder your matter management system watches, a network share, or a self-hosted endpoint. The sync is incremental and content-addressed: if 9 of the 10 artifacts already exist at the destination, only the 1 new artifact transfers. If the destination is a BonfyreCMS instance, the brief is immediately queryable via the CMS's REST API and full-text search.</p>
+            </article>
+
+          </div>
+
+          <div class="cta-row">
+            <p style="color:var(--text-2);font-size:0.9rem;margin:0">Total time for steps 1–10 (excluding transcription): under 5 seconds on M2 Pro. Transcription: ~2.5 minutes for a 40-minute call.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="shell-container">
+          <div class="section-header">
+            <div>
+              <span class="section-kicker">What you end up with</span>
+              <h2 class="section-title">Concrete outputs from one intake call.</h2>
+            </div>
+          </div>
+          <div class="feature-grid">
+            <article class="feature-card">
+              <span class="card-meta">Searchable knowledge</span>
+              <h3>Every intake call is findable by meaning, not just filename</h3>
+              <p>BonfyreEmbed and BonfyreVec index the brief. You can search "matters involving commercial lease disputes in 2024" and get this call back — not because the filename says it, but because the vector index found semantic similarity.</p>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">Verifiable provenance</span>
+              <h3>The Ed25519 signature is the chain of custody</h3>
+              <p>Anyone with your public key can verify that the brief in the binder came from the recording in the binder and hasn't been edited since. No additional trust required. No reliance on your word.</p>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">Zero data exposure</span>
+              <h3>Nothing left the building</h3>
+              <p>The recording never hit a cloud API. The transcript never left the local network. The brief was generated by a model running in your own hardware. HIPAA and attorney-client privilege analysis starts from a clean position: no third-party data processing occurred.</p>
+            </article>
+          </div>
+          <div class="cta-row">
+            <a class="primary-btn" href="explore.html">See all recipes</a>
+            <a class="secondary-btn" href="apps.html">Browse live proof pages</a>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <div class="shell-container footer-row">
+        <div>Bonfyre — 53 C binaries. Local AI. No cloud bill. Private by default.</div>
+        <div class="footer-links">
+          <a href="index.html">Overview</a>
+          <a href="explore.html">Explore</a>
+          <a href="docs.html">Technical Docs</a>
+          <a href="apps.html">Live Apps</a>
+        </div>
+      </div>
+    </footer>
+  </div>
+  <script src="assets/site.js"></script>
+</body>
+</html>

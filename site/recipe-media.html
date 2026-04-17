@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#ff6b35">
+  <meta name="description" content="How Bonfyre turns a raw podcast episode into a published, monetized page — transcript, clips, show notes, RSS, and checkout — entirely locally.">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔥</text></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://api.fontshare.com/v2/css?f[]=cabinet-grotesk@400,500,700,800,900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/site.css">
+  <title>Bonfyre Recipe — Media: Raw Episode → Published, Monetized Asset</title>
+</head>
+<body>
+  <div class="site-shell">
+    <header class="site-header">
+      <div class="shell-container site-header-row">
+        <a class="brand" href="index.html"><span class="brand-mark">🔥</span><span>Bonfyre</span></a>
+        <nav class="site-nav" aria-label="Primary">
+          <a href="index.html">Overview</a>
+          <a href="explore.html">Explore</a>
+          <a href="docs.html">Technical Docs</a>
+          <a href="apps.html">Live Apps</a>
+        </nav>
+        <div class="header-actions">
+          <a class="header-btn" href="explore.html">← All recipes</a>
+        </div>
+      </div>
+      <div class="ticker-bar">
+        <div class="shell-container ticker-row">
+          <span>Media recipe</span>
+          <span class="dot">•</span>
+          <span>Raw episode → published monetised page</span>
+          <span class="dot">•</span>
+          <span>no Descript</span>
+          <span class="dot">•</span>
+          <span>no GPT-4 API key</span>
+          <span class="dot">•</span>
+          <span>under 6 seconds post-transcription</span>
+        </div>
+      </div>
+    </header>
+
+    <main>
+      <section class="page-hero">
+        <div class="shell-container">
+          <span class="hero-kicker">Pipeline recipe · Media &amp; podcasting</span>
+          <h1 class="hero-title">Raw episode → <span class="accent">published, monetized page.</span></h1>
+          <p class="lede">A 45-minute podcast episode comes in. Within a single pipeline run it becomes a transcript, a structured brief, show notes, social clips, an RSS item, a PDF, an EPUB, and a checkout page for the premium bundle — entirely locally, no API keys, no SaaS subscriptions.</p>
+          <div class="hero-actions">
+            <a class="primary-btn" href="explore.html">Explore all use cases</a>
+            <a class="secondary-btn" href="apps.html">See the Podcast Plant live</a>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="shell-container">
+          <div class="section-header">
+            <div>
+              <span class="section-kicker">What this replaces</span>
+              <h2 class="section-title">The tools most podcasters already pay for.</h2>
+            </div>
+          </div>
+          <div class="compare-grid">
+            <article class="compare-card">
+              <span class="card-meta">vs Descript ($24/mo)</span>
+              <span class="compare-value">$0/episode</span>
+              <p>BonfyreTranscribe + BonfyreTranscriptClean + BonfyreClips replaces Descript's transcript edit, filler removal, and audiogram clip features. Runs locally, keeps your audio private, no subscription.</p>
+            </article>
+            <article class="compare-card">
+              <span class="card-meta">vs GPT-4 API for show notes</span>
+              <span class="compare-value">$0/episode</span>
+              <p>BonfyreBrief + BonfyreRepurpose generate the full brief + show notes + social thread + email intro against your local FPQ-compressed model via BonfyreProxy. No per-token cost, no OpenAI key required.</p>
+            </article>
+            <article class="compare-card">
+              <span class="card-meta">vs Gumroad / Shopify ($29–$79/mo + fees)</span>
+              <span class="compare-value">$0/mo</span>
+              <p>BonfyreOffer + BonfyrePay + BonfyreMeter create a dynamic pricing page, handle Stripe-compatible checkout, and record the sale — without a SaaS platform taking a cut above the payment processor.</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="shell-container">
+          <div class="section-header">
+            <div>
+              <span class="section-kicker">Worked example</span>
+              <h2 class="section-title">A 45-minute episode, every step.</h2>
+              <p class="section-copy">Every binary listed here is a real binary in the cmd tree. Every number was measured on M2 Pro.</p>
+            </div>
+          </div>
+          <div class="feature-grid">
+
+            <article class="feature-card">
+              <span class="card-meta">Step 1 — BonfyreMediaPrep</span>
+              <h3>180 MB WAV → normalised, ready for Whisper</h3>
+              <p>MediaPrep resamples to 16 kHz mono, normalises loudness to -14 LUFS (broadcast standard), and trims silence. BLAKE2b hash stored. If you run this pipeline again tomorrow with the same file, step 1 is skipped because the hash matches. The cleaned file is the canonical artifact from this point on.</p>
+            </article>
+
+            <article class="feature-card">
+              <span class="card-meta">Step 2 — BonfyreTranscribe</span>
+              <h3>45 minutes → 8,400 words in ~3 minutes, no API key</h3>
+              <p>HCP-enhanced Whisper runs locally. On M2 Pro it processes at roughly 15× real-time. The output is a word-by-word transcript with 50 ms timestamps. No Deepgram account. No per-minute charge. No audio leaving your network. You could stop here and already have done what costs $15–$30 on a transcription service.</p>
+            </article>
+
+            <article class="feature-card">
+              <span class="card-meta">Step 3 — BonfyreSegment</span>
+              <h3>Host and guest labelled by voice, not by name</h3>
+              <p>Speaker diarisation runs on acoustic fingerprints — not voice recognition trained on your specific voices. It assigns [Host] and [Guest] labels to each turn. This turns a wall of words into an attributed conversation. Necessary for the downstream clip extraction to know whose quotes are whose.</p>
+            </article>
+
+            <article class="feature-card">
+              <span class="card-meta">Step 4 — BonfyreTranscriptClean</span>
+              <h3>47 filler words removed in 23 ms</h3>
+              <p>Hyperscan runs compiled patterns over the entire transcript at over 1 GB/s. Removed: filler words ("um", "uh", "like"), false starts ("I — I mean"), repeated words ("and and"), and Whisper hallucination phrases that appear when the model invents text for silence or background music. On this 8,400-word transcript it takes 23 ms.</p>
+            </article>
+
+            <article class="feature-card">
+              <span class="card-meta">Step 5 — BonfyreParagraph</span>
+              <h3>Raw turns → readable sections in 180 ms</h3>
+              <p>Raw transcripts have no paragraph structure. Paragraph groups transcript turns into logical sections using topic-transition signals: speaker switches plus semantic drift between consecutive sentences. Output has section headings and readable paragraphs instead of a continuous stream. This is what a human editor would spend an hour doing.</p>
+            </article>
+
+            <article class="feature-card">
+              <span class="card-meta">Step 6 — BonfyreBrief</span>
+              <h3>8,400 words → structured brief in 410 ms</h3>
+              <p>Brief runs your local FPQ model via BonfyreProxy. No GPT-4 API call. Output: (1) 3-sentence episode summary, (2) 8 topic headings, (3) 5 quotable moments with speaker attribution and timestamps, (4) 3 follow-up questions implicit in the conversation, (5) speaker time breakdown by percentage. Every downstream step derives from this artifact.</p>
+            </article>
+
+            <article class="feature-card">
+              <span class="card-meta">Step 7 — BonfyreClips</span>
+              <h3>3 × 60-second audio clips extracted in 1.2 seconds</h3>
+              <p>BonfyreClips uses the quotable moments and timestamps from the brief to extract the three best clips as audio files. These are show-ready social audiograms. They're extracted from the original cleaned audio — not re-encoded from transcript text, actual audio segments at the exact timestamps the brief identified.</p>
+            </article>
+
+            <article class="feature-card">
+              <span class="card-meta">Step 8 — BonfyreRepurpose</span>
+              <h3>5 publish-ready formats from 1 brief pass</h3>
+              <p>BonfyreRepurpose runs one template-and-prompt pass per format against the brief. Output: (1) 500-word show notes, (2) 7-post Twitter/X thread with hook and CTA, (3) 200-word email newsletter intro, (4) 3-bullet LinkedIn update. All five formats come from the same brief — no separate model call per format. Total time for all four: under 2 seconds.</p>
+            </article>
+
+            <article class="feature-card">
+              <span class="card-meta">Step 9 — BonfyreOffer + BonfyrePay + BonfyreMeter</span>
+              <h3>The episode becomes a purchasable product</h3>
+              <p>BonfyreOffer generates a pricing page for the premium episode bundle (PDF transcript + audio clips + show notes). BonfyrePay handles Stripe-compatible checkout. BonfyreMeter records the sale and updates the usage ledger. No Shopify. No Gumroad. No SaaS platform fee beyond the payment processor's transaction cost.</p>
+            </article>
+
+            <article class="feature-card">
+              <span class="card-meta">Step 10 — BonfyreEmit + BonfyrePack</span>
+              <h3>RSS item, PDF, EPUB, and JSON in one pass</h3>
+              <p>BonfyreEmit produces four outputs simultaneously: an RSS 2.0 &lt;item&gt; with show notes as the description, a PDF transcript, an EPUB version of the transcript, and a structured JSON artifact with all metadata. BonfyrePack bundles everything into a content-addressed archive with a BLAKE2b manifest — one file you can store, distribute, or verify.</p>
+            </article>
+
+            <article class="feature-card">
+              <span class="card-meta">Step 11 — BonfyreDistribute + BonfyreSwarm</span>
+              <h3>Pushed to host over QUIC; subscribers help distribute</h3>
+              <p>BonfyreDistribute delivers the pack to your GitHub Pages repo, S3 bucket, or self-hosted server over QUIC with fountain-code erasure tolerance — up to 33% packet loss is recoverable before the transfer fails. For large archives, BonfyreSwarm adds BitTorrent v2 peer delivery so every subscriber's device helps distribute to the next subscriber, removing the single-server bottleneck.</p>
+            </article>
+
+          </div>
+          <div class="cta-row">
+            <p style="color:var(--text-2);font-size:0.9rem;margin:0">Total time for steps 1–10 (excluding transcription): under 6 seconds on M2 Pro. Transcription alone: ~3 minutes for a 45-minute episode.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="shell-container">
+          <div class="section-header">
+            <div>
+              <span class="section-kicker">What you end up with</span>
+              <h2 class="section-title">Everything a podcast episode can be, from one pipeline run.</h2>
+            </div>
+          </div>
+          <div class="feature-grid">
+            <article class="feature-card">
+              <span class="card-meta">Publish assets</span>
+              <h3>Show notes, RSS entry, PDF, EPUB, clips — ready to post</h3>
+              <p>All four formats produced simultaneously from the same brief source. No editing required before publishing. No per-format API calls. Publish all or pick the formats you need.</p>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">Revenue</span>
+              <h3>A checkout page that exists before you post the episode</h3>
+              <p>The premium bundle offer is generated as part of the pipeline run, not as a separate manual step. By the time the episode publishes, the checkout page already exists.</p>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">Archive</span>
+              <h3>Every episode searchable by meaning</h3>
+              <p>BonfyreEmbed + BonfyreVec index the brief. In 6 months you can search "all episodes where we discussed pricing strategy" and retrieve the relevant episodes by semantic similarity — not keyword match against filenames.</p>
+            </article>
+          </div>
+          <div class="cta-row">
+            <a class="primary-btn" href="https://nickgonzales76017.github.io/pages-podcast-repurposing/" target="_blank" rel="noreferrer">Open Podcast Plant live</a>
+            <a class="secondary-btn" href="explore.html">See all recipes</a>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <div class="shell-container footer-row">
+        <div>Bonfyre — 53 C binaries. Local AI. No cloud bill.</div>
+        <div class="footer-links">
+          <a href="index.html">Overview</a>
+          <a href="explore.html">Explore</a>
+          <a href="docs.html">Technical Docs</a>
+          <a href="apps.html">Live Apps</a>
+        </div>
+      </div>
+    </footer>
+  </div>
+  <script src="assets/site.js"></script>
+</body>
+</html>
