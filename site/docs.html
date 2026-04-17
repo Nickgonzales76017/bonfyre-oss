@@ -128,6 +128,70 @@
         <div class="shell-container">
           <div class="section-header">
             <div>
+              <span class="section-kicker">Code-backed numbers</span>
+              <h2 class="section-title">Small numbers that say a lot about the new runtime.</h2>
+              <p class="section-copy">These values come straight from the current source tree, not from marketing math. They are here to make the new systems legible at a glance.</p>
+            </div>
+          </div>
+          <div class="table-card">
+            <div class="table-wrap">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Capability</th>
+                    <th>Number</th>
+                    <th>Why it matters</th>
+                    <th>Code anchor</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><strong>Reactor connections</strong></td>
+                    <td>4,096 / reactor</td>
+                    <td>Gives the shared-nothing API path a concrete concurrency ceiling per event loop.</td>
+                    <td><code>BF_REACTOR_MAX_CONNS</code></td>
+                  </tr>
+                  <tr>
+                    <td><strong>Hot-loaded stages</strong></td>
+                    <td>32 stages</td>
+                    <td>Sets the registry capacity for plugin-loaded pipeline stages before any fallback to built-ins.</td>
+                    <td><code>BF_HOTLOAD_MAX_STAGES</code></td>
+                  </tr>
+                  <tr>
+                    <td><strong>A/B pairs</strong></td>
+                    <td>16 pairs</td>
+                    <td>Defines how many live stage experiments can be registered at once in the current hot-load runtime.</td>
+                    <td><code>ab_pairs[16]</code></td>
+                  </tr>
+                  <tr>
+                    <td><strong>SIMD decode block</strong></td>
+                    <td>128 ints / block</td>
+                    <td>The BP128 path works in batches large enough to matter for E8 decode throughput.</td>
+                    <td><code>simd_bp128.c</code></td>
+                  </tr>
+                  <tr>
+                    <td><strong>Swarm piece size</strong></td>
+                    <td>256 KB</td>
+                    <td>Matches BonfyreCompress block alignment and makes the BitTorrent v2 story feel like an artifact-native transport layer.</td>
+                    <td><code>PIECE_SIZE</code></td>
+                  </tr>
+                  <tr>
+                    <td><strong>HE-SLI depth</strong></td>
+                    <td>1 multiplicative depth</td>
+                    <td>Keeps the encrypted linear scoring story in the realm of plausible implementation rather than pure speculation.</td>
+                    <td><code>he_sli.c</code></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="shell-container">
+          <div class="section-header">
+            <div>
               <span class="section-kicker">FPQ model set</span>
               <h2 class="section-title">Real models, real sizes, real cosine numbers.</h2>
             </div>
