@@ -30,11 +30,22 @@ a{color:var(--blue);text-decoration:none}a:hover{text-decoration:underline}
 .card-docs{border:2px solid var(--green)}.card-docs h2{color:var(--green)}.card-docs .cta{background:var(--green);color:#000}
 .stats-row{display:flex;justify-content:center;gap:40px;flex-wrap:wrap;margin-bottom:40px}
 .stat{text-align:center}.stat .num{font-size:1.8rem;font-weight:700;display:block}.stat .label{font-size:.8rem;color:var(--text-dim);text-transform:uppercase;letter-spacing:.04em}
+.pages-story{margin:0 auto 44px;max-width:920px;background:linear-gradient(135deg,rgba(249,115,22,.12),rgba(88,166,255,.06));border:1px solid var(--border);border-radius:18px;padding:28px;text-align:left}
+.pages-story .eyebrow{display:inline-flex;margin-bottom:12px;padding:4px 10px;border-radius:999px;background:rgba(249,115,22,.12);color:var(--accent);font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em}
+.pages-story h2{font-size:1.7rem;line-height:1.2;margin-bottom:10px}
+.pages-story p{color:var(--text-dim);max-width:62ch}
+.coverage-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:12px;margin-top:22px}
+.coverage-card{background:rgba(13,17,23,.68);border:1px solid var(--border);border-radius:14px;padding:14px}
+.coverage-card .num{display:block;font-size:1.6rem;font-weight:800;color:var(--text);line-height:1}
+.coverage-card .label{display:block;margin:6px 0 8px;font-size:.85rem;font-weight:700;color:var(--text)}
+.coverage-card .proof{display:block;font-size:.76rem;color:var(--accent);font-weight:600;margin-bottom:6px}
+.coverage-card .note{display:block;font-size:.76rem;color:var(--text-dim);line-height:1.45}
 .links-row{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-bottom:24px}
 .links-row a{display:inline-flex;align-items:center;padding:8px 18px;border:1px solid var(--border);border-radius:6px;font-size:.85rem;color:var(--text);text-decoration:none;transition:border-color .15s}
 .links-row a:hover{border-color:var(--accent);text-decoration:none}
 footer{margin-top:40px;font-size:.82rem;color:var(--text-dim)}footer a{color:var(--text-dim)}footer a:hover{color:var(--text)}
-@media(max-width:640px){.landing h1{font-size:2.4rem}.path-cards{grid-template-columns:1fr}.stats-row{gap:24px}.stat .num{font-size:1.4rem}}
+@media(max-width:900px){.coverage-grid{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:640px){.landing h1{font-size:2.4rem}.path-cards{grid-template-columns:1fr}.stats-row{gap:24px}.stat .num{font-size:1.4rem}.coverage-grid{grid-template-columns:1fr}.pages-story{padding:22px}}
 </style>
 </head>
 <body>
@@ -67,6 +78,20 @@ footer{margin-top:40px;font-size:.82rem;color:var(--text-dim)}footer a{color:var
       <span class="cta">Open Technical Docs →</span>
     </a>
   </div>
+
+  <section class="pages-story">
+    <span class="eyebrow">Pages Layer</span>
+    <h2>Turn Bonfyre output into pages people can actually use.</h2>
+    <p>Bonfyre Pages gives the stack a simpler surface: live proof apps, service sites, and publish-ready outputs that still show the real system underneath instead of hiding it behind vague claims.</p>
+    <div class="coverage-grid">
+      <div class="coverage-card"><span class="num">10</span><span class="label">Delivery Flow</span><span class="proof">10 steps from input to deliverable</span><span class="note">ingest, cleanup, summary, proof, pricing, and packaging</span></div>
+      <div class="coverage-card"><span class="num">5</span><span class="label">Product Base</span><span class="proof">5 core surfaces that make Bonfyre usable</span><span class="note">cms, api, auth, gate, and runtime</span></div>
+      <div class="coverage-card"><span class="num">4</span><span class="label">Job Control</span><span class="proof">4 systems for moving work through the stack</span><span class="note">pipeline, queue, sync, and stitch</span></div>
+      <div class="coverage-card"><span class="num">6</span><span class="label">Revenue</span><span class="proof">6 tools tied to pricing, billing, and selling</span><span class="note">offers, usage, billing, finance, outreach, and pay</span></div>
+      <div class="coverage-card"><span class="num">6</span><span class="label">Search Layer</span><span class="proof">6 tools for retrieval, memory, and publishing</span><span class="note">embed, index, graph, render, emit, and narrate</span></div>
+      <div class="coverage-card"><span class="num">20</span><span class="label">Live Apps</span><span class="proof">20 live proofs on the public surface</span><span class="note">visible examples people can inspect instead of just claims</span></div>
+    </div>
+  </section>
 
   <div class="links-row">
     <a href="https://github.com/Nickgonzales76017/bonfyre">⭐ bonfyre</a>
