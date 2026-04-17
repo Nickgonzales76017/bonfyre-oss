@@ -1,45 +1,234 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔥</text></svg>" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="theme-color" content="#FF6B35" />
-  <meta name="description" content="Bonfyre - 50 static C binaries. Pure C11. A complete backend platform." />
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#ff6b35">
+  <meta name="description" content="Bonfyre is a complete local backend platform. Tiny C binaries, compressed models, live proof apps, and technical docs in one place.">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔥</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link href="https://api.fontshare.com/v2/css?f[]=cabinet-grotesk@400,500,700,800,900&display=swap" rel="stylesheet">
-  <title>Bonfyre - AI That Runs On Your Machine</title>
-  <script>
-    (function () {
-      var path = window.location.pathname;
-      var base = path.indexOf('/bonfyre-oss/') === 0 || path === '/bonfyre-oss'
-        ? '/bonfyre-oss'
-        : '';
-      var nativeFetch = window.fetch ? window.fetch.bind(window) : null;
-
-      window.__BONFYRE_SITE_BASE__ = base;
-
-      if (nativeFetch) {
-        window.fetch = function (input, init) {
-          if (typeof input === 'string' && input.charAt(0) === '/') {
-            return nativeFetch(base + input, init);
-          }
-
-          if (typeof Request !== 'undefined' && input instanceof Request && input.url.indexOf(window.location.origin + '/') === 0) {
-            return nativeFetch(new Request(base + input.url.slice(window.location.origin.length), input), init);
-          }
-
-          return nativeFetch(input, init);
-        };
-      }
-    })();
-  </script>
-  <script defer src="./static/js/bundle.js"></script>
+  <link rel="stylesheet" href="assets/site.css">
+  <title>Bonfyre | AI That Runs On Your Machine</title>
 </head>
 <body>
-  <noscript>You need to enable JavaScript to run this app.</noscript>
-  <div id="root"></div>
+  <div class="site-shell">
+    <header class="site-header">
+      <div class="shell-container site-header-row">
+        <a class="brand" href="index.html"><span class="brand-mark">🔥</span><span>Bonfyre</span></a>
+        <nav class="site-nav" aria-label="Primary">
+          <a class="current" href="index.html">Overview</a>
+          <a href="explore.html">Explore</a>
+          <a href="docs.html">Technical Docs</a>
+          <a href="apps.html">Live Apps</a>
+        </nav>
+        <div class="header-actions">
+          <a class="header-btn" href="https://github.com/Nickgonzales76017/bonfyre-oss" target="_blank" rel="noreferrer">View Source</a>
+        </div>
+      </div>
+      <div class="ticker-bar">
+        <div class="shell-container ticker-row">
+          <span data-status-key="total_binaries">52</span><span>binaries</span>
+          <span class="dot">•</span>
+          <span>Pure C11</span>
+          <span class="dot">•</span>
+          <span data-status-key="total_disk">~2.1 MB</span><span>total</span>
+          <span class="dot">•</span>
+          <span data-status-key="uptime">99.97%</span><span>SLI cosine</span>
+          <span class="dot">•</span>
+          <span>4x compression</span>
+          <span class="dot">•</span>
+          <span data-status-key="models_compressed">15</span><span>HF models</span>
+          <span class="dot">•</span>
+          <span data-status-key="live_apps">20</span><span>live apps</span>
+        </div>
+      </div>
+    </header>
+
+    <main>
+      <section class="page-hero">
+        <div class="shell-container hero-grid">
+          <div class="hero-copy">
+            <span class="hero-kicker">Bonfyre platform</span>
+            <h1 class="hero-title">AI That Runs <span class="accent">On Your Machine</span></h1>
+            <p>Bonfyre turns model compression, local inference, and tiny backend binaries into something easier to understand. This site is now split into product overview, technical docs, and live page apps so the design stays simple without hiding what the stack actually covers.</p>
+            <div class="hero-actions">
+              <a class="primary-btn" href="explore.html">Explore Bonfyre</a>
+              <a class="secondary-btn" href="docs.html">Open Technical Docs</a>
+            </div>
+            <div class="install-box">
+              <span class="label">Quick install</span>
+              <code>curl -fsSL https://raw.githubusercontent.com/Nickgonzales76017/bonfyre/main/install.sh | sh</code>
+            </div>
+          </div>
+          <div class="stats-grid" aria-label="Bonfyre metrics">
+            <article class="metric-card">
+              <span class="metric-value orange">4x</span>
+              <span class="metric-label">Compression</span>
+            </article>
+            <article class="metric-card">
+              <span class="metric-value blue" data-status-key="uptime">99.97%</span>
+              <span class="metric-label">SLI cosine</span>
+            </article>
+            <article class="metric-card">
+              <span class="metric-value" data-status-key="models_compressed">15</span>
+              <span class="metric-label">HF models</span>
+            </article>
+            <article class="metric-card">
+              <span class="metric-value" data-status-key="total_binaries">52</span>
+              <span class="metric-label">Backend binaries</span>
+            </article>
+            <article class="metric-card wide">
+              <span class="metric-value" data-status-key="total_disk">~2.1 MB</span>
+              <span class="metric-label">Total disk</span>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="shell-container">
+          <div class="section-header">
+            <div>
+              <span class="section-kicker">What is on this site</span>
+              <h2 class="section-title">One design, now spread across the pages it needs.</h2>
+              <p class="section-copy">The landing page should stay fast to scan. The deeper material now lives in dedicated pages so Bonfyre can show the whole story without turning the homepage into a wall of copy.</p>
+            </div>
+          </div>
+          <div class="path-grid">
+            <article class="story-card">
+              <span class="card-meta">Explore</span>
+              <h3>What can Bonfyre do for me?</h3>
+              <p>Use-case language, replacement framing, industry recipes, and proof-first explanations for people who care about outcomes before internals.</p>
+              <div class="pill-row">
+                <span class="pill">What it replaces</span>
+                <span class="pill">Industry recipes</span>
+                <span class="pill">WordPress and ops</span>
+              </div>
+              <div class="cta-row"><a class="primary-btn" href="explore.html">Open Explore</a></div>
+            </article>
+            <article class="story-card">
+              <span class="card-meta">Technical docs</span>
+              <h3>How does the stack actually work?</h3>
+              <p>FPQ models, benchmark deltas, hardware fit, MoQ relay extensions, and the full binary stack broken into layers instead of vague platform claims.</p>
+              <div class="pill-row">
+                <span class="pill">FPQ</span>
+                <span class="pill">Binaries</span>
+                <span class="pill">Hardware fits</span>
+              </div>
+              <div class="cta-row"><a class="secondary-btn" href="docs.html">Open Docs</a></div>
+            </article>
+            <article class="story-card">
+              <span class="card-meta">Live apps</span>
+              <h3>Where are the proof pages?</h3>
+              <p>Twenty live page apps and ten recipe patterns show how the stack turns raw input into searchable, publishable, product-like surfaces.</p>
+              <div class="pill-row">
+                <span class="pill">20 live apps</span>
+                <span class="pill">10 recipes</span>
+                <span class="pill">Pages system</span>
+              </div>
+              <div class="cta-row"><a class="secondary-btn" href="apps.html">Open Live Apps</a></div>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="shell-container">
+          <div class="section-header">
+            <div>
+              <span class="section-kicker">Coverage</span>
+              <h2 class="section-title">The simplified design should still cover the full Bonfyre story.</h2>
+            </div>
+          </div>
+          <div class="feature-grid">
+            <article class="feature-card">
+              <span class="card-meta">Core flow</span>
+              <h3>Ingest to publish</h3>
+              <p>Bonfyre handles intake, cleanup, briefs, proof bundles, pricing, packaging, and output generation without dragging in a separate SaaS backend.</p>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">Product base</span>
+              <h3>CMS, auth, API, proxy</h3>
+              <p>The stack includes the surfaces people usually buy separately: CMS, gateway, auth, pipeline orchestration, and an OpenAI-compatible proxy.</p>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">Search and memory</span>
+              <h3>Searchable local knowledge</h3>
+              <p>Embeddings, vector search, indexing, and transcript families turn recordings and docs into archives you can actually browse and query.</p>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">Revenue</span>
+              <h3>Offers, pricing, billing</h3>
+              <p>Bonfyre does not stop at summarizing. Offer, finance, meter, pay, outreach, and pack move the system closer to a working business surface.</p>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">Realtime</span>
+              <h3>MoQ relay in the same family</h3>
+              <p>The MoQ relay keeps live media, private audio fan-out, and inline inference inside the same local-first operating model as the rest of Bonfyre.</p>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">Visible proof</span>
+              <h3>Numbers without overload</h3>
+              <p>The site keeps the proof trail visible with binary counts, model counts, app counts, and benchmark deltas so the story stays simple but not hand-wavy.</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="shell-container">
+          <div class="section-header">
+            <div>
+              <span class="section-kicker">Proof surfaces</span>
+              <h2 class="section-title">Pages are the bridge between backend power and something people can actually use.</h2>
+              <p class="section-copy">This is where Bonfyre feels bigger than a compression demo. The same stack powers shift handoffs, archives, podcasts, consulting storefronts, legal binders, and internal knowledge pages.</p>
+            </div>
+          </div>
+          <div class="proof-grid">
+            <article class="proof-callout">
+              <span class="card-meta">Business proof</span>
+              <h3>Customer Voice, Sales Distiller, Procurement Memory</h3>
+              <p>Calls and documents become something teams can use: searchable summaries, follow-up materials, evidence packs, pricing surfaces, and knowledge boards.</p>
+            </article>
+            <article class="proof-callout">
+              <span class="card-meta">Media proof</span>
+              <h3>Podcast Plant, Release Radio, Museum Exhibit</h3>
+              <p>Audio and changelogs become pages, RSS outputs, clips, and presentation-ready surfaces instead of raw transcripts buried in folders.</p>
+            </article>
+            <article class="proof-callout">
+              <span class="card-meta">Trust proof</span>
+              <h3>Memory Atlas, Family History, Legal Prep</h3>
+              <p>Bonfyre works especially well when traceability matters. You keep transcripts, summaries, and derived artifacts tied back to the original source trail.</p>
+            </article>
+            <article class="proof-callout">
+              <span class="card-meta">Developer proof</span>
+              <h3>Explain This Repo, OSS Cockpit, Postmortem Atlas</h3>
+              <p>The same system that makes customer-facing pages can also turn engineering context into onboarding guides, searchable retrospectives, and maintainer dashboards.</p>
+            </article>
+          </div>
+          <div class="cta-row">
+            <a class="primary-btn" href="apps.html">Browse live apps</a>
+            <a class="secondary-btn" href="explore.html">Read the use-case story</a>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <div class="shell-container footer-row">
+        <div>Bonfyre OSS site for the product overview, technical docs, and live page proofs.</div>
+        <div class="footer-links">
+          <a href="explore.html">Explore</a>
+          <a href="docs.html">Technical Docs</a>
+          <a href="apps.html">Live Apps</a>
+          <a href="https://github.com/Nickgonzales76017/bonfyre-oss" target="_blank" rel="noreferrer">GitHub</a>
+        </div>
+      </div>
+    </footer>
+  </div>
+  <script src="assets/site.js"></script>
 </body>
 </html>
