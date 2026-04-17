@@ -1,278 +1,86 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#ff6b35">
-  <meta name="description" content="Bonfyre is a complete local backend platform. Tiny C binaries, compressed models, live proof apps, and technical docs in one place.">
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔥</text></svg>">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link href="https://api.fontshare.com/v2/css?f[]=cabinet-grotesk@400,500,700,800,900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="assets/site.css">
-  <title>Bonfyre | AI That Runs On Your Machine</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bonfyre — Model compression + backend infrastructure</title>
+<meta name="description" content="Bonfyre is two things: BonfyreFPQ model compression with direct .fpq inference, and 51 composable C11 binaries with a 26-module shared runtime replacing your entire backend. MIT licensed.">
+<meta name="theme-color" content="#0d1117">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔥</text></svg>">
+<style>
+:root{--bg:#0d1117;--surface:#161b22;--border:#30363d;--text:#e6edf3;--text-dim:#8b949e;--accent:#f97316;--green:#3fb950;--blue:#58a6ff;--font:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:var(--font);background:var(--bg);color:var(--text);line-height:1.6;-webkit-font-smoothing:antialiased;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center}
+a{color:var(--blue);text-decoration:none}a:hover{text-decoration:underline}
+.landing{max-width:880px;padding:0 24px;text-align:center}
+.landing h1{font-size:3.4rem;font-weight:800;letter-spacing:-0.03em;margin-bottom:12px}
+.landing h1 span{color:var(--accent)}
+.tagline{font-size:1.2rem;color:var(--text-dim);max-width:620px;margin:0 auto 48px;line-height:1.7}
+.path-cards{display:grid;grid-template-columns:1fr 1fr;gap:28px;margin-bottom:48px}
+.path-card{background:var(--surface);border-radius:16px;padding:40px 32px;text-align:left;text-decoration:none;transition:transform .2s,border-color .2s;display:flex;flex-direction:column}
+.path-card:hover{transform:translateY(-4px);text-decoration:none}
+.path-card .emoji{font-size:2.4rem;margin-bottom:16px}
+.path-card h2{font-size:1.4rem;font-weight:700;margin-bottom:8px}
+.path-card .desc{font-size:.95rem;color:var(--text-dim);line-height:1.6;margin-bottom:20px;flex:1}
+.path-card .includes{font-size:.82rem;color:var(--text-dim);line-height:1.8}
+.path-card .includes strong{color:var(--text);font-size:.72rem;text-transform:uppercase;letter-spacing:.04em}
+.path-card .cta{display:inline-block;margin-top:20px;padding:10px 24px;border-radius:6px;font-weight:600;font-size:.95rem;text-decoration:none;transition:opacity .15s}
+.path-card .cta:hover{opacity:.85;text-decoration:none}
+.card-explore{border:2px solid var(--accent)}.card-explore h2{color:var(--accent)}.card-explore .cta{background:var(--accent);color:#fff}
+.card-docs{border:2px solid var(--green)}.card-docs h2{color:var(--green)}.card-docs .cta{background:var(--green);color:#000}
+.stats-row{display:flex;justify-content:center;gap:40px;flex-wrap:wrap;margin-bottom:40px}
+.stat{text-align:center}.stat .num{font-size:1.8rem;font-weight:700;display:block}.stat .label{font-size:.8rem;color:var(--text-dim);text-transform:uppercase;letter-spacing:.04em}
+.links-row{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-bottom:24px}
+.links-row a{display:inline-flex;align-items:center;padding:8px 18px;border:1px solid var(--border);border-radius:6px;font-size:.85rem;color:var(--text);text-decoration:none;transition:border-color .15s}
+.links-row a:hover{border-color:var(--accent);text-decoration:none}
+footer{margin-top:40px;font-size:.82rem;color:var(--text-dim)}footer a{color:var(--text-dim)}footer a:hover{color:var(--text)}
+@media(max-width:640px){.landing h1{font-size:2.4rem}.path-cards{grid-template-columns:1fr}.stats-row{gap:24px}.stat .num{font-size:1.4rem}}
+</style>
 </head>
 <body>
-  <div class="site-shell">
-    <header class="site-header">
-      <div class="shell-container site-header-row">
-        <a class="brand" href="index.html"><span class="brand-mark">🔥</span><span>Bonfyre</span></a>
-        <nav class="site-nav" aria-label="Primary">
-          <a class="current" href="index.html">Overview</a>
-          <a href="explore.html">Explore</a>
-          <a href="docs.html">Technical Docs</a>
-          <a href="apps.html">Live Apps</a>
-        </nav>
-        <div class="header-actions">
-          <a class="header-btn" href="https://github.com/Nickgonzales76017/bonfyre-oss" target="_blank" rel="noreferrer">View Source</a>
-        </div>
-      </div>
-      <div class="ticker-bar">
-        <div class="shell-container ticker-row">
-          <span data-status-key="total_binaries">53</span><span>binaries</span>
-          <span class="dot">•</span>
-          <span>Pure C11</span>
-          <span class="dot">•</span>
-          <span data-status-key="total_disk">~2.1 MB</span><span>total</span>
-          <span class="dot">•</span>
-          <span data-status-key="uptime">99.97%</span><span>SLI cosine</span>
-          <span class="dot">•</span>
-          <span>4x compression</span>
-          <span class="dot">•</span>
-          <span data-status-key="models_compressed">15</span><span>HF models</span>
-          <span class="dot">•</span>
-          <span data-status-key="live_apps">20</span><span>live apps</span>
-        </div>
-      </div>
-    </header>
+<div class="landing">
+  <h1>🔥 <span>Bonfyre</span></h1>
+  <p class="tagline">Model compression that actually runs inference — and 51 C binaries with a 26-module shared runtime that replace your entire backend. Two flagships. One stack. MIT licensed.</p>
 
-    <main>
-      <section class="page-hero">
-        <div class="shell-container hero-grid">
-          <div class="hero-copy">
-            <span class="hero-kicker">Bonfyre platform</span>
-            <h1 class="hero-title">AI That Runs <span class="accent">On Your Machine</span></h1>
-            <p>53 C binaries. Local inference. Local APIs. Local distribution. Bonfyre gives you a backend that runs on your hardware instead of another monthly bill.</p>
-            <div class="hero-actions">
-              <a class="primary-btn" href="explore.html">Explore Bonfyre</a>
-              <a class="secondary-btn" href="docs.html">Open Technical Docs</a>
-            </div>
-            <div class="install-box">
-              <span class="label">Quick install</span>
-              <code>curl -fsSL https://raw.githubusercontent.com/Nickgonzales76017/bonfyre/main/install.sh | sh</code>
-            </div>
-          </div>
-          <div class="stats-grid" aria-label="Bonfyre metrics">
-            <article class="metric-card">
-              <span class="metric-value orange">4x</span>
-              <span class="metric-label">Compression</span>
-            </article>
-            <article class="metric-card">
-              <span class="metric-value blue" data-status-key="uptime">99.97%</span>
-              <span class="metric-label">SLI cosine</span>
-            </article>
-            <article class="metric-card">
-              <span class="metric-value" data-status-key="models_compressed">15</span>
-              <span class="metric-label">HF models</span>
-            </article>
-            <article class="metric-card">
-              <span class="metric-value" data-status-key="total_binaries">53</span>
-              <span class="metric-label">Backend binaries</span>
-            </article>
-            <article class="metric-card wide">
-              <span class="metric-value" data-status-key="total_disk">~2.1 MB</span>
-              <span class="metric-label">Total disk</span>
-            </article>
-          </div>
-        </div>
-      </section>
-
-      <section class="section">
-        <div class="shell-container">
-          <div class="section-header">
-            <div>
-              <span class="section-kicker">What Got Faster</span>
-              <h2 class="section-title">The runtime got a lot more serious.</h2>
-              <p class="section-copy">Recent work pushed Bonfyre further into serving, transport, zero-copy reads, and in-process pipeline execution.</p>
-            </div>
-          </div>
-          <div class="feature-grid">
-            <article class="feature-card">
-              <span class="card-meta">API runtime</span>
-              <h3>Per-core serving</h3>
-              <p>Shared-nothing reactor loops, faster HTTP parsing, SSE support, and per-reactor heaps where mimalloc is available.</p>
-            </article>
-            <article class="feature-card">
-              <span class="card-meta">Pipeline runtime</span>
-              <h3>Hot-load pipeline</h3>
-              <p>Swap stages, route A/B traffic, and run coroutine paths in process instead of rebuilding the whole pipeline around every change.</p>
-            </article>
-            <article class="feature-card">
-              <span class="card-meta">Transport</span>
-              <h3>QUIC family streams</h3>
-              <p>Artifact families move over multiplexed streams with priority delivery and reconnect behavior built for sync-heavy flows.</p>
-            </article>
-            <article class="feature-card">
-              <span class="card-meta">P2P distribution</span>
-              <h3>Swarm delivery</h3>
-              <p>BitTorrent v2 path for artifact bundles, tied back to Bonfyre hash, gate, and meter instead of bolted on beside them.</p>
-            </article>
-            <article class="feature-card">
-              <span class="card-meta">Zero-copy data path</span>
-              <h3>Read-hot cache</h3>
-              <p>LMDB and FlatBuffer manifests cut repeated parse and lookup overhead where the same artifacts get touched again and again.</p>
-            </article>
-            <article class="feature-card">
-              <span class="card-meta">FPQ and privacy</span>
-              <h3>Faster decode, private scoring</h3>
-              <p>SIMD decode speeds up the codec path. HE-SLI keeps encrypted linear scoring on the table.</p>
-            </article>
-          </div>
-        </div>
-      </section>
-
-      <section class="section">
-        <div class="shell-container">
-          <div class="section-header">
-            <div>
-              <span class="section-kicker">Start Here</span>
-              <h2 class="section-title">Three ways into Bonfyre.</h2>
-              <p class="section-copy">Overview for the product story. Docs for the numbers. Live apps for proof.</p>
-            </div>
-          </div>
-          <div class="path-grid">
-            <article class="story-card">
-              <span class="card-meta">Explore</span>
-              <h3>Use cases and recipes</h3>
-              <p>What it replaces, who it is for, and the kinds of work it can take off your plate.</p>
-              <div class="pill-row">
-                <span class="pill">What it replaces</span>
-                <span class="pill">Industry recipes</span>
-                <span class="pill">WordPress and ops</span>
-              </div>
-              <div class="cta-row"><a class="primary-btn" href="explore.html">Open Explore</a></div>
-            </article>
-            <article class="story-card">
-              <span class="card-meta">Technical docs</span>
-              <h3>Benchmarks and internals</h3>
-              <p>FPQ results, hardware fit, transport work, binary inventory, and the runtime changes behind the claims.</p>
-              <div class="pill-row">
-                <span class="pill">FPQ</span>
-                <span class="pill">Binaries</span>
-                <span class="pill">Hardware fits</span>
-              </div>
-              <div class="cta-row"><a class="secondary-btn" href="docs.html">Open Docs</a></div>
-            </article>
-            <article class="story-card">
-              <span class="card-meta">Live apps</span>
-              <h3>Working page apps</h3>
-              <p>Twenty live apps and ten recipe patterns showing what the stack looks like when it ships as a usable surface.</p>
-              <div class="pill-row">
-                <span class="pill">20 live apps</span>
-                <span class="pill">10 recipes</span>
-                <span class="pill">Pages system</span>
-              </div>
-              <div class="cta-row"><a class="secondary-btn" href="apps.html">Open Live Apps</a></div>
-            </article>
-          </div>
-        </div>
-      </section>
-
-      <section class="section">
-        <div class="shell-container">
-          <div class="section-header">
-            <div>
-              <span class="section-kicker">Coverage</span>
-              <h2 class="section-title">What Bonfyre covers.</h2>
-            </div>
-          </div>
-          <div class="feature-grid">
-            <article class="feature-card">
-              <span class="card-meta">Core flow</span>
-              <h3>Ingest to publish</h3>
-              <p>Intake, cleanup, briefs, proof, pricing, packaging, and output in one stack.</p>
-            </article>
-            <article class="feature-card">
-              <span class="card-meta">Product base</span>
-              <h3>CMS, auth, API, proxy</h3>
-              <p>CMS, gateway, auth, orchestration, and an OpenAI-compatible proxy.</p>
-            </article>
-            <article class="feature-card">
-              <span class="card-meta">Search and memory</span>
-              <h3>Searchable local knowledge</h3>
-              <p>Embeddings, search, indexing, and transcript families for local archives you can actually use.</p>
-            </article>
-            <article class="feature-card">
-              <span class="card-meta">Revenue</span>
-              <h3>Offers, pricing, billing</h3>
-              <p>Offers, pricing, metering, billing, outreach, and packaging.</p>
-            </article>
-            <article class="feature-card">
-              <span class="card-meta">Realtime</span>
-              <h3>MoQ relay in the same family</h3>
-              <p>Live media, private fan-out, and inline inference inside the same stack.</p>
-            </article>
-            <article class="feature-card">
-              <span class="card-meta">Visible proof</span>
-              <h3>Numbers without overload</h3>
-              <p>Counts, models, apps, and benchmarks kept visible without turning the page into a spreadsheet.</p>
-            </article>
-          </div>
-        </div>
-      </section>
-
-      <section class="section">
-        <div class="shell-container">
-          <div class="section-header">
-            <div>
-              <span class="section-kicker">Proof Surfaces</span>
-              <h2 class="section-title">Live proof, not mockups.</h2>
-              <p class="section-copy">The same stack powers handoffs, archives, podcasts, storefronts, legal binders, and internal tools.</p>
-            </div>
-          </div>
-          <div class="proof-grid">
-            <article class="proof-callout">
-              <span class="card-meta">Business proof</span>
-              <h3>Customer Voice, Sales Distiller, Procurement Memory</h3>
-              <p>Searchable summaries, evidence packs, follow-up materials, and pricing surfaces.</p>
-            </article>
-            <article class="proof-callout">
-              <span class="card-meta">Media proof</span>
-              <h3>Podcast Plant, Release Radio, Museum Exhibit</h3>
-              <p>Audio and changelogs turned into pages, feeds, clips, and publishable surfaces.</p>
-            </article>
-            <article class="proof-callout">
-              <span class="card-meta">Trust proof</span>
-              <h3>Memory Atlas, Family History, Legal Prep</h3>
-              <p>Traceable transcripts, summaries, and derived artifacts tied back to source.</p>
-            </article>
-            <article class="proof-callout">
-              <span class="card-meta">Developer proof</span>
-              <h3>Explain This Repo, OSS Cockpit, Postmortem Atlas</h3>
-              <p>Onboarding guides, searchable retrospectives, and maintainer-facing knowledge surfaces.</p>
-            </article>
-          </div>
-          <div class="cta-row">
-            <a class="primary-btn" href="apps.html">Browse live apps</a>
-            <a class="secondary-btn" href="explore.html">Read the use-case story</a>
-          </div>
-        </div>
-      </section>
-    </main>
-
-    <footer class="footer">
-      <div class="shell-container footer-row">
-        <div>Bonfyre OSS site for the product overview, technical docs, and live page proofs.</div>
-        <div class="footer-links">
-          <a href="explore.html">Explore</a>
-          <a href="docs.html">Technical Docs</a>
-          <a href="apps.html">Live Apps</a>
-          <a href="https://github.com/Nickgonzales76017/bonfyre-oss" target="_blank" rel="noreferrer">GitHub</a>
-        </div>
-      </div>
-    </footer>
+  <div class="stats-row">
+    <div class="stat"><span class="num" style="color:var(--green)">4×</span><span class="label">Model compression</span></div>
+    <div class="stat"><span class="num" style="color:var(--green)">0.997</span><span class="label">Inference cosine</span></div>
+    <div class="stat"><span class="num" style="color:var(--accent)">51</span><span class="label">Backend binaries</span></div>
+    <div class="stat"><span class="num">26</span><span class="label">Library modules</span></div>
+    <div class="stat"><span class="num">15</span><span class="label"><a href="https://huggingface.co/NICKO" style="color:inherit">Models on HF</a></span></div>
+    <div class="stat"><span class="num">20</span><span class="label">Live apps</span></div>
+    <div class="stat"><span class="num">~2.1 MB</span><span class="label">Total disk</span></div>
   </div>
-  <script src="assets/site.js"></script>
+
+  <div class="path-cards">
+    <a href="explore.html" class="path-card card-explore">
+      <div class="emoji">🚀</div>
+      <h2>What Can Bonfyre Do For Me?</h2>
+      <div class="desc">See what Bonfyre does, who it's for, and real-world uses for your business — restaurants, law offices, agencies, podcasters, and more. No technical jargon required.</div>
+      <div class="includes"><strong>Includes:</strong><br>What it replaces · Industry recipes · Live apps · WordPress · Pipelines · Hardware guide · Under-the-hood overview</div>
+      <span class="cta">Explore Bonfyre →</span>
+    </a>
+    <a href="docs.html" class="path-card card-docs">
+      <div class="emoji">🔧</div>
+      <h2>Technical Docs &amp; Benchmarks</h2>
+      <div class="desc">FPQ compression deep-dive, FPQ-X operators, KV cache, hardware fits with pricing, architecture, all 51 binaries, operator model, and reproduction commands.</div>
+      <div class="includes"><strong>Includes:</strong><br>FPQ · FPQ-X · KV cache · Benchmarks · Hardware fits · Architecture · 51 operators · 26-module runtime · Lambda Tensors · Install</div>
+      <span class="cta">Open Technical Docs →</span>
+    </a>
+  </div>
+
+  <div class="links-row">
+    <a href="https://github.com/Nickgonzales76017/bonfyre">⭐ bonfyre</a>
+    <a href="https://github.com/Nickgonzales76017/bonfyre-oss">⭐ bonfyre-oss</a>
+    <a href="https://huggingface.co/NICKO">🤗 HuggingFace</a>
+    <a href="https://github.com/Nickgonzales76017/hcp-whisper">🎤 HCP Speech</a>
+    <a href="https://nickgonzales76017.github.io/pages-shift-handoff/">📋 Live Proof</a>
+  </div>
+
+  <footer>
+    Made by <a href="https://nickgonzales76017.github.io">Nick Gonzales</a> ·
+    <a href="https://github.com/Nickgonzales76017/bonfyre/blob/main/LICENSE">MIT License</a>
+  </footer>
+</div>
 </body>
 </html>
