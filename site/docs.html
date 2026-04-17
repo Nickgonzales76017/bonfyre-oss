@@ -49,7 +49,7 @@
           <div class="hero-copy">
             <span class="hero-kicker">Technical docs</span>
             <h1 class="hero-title">Compression, binaries, and realtime surfaces <span class="accent">without the vague platform talk.</span></h1>
-            <p>This page is where the proof gets more concrete: FPQ model results, system benchmarks, hardware fit, MoQ relay capabilities, the new reactor and hot-load runtime pieces, and the complete Bonfyre binary stack split into layers.</p>
+            <p>FPQ results, system benchmarks, hardware fit, transport work, runtime upgrades, and the full binary stack.</p>
             <div class="hero-actions">
               <a class="primary-btn" href="https://huggingface.co/NICKO" target="_blank" rel="noreferrer">See published models</a>
               <a class="secondary-btn" href="https://github.com/Nickgonzales76017/bonfyre" target="_blank" rel="noreferrer">Open core repo</a>
@@ -85,40 +85,40 @@
           <div class="section-header">
             <div>
               <span class="section-kicker">New capabilities</span>
-              <h2 class="section-title">The newest systems work lives below the product copy.</h2>
-              <p class="section-copy">These additions are the ones that materially changed Bonfyre’s backend story: a new reactor path for the API, hot-load and coroutine pipeline execution, QUIC-aware artifact transport, a swarm binary, zero-copy cache and manifest work, faster SIMD decode paths, and an HE-compatible SLI bridge.</p>
+              <h2 class="section-title">Recent runtime work.</h2>
+              <p class="section-copy">Serving, transport, zero-copy reads, pipeline execution, and FPQ-side decode work.</p>
             </div>
           </div>
           <div class="feature-grid">
             <article class="feature-card">
               <span class="card-meta">bf_reactor</span>
               <h3>Shared-nothing API runtime</h3>
-              <p>Per-core event loop with kqueue on macOS, io_uring or epoll on Linux, <code>SO_REUSEPORT</code>, token-bucket limiting, SSE streaming, PicoHTTPParser request decode, and per-reactor heap arenas when mimalloc is available.</p>
+              <p>Per-core event loops, faster request decode, SSE, and per-reactor heaps where mimalloc is available.</p>
             </article>
             <article class="feature-card">
               <span class="card-meta">Pipeline runtime</span>
               <h3>Plugin-loaded and coroutine-ready stages</h3>
-              <p><code>bf_hotload</code> gives the pipeline swappable stage plugins, while <code>bf_pipeline_coro</code> adds a structured-concurrency path with channels, deadlines, and a pthread fallback when libdill is not installed.</p>
+              <p>Swappable stage plugins plus a structured-concurrency path with channels, deadlines, and a pthread fallback.</p>
             </article>
             <article class="feature-card">
               <span class="card-meta">bonfyre-distribute</span>
               <h3>QUIC family streams</h3>
-              <p>The distribution layer now has an in-tree QUIC send path with artifact-family multiplexing, surface-first prioritization, and reconnect behavior designed for sync workloads instead of plain TCP webhook fan-out alone.</p>
+              <p>Artifact-family multiplexing, surface-first priority, and reconnect behavior built for sync-heavy flows.</p>
             </article>
             <article class="feature-card">
               <span class="card-meta">bonfyre-swarm</span>
               <h3>BitTorrent v2 artifact CDN</h3>
-              <p>Swarm delivery uses SHA-256 piece trees, 256 KB pieces, BonfyreIndex as local peer knowledge, and Gate plus Meter as swarm credential and accounting hooks.</p>
+              <p>SHA-256 piece trees, 256 KB pieces, local peer knowledge, and Gate plus Meter hooks.</p>
             </article>
             <article class="feature-card">
               <span class="card-meta">Zero-copy data path</span>
               <h3>LMDB cache + FlatBuffer manifests</h3>
-              <p><code>bf_lmdb</code> adds a read-hot mmap-backed cache with four named sub-databases, while <code>bf_flatbuf</code> adds a zero-copy artifact manifest path so repeated JSON parsing is not the only way through the system.</p>
+              <p>Read-hot mmap cache plus zero-copy manifests, so repeated JSON parsing is not the only path through the system.</p>
             </article>
             <article class="feature-card">
               <span class="card-meta">FPQ and privacy</span>
               <h3>SIMD decode + encrypted linear scoring</h3>
-              <p>The FPQ tree now includes SIMD BP128 for E8 INT7 coordinates, and the HE-SLI bridge validates the architectural claim that SLI scoring is linear enough to fit an HE-friendly path with multiplicative depth 1.</p>
+              <p>SIMD BP128 for E8 INT7 decode, plus an HE-SLI bridge for encrypted linear scoring.</p>
             </article>
           </div>
         </div>
@@ -129,8 +129,8 @@
           <div class="section-header">
             <div>
               <span class="section-kicker">Code-backed numbers</span>
-              <h2 class="section-title">Small numbers that say a lot about the new runtime.</h2>
-              <p class="section-copy">These values come straight from the current source tree, not from marketing math. They are here to make the new systems legible at a glance.</p>
+              <h2 class="section-title">Key limits and defaults.</h2>
+              <p class="section-copy">Pulled directly from the current source tree.</p>
             </div>
           </div>
           <div class="table-card">
@@ -148,49 +148,49 @@
                   <tr>
                     <td><strong>Reactor connections</strong></td>
                     <td>4,096 / reactor</td>
-                    <td>Gives the shared-nothing API path a concrete concurrency ceiling per event loop.</td>
+                    <td>Concurrency ceiling per event loop.</td>
                     <td><code>BF_REACTOR_MAX_CONNS</code></td>
                   </tr>
                   <tr>
                     <td><strong>Hot-loaded stages</strong></td>
                     <td>32 stages</td>
-                    <td>Sets the registry capacity for plugin-loaded pipeline stages before any fallback to built-ins.</td>
+                    <td>Registry capacity for plugin-loaded stages.</td>
                     <td><code>BF_HOTLOAD_MAX_STAGES</code></td>
                   </tr>
                   <tr>
                     <td><strong>A/B pairs</strong></td>
                     <td>16 pairs</td>
-                    <td>Defines how many live stage experiments can be registered at once in the current hot-load runtime.</td>
+                    <td>Live stage experiments supported at once.</td>
                     <td><code>ab_pairs[16]</code></td>
                   </tr>
                   <tr>
                     <td><strong>SIMD decode block</strong></td>
                     <td>128 ints / block</td>
-                    <td>The BP128 path works in batches large enough to matter for E8 decode throughput.</td>
+                    <td>Batch size for the SIMD decode path.</td>
                     <td><code>simd_bp128.c</code></td>
                   </tr>
                   <tr>
                     <td><strong>Swarm piece size</strong></td>
                     <td>256 KB</td>
-                    <td>Matches BonfyreCompress block alignment and makes the BitTorrent v2 story feel like an artifact-native transport layer.</td>
+                    <td>Matches the current artifact transport layout.</td>
                     <td><code>PIECE_SIZE</code></td>
                   </tr>
                   <tr>
                     <td><strong>LMDB named stores</strong></td>
                     <td>4 sub-databases</td>
-                    <td>Keeps artifacts, families, blobs, and meta data separated without losing the zero-copy read path.</td>
+                    <td>Artifacts, families, blobs, and meta.</td>
                     <td><code>BF_LMDB_MAX_DBS</code></td>
                   </tr>
                   <tr>
                     <td><strong>Default LMDB map</strong></td>
                     <td>512 MB</td>
-                    <td>Shows the current default memory-mapped footprint for the read-hot cache layer.</td>
+                    <td>Default mmap footprint for the read-hot cache.</td>
                     <td><code>BF_LMDB_MAP_SIZE</code></td>
                   </tr>
                   <tr>
                     <td><strong>HE-SLI depth</strong></td>
                     <td>1 multiplicative depth</td>
-                    <td>Keeps the encrypted linear scoring story in the realm of plausible implementation rather than pure speculation.</td>
+                    <td>Current depth for the encrypted linear path.</td>
                     <td><code>he_sli.c</code></td>
                   </tr>
                 </tbody>
@@ -205,7 +205,7 @@
           <div class="section-header">
             <div>
               <span class="section-kicker">FPQ model set</span>
-              <h2 class="section-title">Real models, real sizes, real cosine numbers.</h2>
+              <h2 class="section-title">Models, sizes, cosine.</h2>
             </div>
           </div>
           <div id="fpq-models">
@@ -219,7 +219,7 @@
           <div class="section-header">
             <div>
               <span class="section-kicker">Benchmarks</span>
-              <h2 class="section-title">The speed story is broader than compression.</h2>
+              <h2 class="section-title">Speed beyond compression.</h2>
             </div>
           </div>
           <div id="benchmark-grid" class="benchmark-grid">
@@ -233,7 +233,7 @@
           <div class="section-header">
             <div>
               <span class="section-kicker">Hardware fit</span>
-              <h2 class="section-title">Why the same stack opens up different hardware tiers.</h2>
+              <h2 class="section-title">What fits where.</h2>
             </div>
           </div>
           <div id="hardware-grid" class="hardware-grid">
@@ -247,8 +247,8 @@
           <div class="section-header">
             <div>
               <span class="section-kicker">Binary layers</span>
-              <h2 class="section-title">The full stack is easier to read when it is grouped by function.</h2>
-              <p class="section-copy">Bonfyre is not a single giant binary. It is a family of small pieces that can be combined differently depending on whether you are building ingestion, memory, publishing, monetization, realtime surfaces, or artifact distribution.</p>
+              <h2 class="section-title">The stack by function.</h2>
+              <p class="section-copy">Ingestion, memory, publishing, monetization, realtime, and distribution.</p>
             </div>
           </div>
           <div id="binary-groups" class="binary-stack">
@@ -262,14 +262,14 @@
           <div class="section-header">
             <div>
               <span class="section-kicker">Realtime relay</span>
-              <h2 class="section-title">MoQ lives in the same story, not off to the side.</h2>
+              <h2 class="section-title">MoQ in the same stack.</h2>
             </div>
           </div>
           <div class="split-row">
             <article class="story-card">
               <span class="card-meta">bonfyre-moq</span>
               <h3>Private realtime audio and media fan-out in C</h3>
-              <p>The relay is lightweight enough to fit the rest of the Bonfyre story and capable enough to support transport, AI scoring, self-tuning, mesh behavior, and consensus-style control surfaces.</p>
+              <p>Transport, AI scoring, self-tuning, mesh behavior, and consensus-style control in the same stack.</p>
               <div id="moq-features" class="pill-row">
                 <span class="pill">Loading features…</span>
               </div>
