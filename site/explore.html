@@ -32,7 +32,7 @@
         <div class="shell-container ticker-row">
           <span>Local-first backend</span>
           <span class="dot">•</span>
-          <span data-status-key="total_binaries">52</span><span>binaries</span>
+          <span data-status-key="total_binaries">53</span><span>binaries</span>
           <span class="dot">•</span>
           <span data-status-key="live_apps">20</span><span>live apps</span>
           <span class="dot">•</span>
@@ -48,10 +48,38 @@
         <div class="shell-container">
           <span class="hero-kicker">Explore Bonfyre</span>
           <h1 class="hero-title">The product story <span class="accent">without losing the receipts.</span></h1>
-          <p class="lede">Bonfyre is easiest to understand when you look at what it replaces and what it produces. The stack takes calls, files, recordings, notes, and repos, then turns them into something more useful: searchable archives, briefs, proof bundles, pricing surfaces, and finished pages.</p>
+          <p class="lede">Bonfyre is easiest to understand when you look at what it replaces and what it produces. The stack takes calls, files, recordings, notes, and repos, then turns them into something more useful: searchable archives, briefs, proof bundles, pricing surfaces, finished pages, and now faster delivery paths underneath them.</p>
           <div class="hero-actions">
             <a class="primary-btn" href="apps.html">Browse live apps</a>
             <a class="secondary-btn" href="docs.html">See the technical side</a>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="shell-container">
+          <div class="section-header">
+            <div>
+              <span class="section-kicker">What changed recently</span>
+              <h2 class="section-title">The product story got stronger because the infrastructure underneath it got weirder in a good way.</h2>
+            </div>
+          </div>
+          <div class="feature-grid">
+            <article class="feature-card">
+              <span class="card-meta">Faster serving</span>
+              <h3>Shared-nothing API runtime</h3>
+              <p>The API layer now has a per-core reactor model instead of a simpler connection strategy, which matters when Bonfyre pages need live events, SSE, and lower-latency delivery at higher concurrency.</p>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">Faster distribution</span>
+              <h3>QUIC, swarm, and metered P2P</h3>
+              <p>Bonfyre is not only generating artifacts now. It is getting better at moving them too, with in-tree QUIC transport hooks and a BitTorrent v2 swarm path tied back to Gate and Meter.</p>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">Faster iteration</span>
+              <h3>Hot-swappable pipeline stages</h3>
+              <p>Stage plugins and A/B routing make the pipeline easier to evolve without treating every change like a full redeploy. That changes how quickly Bonfyre can adapt to new page types and workflows.</p>
+            </article>
           </div>
         </div>
       </section>

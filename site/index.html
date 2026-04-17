@@ -30,7 +30,7 @@
       </div>
       <div class="ticker-bar">
         <div class="shell-container ticker-row">
-          <span data-status-key="total_binaries">52</span><span>binaries</span>
+          <span data-status-key="total_binaries">53</span><span>binaries</span>
           <span class="dot">•</span>
           <span>Pure C11</span>
           <span class="dot">•</span>
@@ -53,7 +53,7 @@
           <div class="hero-copy">
             <span class="hero-kicker">Bonfyre platform</span>
             <h1 class="hero-title">AI That Runs <span class="accent">On Your Machine</span></h1>
-            <p>Bonfyre turns model compression, local inference, and tiny backend binaries into something easier to understand. This site is now split into product overview, technical docs, and live page apps so the design stays simple without hiding what the stack actually covers.</p>
+            <p>Bonfyre turns model compression, local inference, and tiny backend binaries into something easier to understand. The stack now spans 53 binaries plus shared runtime libraries, including a shared-nothing API reactor, hot-loadable pipeline stages, QUIC-aware distribution, and a new swarm path for artifact delivery.</p>
             <div class="hero-actions">
               <a class="primary-btn" href="explore.html">Explore Bonfyre</a>
               <a class="secondary-btn" href="docs.html">Open Technical Docs</a>
@@ -77,12 +77,56 @@
               <span class="metric-label">HF models</span>
             </article>
             <article class="metric-card">
-              <span class="metric-value" data-status-key="total_binaries">52</span>
+              <span class="metric-value" data-status-key="total_binaries">53</span>
               <span class="metric-label">Backend binaries</span>
             </article>
             <article class="metric-card wide">
               <span class="metric-value" data-status-key="total_disk">~2.1 MB</span>
               <span class="metric-label">Total disk</span>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="shell-container">
+          <div class="section-header">
+            <div>
+              <span class="section-kicker">New in the stack</span>
+              <h2 class="section-title">Seven infra upgrades changed what Bonfyre can honestly claim.</h2>
+              <p class="section-copy">The newest pass added more than polish. It expanded the operating model underneath the site with shared-nothing serving, hot-loaded pipeline stages, artifact-family transport work, a swarm binary, and faster decode paths on the FPQ side.</p>
+            </div>
+          </div>
+          <div class="feature-grid">
+            <article class="feature-card">
+              <span class="card-meta">API runtime</span>
+              <h3>Per-core reactor</h3>
+              <p><code>bf_reactor</code> brings a shared-nothing event loop to BonfyreApi with <code>SO_REUSEPORT</code>, kqueue on macOS, io_uring or epoll on Linux, SSE support, and room for up to 4,096 connections per reactor.</p>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">Pipeline runtime</span>
+              <h3>Hot-load stages + A/B routing</h3>
+              <p><code>bf_hotload</code> turns BonfyrePipeline stages into swappable plugins with <code>dlopen</code>/<code>dlsym</code>, file watching, ABI checks, and hash-based A/B routing for live pipeline experiments.</p>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">Transport</span>
+              <h3>QUIC family streams</h3>
+              <p><code>bonfyre-distribute</code> now has a QUIC send path in-tree, with family-multiplexed streams, surface-first prioritization, and 0-RTT reconnect behavior for sync-heavy flows.</p>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">P2P distribution</span>
+              <h3>BitTorrent v2 swarm path</h3>
+              <p><code>bonfyre-swarm</code> uses SHA-256 piece trees, BonfyreIndex as the local peer map, and Gate plus Meter as the credential and accounting plane for metered artifact distribution.</p>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">Decode path</span>
+              <h3>SIMD BP128 for E8 blocks</h3>
+              <p>The FPQ tree now includes a SIMD-BP128 codec that decodes 128 integers per block with NEON or AVX2 paths, pushing E8 block unpacking closer to memory-bandwidth territory.</p>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">Encrypted inference</span>
+              <h3>HE-compatible SLI bridge</h3>
+              <p>The HE-SLI bridge validates the linear scoring path for encrypted weights, making the compression story more defensible around privacy-sensitive model evaluation and secure deployment experiments.</p>
             </article>
           </div>
         </div>

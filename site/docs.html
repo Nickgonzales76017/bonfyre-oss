@@ -38,7 +38,7 @@
           <span class="dot">•</span>
           <span>MoQ relay</span>
           <span class="dot">•</span>
-          <span data-status-key="total_binaries">52</span><span>binaries</span>
+          <span data-status-key="total_binaries">53</span><span>binaries</span>
         </div>
       </div>
     </header>
@@ -49,7 +49,7 @@
           <div class="hero-copy">
             <span class="hero-kicker">Technical docs</span>
             <h1 class="hero-title">Compression, binaries, and realtime surfaces <span class="accent">without the vague platform talk.</span></h1>
-            <p>This page is where the proof gets more concrete: FPQ model results, system benchmarks, hardware fit, MoQ relay capabilities, and the complete Bonfyre binary stack split into layers.</p>
+            <p>This page is where the proof gets more concrete: FPQ model results, system benchmarks, hardware fit, MoQ relay capabilities, the new reactor and hot-load runtime pieces, and the complete Bonfyre binary stack split into layers.</p>
             <div class="hero-actions">
               <a class="primary-btn" href="https://huggingface.co/NICKO" target="_blank" rel="noreferrer">See published models</a>
               <a class="secondary-btn" href="https://github.com/Nickgonzales76017/bonfyre" target="_blank" rel="noreferrer">Open core repo</a>
@@ -73,8 +73,52 @@
               <span class="metric-label">Published models</span>
             </article>
             <article class="metric-card">
-              <span class="metric-value" data-status-key="total_binaries">52</span>
+              <span class="metric-value" data-status-key="total_binaries">53</span>
               <span class="metric-label">Binaries</span>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="shell-container">
+          <div class="section-header">
+            <div>
+              <span class="section-kicker">New capabilities</span>
+              <h2 class="section-title">The newest systems work lives below the product copy.</h2>
+              <p class="section-copy">These additions are the ones that materially changed Bonfyre’s backend story: a new reactor path for the API, hot-load pipeline stages, QUIC-aware artifact transport, a swarm binary, faster SIMD decode paths, and an HE-compatible SLI bridge.</p>
+            </div>
+          </div>
+          <div class="feature-grid">
+            <article class="feature-card">
+              <span class="card-meta">bf_reactor</span>
+              <h3>Shared-nothing API runtime</h3>
+              <p>Per-core event loop with kqueue on macOS, io_uring or epoll on Linux, <code>SO_REUSEPORT</code>, token-bucket limiting, SSE streaming, and 4,096 connection slots per reactor.</p>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">bf_hotload</span>
+              <h3>Plugin-loaded pipeline stages</h3>
+              <p>Hot-load registry with <code>dlopen</code>, <code>dlsym</code>, watcher-based reloads, ABI checks, up to 32 loaded stages, and A/B execution routed by FNV-1a hash of the pipeline id.</p>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">bonfyre-distribute</span>
+              <h3>QUIC family streams</h3>
+              <p>The distribution layer now has an in-tree QUIC send path with artifact-family multiplexing, surface-first prioritization, and reconnect behavior designed for sync workloads instead of plain TCP webhook fan-out alone.</p>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">bonfyre-swarm</span>
+              <h3>BitTorrent v2 artifact CDN</h3>
+              <p>Swarm delivery uses SHA-256 piece trees, 256 KB pieces, BonfyreIndex as local peer knowledge, and Gate plus Meter as swarm credential and accounting hooks.</p>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">simd_bp128</span>
+              <h3>128-int SIMD decode blocks</h3>
+              <p>The FPQ tree now includes SIMD BP128 for E8 INT7 coordinates, with NEON and AVX2 decode paths aimed at making SLI decode latency feel more like memory bandwidth than byte-by-byte entropy decode.</p>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">he_sli</span>
+              <h3>Encrypted linear scoring path</h3>
+              <p>The HE-SLI bridge validates the architectural claim that SLI scoring is linear enough to fit an HE-friendly path with multiplicative depth 1, even before a full production HE backend lands.</p>
             </article>
           </div>
         </div>
@@ -128,7 +172,7 @@
             <div>
               <span class="section-kicker">Binary layers</span>
               <h2 class="section-title">The full stack is easier to read when it is grouped by function.</h2>
-              <p class="section-copy">Bonfyre is not a single giant binary. It is a family of small pieces that can be combined differently depending on whether you are building ingestion, memory, publishing, monetization, or realtime surfaces.</p>
+              <p class="section-copy">Bonfyre is not a single giant binary. It is a family of small pieces that can be combined differently depending on whether you are building ingestion, memory, publishing, monetization, realtime surfaces, or artifact distribution.</p>
             </div>
           </div>
           <div id="binary-groups" class="binary-stack">
