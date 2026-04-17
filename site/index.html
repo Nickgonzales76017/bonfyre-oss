@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#ff6b35">
-  <meta name="description" content="Bonfyre is a complete local backend platform. Tiny C binaries, compressed models, live proof apps, and technical docs in one place.">
+  <meta name="description" content="Bonfyre is a complete local backend platform. Tiny C binaries, compressed models, local proxy and orchestration, communications edge, relay, swarm delivery, live proof apps, and technical docs in one place.">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔥</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -53,7 +53,7 @@
           <div class="hero-copy">
             <span class="hero-kicker">Bonfyre platform</span>
             <h1 class="hero-title">AI That Runs <span class="accent">On Your Machine</span></h1>
-            <p>53 C binaries. Local inference. Local APIs. Local distribution. Bonfyre gives you a backend that runs on your hardware instead of another monthly bill.</p>
+            <p>53 C binaries. Local inference. Local APIs. Local distribution. Proxy, orchestration, telephony, relay, narration, and page output in the same stack instead of another chain of services.</p>
             <div class="hero-actions">
               <a class="primary-btn" href="explore.html">Explore Bonfyre</a>
               <a class="secondary-btn" href="docs.html">Open Technical Docs</a>
@@ -78,7 +78,7 @@
             </article>
             <article class="metric-card">
               <span class="metric-value" data-status-key="total_binaries">53</span>
-              <span class="metric-label">Backend binaries</span>
+              <span class="metric-label">Stack binaries</span>
             </article>
             <article class="metric-card wide">
               <span class="metric-value" data-status-key="total_disk">~2.1 MB</span>
@@ -92,9 +92,9 @@
         <div class="shell-container">
           <div class="section-header">
             <div>
-              <span class="section-kicker">What Got Faster</span>
-              <h2 class="section-title">The runtime got a lot more serious.</h2>
-              <p class="section-copy">Recent work pushed Bonfyre further into serving, transport, zero-copy reads, and in-process pipeline execution.</p>
+              <span class="section-kicker">What Expanded</span>
+              <h2 class="section-title">The stack now covers more than compression and pages.</h2>
+              <p class="section-copy">Recent work pushed Bonfyre deeper into serving, transport, zero-copy reads, in-process pipeline execution, and the product surfaces that sit on top of them.</p>
             </div>
           </div>
           <div class="feature-grid">
@@ -105,7 +105,7 @@
             </article>
             <article class="feature-card">
               <span class="card-meta">Pipeline runtime</span>
-              <h3>Hot-load pipeline</h3>
+              <h3>Hot-load and coroutine flow</h3>
               <p>Swap stages, route A/B traffic, and run coroutine paths in process instead of rebuilding the whole pipeline around every change.</p>
             </article>
             <article class="feature-card">
@@ -124,9 +124,9 @@
               <p>LMDB and FlatBuffer manifests cut repeated parse and lookup overhead where the same artifacts get touched again and again.</p>
             </article>
             <article class="feature-card">
-              <span class="card-meta">FPQ and privacy</span>
-              <h3>Faster decode, private scoring</h3>
-              <p>SIMD decode speeds up the codec path. HE-SLI keeps encrypted linear scoring on the table.</p>
+              <span class="card-meta">Newer surfaces</span>
+              <h3>Proxy, orchestration, tel, and verified audio</h3>
+              <p>bonfyre-proxy, bonfyre-orchestrate, bonfyre-tel, bonfyre-moq, bonfyre-swarm, and bonfyre-narrate extend the stack into local AI access, planning, communications, relay, delivery, and finished output.</p>
             </article>
           </div>
         </div>
@@ -145,7 +145,7 @@
             <article class="story-card">
               <span class="card-meta">Explore</span>
               <h3>Use cases and recipes</h3>
-              <p>What it replaces, who it is for, and the kinds of work it can take off your plate.</p>
+              <p>What it replaces, who it is for, and how local AI, search, proxy, phone edge, relay, and delivery fit into one usable product story.</p>
               <div class="pill-row">
                 <span class="pill">What it replaces</span>
                 <span class="pill">Industry recipes</span>
@@ -156,7 +156,7 @@
             <article class="story-card">
               <span class="card-meta">Technical docs</span>
               <h3>Benchmarks and internals</h3>
-              <p>FPQ results, hardware fit, transport work, binary inventory, and the runtime changes behind the claims.</p>
+              <p>FPQ results, hardware fit, transport work, runtime modules, proxy and orchestration surfaces, and the binary inventory behind the claims.</p>
               <div class="pill-row">
                 <span class="pill">FPQ</span>
                 <span class="pill">Binaries</span>
@@ -167,7 +167,7 @@
             <article class="story-card">
               <span class="card-meta">Live apps</span>
               <h3>Working page apps</h3>
-              <p>Twenty live apps and ten recipe patterns showing what the stack looks like when it ships as a usable surface.</p>
+              <p>Twenty live apps and ten recipe patterns showing what the stack looks like when it ships as a usable surface instead of staying trapped in backend demos.</p>
               <div class="pill-row">
                 <span class="pill">20 live apps</span>
                 <span class="pill">10 recipes</span>
@@ -196,7 +196,7 @@
             <article class="feature-card">
               <span class="card-meta">Product base</span>
               <h3>CMS, auth, API, proxy</h3>
-              <p>CMS, gateway, auth, orchestration, and an OpenAI-compatible proxy.</p>
+              <p>CMS, gateway, auth, orchestration, and an OpenAI-compatible proxy that lets existing tools keep working locally.</p>
             </article>
             <article class="feature-card">
               <span class="card-meta">Search and memory</span>
@@ -210,13 +210,13 @@
             </article>
             <article class="feature-card">
               <span class="card-meta">Realtime</span>
-              <h3>MoQ relay in the same family</h3>
-              <p>Live media, private fan-out, and inline inference inside the same stack.</p>
+              <h3>MoQ relay and communications edge</h3>
+              <p>Live media, private fan-out, telephony, and transport-aware event flow inside the same stack.</p>
             </article>
             <article class="feature-card">
-              <span class="card-meta">Visible proof</span>
-              <h3>Numbers without overload</h3>
-              <p>Counts, models, apps, and benchmarks kept visible without turning the page into a spreadsheet.</p>
+              <span class="card-meta">Output surfaces</span>
+              <h3>Pages, audio, and delivery</h3>
+              <p>Pages, narrated outputs, packs, distribution, and proof surfaces keep the backend story attached to something people can actually use.</p>
             </article>
           </div>
         </div>

@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#ff6b35">
-  <meta name="description" content="Bonfyre technical docs for FPQ, binaries, benchmarks, hardware fit, and the MoQ relay.">
+  <meta name="description" content="Bonfyre technical docs for FPQ, binaries, benchmarks, hardware fit, runtime modules, proxy, orchestration, communications edge, swarm delivery, and the MoQ relay.">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔥</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -38,6 +38,8 @@
           <span class="dot">•</span>
           <span>MoQ relay</span>
           <span class="dot">•</span>
+          <span>proxy + orchestrate</span>
+          <span class="dot">•</span>
           <span data-status-key="total_binaries">53</span><span>binaries</span>
         </div>
       </div>
@@ -49,7 +51,7 @@
           <div class="hero-copy">
             <span class="hero-kicker">Technical docs</span>
             <h1 class="hero-title">Compression, binaries, and realtime surfaces <span class="accent">without the vague platform talk.</span></h1>
-            <p>FPQ results, system benchmarks, hardware fit, transport work, runtime upgrades, and the full binary stack.</p>
+            <p>FPQ results, system benchmarks, hardware fit, transport work, runtime upgrades, and the full binary stack from proxy and orchestration to relay and swarm delivery.</p>
             <div class="hero-actions">
               <a class="primary-btn" href="https://huggingface.co/NICKO" target="_blank" rel="noreferrer">See published models</a>
               <a class="secondary-btn" href="https://github.com/Nickgonzales76017/bonfyre" target="_blank" rel="noreferrer">Open core repo</a>
@@ -85,8 +87,8 @@
           <div class="section-header">
             <div>
               <span class="section-kicker">New capabilities</span>
-              <h2 class="section-title">Recent runtime work.</h2>
-              <p class="section-copy">Serving, transport, zero-copy reads, pipeline execution, and FPQ-side decode work.</p>
+              <h2 class="section-title">Recent runtime and system work.</h2>
+              <p class="section-copy">Serving, transport, zero-copy reads, pipeline execution, FPQ-side decode work, and the newer product-facing binaries built on top of those layers.</p>
             </div>
           </div>
           <div class="feature-grid">
@@ -119,6 +121,11 @@
               <span class="card-meta">FPQ and privacy</span>
               <h3>SIMD decode + encrypted linear scoring</h3>
               <p>SIMD BP128 for E8 INT7 decode, plus an HE-SLI bridge for encrypted linear scoring.</p>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">Surface binaries</span>
+              <h3>Proxy, orchestrate, tel, narrate</h3>
+              <p>bonfyre-proxy, bonfyre-orchestrate, bonfyre-tel, and bonfyre-narrate push the stack beyond compression into local AI access, machine-only planning, communications, and verified output.</p>
             </article>
           </div>
         </div>
@@ -248,7 +255,7 @@
             <div>
               <span class="section-kicker">Binary layers</span>
               <h2 class="section-title">The stack by function.</h2>
-              <p class="section-copy">Ingestion, memory, publishing, monetization, realtime, and distribution.</p>
+              <p class="section-copy">Ingestion, memory, publishing, monetization, realtime, orchestration, and distribution.</p>
             </div>
           </div>
           <div id="binary-groups" class="binary-stack">
@@ -273,6 +280,11 @@
               <div id="moq-features" class="pill-row">
                 <span class="pill">Loading features…</span>
               </div>
+            </article>
+            <article class="story-card">
+              <span class="card-meta">Control plane</span>
+              <h3>Communications edge sits beside it</h3>
+              <p>bonfyre-tel keeps voice, messaging, topics, intents, and stream events in the same family as the relay instead of leaving live workflows split across unrelated vendors.</p>
             </article>
             <article class="story-card">
               <span class="card-meta">Quick start</span>
