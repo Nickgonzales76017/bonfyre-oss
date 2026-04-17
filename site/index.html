@@ -14,15 +14,15 @@
 <style>
 :root{
   --bg:#ffffff;
-  --bg-soft:#f5f6f8;
-  --text:#111111;
-  --text-dim:#667085;
-  --line:#dde2ea;
-  --line-strong:#151515;
-  --accent:#ff6b3d;
-  --blue:#1f4ed8;
-  --green:#38c85a;
-  --ticker:#111111;
+  --bg-soft:#f9fafb;
+  --text:#0a0a0a;
+  --text-dim:#4b5563;
+  --line:#e5e7eb;
+  --line-strong:#0a0a0a;
+  --accent:#ff6b35;
+  --blue:#002fa7;
+  --green:#059669;
+  --ticker:#0a0a0a;
   --font-sans:"IBM Plex Sans",sans-serif;
   --font-display:"Cabinet Grotesk","IBM Plex Sans",sans-serif;
   --font-mono:"IBM Plex Mono",monospace;
@@ -31,7 +31,7 @@
 html{scroll-behavior:smooth}
 body{
   font-family:var(--font-sans);
-  background:linear-gradient(180deg,#ffffff 0%,#fbfbfc 100%);
+  background:var(--bg);
   color:var(--text);
   min-height:100vh;
 }
@@ -52,40 +52,41 @@ a:hover{text-decoration:none}
   align-items:center;
   justify-content:space-between;
   gap:32px;
-  padding:18px 28px;
+  min-height:64px;
+  padding:0 24px;
 }
 .brand{
   display:flex;
   align-items:center;
-  gap:14px;
+  gap:8px;
   font-family:var(--font-display);
-  font-size:22px;
+  font-size:20px;
   font-weight:800;
-  letter-spacing:-.03em;
+  letter-spacing:-.025em;
 }
 .brand-mark{font-size:28px;color:var(--accent)}
 .main-nav{
   display:flex;
   align-items:center;
-  gap:14px;
+  gap:4px;
   flex-wrap:wrap;
   justify-content:center;
-  color:#4b5565;
+  color:#4b5563;
 }
 .main-nav a{
-  padding:8px 10px;
-  border-radius:999px;
+  padding:8px 12px;
   font-size:14px;
   font-weight:500;
 }
-.main-nav a:hover{color:var(--text);background:#f3f4f6}
+.main-nav a:hover{color:var(--text)}
 .nav-cta{
   display:inline-flex;
   align-items:center;
   justify-content:center;
   gap:10px;
-  min-width:122px;
-  padding:14px 22px;
+  min-width:120px;
+  min-height:52px;
+  padding:0 20px;
   border:2px solid var(--line-strong);
   font-size:15px;
   font-weight:600;
@@ -103,7 +104,7 @@ a:hover{text-decoration:none}
   align-items:center;
   gap:34px;
   white-space:nowrap;
-  padding:12px 0;
+  padding:10px 0;
   font-family:var(--font-mono);
   font-size:12px;
   letter-spacing:.12em;
@@ -117,59 +118,61 @@ a:hover{text-decoration:none}
   to{transform:translateX(-50%)}
 }
 .hero{
-  max-width:1500px;
+  max-width:1280px;
   margin:0 auto;
-  padding:92px 28px 80px;
+  padding:72px 24px 56px;
 }
 .hero-grid{
   display:grid;
-  grid-template-columns:minmax(0,1.05fr) minmax(340px,.95fr);
-  gap:64px;
+  grid-template-columns:minmax(0,1fr) minmax(320px,.95fr);
+  gap:48px;
   align-items:start;
 }
 .eyebrow{
   display:flex;
   align-items:center;
-  gap:12px;
-  margin-bottom:22px;
+  gap:8px;
+  margin-bottom:24px;
   font-family:var(--font-display);
-  font-size:26px;
+  font-size:20px;
   font-weight:700;
-  letter-spacing:-.03em;
+  letter-spacing:-.025em;
 }
-.eyebrow .brand-mark{font-size:32px}
+.eyebrow .brand-mark{font-size:24px}
 .headline{
   font-family:var(--font-display);
-  font-size:clamp(56px,7vw,90px);
-  line-height:.92;
+  font-size:clamp(54px,7vw,82px);
+  line-height:.9;
   letter-spacing:-.06em;
-  margin-bottom:30px;
-  max-width:720px;
+  margin-bottom:28px;
+  max-width:620px;
 }
 .headline .accent{display:block;color:var(--accent)}
 .hero-copy{
-  max-width:760px;
-  margin-bottom:34px;
-  color:#5d6778;
-  font-size:22px;
-  line-height:1.52;
+  max-width:700px;
+  margin-bottom:32px;
+  color:#4b5563;
+  font-size:18px;
+  line-height:1.6;
 }
 .hero-actions{
   display:flex;
   flex-wrap:wrap;
   gap:16px;
-  margin-bottom:34px;
+  margin-bottom:28px;
 }
 .button{
   display:inline-flex;
   align-items:center;
   justify-content:center;
   gap:10px;
-  min-height:72px;
-  padding:0 28px;
-  border:3px solid var(--line-strong);
-  font-size:18px;
+  min-height:56px;
+  padding:0 24px;
+  border:2px solid var(--line-strong);
+  font-size:16px;
   font-weight:700;
+  font-family:var(--font-display);
+  transition:transform .15s ease, box-shadow .15s ease, background-color .15s ease, color .15s ease;
 }
 .button.primary{
   background:var(--accent);
@@ -179,17 +182,26 @@ a:hover{text-decoration:none}
   background:#fff;
   color:var(--text);
 }
+.button.primary:hover,
+.button.secondary:hover{
+  transform:translateY(-2px);
+  box-shadow:2px 2px 0 rgba(0,0,0,1);
+}
+.button.secondary:hover{
+  background:#0a0a0a;
+  color:#fff;
+}
 .install-card{
-  max-width:680px;
-  background:#101010;
+  max-width:620px;
+  background:#0a0a0a;
   color:#d8dbe0;
-  padding:28px 26px;
+  padding:18px 20px;
   border:1px solid #1f1f1f;
 }
 .install-label{
-  margin-bottom:18px;
+  margin-bottom:10px;
   font-family:var(--font-mono);
-  font-size:13px;
+  font-size:12px;
   letter-spacing:.12em;
   text-transform:uppercase;
   color:#8b93a1;
@@ -197,28 +209,28 @@ a:hover{text-decoration:none}
 .install-command{
   color:#49dd83;
   font-family:var(--font-mono);
-  font-size:18px;
-  line-height:1.75;
+  font-size:14px;
+  line-height:1.7;
   word-break:break-word;
 }
 .stats-grid{
   display:grid;
   grid-template-columns:1fr 1fr;
-  gap:18px;
+  gap:16px;
 }
 .stat-card{
-  min-height:144px;
-  padding:28px 24px 22px;
+  min-height:132px;
+  padding:22px 22px 18px;
   border:1px solid var(--line);
   background:#fff;
 }
-.stat-card.wide{grid-column:1 / -1;min-height:132px}
+.stat-card.wide{grid-column:1 / -1;min-height:128px}
 .stat-value{
   display:block;
-  margin-bottom:10px;
+  margin-bottom:8px;
   font-family:var(--font-display);
-  font-size:60px;
-  line-height:.92;
+  font-size:56px;
+  line-height:.9;
   letter-spacing:-.05em;
 }
 .stat-value.orange{color:var(--accent)}
@@ -226,33 +238,38 @@ a:hover{text-decoration:none}
 .stat-value.black{color:var(--text)}
 .stat-label{
   font-family:var(--font-mono);
-  font-size:13px;
+  font-size:12px;
   letter-spacing:.12em;
   text-transform:uppercase;
-  color:#768093;
+  color:#6b7280;
 }
 .sections{
-  max-width:1500px;
+  max-width:1280px;
   margin:0 auto;
-  padding:0 28px 80px;
+  padding:0 24px 72px;
 }
 .split-cards{
   display:grid;
   grid-template-columns:1fr 1fr;
-  gap:24px;
+  gap:20px;
 }
 .feature-card{
-  padding:34px;
+  padding:32px;
   border:2px solid var(--line);
   background:#fff;
+  transition:transform .2s ease, box-shadow .2s ease;
 }
 .feature-card.orange{border-color:var(--accent)}
 .feature-card.green{border-color:var(--green)}
-.feature-icon{font-size:34px;margin-bottom:22px}
+.feature-card:hover{
+  transform:translateY(-4px);
+  box-shadow:4px 4px 0 rgba(0,0,0,1);
+}
+.feature-icon{font-size:32px;margin-bottom:22px}
 .feature-title{
   margin-bottom:14px;
   font-family:var(--font-display);
-  font-size:42px;
+  font-size:38px;
   line-height:1;
   letter-spacing:-.04em;
 }
@@ -260,13 +277,13 @@ a:hover{text-decoration:none}
 .feature-card.green .feature-title{color:var(--green)}
 .feature-copy{
   margin-bottom:22px;
-  color:#5d6778;
-  font-size:17px;
+  color:#4b5563;
+  font-size:16px;
   line-height:1.7;
 }
 .feature-meta{
   margin-bottom:28px;
-  color:#727c8d;
+  color:#6b7280;
   font-size:14px;
   line-height:1.9;
 }
@@ -283,13 +300,14 @@ a:hover{text-decoration:none}
   display:inline-flex;
   align-items:center;
   justify-content:center;
-  min-height:64px;
+  min-height:56px;
   padding:0 24px;
-  font-size:18px;
+  font-size:16px;
   font-weight:700;
+  font-family:var(--font-display);
 }
 .feature-card.orange .feature-link{background:var(--accent);color:#fff}
-.feature-card.green .feature-link{background:var(--green);color:#051408}
+.feature-card.green .feature-link{background:var(--green);color:#fff}
 @media (max-width:1180px){
   .nav-shell{flex-wrap:wrap}
   .main-nav{order:3;width:100%;justify-content:flex-start}
@@ -369,7 +387,7 @@ a:hover{text-decoration:none}
         </div>
         <div class="install-card">
           <div class="install-label">Quick Install</div>
-          <div class="install-command">curl -fsSL https://raw.githubusercontent.com/Nickgonzales76017/bonfyre/main/install.sh | sh</div>
+          <div class="install-command">curl -fsSL https://...bonfyre/main/install.sh | sh</div>
         </div>
       </div>
       <div class="stats-grid">
@@ -402,7 +420,7 @@ a:hover{text-decoration:none}
       <a class="feature-card orange" href="explore.html">
         <div class="feature-icon">🚀</div>
         <h2 class="feature-title">What Can Bonfyre Do For Me?</h2>
-        <p class="feature-copy">See what Bonfyre does, who it is for, and real-world uses for your business without getting lost in implementation detail.</p>
+        <p class="feature-copy">See what Bonfyre does, who it's for, and real-world uses for your business — restaurants, law offices, agencies, podcasters, and more. No technical jargon.</p>
         <div class="feature-meta">
           <strong>Includes:</strong>
           What it replaces · Industry recipes · Live apps · WordPress · Pipelines · Hardware guide · Use cases
@@ -412,7 +430,7 @@ a:hover{text-decoration:none}
       <a class="feature-card green" href="docs.html">
         <div class="feature-icon">🔧</div>
         <h2 class="feature-title">Technical Docs &amp; Benchmarks</h2>
-        <p class="feature-copy">FPQ compression deep-dive, FPQ-X operators, KV cache, hardware fits, architecture, install steps, and the full binary family.</p>
+        <p class="feature-copy">FPQ compression deep-dive, FPQ-X operators, KV cache, hardware fits with pricing, architecture, all 50 binaries, install, and reproduction commands.</p>
         <div class="feature-meta">
           <strong>Includes:</strong>
           FPQ · FPQ-X · KV cache · Benchmarks · Hardware fits · Architecture · Install · Binaries
