@@ -53,7 +53,7 @@
           <div class="hero-copy">
             <span class="hero-kicker">Bonfyre platform</span>
             <h1 class="hero-title">AI That Runs <span class="accent">On Your Machine</span></h1>
-            <p>Bonfyre turns model compression, local inference, and tiny backend binaries into something easier to understand. The stack now spans 53 binaries plus shared runtime libraries, including a shared-nothing API reactor, hot-loadable pipeline stages, QUIC-aware distribution, and a new swarm path for artifact delivery.</p>
+            <p>53 C binaries. Local inference. Local APIs. Local distribution. Bonfyre gives you a backend that runs on your hardware instead of another monthly bill.</p>
             <div class="hero-actions">
               <a class="primary-btn" href="explore.html">Explore Bonfyre</a>
               <a class="secondary-btn" href="docs.html">Open Technical Docs</a>
@@ -92,41 +92,41 @@
         <div class="shell-container">
           <div class="section-header">
             <div>
-              <span class="section-kicker">New in the stack</span>
-              <h2 class="section-title">Recent runtime upgrades changed what Bonfyre can honestly claim.</h2>
-              <p class="section-copy">The recent passes added more than polish. They widened the operating model underneath the site with shared-nothing serving, hot-loaded and coroutine-friendly pipelines, zero-copy cache and manifest paths, stronger transport options, and faster decode and parse paths.</p>
+              <span class="section-kicker">What Got Faster</span>
+              <h2 class="section-title">The runtime got a lot more serious.</h2>
+              <p class="section-copy">Recent work pushed Bonfyre further into serving, transport, zero-copy reads, and in-process pipeline execution.</p>
             </div>
           </div>
           <div class="feature-grid">
             <article class="feature-card">
               <span class="card-meta">API runtime</span>
-              <h3>Per-core reactor path</h3>
-              <p><code>bf_reactor</code> now sits on a stronger request path with shared-nothing event loops, PicoHTTPParser request decoding, and per-reactor heap arenas when mimalloc is present.</p>
+              <h3>Per-core serving</h3>
+              <p>Shared-nothing reactor loops, faster HTTP parsing, SSE support, and per-reactor heaps where mimalloc is available.</p>
             </article>
             <article class="feature-card">
               <span class="card-meta">Pipeline runtime</span>
-              <h3>Hot-load and coroutine stages</h3>
-              <p><code>bf_hotload</code> makes stages swappable, while <code>bf_pipeline_coro</code> adds a structured-concurrency path for in-process stage flow instead of treating everything like fork-and-wait orchestration.</p>
+              <h3>Hot-load pipeline</h3>
+              <p>Swap stages, route A/B traffic, and run coroutine paths in process instead of rebuilding the whole pipeline around every change.</p>
             </article>
             <article class="feature-card">
               <span class="card-meta">Transport</span>
               <h3>QUIC family streams</h3>
-              <p><code>bonfyre-distribute</code> now has a QUIC send path in-tree, with family-multiplexed streams, surface-first prioritization, and 0-RTT reconnect behavior for sync-heavy flows.</p>
+              <p>Artifact families move over multiplexed streams with priority delivery and reconnect behavior built for sync-heavy flows.</p>
             </article>
             <article class="feature-card">
               <span class="card-meta">P2P distribution</span>
-              <h3>BitTorrent v2 swarm path</h3>
-              <p><code>bonfyre-swarm</code> uses SHA-256 piece trees, BonfyreIndex as the local peer map, and Gate plus Meter as the credential and accounting plane for metered artifact distribution.</p>
+              <h3>Swarm delivery</h3>
+              <p>BitTorrent v2 path for artifact bundles, tied back to Bonfyre hash, gate, and meter instead of bolted on beside them.</p>
             </article>
             <article class="feature-card">
               <span class="card-meta">Zero-copy data path</span>
-              <h3>LMDB cache + FlatBuffer manifests</h3>
-              <p>The stack now has a read-hot LMDB cache path and FlatBuffer artifact manifests, which makes Bonfyre feel less JSON-bound in the places where repeated manifest and artifact reads were stacking up.</p>
+              <h3>Read-hot cache</h3>
+              <p>LMDB and FlatBuffer manifests cut repeated parse and lookup overhead where the same artifacts get touched again and again.</p>
             </article>
             <article class="feature-card">
               <span class="card-meta">FPQ and privacy</span>
-              <h3>Faster decode, stranger inference</h3>
-              <p>On the FPQ side, SIMD BP128 speeds up E8 block decode and the HE-SLI bridge keeps the encrypted linear-scoring idea grounded enough to talk about without pretending it is already the whole production story.</p>
+              <h3>Faster decode, private scoring</h3>
+              <p>SIMD decode speeds up the codec path. HE-SLI keeps encrypted linear scoring on the table.</p>
             </article>
           </div>
         </div>
@@ -136,16 +136,16 @@
         <div class="shell-container">
           <div class="section-header">
             <div>
-              <span class="section-kicker">What is on this site</span>
-              <h2 class="section-title">One design, now spread across the pages it needs.</h2>
-              <p class="section-copy">The landing page should stay fast to scan. The deeper material now lives in dedicated pages so Bonfyre can show the whole story without turning the homepage into a wall of copy.</p>
+              <span class="section-kicker">Start Here</span>
+              <h2 class="section-title">Three ways into Bonfyre.</h2>
+              <p class="section-copy">Overview for the product story. Docs for the numbers. Live apps for proof.</p>
             </div>
           </div>
           <div class="path-grid">
             <article class="story-card">
               <span class="card-meta">Explore</span>
-              <h3>What can Bonfyre do for me?</h3>
-              <p>Use-case language, replacement framing, industry recipes, and proof-first explanations for people who care about outcomes before internals.</p>
+              <h3>Use cases and recipes</h3>
+              <p>What it replaces, who it is for, and the kinds of work it can take off your plate.</p>
               <div class="pill-row">
                 <span class="pill">What it replaces</span>
                 <span class="pill">Industry recipes</span>
@@ -155,8 +155,8 @@
             </article>
             <article class="story-card">
               <span class="card-meta">Technical docs</span>
-              <h3>How does the stack actually work?</h3>
-              <p>FPQ models, benchmark deltas, hardware fit, MoQ relay extensions, and the full binary stack broken into layers instead of vague platform claims.</p>
+              <h3>Benchmarks and internals</h3>
+              <p>FPQ results, hardware fit, transport work, binary inventory, and the runtime changes behind the claims.</p>
               <div class="pill-row">
                 <span class="pill">FPQ</span>
                 <span class="pill">Binaries</span>
@@ -166,8 +166,8 @@
             </article>
             <article class="story-card">
               <span class="card-meta">Live apps</span>
-              <h3>Where are the proof pages?</h3>
-              <p>Twenty live page apps and ten recipe patterns show how the stack turns raw input into searchable, publishable, product-like surfaces.</p>
+              <h3>Working page apps</h3>
+              <p>Twenty live apps and ten recipe patterns showing what the stack looks like when it ships as a usable surface.</p>
               <div class="pill-row">
                 <span class="pill">20 live apps</span>
                 <span class="pill">10 recipes</span>
@@ -184,39 +184,39 @@
           <div class="section-header">
             <div>
               <span class="section-kicker">Coverage</span>
-              <h2 class="section-title">The simplified design should still cover the full Bonfyre story.</h2>
+              <h2 class="section-title">What Bonfyre covers.</h2>
             </div>
           </div>
           <div class="feature-grid">
             <article class="feature-card">
               <span class="card-meta">Core flow</span>
               <h3>Ingest to publish</h3>
-              <p>Bonfyre handles intake, cleanup, briefs, proof bundles, pricing, packaging, and output generation without dragging in a separate SaaS backend.</p>
+              <p>Intake, cleanup, briefs, proof, pricing, packaging, and output in one stack.</p>
             </article>
             <article class="feature-card">
               <span class="card-meta">Product base</span>
               <h3>CMS, auth, API, proxy</h3>
-              <p>The stack includes the surfaces people usually buy separately: CMS, gateway, auth, pipeline orchestration, and an OpenAI-compatible proxy.</p>
+              <p>CMS, gateway, auth, orchestration, and an OpenAI-compatible proxy.</p>
             </article>
             <article class="feature-card">
               <span class="card-meta">Search and memory</span>
               <h3>Searchable local knowledge</h3>
-              <p>Embeddings, vector search, indexing, and transcript families turn recordings and docs into archives you can actually browse and query.</p>
+              <p>Embeddings, search, indexing, and transcript families for local archives you can actually use.</p>
             </article>
             <article class="feature-card">
               <span class="card-meta">Revenue</span>
               <h3>Offers, pricing, billing</h3>
-              <p>Bonfyre does not stop at summarizing. Offer, finance, meter, pay, outreach, and pack move the system closer to a working business surface.</p>
+              <p>Offers, pricing, metering, billing, outreach, and packaging.</p>
             </article>
             <article class="feature-card">
               <span class="card-meta">Realtime</span>
               <h3>MoQ relay in the same family</h3>
-              <p>The MoQ relay keeps live media, private audio fan-out, and inline inference inside the same local-first operating model as the rest of Bonfyre.</p>
+              <p>Live media, private fan-out, and inline inference inside the same stack.</p>
             </article>
             <article class="feature-card">
               <span class="card-meta">Visible proof</span>
               <h3>Numbers without overload</h3>
-              <p>The site keeps the proof trail visible with binary counts, model counts, app counts, and benchmark deltas so the story stays simple but not hand-wavy.</p>
+              <p>Counts, models, apps, and benchmarks kept visible without turning the page into a spreadsheet.</p>
             </article>
           </div>
         </div>
@@ -226,31 +226,31 @@
         <div class="shell-container">
           <div class="section-header">
             <div>
-              <span class="section-kicker">Proof surfaces</span>
-              <h2 class="section-title">Pages are the bridge between backend power and something people can actually use.</h2>
-              <p class="section-copy">This is where Bonfyre feels bigger than a compression demo. The same stack powers shift handoffs, archives, podcasts, consulting storefronts, legal binders, and internal knowledge pages.</p>
+              <span class="section-kicker">Proof Surfaces</span>
+              <h2 class="section-title">Live proof, not mockups.</h2>
+              <p class="section-copy">The same stack powers handoffs, archives, podcasts, storefronts, legal binders, and internal tools.</p>
             </div>
           </div>
           <div class="proof-grid">
             <article class="proof-callout">
               <span class="card-meta">Business proof</span>
               <h3>Customer Voice, Sales Distiller, Procurement Memory</h3>
-              <p>Calls and documents become something teams can use: searchable summaries, follow-up materials, evidence packs, pricing surfaces, and knowledge boards.</p>
+              <p>Searchable summaries, evidence packs, follow-up materials, and pricing surfaces.</p>
             </article>
             <article class="proof-callout">
               <span class="card-meta">Media proof</span>
               <h3>Podcast Plant, Release Radio, Museum Exhibit</h3>
-              <p>Audio and changelogs become pages, RSS outputs, clips, and presentation-ready surfaces instead of raw transcripts buried in folders.</p>
+              <p>Audio and changelogs turned into pages, feeds, clips, and publishable surfaces.</p>
             </article>
             <article class="proof-callout">
               <span class="card-meta">Trust proof</span>
               <h3>Memory Atlas, Family History, Legal Prep</h3>
-              <p>Bonfyre works especially well when traceability matters. You keep transcripts, summaries, and derived artifacts tied back to the original source trail.</p>
+              <p>Traceable transcripts, summaries, and derived artifacts tied back to source.</p>
             </article>
             <article class="proof-callout">
               <span class="card-meta">Developer proof</span>
               <h3>Explain This Repo, OSS Cockpit, Postmortem Atlas</h3>
-              <p>The same system that makes customer-facing pages can also turn engineering context into onboarding guides, searchable retrospectives, and maintainer dashboards.</p>
+              <p>Onboarding guides, searchable retrospectives, and maintainer-facing knowledge surfaces.</p>
             </article>
           </div>
           <div class="cta-row">
