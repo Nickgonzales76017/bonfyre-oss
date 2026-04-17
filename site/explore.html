@@ -182,6 +182,74 @@
         </div>
       </section>
 
+      <!-- Worked example -->
+      <section class="section">
+        <div class="shell-container">
+          <div class="section-header">
+            <div>
+              <span class="section-kicker">Worked example</span>
+              <h2 class="section-title">A 45-minute podcast episode, start to finish.</h2>
+              <p class="section-copy">Here's exactly what happens when a single audio file enters a Bonfyre pipeline. Every binary listed below is a real binary in the cmd tree. Every number was measured.</p>
+            </div>
+          </div>
+          <div class="feature-grid">
+            <article class="feature-card">
+              <span class="card-meta">Step 1 — BonfyreMediaPrep</span>
+              <h3>180 MB WAV file, cleaned up and ready</h3>
+              <p>The raw recording comes in at whatever sample rate and loudness your recorder saved. MediaPrep normalises it to -14 LUFS (broadcast standard), resamples to 16 kHz mono (the format Whisper performs best on), trims leading/trailing silence, and stores a BLAKE2b hash of the cleaned file. If you re-run this pipeline tomorrow with the same recording, this step is skipped because the hash matches.</p>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">Step 2 — BonfyreTranscribe</span>
+              <h3>45 minutes of audio → 8,400 words in ~3 minutes</h3>
+              <p>HCP-enhanced Whisper runs locally — no Deepgram API key, no per-minute charge, no data leaving your machine. On an M2 Pro it processes roughly 15× faster than real-time (so 45 min takes ~3 min). The output is a word-by-word transcript with timestamps accurate to 50 ms. You could stop here and already have done what costs $15–$30/hour on a transcription service.</p>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">Step 3 — BonfyreSegment</span>
+              <h3>Two speakers, automatically labelled</h3>
+              <p>Segment runs speaker diarisation on the timestamped transcript — it identifies voice boundaries and assigns [Host] and [Guest] labels to each turn. This is the difference between a raw word dump and a readable conversation. It works on the audio fingerprint, not on voice recognition, so it's language-agnostic and needs no training data for your specific voices.</p>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">Step 4 — BonfyreTranscriptClean</span>
+              <h3>47 filler words gone in 23 ms</h3>
+              <p>Hyperscan runs a compiled set of patterns over the transcript at &gt;1 GB/s — removing confirmed filler words ("um", "uh"), false starts ("I — I mean —"), repeated words ("and and"), and hallucination markers (phrases Whisper commonly invents for sections of silence or music). On this 8,400-word transcript it takes 23 ms. The cleaned transcript is hashed and stored.</p>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">Step 5 — BonfyreParagraph</span>
+              <h3>Raw sentences → readable sections</h3>
+              <p>Raw transcripts have no paragraph breaks — everything runs together. Paragraph groups transcript turns into logical sections using topic-transition signals (speaker switches + semantic drift between consecutive sentences). The output has section headings and readable paragraphs. This is what a human editor would spend an hour doing; it takes 180 ms here.</p>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">Step 6 — BonfyreBrief</span>
+              <h3>8,400 words → structured brief in 410 ms</h3>
+              <p>Brief runs a local model (via BonfyreProxy → your FPQ-compressed local model) over the cleaned, structured transcript. Output: (1) a 3-sentence episode summary, (2) 8 topic headings, (3) 5 quotable moments with speaker attribution, (4) 3 follow-up questions implicit in the conversation, (5) a speaker breakdown by percentage of the episode. This is the artifact every downstream step builds on.</p>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">Step 7 — BonfyreClips + BonfyreRepurpose</span>
+              <h3>5 outputs from 1 brief</h3>
+              <p>BonfyreClips extracts 3 × 60-second audio clips from the best quotable moments (with timestamps from the brief). BonfyreRepurpose generates: (1) 500-word show notes, (2) a 7-post Twitter thread, (3) a 200-word email newsletter intro, (4) a 3-bullet LinkedIn update. All five are derived from the same brief — one prompt-and-template pass per format, no separate model calls.</p>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">Step 8 — BonfyreOffer + BonfyrePay + BonfyreMeter</span>
+              <h3>The episode becomes a purchasable product</h3>
+              <p>BonfyreOffer generates a dynamic pricing page for the episode as a premium download (PDF transcript + audio clips + show notes bundle). BonfyrePay handles Stripe-compatible checkout. BonfyreMeter records the sale and updates the usage ledger. No Shopify, no Gumroad, no per-transaction SaaS cut beyond the payment processor.</p>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">Step 9 — BonfyreEmit + BonfyrePack</span>
+              <h3>Simultaneous: RSS item, PDF, EPUB, JSON</h3>
+              <p>BonfyreEmit produces four outputs in a single pass: an RSS 2.0 &lt;item&gt; with the show notes as description, a PDF transcript, an EPUB version of the transcript, and a structured JSON artifact containing all metadata. BonfyrePack bundles all outputs into a content-addressed archive with a BLAKE2b manifest — one file you can store, distribute, or verify.</p>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">Step 10 — BonfyreDistribute</span>
+              <h3>Pushed to your host over QUIC</h3>
+              <p>BonfyreDistribute picks up the pack and delivers it to your target (a GitHub Pages repo, an S3 bucket, a self-hosted server) over QUIC with fountain-code erasure tolerance — meaning up to 33% packet loss is correctable before the transfer fails. For large episode archives, BonfyreSwarm adds BitTorrent v2 peer delivery so every subscriber helps distribute to the next one.</p>
+            </article>
+          </div>
+          <div class="cta-row">
+            <p style="color:var(--text-2);font-size:0.9rem;margin:0">Total time for steps 1–9 (excluding transcription): under 6 seconds on M2 Pro. Transcription (the model, not Bonfyre): ~3 minutes for a 45-minute episode.</p>
+          </div>
+        </div>
+      </section>
+
       <!-- Who it fits -->
       <section class="section">
         <div class="shell-container">

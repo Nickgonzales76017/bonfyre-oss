@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#ff6b35">
-  <meta name="description" content="Bonfyre technical docs for FPQ, binaries, benchmarks, hardware fit, runtime modules, proxy, orchestration, communications edge, swarm delivery, and the MoQ relay.">
+  <meta name="description" content="Bonfyre technical reference: all 53 binaries by layer, 26-module runtime, FPQ internals, key limits, benchmarks, and hardware fit.">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔥</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -38,46 +38,20 @@
           <span class="dot">•</span>
           <span>4096 conns/reactor</span>
           <span class="dot">•</span>
-          <span>proxy + orchestrate</span>
-          <span class="dot">•</span>
-          <span data-status-key="total_binaries">53</span><span>binaries</span>
+          <span>99.97% cosine parity</span>
         </div>
       </div>
     </header>
 
     <main>
       <section class="page-hero">
-        <div class="shell-container hero-grid">
-          <div class="hero-copy">
-            <span class="hero-kicker">Technical docs</span>
-            <h1 class="hero-title">Compression, binaries, and realtime surfaces <span class="accent">without the vague platform talk.</span></h1>
-            <p>FPQ results, system benchmarks, hardware fit, transport work, runtime upgrades, and the full binary stack from proxy and orchestration to relay and swarm delivery.</p>
-            <div class="hero-actions">
-              <a class="primary-btn" href="https://huggingface.co/NICKO" target="_blank" rel="noreferrer">See published models</a>
-              <a class="secondary-btn" href="https://github.com/Nickgonzales76017/bonfyre" target="_blank" rel="noreferrer">Open core repo</a>
-            </div>
-            <div class="install-box">
-              <span class="label">Install</span>
-              <code>curl -fsSL https://raw.githubusercontent.com/Nickgonzales76017/bonfyre/main/install.sh | sh</code>
-            </div>
-          </div>
-          <div class="stats-grid">
-            <article class="metric-card">
-              <span class="metric-value orange">4x</span>
-              <span class="metric-label">Model compression</span>
-            </article>
-            <article class="metric-card">
-              <span class="metric-value blue" data-status-key="uptime">99.97%</span>
-              <span class="metric-label">Inference cosine</span>
-            </article>
-            <article class="metric-card">
-              <span class="metric-value" data-status-key="models_compressed">15</span>
-              <span class="metric-label">Published models</span>
-            </article>
-            <article class="metric-card">
-              <span class="metric-value" data-status-key="total_binaries">53</span>
-              <span class="metric-label">Binaries</span>
-            </article>
+        <div class="shell-container">
+          <span class="hero-kicker">Technical Reference</span>
+          <h1 class="hero-title">All the numbers. <span class="accent">All the internals.</span></h1>
+          <p class="lede">Complete reference for all 53 binaries, 26 runtime modules, FPQ compression, key limits, benchmarks, and hardware fit. No hand-waving — if a number is here it was measured.</p>
+          <div class="hero-actions">
+            <a class="primary-btn" href="#binary-inventory">Binary inventory</a>
+            <a class="secondary-btn" href="#fpq">FPQ internals</a>
           </div>
         </div>
       </section>
@@ -87,9 +61,240 @@
         <div class="shell-container">
           <div class="section-header">
             <div>
-              <span class="section-kicker">New capabilities</span>
-              <h2 class="section-title">Recent runtime and system work.</h2>
-              <p class="section-copy">Serving, transport, zero-copy reads, pipeline execution, FPQ-side decode work, and the newer product-facing binaries built on top of those layers.</p>
+              <span class="section-kicker">Key limits</span>
+              <h2 class="section-title">Hard limits and defaults in the current runtime.</h2>
+            </div>
+          </div>
+          <div class="table-card">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Param</th>
+                  <th>Value</th>
+                  <th>Where it applies</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td>Max connections / reactor cycle</td><td>4,096</td><td>bf_reactor (io_uring / kqueue)</td></tr>
+                <tr><td>Pipeline stage slots</td><td>32</td><td>BonfyrePipeline hot-load registry</td></tr>
+                <tr><td>A/B stage pairs</td><td>16</td><td>BonfyrePipeline atomic swap</td></tr>
+                <tr><td>LMDB map size</td><td>512 MB</td><td>BonfyreKVCache / bf_lmdb</td></tr>
+                <tr><td>FPQ piece size</td><td>256 KB</td><td>BonfyreFPQ fountain coding</td></tr>
+                <tr><td>FPQ overhead</td><td>≤ 2%</td><td>BonfyreFPQ decode path</td></tr>
+                <tr><td>Cosine similarity preserved (FPQ)</td><td>99.97%</td><td>Quantised embedding vectors</td></tr>
+                <tr><td>Compression ratio (FPQ)</td><td>4×</td><td>FP32 → INT8 + fountain code</td></tr>
+                <tr><td>Hyperscan throughput (transcript filter)</td><td>&gt; 1 GB/s</td><td>BonfyreTranscriptClean</td></tr>
+                <tr><td>eGeMAPSv02 features</td><td>88</td><td>BonfyreTone / BonfyreSpeechLoop</td></tr>
+                <tr><td>BM25 + cosine hybrid fields</td><td>configurable</td><td>BonfyreVec / BonfyreQuery</td></tr>
+                <tr><td>Ed25519 signature size</td><td>64 bytes</td><td>BonfyreAuth / BonfyreProof</td></tr>
+                <tr><td>CMS binary size</td><td>287 KB</td><td>BonfyreCMS</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- Binary inventory -->
+      <section class="section" id="binary-inventory">
+        <div class="shell-container">
+          <div class="section-header">
+            <div>
+              <span class="section-kicker">53 binaries</span>
+              <h2 class="section-title">Complete inventory by functional layer.</h2>
+              <p class="section-copy">Each binary handles one job, links only the C it needs, and communicates via content-addressed artifacts.</p>
+            </div>
+          </div>
+
+          <div class="feature-grid">
+            <div class="feature-card">
+              <span class="card-meta">Layer 1 — Ingest &amp; signal</span>
+              <h3>Getting audio and media into the pipeline</h3>
+              <p style="margin-bottom:0.75rem;color:var(--text-2)">Before any model sees your audio, these binaries normalise it. BonfyreMediaPrep resamples to 16 kHz and loudness-normalises to broadcast standard so Whisper runs at peak accuracy. BonfyreSegment identifies speaker boundaries so the transcript has [Host] and [Guest] attribution rather than a word dump. BonfyreSpeechLoop and BonfyreTone score quality in real time using 88 eGeMAPSv02 features — so you know before the pipeline advances whether the recording is usable. BonfyreHash fingerprints every cleaned file: if you re-run the same pipeline tomorrow with the same recording, every step that hashes to the same value is skipped automatically.</p>
+              <div class="table-card" style="margin-top:1rem">
+                <table class="data-table">
+                  <thead><tr><th>Binary</th><th>Job</th></tr></thead>
+                  <tbody>
+                    <tr><td>BonfyreIngest</td><td>Multi-path audio intake, format normalisation</td></tr>
+                    <tr><td>BonfyreMediaPrep</td><td>Pre-processing before transcription or encoding</td></tr>
+                    <tr><td>BonfyreSpeechLoop</td><td>Real-time speech scoring loop (eGeMAPSv02)</td></tr>
+                    <tr><td>BonfyreTone</td><td>88-feature audio quality and tone classification</td></tr>
+                    <tr><td>BonfyreSegment</td><td>Speaker segmentation and diarisation</td></tr>
+                    <tr><td>BonfyreHash</td><td>BLAKE2b content addressing for all artifacts</td></tr>
+                    <tr><td>BonfyreCompress</td><td>LZ4 + zstd artifact compression</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div class="feature-card">
+              <span class="card-meta">Layer 2 — Transcription &amp; cleanup</span>
+              <h3>Converting audio to clean, structured text</h3>
+              <p style="margin-bottom:0.75rem;color:var(--text-2)">BonfyreTranscribe runs a local HCP-enhanced Whisper. No API key. No per-minute charge. No audio leaving your machine. On an M2 Pro it processes roughly 15× faster than real-time. BonfyreTranscriptClean then passes the raw output through Intel Hyperscan pattern matching at over 1 GB/s to remove hallucinations (Whisper-invented phrases), filler words, false starts, and repeated words. What you get is a clean, legible transcript. BonfyreParagraph groups it into readable sections with implied headings. BonfyreTranscriptFamily clusters multiple related recordings so a series of interviews or episodes can be searched as a single family.</p>
+              <div class="table-card" style="margin-top:1rem">
+                <table class="data-table">
+                  <thead><tr><th>Binary</th><th>Job</th></tr></thead>
+                  <tbody>
+                    <tr><td>BonfyreTranscribe</td><td>HCP-enhanced Whisper, local, no API key</td></tr>
+                    <tr><td>BonfyreTranscriptClean</td><td>Hyperscan (&gt;1 GB/s) hallucination and filler filter</td></tr>
+                    <tr><td>BonfyreTranscriptFamily</td><td>Cluster related transcripts into a searchable family</td></tr>
+                    <tr><td>BonfyreParagraph</td><td>Paragraph segmentation and heading inference</td></tr>
+                    <tr><td>BonfyreClips</td><td>Short-form clip extraction from long transcripts</td></tr>
+                    <tr><td>BonfyreNarrate</td><td>TTS-ready transcript formatting and narration prep</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div class="feature-card">
+              <span class="card-meta">Layer 3 — Knowledge &amp; memory</span>
+              <h3>Structuring, tagging, and making things findable</h3>
+              <p style="margin-bottom:0.75rem;color:var(--text-2)">This is the layer that turns a transcript into usable memory. BonfyreBrief extracts a structured summary: title, topics, key decisions, action items, speaker breakdown. BonfyreEmbed generates sentence-level vectors from that brief. BonfyreVec stores them in a zero-copy LMDB index and uses NEON SIMD cosine similarity for sub-5 ms semantic retrieval. BonfyreQuery exposes a single interface across full-text search, vector similarity, and raw key-value lookups so you don’t have to choose a single retrieval strategy. BonfyreGraph maps relationships between artifacts — not just "find this record" but "find everything related to this record across all recordings." BonfyreKVCache is the zero-copy hot-read path that every downstream step goes through.</p>
+              <div class="table-card" style="margin-top:1rem">
+                <table class="data-table">
+                  <thead><tr><th>Binary</th><th>Job</th></tr></thead>
+                  <tbody>
+                    <tr><td>BonfyreBrief</td><td>Structured brief extraction (topics, decisions, actions)</td></tr>
+                    <tr><td>BonfyreTag</td><td>Keyword and topic tagging</td></tr>
+                    <tr><td>BonfyreCanon</td><td>Deduplication and canonical entity resolution</td></tr>
+                    <tr><td>BonfyreEmbed</td><td>Sentence embedding generation</td></tr>
+                    <tr><td>BonfyreVec</td><td>NEON SIMD cosine similarity and BM25 hybrid ranking</td></tr>
+                    <tr><td>BonfyreIndex</td><td>Full-text and hybrid search index management</td></tr>
+                    <tr><td>BonfyreQuery</td><td>Unified query interface across LMDB, vector, and FTS</td></tr>
+                    <tr><td>BonfyreKVCache</td><td>Zero-copy LMDB key-value store (512 MB map)</td></tr>
+                    <tr><td>BonfyreGraph</td><td>Relationship graph for entities and artifacts</td></tr>
+                    <tr><td>BonfyreWeaviateIndex</td><td>Self-hosted Weaviate connector</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div class="feature-card">
+              <span class="card-meta">Layer 4 — Production &amp; publishing</span>
+              <h3>Turning structured data into surface-ready outputs</h3>
+              <p style="margin-bottom:0.75rem;color:var(--text-2)">Input is a structured brief. Output is something you can hand someone. BonfyreRepurpose derives multiple formats (show notes, social clips, email copy, LinkedIn update) from one brief in a single model pass — not four separate API calls. BonfyreRender builds an HTML page. BonfyreEmit produces PDF, EPUB, JSON, and RSS simultaneously from the same source data. BonfyrePack bundles all outputs into a single content-addressed archive with a BLAKE2b manifest. BonfyreProof signs that bundle with an Ed25519 key so any recipient can verify it came from you and hasn’t been modified since. BonfyreCMS is a 287 KB standalone HTTP server with dynamic schemas, token auth, full-text search, and structured logging — for when you need a structured content API without pulling in npm.</p>
+              <div class="table-card" style="margin-top:1rem">
+                <table class="data-table">
+                  <thead><tr><th>Binary</th><th>Job</th></tr></thead>
+                  <tbody>
+                    <tr><td>BonfyreRepurpose</td><td>Multi-format content extraction from briefs</td></tr>
+                    <tr><td>BonfyreRender</td><td>HTML page generation from structured data</td></tr>
+                    <tr><td>BonfyreEmit</td><td>PDF, EPUB, JSON, RSS publishing</td></tr>
+                    <tr><td>BonfyrePack</td><td>Content-addressed artifact bundle packaging</td></tr>
+                    <tr><td>BonfyreProof</td><td>BLAKE2b + Ed25519 proof bundle creation and verification</td></tr>
+                    <tr><td>BonfyreStitch</td><td>Multi-segment audio/content assembly</td></tr>
+                    <tr><td>BonfyreCMS</td><td>287 KB C CMS with dynamic schemas, REST API, search</td></tr>
+                    <tr><td>BonfyreSync</td><td>Output delivery and target synchronisation</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div class="feature-card">
+              <span class="card-meta">Layer 5 — Revenue &amp; ops</span>
+              <h3>Pricing, billing, metering, and team operations</h3>
+              <p style="margin-bottom:0.75rem;color:var(--text-2)">This layer covers everything between producing work and getting paid for it. BonfyreOffer generates a dynamic pricing page from a brief. BonfyrePay handles Stripe-compatible checkout. BonfyreMeter records per-usage events against a quota in LMDB. BonfyreLedger maintains an immutable append-only financial log. BonfyreFinance computes margins and produces structured reports. BonfyreOutreach sequences follow-up messages. None of these phone home, none have a SaaS markup above the payment processor, and none require a running cloud service to function.</p>
+              <div class="table-card" style="margin-top:1rem">
+                <table class="data-table">
+                  <thead><tr><th>Binary</th><th>Job</th></tr></thead>
+                  <tbody>
+                    <tr><td>BonfyreOffer</td><td>Dynamic pricing surface generation</td></tr>
+                    <tr><td>BonfyrePay</td><td>Checkout and payment handling</td></tr>
+                    <tr><td>BonfyreMeter</td><td>Usage metering and quota tracking</td></tr>
+                    <tr><td>BonfyreLedger</td><td>Immutable financial audit trail</td></tr>
+                    <tr><td>BonfyreFinance</td><td>Margin calculation and financial reporting</td></tr>
+                    <tr><td>BonfyreQuant</td><td>Quantitative analysis and projection modelling</td></tr>
+                    <tr><td>BonfyreOutreach</td><td>Follow-up sequencing and delivery</td></tr>
+                    <tr><td>BonfyreProject</td><td>Action item and project state tracking</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div class="feature-card">
+              <span class="card-meta">Layer 6 — Platform &amp; distribution</span>
+              <h3>Runtime, networking, auth, and delivery infrastructure</h3>
+              <p style="margin-bottom:0.75rem;color:var(--text-2)">This layer makes the other five composable at scale. BonfyrePipeline registers up to 32 stages and hot-swaps them without restarting the host process — push a new stage binary, atomic-swap the function pointer, and the next artifact routes through the new code. BonfyreQueue buffers work between stages. BonfyreOrchestrate coordinates multi-pipeline flows. BonfyreSwarm delivers artifacts peer-to-peer via BitTorrent v2 SHA-256 piece trees. BonfyreDistribute uses fountain codes over QUIC so up to 33% packet loss is recoverable without a full retransmit. BonfyreProxy exposes an OpenAI-compatible HTTP endpoint on localhost: any existing tool that speaks the OpenAI API routes automatically to your local FPQ-compressed model instead of paying per token.</p>
+              <div class="table-card" style="margin-top:1rem">
+                <table class="data-table">
+                  <thead><tr><th>Binary</th><th>Job</th></tr></thead>
+                  <tbody>
+                    <tr><td>BonfyrePipeline</td><td>Hot-load stage runner (32 slots, 16 A/B pairs)</td></tr>
+                    <tr><td>BonfyreQueue</td><td>Artifact work queue</td></tr>
+                    <tr><td>BonfyreOrchestrate</td><td>Multi-pipeline coordination</td></tr>
+                    <tr><td>BonfyreRuntime</td><td>Shared in-process coroutine execution environment</td></tr>
+                    <tr><td>BonfyreSwarm</td><td>Peer coordination and distributed task routing</td></tr>
+                    <tr><td>BonfyreDistribute</td><td>Fountain-code-based QUIC artifact distribution</td></tr>
+                    <tr><td>BonfyreFPQ</td><td>4× model compression, SIMD decode (99.97% cosine parity)</td></tr>
+                    <tr><td>BonfyreAPI</td><td>OpenAPI surface, token auth, structured logging</td></tr>
+                    <tr><td>BonfyreProxy</td><td>OpenAI-compatible proxy with local model routing</td></tr>
+                    <tr><td>BonfyreGate</td><td>Request gating, rate limiting, policy enforcement</td></tr>
+                    <tr><td>BonfyreAuth</td><td>BLAKE2b + Ed25519 auth and token management</td></tr>
+                    <tr><td>BonfyreMFADict</td><td>MFA dictionary and credential store</td></tr>
+                    <tr><td>BonfyreTel</td><td>Telemetry, structured metrics, log forwarding</td></tr>
+                    <tr><td>BonfyreCLI</td><td>Unified command-line interface for all binaries</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Runtime modules -->
+      <section class="section" id="runtime">
+        <div class="shell-container">
+          <div class="section-header">
+            <div>
+              <span class="section-kicker">26-module runtime</span>
+              <h2 class="section-title">The substrate every binary links against.</h2>
+              <p class="section-copy">No Node.js. No Python. No JVM. Every module is pure C — zero-copy, zero-allocation where measurable, no abstraction overhead. These 26 modules are the shared standard library all 53 binaries link against. A security fix in bf_crypto propagates to all 53 binaries at the next build — not 53 separate dependency PRs. The entire runtime is 180 KB. A default Express.js install pulls in roughly 50 MB of node_modules to cover what three of these modules provide.</p>
+            </div>
+          </div>
+          <div class="table-card">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Module</th>
+                  <th>Role</th>
+                  <th>Notes</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td>bf_reactor</td><td>io_uring / kqueue event loop</td><td>4,096 connections per cycle, async I/O core</td></tr>
+                <tr><td>bf_pool</td><td>Arena + slab memory allocator</td><td>No heap fragmentation on long-running pipelines</td></tr>
+                <tr><td>bf_pipeline</td><td>Stage execution engine</td><td>32 slot registry, hot-load atomic swap</td></tr>
+                <tr><td>bf_queue</td><td>Lock-free work queue</td><td>mpsc/spsc, back-pressure support</td></tr>
+                <tr><td>bf_lmdb</td><td>Zero-copy LMDB bindings</td><td>512 MB map, ACID, zero-copy reads</td></tr>
+                <tr><td>bf_mmap</td><td>Memory-mapped file I/O</td><td>Shared access patterns, huge page support</td></tr>
+                <tr><td>bf_hashmap</td><td>Open-addressing hash table</td><td>Robin Hood probing, 75% load factor</td></tr>
+                <tr><td>bf_csv</td><td>CSV parse / emit</td><td>SIMD-assisted field scan, streaming parser</td></tr>
+                <tr><td>bf_flatbuf</td><td>FlatBuffers serialisation</td><td>Zero-copy schema-verified message encoding</td></tr>
+                <tr><td>bf_json</td><td>JSON parse / emit</td><td>Arena-allocated AST, no malloc per token</td></tr>
+                <tr><td>bf_msgpack</td><td>MessagePack serialisation</td><td>Compact binary IPC between pipeline stages</td></tr>
+                <tr><td>bf_lz4</td><td>LZ4 frame compression</td><td>Streaming compress/decompress for artifact store</td></tr>
+                <tr><td>bf_utf8</td><td>UTF-8 validation and iteration</td><td>SIMD-accelerated, used in transcript layer</td></tr>
+                <tr><td>bf_base64</td><td>Base64 encode / decode</td><td>SIMD-assisted, token/credential encoding</td></tr>
+                <tr><td>bf_crypto</td><td>BLAKE2b + Ed25519 + ChaCha20-Poly1305</td><td>Shared by BonfyreAuth, BonfyreProof, BonfyreHash</td></tr>
+                <tr><td>bf_bloom</td><td>Bloom filter</td><td>Space-efficient deduplication in ingest paths</td></tr>
+                <tr><td>bf_opts</td><td>Argument parsing</td><td>Consistent flag surface across all 53 binaries</td></tr>
+                <tr><td>bf_conf</td><td>Config file loading</td><td>TOML-like, environment variable overlay</td></tr>
+                <tr><td>bf_picohttpparser</td><td>HTTP/1.1 header parsing</td><td>Used by BonfyreAPI, BonfyreCMS, BonfyreProxy</td></tr>
+                <tr><td>bf_log</td><td>Structured async logging</td><td>JSON lines, ring-buffered, non-blocking</td></tr>
+                <tr><td>bf_mimalloc</td><td>Microsoft mimalloc integration</td><td>Low-latency allocation for hot paths</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- FPQ -->
+      <section class="section" id="fpq">
+        <div class="shell-container">
+          <div class="section-header">
+            <div>
+              <span class="section-kicker">BonfyreFPQ</span>
+              <h2 class="section-title">Model compression that fits large models onto your hardware.</h2>
+              <p class="section-copy">FPQ = Fountain-coded Polynomial Quantisation. FP32 → INT8 with SIMD decode, 4× size reduction, 99.97% cosine similarity preserved.</p>
             </div>
           </div>
           <div class="feature-grid">
@@ -122,11 +327,6 @@
               <span class="card-meta">Hardware fit</span>
               <h3>GPU is optional</h3>
               <p>FPQ models run on CPU-only laptops (M-series, x86-64 with AVX2), consumer GPU (6 BB VRAM), and professional GPU (24 GB VRAM). The limit table tells you which model fits which tier.</p>
-            </article>
-            <article class="feature-card">
-              <span class="card-meta">Surface binaries</span>
-              <h3>Proxy, orchestrate, tel, narrate</h3>
-              <p>bonfyre-proxy, bonfyre-orchestrate, bonfyre-tel, and bonfyre-narrate push the stack beyond compression into local AI access, machine-only planning, communications, and verified output.</p>
             </article>
           </div>
           <div class="table-card" style="margin-top:2rem">
@@ -196,69 +396,8 @@
             <div class="metric-card"><span class="metric-num">287 KB</span><span class="metric-label">BonfyreCMS binary size</span></div>
             <div class="metric-card"><span class="metric-num">4,096</span><span class="metric-label">Connections per reactor cycle</span></div>
           </div>
-        </div>
-      </section>
-
-      <section class="section">
-        <div class="shell-container">
-          <div class="section-header">
-            <div>
-              <span class="section-kicker">Hardware fit</span>
-              <h2 class="section-title">What fits where.</h2>
-            </div>
-          </div>
-          <div id="hardware-grid" class="hardware-grid">
-            <div class="notice">Loading hardware configurations…</div>
-          </div>
-        </div>
-      </section>
-
-      <section class="section">
-        <div class="shell-container">
-          <div class="section-header">
-            <div>
-              <span class="section-kicker">Binary layers</span>
-              <h2 class="section-title">The stack by function.</h2>
-              <p class="section-copy">Ingestion, memory, publishing, monetization, realtime, orchestration, and distribution.</p>
-            </div>
-          </div>
-          <div id="binary-groups" class="binary-stack">
-            <div class="notice">Loading binary inventory…</div>
-          </div>
-        </div>
-      </section>
-
-      <section class="section">
-        <div class="shell-container">
-          <div class="section-header">
-            <div>
-              <span class="section-kicker">Realtime relay</span>
-              <h2 class="section-title">MoQ in the same stack.</h2>
-            </div>
-          </div>
-          <div class="split-row">
-            <article class="story-card">
-              <span class="card-meta">bonfyre-moq</span>
-              <h3>Private realtime audio and media fan-out in C</h3>
-              <p>Transport, AI scoring, self-tuning, mesh behavior, and consensus-style control in the same stack.</p>
-              <div id="moq-features" class="pill-row">
-                <span class="pill">Loading features…</span>
-              </div>
-            </article>
-            <article class="story-card">
-              <span class="card-meta">Control plane</span>
-              <h3>Communications edge sits beside it</h3>
-              <p>bonfyre-tel keeps voice, messaging, topics, intents, and stream events in the same family as the relay instead of leaving live workflows split across unrelated vendors.</p>
-            </article>
-            <article class="story-card">
-              <span class="card-meta">Quick start</span>
-              <h3>Build and run</h3>
-              <p><code>make bonfyre-moq</code></p>
-              <p><code>./bonfyre-moq --port 4443 --db relay.db</code></p>
-              <div class="cta-row">
-                <a class="secondary-btn" href="https://github.com/Nickgonzales76017/bonfyre-oss" target="_blank" rel="noreferrer">Open repo</a>
-              </div>
-            </article>
+          <div class="cta-row" style="margin-top:2rem">
+            <a class="secondary-btn" href="https://github.com/Nickgonzales76017/bonfyre-oss" target="_blank" rel="noreferrer">Reproduce on GitHub</a>
           </div>
         </div>
       </section>

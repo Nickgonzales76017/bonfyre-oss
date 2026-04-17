@@ -88,6 +88,41 @@
         </div>
       </section>
 
+      <!-- Plain English explainers -->
+      <section class="section">
+        <div class="shell-container">
+          <div class="section-header">
+            <div>
+              <span class="section-kicker">Plain English</span>
+              <h2 class="section-title">What the dense terms actually mean.</h2>
+              <p class="section-copy">If you read "53 binaries, 26-module runtime, 4× FPQ compression" and your eyes glazed over — this is for you.</p>
+            </div>
+          </div>
+          <div class="feature-grid">
+            <article class="feature-card">
+              <span class="card-meta">53 binaries</span>
+              <h3>There's no monolith to rebuild.</h3>
+              <p>A "binary" is just a self-contained program that does one specific job — transcribe audio, generate a brief, hash a file, serve an HTTP endpoint. Bonfyre is 53 of them. You never run all 53 at once. You pick the ones you need and chain them together with your own pipeline. If you only need to transcribe recordings and make them searchable, you use BonfyreTranscribe, BonfyreEmbed, BonfyreVec, and BonfyreQuery — four small programs — and you're done. Nothing else lurks in the background. Nothing else consumes memory or creates attack surface.</p>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">FPQ — what it does to a model</span>
+              <h3>It's how a 70B model fits on your laptop.</h3>
+              <p>Large AI models are heavy because each weight — a number in a matrix — is stored as a 32-bit float. FPQ converts those weights to 8-bit integers and stores polynomial correction coefficients alongside them. When the model runs inference, SIMD instructions (your CPU's built-in batch math) expand the weights back to full precision on the fly. The math lands at 99.97% of the original quality. The model file shrinks 4×. A model that required a $10,000 cloud GPU — Llama-3-70B — now fits in 6 GB of VRAM, which is a $350 consumer graphics card. Fifteen of these compressed models are already published on HuggingFace.</p>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">Content-addressed artifacts</span>
+              <h3>Every output is its own receipt.</h3>
+              <p>When a Bonfyre binary produces a file — a transcript, a brief, an audio clip — it runs BLAKE2b over it and stores the hash before handing it to the next stage. If you run the same pipeline twice with the same input, you get the same hash. That means: (1) duplicate work is automatically skipped because the downstream stage checks the hash before doing anything; (2) you can prove which source file produced which summary by tracing the hash chain; (3) BonfyreProof can bundle a hash + Ed25519 signature into a tamper-evident receipt that a third party can verify without trusting you. This is what "verifiable provenance" means in practice — not a trust policy, a math proof.</p>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">The reactor</span>
+              <h3>Why 53 binaries don't need nginx in front of them.</h3>
+              <p>bf_reactor is a per-core event loop — a tight C loop that uses the operating system's fastest I/O mechanism (io_uring on Linux, kqueue on macOS) to handle thousands of network connections at once without spawning a thread per connection. Every Bonfyre binary that speaks HTTP embeds the same reactor. BonfyreCMS, BonfyreAPI, BonfyreProxy, BonfyreGate — all of them handle 4,096 concurrent connections per core, parse HTTP/1.1 requests with zero allocation overhead, and push SSE updates directly to clients. The reason BonfyreCMS is 287 KB isn't just tight code — it's that the I/O layer costs almost nothing.</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
       <!-- What Bonfyre is -->
       <section class="section">
         <div class="shell-container">
