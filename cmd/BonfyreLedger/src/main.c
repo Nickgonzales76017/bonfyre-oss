@@ -50,16 +50,7 @@ typedef struct {
     char family_id[256];
 } FamilyValue;
 
-static char *read_file_full(const char *path) {
-    FILE *fp = fopen(path, "rb");
-    if (!fp) return NULL;
-    fseek(fp, 0, SEEK_END); long sz = ftell(fp); fseek(fp, 0, SEEK_SET);
-    if (sz < 0) { fclose(fp); return NULL; }
-    char *buf = malloc((size_t)sz + 1);
-    if (!buf) { fclose(fp); return NULL; }
-    fread(buf, 1, (size_t)sz, fp); buf[sz] = '\0';
-    fclose(fp); return buf;
-}
+static char *read_file_full(const char *path) { return bf_read_file(path, NULL); }
 
 /* Count occurrences of a substring */
 static int count_str(const char *hay, const char *needle) {

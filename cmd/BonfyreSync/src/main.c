@@ -12,28 +12,8 @@
 extern char **environ;
 
 static char *read_file(const char *path, long *size_out) {
-    FILE *fp = fopen(path, "rb");
-    if (!fp) {
-        perror("fopen");
-        return NULL;
-    }
-    fseek(fp, 0, SEEK_END);
-    long size = ftell(fp);
-    fseek(fp, 0, SEEK_SET);
-    if (size < 0) {
-        fclose(fp);
-        return NULL;
-    }
-    char *buffer = malloc((size_t)size + 1);
-    if (!buffer) {
-        fclose(fp);
-        return NULL;
-    }
-    fread(buffer, 1, (size_t)size, fp);
-    fclose(fp);
-    buffer[size] = '\0';
-    if (size_out) *size_out = size;
-    return buffer;
+    size_t _n; char *r = bf_read_file(path, &_n);
+    if (size_out) *size_out = (long)_n; return r;
 }
 
 static int has_key(const char *json, const char *key) {

@@ -27,6 +27,7 @@
 #include <time.h>
 #include <sys/stat.h>
 #include <sqlite3.h>
+#include <bonfyre.h>
 
 #define VERSION    "1.0.0"
 #define DB_ENV     "BONFYRE_TIER_DB"
@@ -38,10 +39,7 @@ static void db_path(char *buf,size_t len){
     const char *h=getenv("HOME");if(!h)h="/tmp";
     snprintf(buf,len,"%s%s",h,DB_SUBPATH);
 }
-static void ensure_dir(const char *p){
-    char t[4096];snprintf(t,sizeof(t),"%s",p);
-    for(char *q=t+1;*q;q++){if(*q=='/'){*q='\0';mkdir(t,0755);*q='/';}}
-}
+static void ensure_dir(const char *p) { bf_ensure_dir(p); }
 
 static const char *SCHEMA=
     "PRAGMA journal_mode=WAL;"

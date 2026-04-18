@@ -28,6 +28,7 @@
 #include <time.h>
 #include <sys/stat.h>
 #include <sqlite3.h>
+#include <bonfyre.h>
 
 #define VERSION    "1.0.0"
 #define DB_ENV     "BONFYRE_FLOW_DB"
@@ -39,10 +40,7 @@ static void db_path(char *buf,size_t len){
     const char *h=getenv("HOME");if(!h)h="/tmp";
     snprintf(buf,len,"%s%s",h,DB_SUBPATH);
 }
-static void ensure_dir(const char *p){
-    char t[4096];snprintf(t,sizeof(t),"%s",p);
-    for(char *q=t+1;*q;q++){if(*q=='/'){*q='\0';mkdir(t,0755);*q='/';}}
-}
+static void ensure_dir(const char *p) { bf_ensure_dir(p); }
 
 static const char *SCHEMA=
     "PRAGMA journal_mode=WAL;"
@@ -93,15 +91,7 @@ static sqlite3 *open_db(void){
 }
 
 /* Read file content into a malloc'd buffer (caller frees) */
-static char *read_file(const char *path){
-    FILE *f=fopen(path,"r");
-    if(!f){fprintf(stderr,"cannot open: %s\n",path);return NULL;}
-    fseek(f,0,SEEK_END);long sz=ftell(f);fseek(f,0,SEEK_SET);
-    char *buf=(char*)malloc((size_t)(sz+1));
-    if(!buf){fclose(f);return NULL;}
-    fread(buf,1,(size_t)sz,f);buf[sz]='\0';fclose(f);
-    return buf;
-}
+static char *read_file(const char *path) { return bf_read_file(path, NULL); }
 
 static void cmd_status(sqlite3 *db){
     sqlite3_stmt *st=NULL;

@@ -87,18 +87,8 @@ void iso_timestamp(char *buf, size_t sz) {
 
 static int ensure_dir(const char *path) { return bf_ensure_dir(path); }
 static char *read_file_full(const char *path, long *out_size) {
-    FILE *f = fopen(path, "rb");
-    if (!f) return NULL;
-    fseek(f, 0, SEEK_END);
-    long sz = ftell(f);
-    fseek(f, 0, SEEK_SET);
-    char *buf = malloc((size_t)sz + 1);
-    if (!buf) { fclose(f); return NULL; }
-    size_t rd = fread(buf, 1, (size_t)sz, f);
-    buf[rd] = '\0';
-    fclose(f);
-    if (out_size) *out_size = (long)rd;
-    return buf;
+    size_t _n; char *r = bf_read_file(path, &_n);
+    if (out_size) *out_size = (long)_n; return r;
 }
 
 static int arg_has(int argc, char **argv, const char *flag) {

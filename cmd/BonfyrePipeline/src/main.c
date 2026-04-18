@@ -107,14 +107,7 @@ static int pipeline_gate(const char *key, const char *key_file,
  * STEP 2: Ingest — normalize + inline hash (#4, #9, #12)
  * ================================================================ */
 
-static void sha256_hex(const uint8_t hash[32], char hex[65]) {
-    static const char lut[16] = "0123456789abcdef";
-    for (int i = 0; i < 32; i++) {
-        hex[i*2]   = lut[hash[i] >> 4];
-        hex[i*2+1] = lut[hash[i] & 0x0f];
-    }
-    hex[64] = '\0';
-}
+static void sha256_hex(const uint8_t hash[32], char hex[65]) { bf_sha256_digest_hex(hash, hex); }
 
 static int pipeline_ingest(const char *input, const char *type, const char *outdir,
                            char *hash_out, char *norm_path_out, size_t path_sz) {

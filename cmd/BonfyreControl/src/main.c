@@ -39,6 +39,7 @@
 #include <sys/stat.h>
 #include <time.h>
 #include <unistd.h>
+#include <bonfyre.h>
 
 #include <sqlite3.h>
 
@@ -57,12 +58,7 @@ static void db_path(char *buf, size_t len) {
     snprintf(buf, len, "%s%s", home, DB_SUBPATH);
 }
 
-static void ensure_dir(const char *path) {
-    char tmp[4096]; snprintf(tmp, sizeof(tmp), "%s", path);
-    for (char *p = tmp + 1; *p; p++) {
-        if (*p == '/') { *p = '\0'; mkdir(tmp, 0755); *p = '/'; }
-    }
-}
+static void ensure_dir(const char *path) { bf_ensure_dir(path); }
 
 /* ── schema + seed ───────────────────────────────────────────────────────── */
 
