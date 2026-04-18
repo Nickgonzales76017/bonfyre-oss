@@ -174,7 +174,7 @@ img {
   font-size: 0.88rem;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  animation: ticker-scroll 28s linear infinite;
+  animation: ticker-scroll 20s linear infinite;
   will-change: transform;
 }
 

@@ -246,3 +246,20 @@
     }
   });
 })();
+
+// Ticker: set animation duration proportional to track width (100px/s)
+(function () {
+  function initTickers() {
+    document.querySelectorAll('.ticker-row').forEach(function (row) {
+      // scrollWidth covers the full duplicated track; we animate -50% so half that
+      var halfWidth = row.scrollWidth / 2;
+      var duration = Math.max(12, halfWidth / 100); // min 12s, 100px per second
+      row.style.animationDuration = duration.toFixed(1) + 's';
+    });
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initTickers);
+  } else {
+    initTickers();
+  }
+})();
