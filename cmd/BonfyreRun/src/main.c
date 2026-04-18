@@ -43,6 +43,7 @@
 #include <unistd.h>
 
 #include <sqlite3.h>
+#include <bonfyre.h>
 
 #define VERSION        "1.0.0"
 #define MAX_STAGES     32
@@ -192,7 +193,7 @@ static int load_recipe_json(const char *code, const char *db_path,
 {
     /* 1. Try SQLite directly */
     sqlite3 *db=NULL;
-    if(sqlite3_open(db_path,&db)==SQLITE_OK){
+    if(bf_sqlite3_open(db_path,&db)==SQLITE_OK){
         const char *sql="SELECT json_text FROM recipes WHERE code=?";
         sqlite3_stmt *stmt;
         if(sqlite3_prepare_v2(db,sql,-1,&stmt,NULL)==SQLITE_OK){

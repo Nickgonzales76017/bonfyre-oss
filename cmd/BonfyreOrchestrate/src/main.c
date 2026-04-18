@@ -1,4 +1,5 @@
 #define _POSIX_C_SOURCE 200809L
+#include <sqlite3.h>
 #include "bonfyre.h"
 
 #include <ctype.h>
@@ -8,7 +9,6 @@
 #include <string.h>
 #include <strings.h>
 #include <unistd.h>
-#include <sqlite3.h>
 
 #define MAX_PLAN_STEPS 32
 #define MAX_TEXT 128
@@ -705,7 +705,7 @@ static int ensure_policy_db(sqlite3 **db) {
         *slash = '\0';
         if (parent[0]) bf_ensure_dir(parent);
     }
-    if (sqlite3_open(path, db) != SQLITE_OK) return 1;
+    if (bf_sqlite3_open(path, db) != SQLITE_OK) return 1;
     const char *sql =
         "CREATE TABLE IF NOT EXISTS orchestration_policy ("
         "signature TEXT PRIMARY KEY,"

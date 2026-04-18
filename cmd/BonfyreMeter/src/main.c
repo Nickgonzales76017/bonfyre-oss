@@ -63,7 +63,7 @@ static int print_plain_cb(void *data, int ncols, char **vals, char **names) {
 
 static sqlite3 *db_open(const char *path) {
     sqlite3 *db;
-    if (sqlite3_open(path, &db) != SQLITE_OK) {
+    if (bf_sqlite3_open(path, &db) != SQLITE_OK) {
         fprintf(stderr, "Cannot open db: %s\n", sqlite3_errmsg(db));
         return NULL;
     }

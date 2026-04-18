@@ -22,6 +22,7 @@
 #include <time.h>
 #include <math.h>
 #include <sqlite3.h>
+#include <bonfyre.h>
 #ifdef __ARM_NEON
 #include <arm_neon.h>
 #endif
@@ -235,7 +236,7 @@ static int cmd_init(const char *db_path) {
     fprintf(stderr, "[vec] Initializing vector DB: %s\n", db_path);
 
     sqlite3 *db = NULL;
-    if (sqlite3_open(db_path, &db) != SQLITE_OK) {
+    if (bf_sqlite3_open(db_path, &db) != SQLITE_OK) {
         fprintf(stderr, "[vec] Cannot open DB: %s\n", sqlite3_errmsg(db));
         return 1;
     }
@@ -282,19 +283,11 @@ static int cmd_init(const char *db_path) {
 static int cmd_insert(const char *db_path, const char *json_path) {
     fprintf(stderr, "[vec] Inserting vectors from %s into %s\n", json_path, db_path);
 
-    FILE *f = fopen(json_path, "rb");
-    if (!f) { fprintf(stderr, "[vec] Cannot open %s\n", json_path); return 1; }
-    fseek(f, 0, SEEK_END);
-    long sz = ftell(f);
-    fseek(f, 0, SEEK_SET);
-    char *json = malloc((size_t)sz + 1);
-    if (!json) { fclose(f); return 1; }
-    fread(json, 1, (size_t)sz, f);
-    json[sz] = '\0';
-    fclose(f);
+    char *json = bf_read_file(json_path, NULL);
+    if (!json) { fprintf(stderr, "[vec] Cannot open %s\n", json_path); return 1; }
 
     sqlite3 *db = NULL;
-    if (sqlite3_open(db_path, &db) != SQLITE_OK) {
+    if (bf_sqlite3_open(db_path, &db) != SQLITE_OK) {
         fprintf(stderr, "[vec] Cannot open DB: %s\n", sqlite3_errmsg(db));
         free(json);
         return 1;
@@ -395,16 +388,8 @@ static int cmd_search(const char *db_path, const char *query_file, int top_k) {
         if (dims > 0) fprintf(stderr, "[vec] Read %d dims from VECF binary\n", dims);
     }
     if (dims == 0) {
-        FILE *f = fopen(query_file, "rb");
-        if (!f) { fprintf(stderr, "[vec] Cannot open %s\n", query_file); return 1; }
-        fseek(f, 0, SEEK_END);
-        long sz = ftell(f);
-        fseek(f, 0, SEEK_SET);
-        char *json = malloc((size_t)sz + 1);
-        if (!json) { fclose(f); return 1; }
-        fread(json, 1, (size_t)sz, f);
-        json[sz] = '\0';
-        fclose(f);
+        char *json = bf_read_file(query_file, NULL);
+        if (!json) { fprintf(stderr, "[vec] Cannot open %s\n", query_file); return 1; }
         dims = json_parse_float_array(json, "embedding", query_vec, VEC_DIMS);
         if (dims == 0) dims = json_parse_float_array(json, "vector", query_vec, VEC_DIMS);
         free(json);
@@ -416,7 +401,7 @@ static int cmd_search(const char *db_path, const char *query_file, int top_k) {
     }
 
     sqlite3 *db = NULL;
-    if (sqlite3_open(db_path, &db) != SQLITE_OK) {
+    if (bf_sqlite3_open(db_path, &db) != SQLITE_OK) {
         fprintf(stderr, "[vec] Cannot open DB: %s\n", sqlite3_errmsg(db));
         return 1;
     }
@@ -464,7 +449,7 @@ static int cmd_search(const char *db_path, const char *query_file, int top_k) {
 
 static int cmd_count(const char *db_path) {
     sqlite3 *db = NULL;
-    if (sqlite3_open(db_path, &db) != SQLITE_OK) {
+    if (bf_sqlite3_open(db_path, &db) != SQLITE_OK) {
         fprintf(stderr, "[vec] Cannot open DB: %s\n", sqlite3_errmsg(db));
         return 1;
     }
@@ -493,7 +478,7 @@ static int cmd_count(const char *db_path) {
 
 static int cmd_compare(const char *db_path, const char *id1, const char *id2) {
     sqlite3 *db = NULL;
-    if (sqlite3_open(db_path, &db) != SQLITE_OK) {
+    if (bf_sqlite3_open(db_path, &db) != SQLITE_OK) {
         fprintf(stderr, "[vec] Cannot open DB: %s\n", sqlite3_errmsg(db));
         return 1;
     }
@@ -529,12 +514,8 @@ static int cmd_search_exact(const char *db_path, const char *query_file, int top
         if (dims > 0) fprintf(stderr, "[vec] Read %d dims from VECF binary\n", dims);
     }
     if (dims == 0) {
-        FILE *f = fopen(query_file, "rb");
-        if (!f) { fprintf(stderr, "[vec] Cannot open %s\n", query_file); return 1; }
-        fseek(f, 0, SEEK_END); long sz = ftell(f); fseek(f, 0, SEEK_SET);
-        char *json = malloc((size_t)sz + 1);
-        if (!json) { fclose(f); return 1; }
-        fread(json, 1, (size_t)sz, f); json[sz] = '\0'; fclose(f);
+        char *json = bf_read_file(query_file, NULL);
+        if (!json) { fprintf(stderr, "[vec] Cannot open %s\n", query_file); return 1; }
         dims = json_parse_float_array(json, "embedding", query_vec, VEC_DIMS);
         if (dims == 0) dims = json_parse_float_array(json, "vector", query_vec, VEC_DIMS);
         free(json);
@@ -542,7 +523,7 @@ static int cmd_search_exact(const char *db_path, const char *query_file, int top
     if (dims == 0) { fprintf(stderr, "[vec] No embedding in %s\n", query_file); return 1; }
 
     sqlite3 *db = NULL;
-    if (sqlite3_open(db_path, &db) != SQLITE_OK) {
+    if (bf_sqlite3_open(db_path, &db) != SQLITE_OK) {
         fprintf(stderr, "[vec] Cannot open DB: %s\n", sqlite3_errmsg(db));
         return 1;
     }

@@ -15,7 +15,8 @@ SRCS    = $(SRCDIR)/bf_artifact.c \
           $(SRCDIR)/bf_sha256.c \
           $(SRCDIR)/bf_operators.c \
           $(SRCDIR)/bf_simd.c \
-          $(SRCDIR)/bf_mmap.c
+          $(SRCDIR)/bf_mmap.c \
+          $(SRCDIR)/bf_sqlite.c
 
 OBJS    = $(patsubst $(SRCDIR)/%.c,$(OBJDIR)/%.o,$(SRCS))
 TARGET  = libbonfyre.a

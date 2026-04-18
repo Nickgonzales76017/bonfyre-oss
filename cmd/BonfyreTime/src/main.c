@@ -93,7 +93,7 @@ static void seed(sqlite3 *db) {
 static sqlite3 *open_db(void) {
     char path[4096]; db_path(path, sizeof(path)); ensure_dir(path);
     sqlite3 *db = NULL;
-    if (sqlite3_open(path, &db) != SQLITE_OK) {
+    if (bf_sqlite3_open(path, &db) != SQLITE_OK) {
         fprintf(stderr,"bonfyre-time: cannot open db\n"); exit(1);
     }
     char *err = NULL;

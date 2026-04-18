@@ -359,6 +359,27 @@ const BfBinaryRecord *bf_bfrec_mmap(const char *path, BfMmapFile *m);
 #define BONFYRE_VERSION_PATCH 0
 #define BONFYRE_VERSION "0.1.0"
 
+/* ================================================================
+ * SQLite helpers — link with -lsqlite3 to use
+ * ================================================================ */
+/* Forward declaration — compatible with sqlite3.h's own typedef.
+ * C11 §6.7.8 allows identical typedef redeclarations; this is an
+ * incomplete-struct pointer so no ABI conflict arises. */
+#ifndef BONFYRE_SQLITE3_FWD_
+#define BONFYRE_SQLITE3_FWD_
+typedef struct sqlite3 sqlite3;
+#endif
+
+/* Open or create a SQLite database with the full Bonfyre PRAGMA bundle:
+ *   journal_mode=WAL, synchronous=NORMAL, cache_size=-65536 (64 MB),
+ *   mmap_size=268435456 (256 MB), temp_store=MEMORY.
+ * Drop-in replacement for sqlite3_open(); same return codes. */
+int bf_sqlite3_open(const char *path, sqlite3 **db);
+
+/* Read-only open with cache/mmap/temp_store PRAGMAs.
+ * Drop-in replacement for sqlite3_open_v2(...SQLITE_OPEN_READONLY...). */
+int bf_sqlite3_open_ro(const char *path, sqlite3 **db);
+
 #ifdef __cplusplus
 }
 #endif

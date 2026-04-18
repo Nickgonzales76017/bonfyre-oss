@@ -241,7 +241,7 @@ static void compute_node_hash(const char *op, const char *params,
 
 static int cmd_init(const char *db_path) {
     sqlite3 *db;
-    if (sqlite3_open(db_path,&db)!=SQLITE_OK){
+    if (bf_sqlite3_open(db_path,&db)!=SQLITE_OK){
         fprintf(stderr,"Cannot open %s: %s\n",db_path,sqlite3_errmsg(db));
         return 1;
     }
@@ -259,7 +259,7 @@ static int cmd_init(const char *db_path) {
 static int cmd_add_atom(const char *db_path, const char *id,
                         const char *hash, const char *type, const char *path) {
     sqlite3 *db;
-    if (sqlite3_open(db_path,&db)!=SQLITE_OK){
+    if (bf_sqlite3_open(db_path,&db)!=SQLITE_OK){
         fprintf(stderr,"Cannot open %s\n",db_path); return 1;
     }
     sqlite3_stmt *st;
@@ -280,7 +280,7 @@ static int cmd_add_op(const char *db_path, const char *id, const char *op,
                       const char *inputs_csv, const char *output,
                       const char *params, const char *version) {
     sqlite3 *db;
-    if (sqlite3_open(db_path,&db)!=SQLITE_OK){
+    if (bf_sqlite3_open(db_path,&db)!=SQLITE_OK){
         fprintf(stderr,"Cannot open %s\n",db_path); return 1;
     }
     if (!version) version="1.0.0";
@@ -361,7 +361,7 @@ static int cmd_add_op(const char *db_path, const char *id, const char *op,
 
 static int cmd_lineage(const char *db_path, const char *node_id) {
     sqlite3 *db;
-    if (sqlite3_open(db_path,&db)!=SQLITE_OK){
+    if (bf_sqlite3_open(db_path,&db)!=SQLITE_OK){
         fprintf(stderr,"Cannot open %s\n",db_path); return 1;
     }
 
@@ -433,7 +433,7 @@ static int cmd_lineage(const char *db_path, const char *node_id) {
 
 static int cmd_export(const char *db_path, const char *out_path) {
     sqlite3 *db;
-    if (sqlite3_open(db_path,&db)!=SQLITE_OK){
+    if (bf_sqlite3_open(db_path,&db)!=SQLITE_OK){
         fprintf(stderr,"Cannot open %s\n",db_path); return 1;
     }
     FILE *fp=fopen(out_path,"w");
@@ -778,7 +778,7 @@ static int cmd_merkle(const char *manifest_path) {
 
 static int cmd_status(const char *db_path) {
     sqlite3 *db;
-    if (sqlite3_open(db_path,&db)!=SQLITE_OK){
+    if (bf_sqlite3_open(db_path,&db)!=SQLITE_OK){
         fprintf(stderr,"Cannot open %s\n",db_path); return 1;
     }
     sqlite3_stmt *st;

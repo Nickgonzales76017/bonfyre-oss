@@ -109,7 +109,7 @@ static const char *SCHEMA_SQL =
 
 static sqlite3 *open_db(const char *path) {
     sqlite3 *db;
-    if (sqlite3_open(path,&db)!=SQLITE_OK) {
+    if (bf_sqlite3_open(path,&db)!=SQLITE_OK) {
         fprintf(stderr,"Cannot open %s: %s\n",path,sqlite3_errmsg(db)); return NULL;
     }
     char *err=NULL;

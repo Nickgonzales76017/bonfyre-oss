@@ -118,7 +118,7 @@ static sqlite3 *db_open(const char *path) {
     if(sl) { *sl='\0'; mkdirs(parent); }
 
     sqlite3 *db = NULL;
-    if(sqlite3_open(path, &db) != SQLITE_OK) {
+    if(bf_sqlite3_open(path, &db) != SQLITE_OK) {
         fprintf(stderr, "error: cannot open model DB at %s: %s\n",
                 path, sqlite3_errmsg(db));
         sqlite3_close(db); return NULL;

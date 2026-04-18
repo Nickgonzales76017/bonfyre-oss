@@ -484,7 +484,7 @@ typedef struct {
 
 static int vec_db_open(VecDB *vdb, const char *db_path, int dims) {
     memset(vdb, 0, sizeof(*vdb));
-    if (sqlite3_open(db_path, &vdb->db) != SQLITE_OK) {
+    if (bf_sqlite3_open(db_path, &vdb->db) != SQLITE_OK) {
         fprintf(stderr, "[embed] Cannot open DB: %s\n", sqlite3_errmsg(vdb->db));
         return -1;
     }

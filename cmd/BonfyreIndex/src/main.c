@@ -753,16 +753,10 @@ static long long query_single_int64(sqlite3 *db, const char *sql) {
 static int cmd_build(const char *dir, const char *db_path) {
     long long started = monotonic_ns();
     sqlite3 *db;
-    if (sqlite3_open(db_path, &db) != SQLITE_OK) {
+    if (bf_sqlite3_open(db_path, &db) != SQLITE_OK) {
         fprintf(stderr, "Cannot open db: %s\n", sqlite3_errmsg(db));
         return 1;
     }
-
-    sqlite3_exec(db,
-        "PRAGMA temp_store=FILE;"
-        "PRAGMA cache_size=-256;"
-        "PRAGMA mmap_size=0;",
-        NULL, NULL, NULL);
 
     char *err = NULL;
     sqlite3_exec(db,
@@ -894,7 +888,7 @@ static int cmd_build(const char *dir, const char *db_path) {
 
 static int cmd_search(const char *query, const char *db_path, const char *type, int limit) {
     sqlite3 *db;
-    if (sqlite3_open_v2(db_path, &db, SQLITE_OPEN_READONLY, NULL) != SQLITE_OK) {
+    if (bf_sqlite3_open_ro(db_path, &db) != SQLITE_OK) {
         fprintf(stderr, "Cannot open db: %s\n", db_path);
         return 1;
     }
@@ -948,7 +942,7 @@ static int cmd_search(const char *query, const char *db_path, const char *type, 
 
 static int cmd_reuse(const char *db_path) {
     sqlite3 *db;
-    if (sqlite3_open_v2(db_path, &db, SQLITE_OPEN_READONLY, NULL) != SQLITE_OK) return 1;
+    if (bf_sqlite3_open_ro(db_path, &db) != SQLITE_OK) return 1;
 
     int first;
     printf("=== Shared Atoms (same content, multiple families) ===\n");
@@ -970,7 +964,7 @@ static int cmd_reuse(const char *db_path) {
 
 static int cmd_equivalence(const char *db_path, int limit, int json_mode) {
     sqlite3 *db;
-    if (sqlite3_open_v2(db_path, &db, SQLITE_OPEN_READONLY, NULL) != SQLITE_OK) return 1;
+    if (bf_sqlite3_open_ro(db_path, &db) != SQLITE_OK) return 1;
 
     sqlite3_stmt *stmt = NULL;
     const char *sql =
@@ -1020,7 +1014,7 @@ static int cmd_equivalence(const char *db_path, int limit, int json_mode) {
 
 static int cmd_collapse_preview(const char *db_path, int limit, int json_mode) {
     sqlite3 *db;
-    if (sqlite3_open_v2(db_path, &db, SQLITE_OPEN_READONLY, NULL) != SQLITE_OK) return 1;
+    if (bf_sqlite3_open_ro(db_path, &db) != SQLITE_OK) return 1;
 
     sqlite3_stmt *stmt = NULL;
     const char *sql =
@@ -1090,7 +1084,7 @@ static int cmd_collapse_preview(const char *db_path, int limit, int json_mode) {
 
 static int cmd_confidence_preview(const char *db_path, int limit, int json_mode) {
     sqlite3 *db;
-    if (sqlite3_open_v2(db_path, &db, SQLITE_OPEN_READONLY, NULL) != SQLITE_OK) return 1;
+    if (bf_sqlite3_open_ro(db_path, &db) != SQLITE_OK) return 1;
 
     sqlite3_stmt *stmt = NULL;
     const char *sql =
@@ -1162,7 +1156,7 @@ static int cmd_confidence_preview(const char *db_path, int limit, int json_mode)
 
 static int cmd_collapse_plan(const char *db_path, int limit, int json_mode) {
     sqlite3 *db;
-    if (sqlite3_open_v2(db_path, &db, SQLITE_OPEN_READONLY, NULL) != SQLITE_OK) return 1;
+    if (bf_sqlite3_open_ro(db_path, &db) != SQLITE_OK) return 1;
 
     sqlite3_stmt *stmt = NULL;
     const char *sql =
@@ -1271,7 +1265,7 @@ static int cmd_collapse_plan(const char *db_path, int limit, int json_mode) {
 
 static int cmd_collapse_ledger(const char *db_path, const char *out_path, int limit) {
     sqlite3 *db;
-    if (sqlite3_open_v2(db_path, &db, SQLITE_OPEN_READONLY, NULL) != SQLITE_OK) return 1;
+    if (bf_sqlite3_open_ro(db_path, &db) != SQLITE_OK) return 1;
 
     sqlite3_stmt *stmt = NULL;
     const char *sql =
@@ -1372,7 +1366,7 @@ static int cmd_collapse_ledger(const char *db_path, const char *out_path, int li
 
 static int cmd_merge_manifest(const char *db_path, const char *out_path, int limit) {
     sqlite3 *db;
-    if (sqlite3_open_v2(db_path, &db, SQLITE_OPEN_READONLY, NULL) != SQLITE_OK) return 1;
+    if (bf_sqlite3_open_ro(db_path, &db) != SQLITE_OK) return 1;
 
     sqlite3_stmt *stmt = NULL;
     const char *sql =
@@ -2033,7 +2027,7 @@ static int cmd_bundle_diff(const char *bundle_layout_path, const char *out_path)
 
 static int cmd_stats(const char *db_path) {
     sqlite3 *db;
-    if (sqlite3_open_v2(db_path, &db, SQLITE_OPEN_READONLY, NULL) != SQLITE_OK) {
+    if (bf_sqlite3_open_ro(db_path, &db) != SQLITE_OK) {
         fprintf(stderr, "Cannot open db: %s\n", db_path);
         return 1;
     }

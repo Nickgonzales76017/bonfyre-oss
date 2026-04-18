@@ -460,7 +460,7 @@ static int pipeline_index(const char *artifacts_dir, const char *outdir,
     snprintf(db_path, sizeof(db_path), "%s/index.db", outdir);
 
     sqlite3 *db;
-    if (sqlite3_open(db_path, &db) != SQLITE_OK) {
+    if (bf_sqlite3_open(db_path, &db) != SQLITE_OK) {
         fprintf(stderr, "[pipeline:index] Cannot open db\n");
         if (bytes_scanned_out) *bytes_scanned_out = 0;
         if (cache_hits_out) *cache_hits_out = 0;
@@ -470,12 +470,6 @@ static int pipeline_index(const char *artifacts_dir, const char *outdir,
         if (max_equivalence_group_out) *max_equivalence_group_out = 0;
         return -1;
     }
-
-    sqlite3_exec(db,
-        "PRAGMA temp_store=FILE;"
-        "PRAGMA cache_size=-256;"
-        "PRAGMA mmap_size=0;",
-        NULL, NULL, NULL);
 
     sqlite3_exec(db,
         "CREATE TABLE IF NOT EXISTS families ("
@@ -660,7 +654,7 @@ static int pipeline_meter(const char *outdir, const char *key, const char *op,
     snprintf(db_path, sizeof(db_path), "%s/meter.db", outdir);
 
     sqlite3 *db;
-    if (sqlite3_open(db_path, &db) != SQLITE_OK) return 1;
+    if (bf_sqlite3_open(db_path, &db) != SQLITE_OK) return 1;
 
     sqlite3_exec(db,
         "CREATE TABLE IF NOT EXISTS events ("

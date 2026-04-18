@@ -28,9 +28,8 @@
 #include <sys/stat.h>
 #include <time.h>
 #include <unistd.h>
-#include <bonfyre.h>
-
 #include <sqlite3.h>
+#include <bonfyre.h>
 
 #define VERSION       "1.0.0"
 #define MAX_JSON      65536
@@ -153,7 +152,7 @@ static int ensure_parent(const char *path){
 static sqlite3 *db_open(const char *path){
     ensure_parent(path);
     sqlite3 *db=NULL;
-    if(sqlite3_open(path,&db)!=SQLITE_OK){
+    if(bf_sqlite3_open(path,&db)!=SQLITE_OK){
         fprintf(stderr,"recipe-db: cannot open %s: %s\n",path,sqlite3_errmsg(db));
         sqlite3_close(db); return NULL;
     }

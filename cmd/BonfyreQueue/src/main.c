@@ -35,6 +35,7 @@
 #include <time.h>
 #include <unistd.h>
 #include <sqlite3.h>
+#include <bonfyre.h>
 
 #define VERSION        "2.0.0"
 #define MAX_WORKERS    16
@@ -122,7 +123,7 @@ static const char *SCHEMA_SQL =
 
 static sqlite3 *open_db(const char *path) {
     sqlite3 *db;
-    if (sqlite3_open(path, &db) != SQLITE_OK) {
+    if (bf_sqlite3_open(path, &db) != SQLITE_OK) {
         fprintf(stderr, "[queue] cannot open %s: %s\n", path, sqlite3_errmsg(db));
         return NULL;
     }

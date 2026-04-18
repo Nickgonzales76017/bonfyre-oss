@@ -2413,7 +2413,7 @@ int main(int argc, char **argv) {
 
     /* Open database */
     sqlite3_config(SQLITE_CONFIG_SERIALIZED);
-    if (sqlite3_open(db_path, &g_db) != SQLITE_OK) {
+    if (bf_sqlite3_open(db_path, &g_db) != SQLITE_OK) {
         fprintf(stderr, "[fatal] cannot open db: %s\n", db_path);
         free(schemas_dir_owned);
         free(db_path_owned);

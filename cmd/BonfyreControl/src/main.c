@@ -39,9 +39,8 @@
 #include <sys/stat.h>
 #include <time.h>
 #include <unistd.h>
-#include <bonfyre.h>
-
 #include <sqlite3.h>
+#include <bonfyre.h>
 
 #define VERSION     "1.0.0"
 #define DB_ENV      "BONFYRE_CONTROL_DB"
@@ -156,7 +155,7 @@ static sqlite3 *open_db(void) {
     char path[4096]; db_path(path, sizeof(path));
     ensure_dir(path);
     sqlite3 *db = NULL;
-    if (sqlite3_open(path, &db) != SQLITE_OK) {
+    if (bf_sqlite3_open(path, &db) != SQLITE_OK) {
         fprintf(stderr, "bonfyre-control: cannot open db: %s\n", sqlite3_errmsg(db));
         exit(1);
     }

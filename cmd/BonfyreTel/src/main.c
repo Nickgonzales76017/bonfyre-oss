@@ -108,7 +108,7 @@ static const char *default_db(void) {
 
 static sqlite3 *open_db(const char *path) {
     sqlite3 *db = NULL;
-    if (sqlite3_open(path, &db) != SQLITE_OK) {
+    if (bf_sqlite3_open(path, &db) != SQLITE_OK) {
         fprintf(stderr, "tel: cannot open %s: %s\n", path, sqlite3_errmsg(db));
         sqlite3_close(db);
         return NULL;
