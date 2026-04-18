@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>What Bonfyre Replaces — Comparisons</title>
+  <meta name="description" content="Real tradeoffs. Real numbers. Bonfyre vs Deepgram, Strapi, Pinecone, Twilio, full SaaS backend, cloud GPU, and cloud AI glue.">
+  <link rel="stylesheet" href="assets/site.css">
+</head>
+<body>
+  <div class="layout">
+    <header class="topnav">
+      <div class="shell-container nav-row">
+        <a class="nav-logo" href="index.html">Bonfyre</a>
+        <nav class="nav-links" aria-label="Primary">
+          <a href="explore.html">Explore</a>
+          <a href="docs.html">Docs</a>
+          <a href="apps.html">Apps</a>
+          <a href="changelog.html">Changelog</a>
+          <a href="https://github.com/Nickgonzales76017/bonfyre-oss" target="_blank" rel="noreferrer">GitHub</a>
+        </nav>
+      </div>
+    </header>
+
+    <main>
+      <!-- Hero -->
+      <section class="section hero-section">
+        <div class="shell-container">
+          <div class="hero-eyebrow">
+            <a href="explore.html">← Back to explore</a>
+          </div>
+          <h1 class="hero-title">What Bonfyre Replaces</h1>
+          <p class="hero-sub">Not "AI-powered" marketing. Actual replacement comparisons with the tools people already pay for — with the numbers that justify the switch.</p>
+          <div class="stats-grid" style="margin-top:2.5rem">
+            <div class="metric-card"><span class="metric-num">$0</span><span class="metric-label">Per-minute transcription cost</span></div>
+            <div class="metric-card"><span class="metric-num">1,742×</span><span class="metric-label">Smaller than Strapi</span></div>
+            <div class="metric-card"><span class="metric-num">~$2,500</span><span class="metric-label">Monthly SaaS backend cost → $0</span></div>
+            <div class="metric-card"><span class="metric-num">$10K</span><span class="metric-label">Cloud GPU → $500 laptop</span></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Transcription -->
+      <section class="section">
+        <div class="shell-container">
+          <div class="section-header">
+            <div>
+              <span class="section-kicker">Transcription</span>
+              <h2 class="section-title">vs Deepgram / OpenAI Whisper API</h2>
+            </div>
+          </div>
+          <div class="compare-grid">
+            <article class="compare-card">
+              <span class="card-meta">vs Deepgram / OpenAI Whisper API</span>
+              <span class="compare-value">$0 / minute</span>
+              <p>BonfyreTranscribe runs HCP-enhanced Whisper locally. Speaker segmentation, hallucination filtering via Hyperscan (&gt;1 GB/s), filler detection, and eGeMAPSv02 quality scoring (88 audio features). No API key. No per-minute charge. No privacy tradeoff.</p>
+            </article>
+          </div>
+          <div class="feature-grid" style="margin-top:1.5rem">
+            <article class="feature-card">
+              <span class="card-meta">What you pay now</span>
+              <h3>$0.0043–$0.006 per minute</h3>
+              <p>Deepgram's Nova-2 charges $0.0043/minute. OpenAI Whisper API charges $0.006/minute. A 45-minute podcast episode costs $0.19–$0.27 per run. If you process 100 episodes a month: $19–$27/month — plus no speaker diarisation, no quality scoring, no hallucination filtering without additional tools.</p>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">What Bonfyre does</span>
+              <h3>HCP-enhanced Whisper, local, 15× real-time</h3>
+              <p>BonfyreTranscribe runs on your hardware, not Deepgram's servers. On M2 Pro it processes 15× faster than real-time — a 45-minute episode takes ~3 minutes. Speaker segmentation is built-in. BonfyreTranscriptClean removes hallucinations and filler words using Hyperscan at &gt;1 GB/s. BonfyreSpeechLoop provides streaming partial transcripts during live recordings.</p>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">Privacy difference</span>
+              <h3>Audio never leaves your machine</h3>
+              <p>Deepgram and OpenAI receive your audio files. For client calls, medical intake, legal depositions, and investigative reporting, that's a meaningful data transfer. BonfyreTranscribe processes entirely on-device with the same or better accuracy on supported models. HIPAA-compliant by construction — nothing to audit externally.</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <!-- CMS -->
+      <section class="section">
+        <div class="shell-container">
+          <div class="section-header">
+            <div>
+              <span class="section-kicker">CMS</span>
+              <h2 class="section-title">vs Strapi / Contentful</h2>
+            </div>
+          </div>
+          <div class="compare-grid">
+            <article class="compare-card">
+              <span class="card-meta">vs Strapi / Contentful (CMS)</span>
+              <span class="compare-value">1,742× smaller</span>
+              <p>BonfyreCMS is 287 KB — compared to 500 MB for a standard Strapi install with its npm tree. Dynamic schemas, token auth, REST API, full-text search, and structured logging. Zero npm packages. Cold start is instant.</p>
+            </article>
+          </div>
+          <div class="feature-grid" style="margin-top:1.5rem">
+            <article class="feature-card">
+              <span class="card-meta">Strapi baseline</span>
+              <h3>500 MB of node_modules for basic CMS functionality</h3>
+              <p>A default Strapi v4 install with PostgreSQL pulls in ~500 MB of node_modules, requires a Node.js runtime, and needs a JavaScript ecosystem managing its own ongoing security patches. Cold start on a small server: 4–8 seconds. A single npm audit can surface dozens of transitive vulnerabilities.</p>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">BonfyreCMS</span>
+              <h3>287 KB, no runtime dependencies</h3>
+              <p>A single statically-linked C binary. Dynamic schemas defined at startup. Token auth using bf_crypto (Ed25519 + BLAKE2b). REST API with full-text search backed by LMDB. Structured JSON logging via bf_log. Cold start: under 20 ms. The server is smaller than a single compressed JPEG. Zero security patches from transitive dependencies.</p>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">Contentful / hosted CMS</span>
+              <h3>~$300–$800/month for team plans</h3>
+              <p>Contentful Team is $300/month. Contentful Scale is $800+/month. For most Bonfyre use cases — structured artifact metadata, dynamic content for published pages — BonfyreCMS needs zero monthly cost. The schema changes are versioned. The data stays local.</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <!-- Vector search -->
+      <section class="section">
+        <div class="shell-container">
+          <div class="section-header">
+            <div>
+              <span class="section-kicker">Vector search</span>
+              <h2 class="section-title">vs Pinecone / Weaviate Cloud</h2>
+            </div>
+          </div>
+          <div class="compare-grid">
+            <article class="compare-card">
+              <span class="card-meta">vs Pinecone / Weaviate Cloud</span>
+              <span class="compare-value">5 ms local search</span>
+              <p>BonfyreVec + BonfyreEmbed give you NEON SIMD cosine similarity and BM25 hybrid ranking. Embeddings stored in zero-copy LMDB. BonfyreWeaviateIndex connects to self-hosted Weaviate. $70–$250/month hosted → $0/month local.</p>
+            </article>
+          </div>
+          <div class="feature-grid" style="margin-top:1.5rem">
+            <article class="feature-card">
+              <span class="card-meta">Pinecone baseline</span>
+              <h3>$70–$250/month for a serverless vector database</h3>
+              <p>Pinecone Serverless starts at ~$70/month for small workloads and scales to $250+/month for team use. Weaviate Cloud is similarly priced. Both require your embedding data to live on their infrastructure, adding a data residency consideration for private or regulated workloads.</p>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">BonfyreVec + BonfyreEmbed</span>
+              <h3>NEON SIMD, sub-5 ms, all local</h3>
+              <p>BonfyreEmbed generates sentence-level vectors from BonfyreBrief's structured output. BonfyreVec stores them in zero-copy LMDB and queries them using NEON SIMD cosine similarity (ARM) or AVX2 (x86-64). Retrieval on 100K vectors: under 5 ms. BonfyreIndex adds BM25 full-text search to the same LMDB backend. BonfyreQuery unifies all three retrieval strategies in one call.</p>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">Self-hosted Weaviate option</span>
+              <h3>BonfyreWeaviateIndex for larger scale</h3>
+              <p>If you need Weaviate's GraphQL interface or larger-scale ANN indexing, BonfyreWeaviateIndex connects to a self-hosted Weaviate instance. You get Weaviate's full feature set on your own hardware at $0/month in hosting fees. The embedding generation still happens via BonfyreEmbed — no OpenAI embedding API needed.</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <!-- Realtime -->
+      <section class="section">
+        <div class="shell-container">
+          <div class="section-header">
+            <div>
+              <span class="section-kicker">Realtime media</span>
+              <h2 class="section-title">vs Twilio / LiveKit</h2>
+            </div>
+          </div>
+          <div class="compare-grid">
+            <article class="compare-card">
+              <span class="card-meta">vs Twilio / LiveKit (realtime)</span>
+              <span class="compare-value">$0 / stream</span>
+              <p>BonfyreMoQ is a pure C WebTransport/MoQ relay for private realtime audio and media fan-out. No SaaS relay bill, no Node.js in the media path, no per-stream markup. Inline AI scoring via BonfyreTone and BonfyreSpeechLoop.</p>
+            </article>
+          </div>
+          <div class="feature-grid" style="margin-top:1.5rem">
+            <article class="feature-card">
+              <span class="card-meta">Twilio baseline</span>
+              <h3>$0.004/min per participant for Voice</h3>
+              <p>Twilio Voice charges $0.004/minute per connected participant. A 10-person meeting running 60 minutes costs $2.40. At 100 meetings/month that's $240/month. LiveKit Cloud charges per GB of media relayed. Both require your audio to transit their infrastructure, which rules out most private or regulated use cases.</p>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">BonfyreMoQ</span>
+              <h3>QUIC + WebTransport relay, your infrastructure</h3>
+              <p>MoQ Transfork over QUIC. The relay runs on your own hardware. No audio transits a SaaS provider. Inline AI scoring via BonfyreTone (eGeMAPSv02, 88 audio features) and BonfyreSpeechLoop (streaming partial transcripts) adds under 20 ms to latency budget without routing through a cloud inference endpoint. See the full <a href="moq.html">BonfyreMoQ reference</a> for transport detail.</p>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">WebRTC alternative</span>
+              <h3>No STUN/TURN overhead</h3>
+              <p>WebRTC-based solutions require STUN/TURN servers for NAT traversal and complexity grows with fan-out size. MoQ over QUIC provides a simpler model — multiplexed streams over a single QUIC connection with surface-first priority. No SFU cluster to manage.</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <!-- Full SaaS backend -->
+      <section class="section">
+        <div class="shell-container">
+          <div class="section-header">
+            <div>
+              <span class="section-kicker">Full SaaS backend</span>
+              <h2 class="section-title">~$2,500/month → $0</h2>
+            </div>
+          </div>
+          <div class="compare-grid">
+            <article class="compare-card">
+              <span class="card-meta">vs full SaaS backend</span>
+              <span class="compare-value">~$2,500/mo → $0</span>
+              <p>BonfyreAuth (BLAKE2b + Ed25519) + BonfyrePay + BonfyreMeter + BonfyreAPI + BonfyreCMS + BonfyreProxy (OpenAI-compatible) + BonfyreGate + BonfyreOffer + BonfyreFinance. All of it. ~2.1 MB total disk. Zero recurring vendor bills.</p>
+            </article>
+          </div>
+          <div class="feature-grid" style="margin-top:1.5rem">
+            <article class="feature-card">
+              <span class="card-meta">Typical stack cost</span>
+              <h3>The tools that add up to $2,500/month</h3>
+              <p>Auth0 (~$240/month for 1,000 MAU) + Stripe (0.8% platform fee above processor) + Segment ($120/month) + Contentful ($300/month) + Pinecone ($100/month) + OpenAI proxy ($200/month) + Twilio ($200/month) + Gumroad/Shopify (3.5–5% transaction fee) = $1,200–$2,500/month before you've written any product code.</p>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">Bonfyre coverage</span>
+              <h3>2.1 MB total. No monthly bills.</h3>
+              <p>BonfyreAuth replaces Auth0. BonfyrePay replaces Stripe's platform layer. BonfyreMeter replaces Segment. BonfyreCMS replaces Contentful. BonfyreVec replaces Pinecone. BonfyreProxy provides an OpenAI-compatible local endpoint. BonfyreMoQ replaces Twilio. BonfyreOffer replaces Gumroad. BonfyreFinance tracks margins. The payment processor still takes its cut — that's unavoidable — but the SaaS layer on top of it is gone.</p>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">The limit</span>
+              <h3>What Bonfyre doesn't replace</h3>
+              <p>Bonfyre doesn't replace a global CDN for high-traffic assets, a managed database for multi-tenant SaaS at scale, or a team collaboration platform. It replaces the processing, structuring, and serving layer for content and media workflows. If your backend is mainly doing what Bonfyre does — process audio, structure content, serve APIs, meters usage — the substitution is direct.</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <!-- Cloud GPU -->
+      <section class="section">
+        <div class="shell-container">
+          <div class="section-header">
+            <div>
+              <span class="section-kicker">AI inference</span>
+              <h2 class="section-title">vs cloud GPU / hosted model APIs</h2>
+            </div>
+          </div>
+          <div class="compare-grid">
+            <article class="compare-card">
+              <span class="card-meta">vs cloud GPU for AI inference</span>
+              <span class="compare-value">Runs on your laptop</span>
+              <p>FPQ 4× compression means a model that required a $10K cloud GPU runs on a $500 laptop instead. 99.97% cosine similarity preserved. 15 models already published on HuggingFace. KV cache compression gives 4× more context in the same VRAM.</p>
+            </article>
+            <article class="compare-card">
+              <span class="card-meta">Cloud AI glue</span>
+              <span class="compare-value">Local proxy + planner</span>
+              <p>Use an OpenAI-compatible local endpoint and a machine-only planner layer instead of wiring every workflow through paid cloud APIs and brittle app glue.</p>
+            </article>
+          </div>
+          <div class="feature-grid" style="margin-top:1.5rem">
+            <article class="feature-card">
+              <span class="card-meta">Cloud GPU cost</span>
+              <h3>$2,000–$8,000/month for sustained inference</h3>
+              <p>A single A100 80GB GPU runs $2.00–$3.50/hour on AWS, GCP, or Azure. Sustained inference for a 70B parameter model at moderate load: 4–6 GPUs, $2,000–$8,000/month. Per-API pricing (GPT-4 Turbo: $0.01/1K input tokens) adds up fast once you're running multi-step pipelines against a 45-minute transcript.</p>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">FPQ result</span>
+              <h3>Llama-3-70B on a 6 GB consumer GPU</h3>
+              <p>BonfyreFPQ compresses the model to INT8 with polynomial correction. 4× reduction means Llama-3-70B's ~140 GB full-precision footprint becomes ~35 GB. With KV cache compression: down to 6 GB VRAM — a $350 RTX 3060. On M-series MacBooks the unified memory architecture makes this even more practical. See the full <a href="fpq.html">BonfyreFPQ reference</a> for hardware fit details.</p>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">BonfyreProxy</span>
+              <h3>OpenAI-compatible local endpoint</h3>
+              <p>BonfyreProxy exposes an OpenAI-compatible API locally. Any code that calls <code>openai.ChatCompletion.create()</code> runs against your local FPQ model without changing a line. BonfyreRuntime's planner layer handles multi-step reasoning chains locally — no LangChain dependency, no cloud routing per planning step.</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <!-- What comes next -->
+      <section class="section">
+        <div class="shell-container">
+          <div class="section-header">
+            <div>
+              <span class="section-kicker">Dig deeper</span>
+              <h2 class="section-title">Each comparison has a detail page.</h2>
+            </div>
+          </div>
+          <div class="path-grid">
+            <article class="path-card">
+              <span class="card-meta">Transcription layer</span>
+              <h3>Layer 2 — how transcription works</h3>
+              <p>HCP-enhanced Whisper, hallucination filtering, speaker segmentation, streaming partial transcripts. The full technical picture.</p>
+              <div class="cta-row"><a class="secondary-btn" href="layer-transcription.html">Layer 2 reference →</a></div>
+            </article>
+            <article class="path-card">
+              <span class="card-meta">Model compression</span>
+              <h3>BonfyreFPQ — local inference</h3>
+              <p>FP32 → INT8, 4× reduction, 99.97% quality preserved. Hardware fit table. What runs on which hardware. All the numbers.</p>
+              <div class="cta-row"><a class="secondary-btn" href="fpq.html">FPQ reference →</a></div>
+            </article>
+            <article class="path-card">
+              <span class="card-meta">Realtime media</span>
+              <h3>BonfyreMoQ — $0 per stream</h3>
+              <p>Pure C WebTransport relay. Inline AI scoring. Fountain code resilience. No Twilio. No SFU bill.</p>
+              <div class="cta-row"><a class="secondary-btn" href="moq.html">MoQ reference →</a></div>
+            </article>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <div class="shell-container footer-row">
+        <div>Bonfyre vs the stack — real tradeoffs, real numbers, no marketing copy.</div>
+        <div class="footer-links">
+          <a href="index.html">Overview</a>
+          <a href="explore.html">Explore</a>
+          <a href="docs.html">Docs</a>
+          <a href="https://github.com/Nickgonzales76017/bonfyre-oss" target="_blank" rel="noreferrer">GitHub</a>
+        </div>
+      </div>
+    </footer>
+  </div>
+  <script src="assets/site.js"></script>
+</body>
+</html>

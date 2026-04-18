@@ -87,165 +87,42 @@
         </div>
       </section>
 
-      <!-- What it replaces -->
+            <!-- What it replaces -->
       <section class="section">
         <div class="shell-container">
           <div class="section-header">
             <div>
               <span class="section-kicker">What it replaces</span>
               <h2 class="section-title">Real tradeoffs. Real numbers.</h2>
-              <p class="section-copy">Not "AI-powered" marketing. Actual replacement comparisons with the tools people already pay for.</p>
             </div>
           </div>
           <div class="compare-grid">
             <article class="compare-card">
-              <span class="card-meta">vs Deepgram / OpenAI Whisper API</span>
-              <span class="compare-value">$0 / minute</span>
-              <p>BonfyreTranscribe runs HCP-enhanced Whisper locally. Speaker segmentation, hallucination filtering via Hyperscan (>1 GB/s), filler detection, and eGeMAPSv02 quality scoring (88 audio features). No API key. No per-minute charge. No privacy tradeoff.</p>
-            </article>
-            <article class="compare-card">
-              <span class="card-meta">vs Strapi / Contentful (CMS)</span>
-              <span class="compare-value">1,742× smaller</span>
-              <p>BonfyreCMS is 287 KB — compared to 500 MB for a standard Strapi install with its npm tree. Dynamic schemas, token auth, REST API, full-text search, and structured logging. Zero npm packages. Cold start is instant.</p>
-            </article>
-            <article class="compare-card">
-              <span class="card-meta">vs Pinecone / Weaviate Cloud</span>
-              <span class="compare-value">5 ms local search</span>
-              <p>BonfyreVec + BonfyreEmbed give you NEON SIMD cosine similarity and BM25 hybrid ranking. Embeddings stored in zero-copy LMDB. BonfyreWeaviateIndex connects to self-hosted Weaviate. $70–$250/month hosted → $0/month local.</p>
-            </article>
-            <article class="compare-card">
-              <span class="card-meta">vs Twilio / LiveKit (realtime)</span>
-              <span class="compare-value">$0 / stream</span>
-              <p>BonfyreMoQ is a pure C WebTransport/MoQ relay for private realtime audio and media fan-out. No SaaS relay bill, no Node.js in the media path, no per-stream markup. Inline AI scoring via BonfyreTone and BonfyreSpeechLoop.</p>
-            </article>
-            <article class="compare-card">
-              <span class="card-meta">vs full SaaS backend</span>
-              <span class="compare-value">~$2,500/mo → $0</span>
-              <p>BonfyreAuth (BLAKE2b + Ed25519) + BonfyrePay + BonfyreMeter + BonfyreAPI + BonfyreCMS + BonfyreProxy (OpenAI-compatible) + BonfyreGate + BonfyreOffer + BonfyreFinance. All of it. ~2.1 MB total disk. Zero recurring vendor bills.</p>
-            </article>
-            <article class="compare-card">
-              <span class="card-meta">vs cloud GPU for AI inference</span>
-              <span class="compare-value">Runs on your laptop</span>
-              <p>FPQ 4× compression means a model that required a $10K cloud GPU runs on a $500 laptop instead. 99.97% cosine similarity preserved. 15 models already published on HuggingFace. KV cache compression gives 4× more context in the same VRAM.</p>
-            </article>
-            <article class="compare-card">
-              <span class="card-meta">Cloud AI glue</span>
-              <span class="compare-value">Local proxy + planner</span>
-              <p>Use an OpenAI-compatible local endpoint and a machine-only planner layer instead of wiring every workflow through paid cloud APIs and brittle app glue.</p>
+              <span class="card-meta">7 head-to-head comparisons</span>
+              <span class="compare-value">$0 most lines</span>
+              <p>Deepgram · Strapi · Pinecone · Twilio · full SaaS backend · cloud GPU · cloud AI glue. Actual replacement comparisons with real cost numbers — not marketing copy.</p>
+              <div class="cta-row" style="margin-top:1rem"><a class="secondary-btn" href="comparisons.html">Full comparisons →</a></div>
             </article>
           </div>
         </div>
       </section>
 
-      <!-- Pipeline flows -->
+            <!-- Pipeline flows -->
       <section class="section">
         <div class="shell-container">
           <div class="section-header">
             <div>
               <span class="section-kicker">Pipeline flows</span>
               <h2 class="section-title">How the binaries chain together.</h2>
-              <p class="section-copy">Each binary handles one job. Content-addressed artifacts flow between stages. Re-runs skip unchanged work automatically.</p>
             </div>
           </div>
           <div class="feature-grid">
             <article class="feature-card">
-              <span class="card-meta">Audio → packaged deliverable</span>
-              <h3>Ingest · Transcribe · Brief · Proof · Offer · Pack · Distribute</h3>
-              <p>Audio normalized by BonfyreIngest or BonfyreMediaPrep → HCP transcription with speaker segmentation → structured brief → BLAKE2b proof bundle → dynamic pricing → packaged artifact → QUIC distribution or swarm delivery. 5–8 ms per stage.</p>
+              <span class="card-meta">6 pipeline patterns + 10-step worked example</span>
+              <h3>Audio → packaged deliverable · Recording → knowledge · Content → pages · Work → revenue</h3>
+              <p>Each binary handles one job. Content-addressed artifacts flow between stages. Re-runs skip unchanged work automatically. The worked example traces a 45-minute podcast episode from raw WAV to distributed, monetised deliverable — step by step, with timing.</p>
+              <div class="cta-row"><a class="secondary-btn" href="pipeline-flows.html">Full pipeline flows →</a></div>
             </article>
-            <article class="feature-card">
-              <span class="card-meta">Recording → searchable knowledge</span>
-              <h3>Transcribe · TranscriptClean · Paragraph · Embed · Vec · Index · Query</h3>
-              <p>Raw recording → clean transcript → paragraphs → sentence embeddings → SIMD vector index → hybrid BM25+cosine search. BonfyreTranscriptFamily clusters related recordings into a searchable family. Everything stored in zero-copy LMDB.</p>
-            </article>
-            <article class="feature-card">
-              <span class="card-meta">Content → published pages</span>
-              <h3>Brief · Repurpose · Render · Emit · Sync</h3>
-              <p>Brief generated by BonfyreBrief → BonfyreRepurpose extracts multi-format content (show notes, social clips, email copy) → BonfyreRender builds HTML → BonfyreEmit produces PDF/EPUB/JSON → BonfyreSync publishes to your target.</p>
-            </article>
-            <article class="feature-card">
-              <span class="card-meta">Work → revenue</span>
-              <h3>Proof · Offer · Finance · Pay · Meter · Ledger · Outreach</h3>
-              <p>Content-addressed proof bundle → dynamic offer pricing via BonfyreOffer → BonfyreFinance calculates margins → BonfyrePay handles checkout → BonfyreMeter tracks usage → BonfyreLedger maintains the audit trail → BonfyreOutreach sequences follow-up.</p>
-            </article>
-            <article class="feature-card">
-              <span class="card-meta">Repo → onboarding guide</span>
-              <h3>Ingest · Tag · Canon · Brief · Graph · Render · Emit</h3>
-              <p>Source tree ingested → BonfyreTag extracts topics → BonfyreCanon deduplicates → BonfyreBrief generates structured overview → BonfyreGraph maps relationships → BonfyreRender produces an HTML onboarding guide → BonfyreEmit publishes it.</p>
-            </article>
-            <article class="feature-card">
-              <span class="card-meta">Pipeline execution</span>
-              <h3>BonfyrePipeline · Queue · Orchestrate · Runtime</h3>
-              <p>BonfyrePipeline runs stages with hot-load swap (32-stage registry, 16 A/B pairs). BonfyreQueue buffers work. BonfyreOrchestrate manages multi-pipeline flows. BonfyreRuntime is the shared execution environment for in-process coroutine paths.</p>
-            </article>
-          </div>
-        </div>
-      </section>
-
-      <!-- Worked example -->
-      <section class="section">
-        <div class="shell-container">
-          <div class="section-header">
-            <div>
-              <span class="section-kicker">Worked example</span>
-              <h2 class="section-title">A 45-minute podcast episode, start to finish.</h2>
-              <p class="section-copy">Here's exactly what happens when a single audio file enters a Bonfyre pipeline. Every binary listed below is a real binary in the cmd tree. Every number was measured.</p>
-            </div>
-          </div>
-          <div class="feature-grid">
-            <article class="feature-card">
-              <span class="card-meta">Step 1 — BonfyreMediaPrep</span>
-              <h3>180 MB WAV file, cleaned up and ready</h3>
-              <p>The raw recording comes in at whatever sample rate and loudness your recorder saved. MediaPrep normalises it to -14 LUFS (broadcast standard), resamples to 16 kHz mono (the format Whisper performs best on), trims leading/trailing silence, and stores a BLAKE2b hash of the cleaned file. If you re-run this pipeline tomorrow with the same recording, this step is skipped because the hash matches.</p>
-            </article>
-            <article class="feature-card">
-              <span class="card-meta">Step 2 — BonfyreTranscribe</span>
-              <h3>45 minutes of audio → 8,400 words in ~3 minutes</h3>
-              <p>HCP-enhanced Whisper runs locally — no Deepgram API key, no per-minute charge, no data leaving your machine. On an M2 Pro it processes roughly 15× faster than real-time (so 45 min takes ~3 min). The output is a word-by-word transcript with timestamps accurate to 50 ms. You could stop here and already have done what costs $15–$30/hour on a transcription service.</p>
-            </article>
-            <article class="feature-card">
-              <span class="card-meta">Step 3 — BonfyreSegment</span>
-              <h3>Two speakers, automatically labelled</h3>
-              <p>Segment runs speaker diarisation on the timestamped transcript — it identifies voice boundaries and assigns [Host] and [Guest] labels to each turn. This is the difference between a raw word dump and a readable conversation. It works on the audio fingerprint, not on voice recognition, so it's language-agnostic and needs no training data for your specific voices.</p>
-            </article>
-            <article class="feature-card">
-              <span class="card-meta">Step 4 — BonfyreTranscriptClean</span>
-              <h3>47 filler words gone in 23 ms</h3>
-              <p>Hyperscan runs a compiled set of patterns over the transcript at &gt;1 GB/s — removing confirmed filler words ("um", "uh"), false starts ("I — I mean —"), repeated words ("and and"), and hallucination markers (phrases Whisper commonly invents for sections of silence or music). On this 8,400-word transcript it takes 23 ms. The cleaned transcript is hashed and stored.</p>
-            </article>
-            <article class="feature-card">
-              <span class="card-meta">Step 5 — BonfyreParagraph</span>
-              <h3>Raw sentences → readable sections</h3>
-              <p>Raw transcripts have no paragraph breaks — everything runs together. Paragraph groups transcript turns into logical sections using topic-transition signals (speaker switches + semantic drift between consecutive sentences). The output has section headings and readable paragraphs. This is what a human editor would spend an hour doing; it takes 180 ms here.</p>
-            </article>
-            <article class="feature-card">
-              <span class="card-meta">Step 6 — BonfyreBrief</span>
-              <h3>8,400 words → structured brief in 410 ms</h3>
-              <p>Brief runs a local model (via BonfyreProxy → your FPQ-compressed local model) over the cleaned, structured transcript. Output: (1) a 3-sentence episode summary, (2) 8 topic headings, (3) 5 quotable moments with speaker attribution, (4) 3 follow-up questions implicit in the conversation, (5) a speaker breakdown by percentage of the episode. This is the artifact every downstream step builds on.</p>
-            </article>
-            <article class="feature-card">
-              <span class="card-meta">Step 7 — BonfyreClips + BonfyreRepurpose</span>
-              <h3>5 outputs from 1 brief</h3>
-              <p>BonfyreClips extracts 3 × 60-second audio clips from the best quotable moments (with timestamps from the brief). BonfyreRepurpose generates: (1) 500-word show notes, (2) a 7-post Twitter thread, (3) a 200-word email newsletter intro, (4) a 3-bullet LinkedIn update. All five are derived from the same brief — one prompt-and-template pass per format, no separate model calls.</p>
-            </article>
-            <article class="feature-card">
-              <span class="card-meta">Step 8 — BonfyreOffer + BonfyrePay + BonfyreMeter</span>
-              <h3>The episode becomes a purchasable product</h3>
-              <p>BonfyreOffer generates a dynamic pricing page for the episode as a premium download (PDF transcript + audio clips + show notes bundle). BonfyrePay handles Stripe-compatible checkout. BonfyreMeter records the sale and updates the usage ledger. No Shopify, no Gumroad, no per-transaction SaaS cut beyond the payment processor.</p>
-            </article>
-            <article class="feature-card">
-              <span class="card-meta">Step 9 — BonfyreEmit + BonfyrePack</span>
-              <h3>Simultaneous: RSS item, PDF, EPUB, JSON</h3>
-              <p>BonfyreEmit produces four outputs in a single pass: an RSS 2.0 &lt;item&gt; with the show notes as description, a PDF transcript, an EPUB version of the transcript, and a structured JSON artifact containing all metadata. BonfyrePack bundles all outputs into a content-addressed archive with a BLAKE2b manifest — one file you can store, distribute, or verify.</p>
-            </article>
-            <article class="feature-card">
-              <span class="card-meta">Step 10 — BonfyreDistribute</span>
-              <h3>Pushed to your host over QUIC</h3>
-              <p>BonfyreDistribute picks up the pack and delivers it to your target (a GitHub Pages repo, an S3 bucket, a self-hosted server) over QUIC with fountain-code erasure tolerance — meaning up to 33% packet loss is correctable before the transfer fails. For large episode archives, BonfyreSwarm adds BitTorrent v2 peer delivery so every subscriber helps distribute to the next one.</p>
-            </article>
-          </div>
-          <div class="cta-row">
-            <p style="color:var(--text-2);font-size:0.9rem;margin:0">Total time for steps 1–9 (excluding transcription): under 6 seconds on M2 Pro. Transcription (the model, not Bonfyre): ~3 minutes for a 45-minute episode.</p>
           </div>
         </div>
       </section>
@@ -310,56 +187,21 @@
         </div>
       </section>
 
-      <!-- Industry recipes -->
+            <!-- Industry recipes -->
       <section class="section">
         <div class="shell-container">
           <div class="section-header">
             <div>
               <span class="section-kicker">Industry recipes</span>
               <h2 class="section-title">What you already have → what you get.</h2>
-              <p class="section-copy">Each recipe maps your existing inputs to a Bonfyre pipeline and a concrete output. No new tools to learn — just a different place for the work to happen.</p>
             </div>
           </div>
           <div class="feature-grid">
             <article class="feature-card">
-              <span class="card-meta">Property management</span>
-              <h3>Voicemail → maintenance packet</h3>
-              <p>Resident leaves a voicemail → BonfyreTranscribe → BonfyreBrief extracts issue type and follow-up items → BonfyrePack bundles a vendor-ready maintenance packet → BonfyreSync delivers to your system.</p>
-            </article>
-            <article class="feature-card">
-              <span class="card-meta">Law office</span>
-              <h3>Client intake call → organised binder</h3>
-              <p>Intake call → speaker-segmented transcript → BonfyreBrief structures issues → BonfyreProof hashes the original recording → BonfyrePack assembles a review-ready binder. Data never leaves the office.</p>
-            </article>
-            <article class="feature-card">
-              <span class="card-meta">Healthcare / dental</span>
-              <h3>Staff recording → SOP and patient handout</h3>
-              <p>Office manager records a procedure → BonfyreTranscribe + BonfyreParagraph → BonfyreBrief creates structured SOP → BonfyreRender produces a staff guide + printable patient handout → BonfyreEmit publishes both.</p>
-            </article>
-            <article class="feature-card">
-              <span class="card-meta">Podcast / media</span>
-              <h3>Episode → monetised page</h3>
-              <p>Raw episode → BonfyreTranscribe + BonfyreClips → BonfyreBrief + BonfyreRepurpose → show notes + social clips + BonfyreOffer pricing page + BonfyreEmit RSS feed. All local. All in one pipeline run.</p>
-            </article>
-            <article class="feature-card">
-              <span class="card-meta">Nonprofit / grant work</span>
-              <h3>Program debrief → grant-language draft</h3>
-              <p>Debrief recording → BonfyreTranscribe → BonfyreBrief extracts outcomes → BonfyreRepurpose generates grant-language draft + board update + impact summary → BonfyreEmit publishes to your site.</p>
-            </article>
-            <article class="feature-card">
-              <span class="card-meta">Agency / consultant</span>
-              <h3>Discovery call → proposal packet</h3>
-              <p>Discovery call → BonfyreTranscribe + BonfyreBrief → BonfyreOffer applies dynamic pricing → BonfyrePack assembles a PDF/HTML proposal with scope, price, and proof summary → BonfyreOutreach queues follow-up.</p>
-            </article>
-            <article class="feature-card">
-              <span class="card-meta">Sales team</span>
-              <h3>Sales call → CRM-ready summary</h3>
-              <p>Call → BonfyreTranscribe → BonfyreBrief extracts stage, objections, and next steps → BonfyreTag applies custom tags → BonfyreMeter records the engagement → BonfyreSync pushes a structured summary to your CRM.</p>
-            </article>
-            <article class="feature-card">
-              <span class="card-meta">Engineering team</span>
-              <h3>Incident recording → searchable postmortem</h3>
-              <p>War room call → BonfyreTranscribe → BonfyreBrief extracts timeline + root cause + action items → BonfyreGraph links to related incidents → BonfyreRender produces a structured postmortem atlas page → BonfyreIndex makes it searchable.</p>
+              <span class="card-meta">8 industries · 8 pipeline patterns</span>
+              <h3>Property mgmt · Law · Healthcare · Podcast · Nonprofit · Agency · Sales · Engineering</h3>
+              <p>Each recipe maps your existing inputs to a Bonfyre pipeline and a concrete output. Voicemail → maintenance packet. Intake call → organised binder. Incident recording → searchable postmortem atlas. No new tools to learn — just a different place for the work to happen.</p>
+              <div class="cta-row"><a class="secondary-btn" href="industry-recipes.html">Full industry recipes →</a></div>
             </article>
           </div>
         </div>

@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Industry Recipes — Bonfyre</title>
+  <meta name="description" content="What you already have → what you get. Eight industry pipeline patterns: property management, law, healthcare, podcast, nonprofit, consulting, sales, engineering.">
+  <link rel="stylesheet" href="assets/site.css">
+</head>
+<body>
+  <div class="layout">
+    <header class="topnav">
+      <div class="shell-container nav-row">
+        <a class="nav-logo" href="index.html">Bonfyre</a>
+        <nav class="nav-links" aria-label="Primary">
+          <a href="explore.html">Explore</a>
+          <a href="docs.html">Docs</a>
+          <a href="apps.html">Apps</a>
+          <a href="changelog.html">Changelog</a>
+          <a href="https://github.com/Nickgonzales76017/bonfyre-oss" target="_blank" rel="noreferrer">GitHub</a>
+        </nav>
+      </div>
+    </header>
+
+    <main>
+      <!-- Hero -->
+      <section class="section hero-section">
+        <div class="shell-container">
+          <div class="hero-eyebrow">
+            <a href="explore.html">← Back to explore</a>
+          </div>
+          <h1 class="hero-title">Industry Recipes</h1>
+          <p class="hero-sub">What you already have → what you get. Each recipe maps your existing inputs to a Bonfyre pipeline and a concrete output. No new tools to learn — just a different place for the work to happen.</p>
+        </div>
+      </section>
+
+      <!-- The eight recipes -->
+      <section class="section">
+        <div class="shell-container">
+          <div class="section-header">
+            <div>
+              <span class="section-kicker">Eight industries</span>
+              <h2 class="section-title">Input · pipeline · output.</h2>
+            </div>
+          </div>
+          <div class="feature-grid">
+            <article class="feature-card">
+              <span class="card-meta">Property management</span>
+              <h3>Voicemail → maintenance packet</h3>
+              <p>Resident leaves a voicemail → BonfyreTranscribe → BonfyreBrief extracts issue type and follow-up items → BonfyrePack bundles a vendor-ready maintenance packet → BonfyreSync delivers to your system.</p>
+              <p style="margin-top:0.75rem;color:var(--text-2);font-size:0.875rem"><strong>Input:</strong> voicemail &nbsp;·&nbsp; <strong>Output:</strong> structured maintenance ticket + vendor-ready PDF bundle</p>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">Law office</span>
+              <h3>Client intake call → organised binder</h3>
+              <p>Intake call → speaker-segmented transcript → BonfyreBrief structures issues → BonfyreProof hashes the original recording → BonfyrePack assembles a review-ready binder. Data never leaves the office.</p>
+              <p style="margin-top:0.75rem;color:var(--text-2);font-size:0.875rem"><strong>Input:</strong> intake call &nbsp;·&nbsp; <strong>Output:</strong> Ed25519-signed structured binder, zero cloud exposure</p>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">Healthcare / dental</span>
+              <h3>Staff recording → SOP and patient handout</h3>
+              <p>Office manager records a procedure → BonfyreTranscribe + BonfyreParagraph → BonfyreBrief creates structured SOP → BonfyreRender produces a staff guide + printable patient handout → BonfyreEmit publishes both.</p>
+              <p style="margin-top:0.75rem;color:var(--text-2);font-size:0.875rem"><strong>Input:</strong> procedure recording &nbsp;·&nbsp; <strong>Output:</strong> staff SOP + printable patient handout</p>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">Podcast / media</span>
+              <h3>Episode → monetised page</h3>
+              <p>Raw episode → BonfyreTranscribe + BonfyreClips → BonfyreBrief + BonfyreRepurpose → show notes + social clips + BonfyreOffer pricing page + BonfyreEmit RSS feed. All local. All in one pipeline run.</p>
+              <p style="margin-top:0.75rem;color:var(--text-2);font-size:0.875rem"><strong>Input:</strong> raw audio &nbsp;·&nbsp; <strong>Output:</strong> transcript + show notes + clips + checkout page + RSS item</p>
+              <div class="cta-row"><a class="secondary-btn" href="recipe-media.html">Full media recipe →</a></div>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">Nonprofit / grant work</span>
+              <h3>Program debrief → grant-language draft</h3>
+              <p>Debrief recording → BonfyreTranscribe → BonfyreBrief extracts outcomes → BonfyreRepurpose generates grant-language draft + board update + impact summary → BonfyreEmit publishes to your site.</p>
+              <p style="margin-top:0.75rem;color:var(--text-2);font-size:0.875rem"><strong>Input:</strong> program debrief &nbsp;·&nbsp; <strong>Output:</strong> grant draft + board update + impact summary page</p>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">Agency / consultant</span>
+              <h3>Discovery call → proposal packet</h3>
+              <p>Discovery call → BonfyreTranscribe + BonfyreBrief → BonfyreOffer applies dynamic pricing → BonfyrePack assembles a PDF/HTML proposal with scope, price, and proof summary → BonfyreOutreach queues follow-up.</p>
+              <p style="margin-top:0.75rem;color:var(--text-2);font-size:0.875rem"><strong>Input:</strong> discovery call &nbsp;·&nbsp; <strong>Output:</strong> signed proposal packet + automated follow-up sequence</p>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">Sales team</span>
+              <h3>Sales call → CRM-ready summary</h3>
+              <p>Call → BonfyreTranscribe → BonfyreBrief extracts stage, objections, and next steps → BonfyreTag applies custom tags → BonfyreMeter records the engagement → BonfyreSync pushes a structured summary to your CRM.</p>
+              <p style="margin-top:0.75rem;color:var(--text-2);font-size:0.875rem"><strong>Input:</strong> sales call &nbsp;·&nbsp; <strong>Output:</strong> structured CRM entry with stage, objections, next steps</p>
+              <div class="cta-row"><a class="secondary-btn" href="recipe-sales.html">Full sales recipe →</a></div>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">Engineering team</span>
+              <h3>Incident recording → searchable postmortem</h3>
+              <p>War room call → BonfyreTranscribe → BonfyreBrief extracts timeline + root cause + action items → BonfyreGraph links to related incidents → BonfyreRender produces a structured postmortem atlas page → BonfyreIndex makes it searchable.</p>
+              <p style="margin-top:0.75rem;color:var(--text-2);font-size:0.875rem"><strong>Input:</strong> incident call &nbsp;·&nbsp; <strong>Output:</strong> linked, searchable postmortem atlas page</p>
+              <div class="cta-row"><a class="secondary-btn" href="recipe-dev.html">Full dev recipe →</a></div>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <!-- What these recipes have in common -->
+      <section class="section">
+        <div class="shell-container">
+          <div class="section-header">
+            <div>
+              <span class="section-kicker">What they share</span>
+              <h2 class="section-title">Same infrastructure, different outputs.</h2>
+            </div>
+          </div>
+          <div class="feature-grid">
+            <article class="feature-card">
+              <span class="card-meta">The input</span>
+              <h3>Raw audio or text is always the starting point</h3>
+              <p>Every recipe starts with something you already create: a call, a recording, a voicemail, a meeting. You don't change how you work — you add a pipeline that processes what you already generate. The pipeline runs after the meeting is over; it doesn't interrupt the meeting.</p>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">The processing</span>
+              <h3>Transcribe → structure → format → distribute</h3>
+              <p>Every recipe follows the same four-stage arc. Transcription (BonfyreTranscribe + cleanup) → structuring (BonfyreBrief + context-specific extraction) → formatting (BonfyreRender + BonfyreEmit for the right surface) → distribution (BonfyrePack + BonfyreSync or BonfyreDistribute). The binaries swap; the architecture doesn't.</p>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">The output</span>
+              <h3>Something you can hand someone</h3>
+              <p>Every recipe produces a tangible deliverable — not a log file, not a dashboard metric, not a database row. A PDF, an HTML page, a structured bundle, a CRM entry, a signed proof. Infrastructure becomes a product when the output is something a client, a vendor, a reviewer, or a regulator can open and act on.</p>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">Privacy by default</span>
+              <h3>Nothing leaves your infrastructure</h3>
+              <p>Every recipe above runs entirely on-device or on your own server. Legal intake calls never transit a SaaS API. Medical recordings stay on-premise. Incident war rooms don't get logged by a third-party transcription service. Local processing isn't a configuration option — it's the default.</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <!-- The recipe deep-dive pages -->
+      <section class="section">
+        <div class="shell-container">
+          <div class="section-header">
+            <div>
+              <span class="section-kicker">Deep-dive recipe pages</span>
+              <h2 class="section-title">Step-by-step breakdowns for common verticals.</h2>
+            </div>
+          </div>
+          <div class="feature-grid">
+            <article class="feature-card">
+              <span class="card-meta">Legal and professional services</span>
+              <h3>Private intake → structured briefs</h3>
+              <p>Client calls transcribed locally, structured by speaker, quality-scored, and packaged into proof bundles with BLAKE2b provenance. Ed25519 signatures for audit trails. HIPAA-compliant by default.</p>
+              <div class="cta-row"><a class="secondary-btn" href="recipe-legal.html">Legal recipe →</a></div>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">Media and podcasting</span>
+              <h3>Raw audio → published, monetized asset</h3>
+              <p>Episode in → transcript + show notes + social clips + RSS feed + checkout page, all locally in under 5 minutes. BonfyreClips, BonfyreNarrate, BonfyreRepurpose, BonfyreOffer in one pipeline.</p>
+              <div class="cta-row"><a class="secondary-btn" href="recipe-media.html">Media recipe →</a></div>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">Field research and archives</span>
+              <h3>Offline capture → searchable archive</h3>
+              <p>Record in the field with no internet. Bonfyre transcribes on-device, embeds for SIMD vector search, creates a LMDB-backed archive, and publishes a static site. Fountain codes handle lossy syncs.</p>
+              <div class="cta-row"><a class="secondary-btn" href="recipe-field.html">Field recipe →</a></div>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">Ops and internal teams</span>
+              <h3>Meetings → actionable memory</h3>
+              <p>Standups, postmortems, shift handoffs, and town halls — transcribed, summarised, tagged, and made searchable. BonfyreProject tracks follow-up items. BonfyreGraph links related records.</p>
+              <div class="cta-row"><a class="secondary-btn" href="recipe-ops.html">Ops recipe →</a></div>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">Sales and growth</span>
+              <h3>Conversations → pricing surfaces</h3>
+              <p>Sales calls distilled by BonfyreBrief → offer priced by BonfyreOffer → usage metered by BonfyreMeter → outreach sequenced by BonfyreOutreach → ledger updated by BonfyreLedger. Full pipeline, not just transcripts.</p>
+              <div class="cta-row"><a class="secondary-btn" href="recipe-sales.html">Sales recipe →</a></div>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">Education and archives</span>
+              <h3>Recorded material becomes public memory</h3>
+              <p>Family histories, museum exhibits, local archives, and curriculum pages built from the same ingest, search, and publishing path. Same pipeline, institutional-quality output.</p>
+              <div class="cta-row"><a class="secondary-btn" href="recipe-education.html">Education recipe →</a></div>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">Operations and support</span>
+              <h3>Calls become actions, not just logs</h3>
+              <p>Phone edge, message handling, relay, queueing, and delivery. From "recorded input" to active operating surface.</p>
+              <div class="cta-row"><a class="secondary-btn" href="recipe-support.html">Support recipe →</a></div>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">Developer organizations</span>
+              <h3>Repos and incidents become explainable</h3>
+              <p>Local knowledge layer for repos, maintainer work, and team retrospectives. Not just external content — internal operational memory.</p>
+              <div class="cta-row"><a class="secondary-btn" href="recipe-dev.html">Dev recipe →</a></div>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <!-- what comes next -->
+      <section class="section">
+        <div class="shell-container">
+          <div class="section-header">
+            <div>
+              <span class="section-kicker">Related</span>
+              <h2 class="section-title">From recipe pattern to pipeline detail.</h2>
+            </div>
+          </div>
+          <div class="path-grid">
+            <article class="path-card">
+              <span class="card-meta">How pipelines run</span>
+              <h3>Pipeline flows and worked example</h3>
+              <p>The six pipeline patterns in detail, plus a complete step-by-step walkthrough of a 45-minute podcast episode from raw audio to distributed deliverable.</p>
+              <div class="cta-row"><a class="secondary-btn" href="pipeline-flows.html">Pipeline flows →</a></div>
+            </article>
+            <article class="path-card">
+              <span class="card-meta">What it replaces</span>
+              <h3>Bonfyre vs the stack</h3>
+              <p>Deepgram, Strapi, Pinecone, Twilio, full SaaS backend, cloud GPU. Real numbers, not marketing copy.</p>
+              <div class="cta-row"><a class="secondary-btn" href="comparisons.html">Comparisons →</a></div>
+            </article>
+            <article class="path-card">
+              <span class="card-meta">Live apps</span>
+              <h3>Proof pages Bonfyre built</h3>
+              <p>10 GitHub Pages apps, each produced by a Bonfyre pipeline. Not demos. Not mockups. Working pages.</p>
+              <div class="cta-row"><a class="secondary-btn" href="apps.html">Live apps →</a></div>
+            </article>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <div class="shell-container footer-row">
+        <div>Bonfyre industry recipes — eight verticals, one infrastructure, concrete outputs.</div>
+        <div class="footer-links">
+          <a href="index.html">Overview</a>
+          <a href="explore.html">Explore</a>
+          <a href="pipeline-flows.html">Pipeline flows</a>
+          <a href="comparisons.html">Comparisons</a>
+          <a href="https://github.com/Nickgonzales76017/bonfyre-oss" target="_blank" rel="noreferrer">GitHub</a>
+        </div>
+      </div>
+    </footer>
+  </div>
+  <script src="assets/site.js"></script>
+</body>
+</html>
