@@ -142,8 +142,8 @@
       <section class="page-hero">
         <div class="shell-container hero-grid">
           <div class="hero-copy">
-            <span class="hero-kicker">bonfyre-recipe · bonfyre-run</span>
-            <h1 class="hero-title">Ten codes. One command. <span class="accent">Any pipeline.</span></h1>
+            <span class="hero-kicker">bonfyre-recipe · bonfyre-run · bonfyre-model</span>
+            <h1 class="hero-title">Ten codes. One command. <span class="accent">Models included.</span></h1>
             <p>Every Bonfyre pipeline is a registered recipe with a three-character code. <code>bonfyre-run A1 recording.wav</code> resolves the recipe, validates the binaries, executes every stage in the right order — parallel where safe — and writes a signed run manifest. No scripting. No glue code. No cloud call.</p>
             <div class="hero-actions">
               <a class="primary-btn" href="#recipe-codes">Browse recipe codes</a>
@@ -171,6 +171,14 @@
               <span class="metric-value">SQLite</span>
               <span class="metric-label">Content-addressed registry</span>
             </article>
+            <article class="metric-card">
+              <span class="metric-value green">10</span>
+              <span class="metric-label">Built-in model deps</span>
+            </article>
+            <article class="metric-card">
+              <span class="metric-value green">10</span>
+              <span class="metric-label">Built-in model deps</span>
+            </article>
           </div>
         </div>
       </section>
@@ -180,9 +188,9 @@
         <div class="shell-container">
           <div class="section-header">
             <div>
-              <span class="section-kicker">Two binaries, one workflow</span>
-              <h2 class="section-title">Registry + executor. The two things you actually need.</h2>
-              <p class="section-copy">Before these existed, running a Bonfyre pipeline meant writing shell scripts to chain binaries, manage output directories, and handle partial failures. Now you type one command.</p>
+              <span class="section-kicker">Three binaries, one workflow</span>
+              <h2 class="section-title">Registry + executor + model manager. Everything you need to run.</h2>
+              <p class="section-copy">Before these existed, running a Bonfyre pipeline meant writing shell scripts to chain binaries, manage output directories, stage model files manually, and handle partial failures. Now you type one command.</p>
             </div>
           </div>
           <div class="feature-grid">
@@ -626,10 +634,15 @@ bonfyre-transcribe /tmp/run01/ingest \
               <p style="margin-top:0.75rem">The registry is a local SQLite file — it lives at <code>~/.local/share/bonfyre/recipes.db</code> and you own it. You can back it up, version-control the JSON source files, and share recipes with your team. Anyone with the same JSON file gets the same SHA-256 hash and the same reproducible run.</p>
               <div class="code-block">
 <span class="comment"># First-time setup:</span>
-<span class="cmd">bonfyre-recipe</span> add <span class="flag">--builtin</span>   <span class="comment"># seed all 10 codes</span>
+<span class="cmd">bonfyre-recipe</span> add <span class="flag">--builtin</span>   <span class="comment"># seed all 10 recipe codes</span>
+<span class="cmd">bonfyre-model</span> list               <span class="comment"># 10 models auto-registered</span>
 <span class="cmd">bonfyre-recipe</span> status            <span class="comment"># verify</span>
 
-<span class="comment"># Then run any pipeline:</span>
+<span class="comment"># Pull models for the recipe you want to run:</span>
+<span class="cmd">bonfyre-model</span> pull <span class="flag">--recipe</span> <span class="path">A1</span>  <span class="comment"># ~150 MB whisper-base + silero-vad</span>
+<span class="cmd">bonfyre-model</span> pull <span class="flag">--recipe</span> <span class="path">A3</span>  <span class="comment"># full suite (~8 GB)</span>
+
+<span class="comment"># Then run any pipeline (models already cached):</span>
 <span class="cmd">bonfyre-run</span> <span class="path">A1</span> recording.wav
 <span class="cmd">bonfyre-run</span> dry-run <span class="path">A3</span> episode.wav   <span class="comment"># see plan first</span>
 <span class="cmd">bonfyre-run</span> <span class="path">A3</span> episode.wav <span class="flag">--tier</span> pro</div>
@@ -648,6 +661,12 @@ bonfyre-transcribe /tmp/run01/ingest \
             </div>
           </div>
           <div class="path-grid">
+            <article class="story-card">
+              <span class="card-meta">Model dependencies</span>
+              <h3>bonfyre-model</h3>
+              <p>10 built-in model records pre-mapped to recipe codes. Pull source chain: swarm → file → s3 → HuggingFace → https. Hash-verified on every pull. No vendor lock-in.</p>
+              <div class="code-block"><span class="cmd">bonfyre-model</span> pull <span class="flag">--recipe</span> <span class="path">A3</span></div>
+            </article>
             <article class="story-card">
               <span class="card-meta">See it in context</span>
               <h3>Pipeline flows</h3>
@@ -673,7 +692,7 @@ bonfyre-transcribe /tmp/run01/ingest \
 
     <footer class="footer">
       <div class="shell-container footer-row">
-        <div>bonfyre-recipe + bonfyre-run — 10 codes, full DAG executor, run-manifest on every run.</div>
+        <div>bonfyre-recipe · bonfyre-run · bonfyre-model — 10 codes, DAG executor, hash-verified model deps.</div>
         <div class="footer-links">
           <a href="index.html">Overview</a>
           <a href="explore.html">Explore</a>

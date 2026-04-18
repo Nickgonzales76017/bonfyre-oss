@@ -267,6 +267,12 @@
                 <a class="secondary-btn" href="https://github.com/Nickgonzales76017/bonfyre-oss/tree/main/cmd/BonfyreRun" target="_blank" rel="noreferrer">Source →</a>
               </div>
             </article>
+            <article class="feature-card">
+              <span class="card-meta">bonfyre-model internals</span>
+              <h3>Hash-first model dependency manager</h3>
+              <p>SQLite WAL-mode store with three tables: <code>models</code> (id, sha256, format, size), <code>sources</code> (model_id, url, priority), and <code>recipe_models</code> (recipe_code, model_id, role). SHA-256 is the canonical model identity — source URLs are pull hints resolved in priority order. HuggingFace <code>hf://owner/repo/file</code> URLs are converted to plain HTTPS GET requests — no Python SDK, no token required for public models. Downloaded files are SHA-256 verified and the hash stored on first pull. FTS5 full-text search over model names and descriptions.</p>
+              <p style="margin-top:0.75rem;color:var(--text-2);font-size:0.875rem"><strong>Source priority:</strong> <code>swarm://</code> → <code>file://</code> → <code>s3://</code> → <code>hf://</code> → <code>https://</code>. Add any source with <code>bonfyre-model source add &lt;id&gt; &lt;url&gt;</code>. SHA-256 is identical regardless of source.</p>
+            </article>
           </div>
         </div>
       </section>

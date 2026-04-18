@@ -137,9 +137,9 @@
         <div class="shell-container">
           <div class="section-header">
             <div>
-              <span class="section-kicker">bonfyre-recipe · bonfyre-run</span>
-              <h2 class="section-title">One command runs the whole pipeline.</h2>
-              <p class="section-copy">Every common pipeline is a registered recipe with a three-character code. The executor resolves the recipe, validates the binaries, runs stages in parallel where safe, and writes a <code>run-manifest.json</code> receipt. No shell scripts. No output directory management. No partial-failure mystery.</p>
+              <span class="section-kicker">bonfyre-recipe · bonfyre-run · bonfyre-model</span>
+              <h2 class="section-title">One command runs the whole pipeline. Models included.</h2>
+              <p class="section-copy">Every common pipeline is a registered recipe with a three-character code. The executor resolves the recipe, validates the binaries, runs stages in parallel where safe, and writes a <code>run-manifest.json</code> receipt. <code>bonfyre-model</code> ensures every AI model the pipeline needs is present and hash-verified before the first stage fires. No shell scripts. No manual model staging.</p>
             </div>
           </div>
           <div class="feature-grid">
@@ -160,6 +160,12 @@
               <h3>Proof, publish, revenue, ops</h3>
               <p><strong>P1</strong>: BLAKE2b hash + Ed25519 sign + pack + ledger. &nbsp;<strong>P2</strong>: P1 + multi-format emit + sync. &nbsp;<strong>L1</strong>: revenue event → meter → ledger → finance. &nbsp;<strong>G1</strong>: API gateway validation harness.</p>
               <div style="margin-top:0.75rem;font-family:'IBM Plex Mono',monospace;font-size:0.78rem;color:var(--accent,#ff6b35);background:rgba(255,107,53,0.08);border:1px solid rgba(255,107,53,0.2);border-radius:5px;padding:0.6rem 0.9rem">bonfyre-run P2 deliverable/</div>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">bonfyre-model</span>
+              <h3>Models solved, not assumed</h3>
+              <p>10 model records pre-mapped to recipe codes. <code>bonfyre-model pull --recipe A3</code> fetches exactly what A3 needs. Source chain: local peers → <code>file://</code> → <code>s3://</code> → HuggingFace (plain HTTPS, no SDK) → any mirror. SHA-256 verified. No vendor lock-in.</p>
+              <div style="margin-top:0.75rem;font-family:'IBM Plex Mono',monospace;font-size:0.78rem;color:var(--accent,#ff6b35);background:rgba(255,107,53,0.08);border:1px solid rgba(255,107,53,0.2);border-radius:5px;padding:0.6rem 0.9rem">bonfyre-model pull --recipe A3</div>
             </article>
           </div>
           <div class="cta-row" style="margin-top:2rem">

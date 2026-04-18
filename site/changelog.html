@@ -60,7 +60,7 @@
             <div>
               <span class="section-kicker">Current cycle — Cycle 4</span>
               <h2 class="section-title">Pipeline registry, DAG executor, and 10 built-in recipe codes.</h2>
-              <p class="section-copy">Two new binaries that make the whole stack runnable in one command: <code>bonfyre-recipe</code> maintains a content-addressed SQLite registry of named pipelines, and <code>bonfyre-run</code> resolves a recipe code, builds a dependency graph, and executes stages level-parallel with Ed25519-signed run manifests on every invocation.</p>
+              <p class="section-copy">Three new binaries that make the whole stack runnable in one command: <code>bonfyre-recipe</code> maintains a content-addressed SQLite registry of named pipelines, and <code>bonfyre-run</code> resolves a recipe code, builds a dependency graph, and executes stages level-parallel with Ed25519-signed run manifests on every invocation.</p>
             </div>
           </div>
           <div class="feature-grid">
@@ -84,6 +84,14 @@
               <h3>A-series, M, P, V, R, L, G series</h3>
               <p>A1 (audio quick brief), A2 (audio archive), A3 (full pipeline, 23 stages), M1 (media/podcast), P1 (proof bundle), P2 (verified publish), V1 (verified brief with Ed25519 proof), R1 (repo onboarding guide), L1 (revenue event track), G1 (API gateway policy check). All 10 discoverable via <code>bonfyre-recipe list</code>.</p>
               <p style="margin-top:0.75rem;color:var(--text-2);font-size:0.875rem"><strong>Why it matters:</strong> The shortcodes are the public API of the stack. Every recipe page, app card, and layer page now surfaces the relevant code so readers can immediately run what they're reading about.</p>
+            </article>
+
+
+            <article class="feature-card">
+              <span class="card-meta">New binary — bonfyre-model</span>
+              <h3>AI model dependency manager</h3>
+              <p>SQLite registry of model deps mapped to recipe codes. 10 built-in records (Whisper base/medium/large-v3, Llama 3 8B/70B, Llama 3 8B FPQ, nomic-embed-text, bge-reranker, pyannote, silero-vad). Source chain: <code>swarm://</code> → <code>file://</code> → <code>s3://</code> → <code>hf://</code> (plain HTTPS GET) → <code>https://</code>. SHA-256 content verification on every pull. <code>bonfyre-model pull --recipe A3</code> pulls all deps for a recipe in one command. No Python SDK dependency on HuggingFace — models switch to any mirror by adding a source entry.</p>
+              <p style="margin-top:0.75rem;color:var(--text-2);font-size:0.875rem"><strong>Why it matters:</strong> Model files were the last manual step in pipeline setup. A 3 GB Whisper model had no registry, no version tracking, and no fallback source. bonfyre-model closes that gap — every recipe now has declared model deps, a verified hash, and a multi-source pull chain that doesn't depend on any single vendor.</p>
             </article>
 
           </div>
