@@ -21,6 +21,7 @@
         <nav class="site-nav" aria-label="Primary">
           <a href="index.html">Overview</a>
           <a href="explore.html">Explore</a>
+          <a href="recipe-run.html">Pipelines</a>
           <a class="current" href="docs.html">Technical Docs</a>
           <a href="apps.html">Live Apps</a>
         </nav>
@@ -236,6 +237,36 @@
           </div>
           <div class="cta-row" style="margin-top:2rem">
             <a class="secondary-btn" href="https://github.com/Nickgonzales76017/bonfyre-oss" target="_blank" rel="noreferrer">Reproduce on GitHub</a>
+          </div>
+        </div>
+      </section>
+
+      <!-- Pipelines reference -->
+      <section class="section">
+        <div class="shell-container">
+          <div class="section-header">
+            <div>
+              <span class="section-kicker">bonfyre-recipe · bonfyre-run</span>
+              <h2 class="section-title">Pipeline registry and executor.</h2>
+              <p class="section-copy">Two new C binaries ship with the 53. bonfyre-recipe manages a SQLite-backed content-addressed registry of pipeline recipes. bonfyre-run executes any registered recipe as a level-parallel DAG. Source in <code>cmd/BonfyreRecipe</code> and <code>cmd/BonfyreRun</code>.</p>
+            </div>
+          </div>
+          <div class="feature-grid">
+            <article class="feature-card">
+              <span class="card-meta">bonfyre-recipe internals</span>
+              <h3>SQLite WAL + FTS5 + SHA-256 content addressing</h3>
+              <p>Registry at <code>~/.local/share/bonfyre/recipes.db</code>. Schema: <code>recipes</code> table (code, name, version, json_text, hash, source, timestamps) + FTS5 virtual table for full-text search over code/name/description/stage binaries. Every insert triggers FTS sync. SHA-256 is computed inline (FIPS 180-4) — no external crypto dependency. The hash is stable across machines for the same JSON.</p>
+              <div class="cta-row"><a class="secondary-btn" href="https://github.com/Nickgonzales76017/bonfyre-oss/tree/main/cmd/BonfyreRecipe" target="_blank" rel="noreferrer">Source →</a></div>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">bonfyre-run internals</span>
+              <h3>Topological level assignment + fork/waitpid parallelism</h3>
+              <p>Levels assigned by iterating <code>level = max(dep_levels) + 1</code> until stable — correct for diamonds and fan-out/fan-in DAGs. All stages at the same level are forked concurrently (capped by <code>--parallel N</code>, default 8). <code>{input}</code> and <code>{out}/STAGE_ID</code> tokens are substituted before exec. After all levels, a <code>run-manifest.json</code> is written with per-stage exit code and wall_ms.</p>
+              <div class="cta-row">
+                <a class="secondary-btn" href="recipe-run.html">Full pipeline reference →</a>
+                <a class="secondary-btn" href="https://github.com/Nickgonzales76017/bonfyre-oss/tree/main/cmd/BonfyreRun" target="_blank" rel="noreferrer">Source →</a>
+              </div>
+            </article>
           </div>
         </div>
       </section>

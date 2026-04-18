@@ -21,6 +21,7 @@
         <nav class="site-nav" aria-label="Primary">
           <a class="current" href="index.html">Overview</a>
           <a href="explore.html">Explore</a>
+          <a href="recipe-run.html">Pipelines</a>
           <a href="docs.html">Technical Docs</a>
           <a href="apps.html">Live Apps</a>
         </nav>
@@ -43,6 +44,8 @@
           <span>20</span><span>live apps</span>
           <span class="dot">•</span>
           <span>$0/month</span><span>cloud bill</span>
+          <span class="dot">•</span>
+          <span>10</span><span>recipe codes</span>
         </div>
       </div>
     </header>
@@ -53,14 +56,19 @@
           <div class="hero-copy">
             <span class="hero-kicker">Bonfyre platform</span>
             <h1 class="hero-title">AI That Runs <span class="accent">On Your Machine</span></h1>
-            <p>53 C binaries. Local inference. Local APIs. Local distribution. Proxy, orchestration, telephony, relay, narration, and page output in the same stack instead of another chain of services.</p>
+            <p>53 C binaries. 10 pipeline recipes. Local inference. Local APIs. Local distribution. Type <code>bonfyre-run A1 recording.wav</code> and the whole pipeline runs — transcribe, clean, brief, proof — no scripting, no cloud, no config. Proxy, orchestration, telephony, relay, narration, and page output in the same stack.</p>
             <div class="hero-actions">
               <a class="primary-btn" href="explore.html">Explore what it does</a>
+              <a class="secondary-btn" href="recipe-run.html">Run a pipeline</a>
               <a class="secondary-btn" href="docs.html">Technical docs</a>
             </div>
             <div class="install-box">
               <span class="label">Quick install</span>
               <code>curl -fsSL https://raw.githubusercontent.com/Nickgonzales76017/bonfyre/main/install.sh | sh</code>
+            </div>
+            <div class="install-box" style="margin-top:0.75rem">
+              <span class="label">Then run any pipeline</span>
+              <code>bonfyre-run A1 recording.wav</code>
             </div>
           </div>
           <div class="stats-grid" aria-label="Bonfyre metrics">
@@ -119,6 +127,44 @@
               <h3>Why 53 binaries don't need nginx in front of them.</h3>
               <p>bf_reactor is a per-core event loop — a tight C loop that uses the operating system's fastest I/O mechanism (io_uring on Linux, kqueue on macOS) to handle thousands of network connections at once without spawning a thread per connection. Every Bonfyre binary that speaks HTTP embeds the same reactor. BonfyreCMS, BonfyreAPI, BonfyreProxy, BonfyreGate — all of them handle 4,096 concurrent connections per core, parse HTTP/1.1 requests with zero allocation overhead, and push SSE updates directly to clients. The reason BonfyreCMS is 287 KB isn't just tight code — it's that the I/O layer costs almost nothing.</p>
             </article>
+          </div>
+        </div>
+      </section>
+
+
+      <!-- Pipeline codes -->
+      <section class="section" style="background:var(--surface-1,#111);border-top:1px solid var(--border,#222);border-bottom:1px solid var(--border,#222)">
+        <div class="shell-container">
+          <div class="section-header">
+            <div>
+              <span class="section-kicker">bonfyre-recipe · bonfyre-run</span>
+              <h2 class="section-title">One command runs the whole pipeline.</h2>
+              <p class="section-copy">Every common pipeline is a registered recipe with a three-character code. The executor resolves the recipe, validates the binaries, runs stages in parallel where safe, and writes a <code>run-manifest.json</code> receipt. No shell scripts. No output directory management. No partial-failure mystery.</p>
+            </div>
+          </div>
+          <div class="feature-grid">
+            <article class="feature-card">
+              <span class="card-meta" style="font-family:'IBM Plex Mono',monospace;color:var(--accent,#ff6b35)">A1 · A2 · A3</span>
+              <h3>Audio pipelines</h3>
+              <p><strong>A1</strong>: raw audio → clean brief (4 stages). &nbsp;<strong>A2</strong>: A1 + embed + LMDB search index. &nbsp;<strong>A3</strong>: complete 23-stage production pipeline with level-parallel branches — tag, tone, and paragraph all run concurrently after clean.</p>
+              <div style="margin-top:0.75rem;font-family:'IBM Plex Mono',monospace;font-size:0.78rem;color:var(--accent,#ff6b35);background:rgba(255,107,53,0.08);border:1px solid rgba(255,107,53,0.2);border-radius:5px;padding:0.6rem 0.9rem">bonfyre-run A3 episode.wav --tier pro</div>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta" style="font-family:'IBM Plex Mono',monospace;color:var(--accent,#ff6b35)">M1 · V1 · R1</span>
+              <h3>Media, verified briefs, repos</h3>
+              <p><strong>M1</strong>: podcast production — ingest through repurpose + offer + emit + distribute. &nbsp;<strong>V1</strong>: audio brief with Ed25519-signed proof bundle. &nbsp;<strong>R1</strong>: repo to onboarding guide.</p>
+              <div style="margin-top:0.75rem;font-family:'IBM Plex Mono',monospace;font-size:0.78rem;color:var(--accent,#ff6b35);background:rgba(255,107,53,0.08);border:1px solid rgba(255,107,53,0.2);border-radius:5px;padding:0.6rem 0.9rem">bonfyre-run M1 interview.wav</div>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta" style="font-family:'IBM Plex Mono',monospace;color:var(--accent,#ff6b35)">P1 · P2 · L1 · G1</span>
+              <h3>Proof, publish, revenue, ops</h3>
+              <p><strong>P1</strong>: BLAKE2b hash + Ed25519 sign + pack + ledger. &nbsp;<strong>P2</strong>: P1 + multi-format emit + sync. &nbsp;<strong>L1</strong>: revenue event → meter → ledger → finance. &nbsp;<strong>G1</strong>: API gateway validation harness.</p>
+              <div style="margin-top:0.75rem;font-family:'IBM Plex Mono',monospace;font-size:0.78rem;color:var(--accent,#ff6b35);background:rgba(255,107,53,0.08);border:1px solid rgba(255,107,53,0.2);border-radius:5px;padding:0.6rem 0.9rem">bonfyre-run P2 deliverable/</div>
+            </article>
+          </div>
+          <div class="cta-row" style="margin-top:2rem">
+            <a class="primary-btn" href="recipe-run.html">Full pipeline reference →</a>
+            <a class="secondary-btn" href="industry-recipes.html">Match a recipe to your use case →</a>
           </div>
         </div>
       </section>
@@ -199,9 +245,9 @@
           </div>
           <div class="feature-grid">
             <article class="feature-card">
-              <span class="card-meta">Cycle 3 additions</span>
-              <h3>Swarm · Distribute · bf_reactor · Pipeline hot-load · bf_lmdb+flatbuf · FPQ SIMD</h3>
-              <p>BitTorrent v2 artifact delivery, QUIC family streams, a shared-nothing per-core API reactor, hot-swappable pipeline stages, zero-copy LMDB cache, and SIMD + homomorphic encrypted scoring upgrades.</p>
+              <span class="card-meta">Cycle 4 additions</span>
+              <h3>bonfyre-recipe · bonfyre-run · Swarm · Distribute · bf_reactor · FPQ SIMD</h3>
+              <p>New this cycle: content-addressed recipe registry (10 built-in codes, FTS5 search, SHA-256 hashing) and a DAG executor (level-parallel fork, dry-run, batch, run-manifest output). Plus: BitTorrent v2 delivery, QUIC streams, shared-nothing reactor, hot-swap pipeline stages, zero-copy LMDB, and SIMD scoring.</p>
               <div class="cta-row"><a class="secondary-btn" href="changelog.html">Read the full changelog →</a></div>
             </article>
           </div>
@@ -214,10 +260,22 @@
           <div class="section-header">
             <div>
               <span class="section-kicker">Start here</span>
-              <h2 class="section-title">Three ways into the stack.</h2>
+              <h2 class="section-title">Four ways into the stack.</h2>
             </div>
           </div>
           <div class="path-grid">
+            <article class="story-card">
+              <span class="card-meta">Pipelines</span>
+              <h3>Run any pipeline in one command</h3>
+              <p>Ten shortcodes. A DAG executor. Level-parallel execution, dry-run, batch mode, and a run-manifest receipt on every run. The fastest way to start using the stack.</p>
+              <div class="pill-row">
+                <span class="pill">10 recipe codes</span>
+                <span class="pill">DAG executor</span>
+                <span class="pill">run-manifest.json</span>
+                <span class="pill">Batch mode</span>
+              </div>
+              <div class="cta-row"><a class="primary-btn" href="recipe-run.html">Open Pipelines</a></div>
+            </article>
             <article class="story-card">
               <span class="card-meta">Explore</span>
               <h3>Use cases and recipes</h3>

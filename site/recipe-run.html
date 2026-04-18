@@ -1,0 +1,690 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#ff6b35">
+  <meta name="description" content="bonfyre-recipe and bonfyre-run: ten shortcodes that run any Bonfyre pipeline DAG in one command. Registry, dry-run, level-parallel execution, run-manifest output.">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔥</text></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://api.fontshare.com/v2/css?f[]=cabinet-grotesk@400,500,700,800,900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/site.css">
+  <title>Bonfyre | Pipelines — bonfyre-recipe + bonfyre-run</title>
+  <style>
+    .code-block {
+      background: var(--surface-2, #1a1a1a);
+      border: 1px solid var(--border, #2a2a2a);
+      border-radius: 8px;
+      padding: 1.25rem 1.5rem;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.82rem;
+      line-height: 1.7;
+      overflow-x: auto;
+      color: var(--text-1, #f0f0f0);
+      margin: 1rem 0;
+    }
+    .code-block .comment { color: #6a9a6a; }
+    .code-block .cmd     { color: #ff6b35; font-weight: 600; }
+    .code-block .flag    { color: #7eb8ff; }
+    .code-block .path    { color: #ffd580; }
+    .recipe-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.875rem;
+      margin: 1.5rem 0;
+    }
+    .recipe-table th {
+      text-align: left;
+      padding: 0.6rem 1rem;
+      background: var(--surface-2, #1a1a1a);
+      color: var(--text-2, #888);
+      font-size: 0.75rem;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      font-family: 'IBM Plex Mono', monospace;
+    }
+    .recipe-table td {
+      padding: 0.75rem 1rem;
+      border-bottom: 1px solid var(--border, #2a2a2a);
+      vertical-align: top;
+    }
+    .recipe-table tr:hover td { background: var(--surface-1, #111); }
+    .code-pill {
+      display: inline-block;
+      background: var(--accent, #ff6b35);
+      color: #fff;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.8rem;
+      font-weight: 600;
+      padding: 0.2rem 0.55rem;
+      border-radius: 4px;
+      letter-spacing: 0.03em;
+    }
+    .run-cmd {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.78rem;
+      color: #ff6b35;
+      background: rgba(255,107,53,0.1);
+      border: 1px solid rgba(255,107,53,0.25);
+      border-radius: 4px;
+      padding: 0.15rem 0.5rem;
+      white-space: nowrap;
+    }
+    .stage-flow {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4rem;
+      margin: 0.5rem 0;
+      align-items: center;
+    }
+    .stage-tag {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.72rem;
+      background: var(--surface-2, #1a1a1a);
+      border: 1px solid var(--border, #333);
+      padding: 0.15rem 0.45rem;
+      border-radius: 3px;
+      color: var(--text-2, #aaa);
+    }
+    .stage-arrow { color: var(--text-3, #555); font-size: 0.75rem; }
+    .opts-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; margin: 1rem 0; }
+    .opts-table td { padding: 0.55rem 0.75rem; border-bottom: 1px solid var(--border, #2a2a2a); }
+    .opts-table td:first-child { font-family: 'IBM Plex Mono', monospace; font-size: 0.78rem; color: #7eb8ff; white-space: nowrap; width: 200px; }
+    .opts-table td:nth-child(2) { color: var(--text-2, #888); width: 120px; }
+    .level-badge {
+      display: inline-block;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.68rem;
+      background: rgba(126,184,255,0.12);
+      color: #7eb8ff;
+      border: 1px solid rgba(126,184,255,0.25);
+      padding: 0.1rem 0.35rem;
+      border-radius: 3px;
+      margin-right: 0.35rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="site-shell">
+    <header class="site-header">
+      <div class="shell-container site-header-row">
+        <a class="brand" href="index.html"><span class="brand-mark">🔥</span><span>Bonfyre</span></a>
+        <nav class="site-nav" aria-label="Primary">
+          <a href="index.html">Overview</a>
+          <a href="explore.html">Explore</a>
+          <a class="current" href="recipe-run.html">Pipelines</a>
+          <a href="docs.html">Technical Docs</a>
+          <a href="apps.html">Live Apps</a>
+        </nav>
+        <div class="header-actions">
+          <a class="header-btn" href="https://github.com/Nickgonzales76017/bonfyre-oss/tree/main/cmd/BonfyreRecipe" target="_blank" rel="noreferrer">Source</a>
+        </div>
+      </div>
+      <div class="ticker-bar">
+        <div class="shell-container ticker-row">
+          <span>10</span><span>recipe codes</span>
+          <span class="dot">•</span>
+          <span>53</span><span>binaries</span>
+          <span class="dot">•</span>
+          <span>level-parallel</span><span>DAG execution</span>
+          <span class="dot">•</span>
+          <span>run-manifest.json</span><span>on every run</span>
+          <span class="dot">•</span>
+          <span>bonfyre-run A1 file.wav</span><span>that's it</span>
+        </div>
+      </div>
+    </header>
+
+    <main>
+      <!-- Hero -->
+      <section class="page-hero">
+        <div class="shell-container hero-grid">
+          <div class="hero-copy">
+            <span class="hero-kicker">bonfyre-recipe · bonfyre-run</span>
+            <h1 class="hero-title">Ten codes. One command. <span class="accent">Any pipeline.</span></h1>
+            <p>Every Bonfyre pipeline is a registered recipe with a three-character code. <code>bonfyre-run A1 recording.wav</code> resolves the recipe, validates the binaries, executes every stage in the right order — parallel where safe — and writes a signed run manifest. No scripting. No glue code. No cloud call.</p>
+            <div class="hero-actions">
+              <a class="primary-btn" href="#recipe-codes">Browse recipe codes</a>
+              <a class="secondary-btn" href="#command-ref">Command reference</a>
+            </div>
+            <div class="install-box">
+              <span class="label">Try it now</span>
+              <code>bonfyre-run dry-run A1 sample.wav</code>
+            </div>
+          </div>
+          <div class="stats-grid" aria-label="Recipe metrics">
+            <article class="metric-card">
+              <span class="metric-value orange">10</span>
+              <span class="metric-label">Built-in codes</span>
+            </article>
+            <article class="metric-card">
+              <span class="metric-value blue">23</span>
+              <span class="metric-label">Stages in A3 (full pipeline)</span>
+            </article>
+            <article class="metric-card">
+              <span class="metric-value">DAG</span>
+              <span class="metric-label">Parallel-safe execution</span>
+            </article>
+            <article class="metric-card">
+              <span class="metric-value">SQLite</span>
+              <span class="metric-label">Content-addressed registry</span>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <!-- What these two binaries do -->
+      <section class="section">
+        <div class="shell-container">
+          <div class="section-header">
+            <div>
+              <span class="section-kicker">Two binaries, one workflow</span>
+              <h2 class="section-title">Registry + executor. The two things you actually need.</h2>
+              <p class="section-copy">Before these existed, running a Bonfyre pipeline meant writing shell scripts to chain binaries, manage output directories, and handle partial failures. Now you type one command.</p>
+            </div>
+          </div>
+          <div class="feature-grid">
+            <article class="feature-card">
+              <span class="card-meta">bonfyre-recipe</span>
+              <h3>The recipe registry</h3>
+              <p>A SQLite-backed content-addressed registry of pipeline recipes. Every recipe is a JSON document describing a DAG of stages — which binary runs, which arguments to pass, which stages depend on which others. The registry ships with 10 built-in recipes and accepts custom JSON recipes from any path. Each recipe is stored with its SHA-256 hash so you know exactly which version ran.</p>
+              <div class="code-block">
+<span class="cmd">bonfyre-recipe</span> list
+<span class="cmd">bonfyre-recipe</span> show A3
+<span class="cmd">bonfyre-recipe</span> add <span class="path">my-pipeline.json</span>
+<span class="cmd">bonfyre-recipe</span> search transcribe
+<span class="cmd">bonfyre-recipe</span> validate A1
+<span class="cmd">bonfyre-recipe</span> init          <span class="comment"># write starter recipe.json</span></div>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">bonfyre-run</span>
+              <h3>The DAG executor</h3>
+              <p>Loads a recipe from the registry, assigns topological levels to every stage (stages with the same level are safe to run in parallel), validates that each binary exists on PATH, forks all stages at the same level concurrently, waits for them to finish before advancing, and writes a <code>run-manifest.json</code> with per-stage exit codes, wall times, and overall status. One partial failure is reported exactly, not swallowed.</p>
+              <div class="code-block">
+<span class="cmd">bonfyre-run</span> <span class="path">A1</span> recording.wav
+<span class="cmd">bonfyre-run</span> <span class="path">A3</span> episode.wav <span class="flag">--out</span> /tmp/ep01 <span class="flag">--tier</span> pro
+<span class="cmd">bonfyre-run</span> <span class="path">M1</span> interview.wav <span class="flag">--dry-run</span>
+<span class="cmd">bonfyre-run</span> <span class="path">P1</span> deliverable/ <span class="flag">--from-stage</span> proof
+<span class="cmd">bonfyre-run</span> <span class="path">R1</span> ./myrepo <span class="flag">--batch</span> repos/
+<span class="cmd">bonfyre-run</span> validate <span class="path">A1</span></div>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <!-- Recipe codes table -->
+      <section class="section" id="recipe-codes">
+        <div class="shell-container">
+          <div class="section-header">
+            <div>
+              <span class="section-kicker">10 built-in recipes</span>
+              <h2 class="section-title">Every common pipeline has a code.</h2>
+              <p class="section-copy">Codes are stable identifiers. The registry stores the SHA-256 of the recipe JSON — if someone ships you a run manifest from code <code>A1</code> you can verify the exact stage chain that ran.</p>
+            </div>
+          </div>
+
+          <!-- Audio group -->
+          <h3 style="font-family:'IBM Plex Mono',monospace;font-size:0.8rem;color:var(--text-2);letter-spacing:.08em;text-transform:uppercase;margin:2rem 0 0.75rem">Audio pipelines — A series</h3>
+          <div class="feature-grid">
+            <article class="feature-card">
+              <div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:0.75rem">
+                <span class="code-pill">A1</span>
+                <code class="run-cmd">bonfyre-run A1 recording.wav</code>
+              </div>
+              <h3>Audio → Structured Brief</h3>
+              <p>Foundation pipeline. Ingest, transcribe, clean, brief. 4 stages in sequence. Every other pipeline builds on this path.</p>
+              <div class="stage-flow">
+                <span class="stage-tag">ingest</span><span class="stage-arrow">→</span>
+                <span class="stage-tag">transcribe</span><span class="stage-arrow">→</span>
+                <span class="stage-tag">clean</span><span class="stage-arrow">→</span>
+                <span class="stage-tag">brief</span>
+              </div>
+              <p style="margin-top:0.5rem;font-size:0.82rem;color:var(--text-2)"><strong>Use for:</strong> any raw audio you need turned into a structured summary</p>
+            </article>
+            <article class="feature-card">
+              <div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:0.75rem">
+                <span class="code-pill">A2</span>
+                <code class="run-cmd">bonfyre-run A2 corpus.wav</code>
+              </div>
+              <h3>Audio → Searchable Archive</h3>
+              <p>A1 extended through the knowledge layer. Adds sentence embeddings, SIMD vector index, and LMDB-backed hybrid BM25+cosine search.</p>
+              <div class="stage-flow">
+                <span class="stage-tag">…A1…</span><span class="stage-arrow">→</span>
+                <span class="stage-tag">embed</span><span class="stage-arrow">→</span>
+                <span class="stage-tag">index</span><span class="stage-arrow">→</span>
+                <span class="stage-tag">query</span>
+              </div>
+              <p style="margin-top:0.5rem;font-size:0.82rem;color:var(--text-2)"><strong>Use for:</strong> archives you want to search after the fact — field recordings, oral histories, large corpora</p>
+            </article>
+            <article class="feature-card">
+              <div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:0.75rem">
+                <span class="code-pill">A3</span>
+                <code class="run-cmd">bonfyre-run A3 episode.wav --tier pro</code>
+              </div>
+              <h3>Audio → Full Production Pipeline</h3>
+              <p>23-stage complete pipeline. Ingest through distributed proof + ledger. Parallel branches after clean: tag, tone, and paragraph run concurrently. Compress, index, and emit run concurrently after their upstream stages.</p>
+              <div class="stage-flow">
+                <span class="stage-tag">ingest</span><span class="stage-arrow">→</span>
+                <span class="stage-tag">media-prep</span><span class="stage-arrow">→</span>
+                <span class="stage-tag">transcribe</span><span class="stage-arrow">→</span>
+                <span class="stage-tag">clean</span><span class="stage-arrow">→</span>
+                <span class="stage-tag" style="border-color:#7eb8ff;color:#7eb8ff">paragraph ∥ tone ∥ tag</span><span class="stage-arrow">→</span>
+                <span class="stage-tag">brief</span><span class="stage-arrow">→</span>
+                <span class="stage-tag" style="border-color:#7eb8ff;color:#7eb8ff">embed ∥ render ∥ offer</span><span class="stage-arrow">→</span>
+                <span class="stage-tag">proof → pack → stitch → ledger → meter</span>
+              </div>
+              <p style="margin-top:0.5rem;font-size:0.82rem;color:var(--text-2)"><strong>Use for:</strong> full production runs — podcast, media archive, anything you want distributed and monetised</p>
+            </article>
+          </div>
+
+          <!-- Media group -->
+          <h3 style="font-family:'IBM Plex Mono',monospace;font-size:0.8rem;color:var(--text-2);letter-spacing:.08em;text-transform:uppercase;margin:2rem 0 0.75rem">Media — M series</h3>
+          <div class="feature-grid">
+            <article class="feature-card">
+              <div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:0.75rem">
+                <span class="code-pill">M1</span>
+                <code class="run-cmd">bonfyre-run M1 episode.wav</code>
+              </div>
+              <h3>Media → Full Podcast Production</h3>
+              <p>Complete podcast pipeline: ingest, segment, transcribe, clean, paragraph, brief, repurpose (tweet/LinkedIn/YouTube drafts), offer (pricing page), emit (RSS item), distribute.</p>
+              <div class="stage-flow">
+                <span class="stage-tag">ingest</span><span class="stage-arrow">→</span>
+                <span class="stage-tag">segment</span><span class="stage-arrow">→</span>
+                <span class="stage-tag">…brief…</span><span class="stage-arrow">→</span>
+                <span class="stage-tag">repurpose</span><span class="stage-arrow">→</span>
+                <span class="stage-tag">offer</span><span class="stage-arrow">→</span>
+                <span class="stage-tag">emit</span><span class="stage-arrow">→</span>
+                <span class="stage-tag">distribute</span>
+              </div>
+              <p style="margin-top:0.5rem;font-size:0.82rem;color:var(--text-2)"><strong>Use for:</strong> podcast production — replaces Descript + Anchor + Mailchimp + a checkout page</p>
+              <div class="cta-row"><a class="secondary-btn" href="recipe-media.html">Full media recipe →</a></div>
+            </article>
+          </div>
+
+          <!-- Proof group -->
+          <h3 style="font-family:'IBM Plex Mono',monospace;font-size:0.8rem;color:var(--text-2);letter-spacing:.08em;text-transform:uppercase;margin:2rem 0 0.75rem">Proof &amp; publish — P series</h3>
+          <div class="feature-grid">
+            <article class="feature-card">
+              <div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:0.75rem">
+                <span class="code-pill">P1</span>
+                <code class="run-cmd">bonfyre-run P1 deliverable/</code>
+              </div>
+              <h3>Proof Bundle</h3>
+              <p>Content-address with BLAKE2b, hash with SHA-256, sign with Ed25519, pack into a tamper-evident archive, record in ledger. Use for any deliverable that needs a verifiable audit trail.</p>
+              <div class="stage-flow">
+                <span class="stage-tag">hash</span><span class="stage-arrow">→</span>
+                <span class="stage-tag">proof</span><span class="stage-arrow">→</span>
+                <span class="stage-tag">pack</span><span class="stage-arrow">→</span>
+                <span class="stage-tag">ledger</span>
+              </div>
+              <p style="margin-top:0.5rem;font-size:0.82rem;color:var(--text-2)"><strong>Use for:</strong> legal deliverables, compliance bundles, anything requiring chain-of-custody</p>
+            </article>
+            <article class="feature-card">
+              <div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:0.75rem">
+                <span class="code-pill">P2</span>
+                <code class="run-cmd">bonfyre-run P2 deliverable/</code>
+              </div>
+              <h3>Verified Publish</h3>
+              <p>P1 (proof bundle) extended with multi-format emission and sync. Proof → pack → emit PDF/EPUB/HTML → sync to remote targets.</p>
+              <div class="stage-flow">
+                <span class="stage-tag">…P1…</span><span class="stage-arrow">→</span>
+                <span class="stage-tag">emit</span><span class="stage-arrow">→</span>
+                <span class="stage-tag">sync</span>
+              </div>
+              <p style="margin-top:0.5rem;font-size:0.82rem;color:var(--text-2)"><strong>Use for:</strong> publishing anything that also needs a proof receipt — reports, client deliverables, incident postmortems</p>
+            </article>
+          </div>
+
+          <!-- Verified brief -->
+          <h3 style="font-family:'IBM Plex Mono',monospace;font-size:0.8rem;color:var(--text-2);letter-spacing:.08em;text-transform:uppercase;margin:2rem 0 0.75rem">Verified &amp; knowledge — V, R series</h3>
+          <div class="feature-grid">
+            <article class="feature-card">
+              <div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:0.75rem">
+                <span class="code-pill">V1</span>
+                <code class="run-cmd">bonfyre-run V1 interview.wav</code>
+              </div>
+              <h3>Media → Verified Brief</h3>
+              <p>A1 (audio to brief) plus sign + pack + emit. Produces a verified, multi-format brief with a tamper-evident receipt — ideal for legal, HR, compliance, or any use case where the summary must be provably tied to the source.</p>
+              <div class="stage-flow">
+                <span class="stage-tag">…A1…</span><span class="stage-arrow">→</span>
+                <span class="stage-tag">proof</span><span class="stage-arrow">→</span>
+                <span class="stage-tag">pack</span><span class="stage-arrow">→</span>
+                <span class="stage-tag">emit</span>
+              </div>
+              <p style="margin-top:0.5rem;font-size:0.82rem;color:var(--text-2)"><strong>Use for:</strong> HR interviews, legal intake calls, medical procedure notes — any brief that carries legal weight</p>
+              <div class="cta-row"><a class="secondary-btn" href="recipe-legal.html">Full legal recipe →</a></div>
+            </article>
+            <article class="feature-card">
+              <div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:0.75rem">
+                <span class="code-pill">R1</span>
+                <code class="run-cmd">bonfyre-run R1 ./my-repo</code>
+              </div>
+              <h3>Repo → Onboarding Guide</h3>
+              <p>Source tree to navigable onboarding guide. Module map, call graph, API surface, and rendered HTML. Run it on any codebase — internal or open source — and get a guide your team can actually navigate.</p>
+              <div class="stage-flow">
+                <span class="stage-tag">ingest</span><span class="stage-arrow">→</span>
+                <span class="stage-tag">tag</span><span class="stage-arrow">→</span>
+                <span class="stage-tag">canon</span><span class="stage-arrow">→</span>
+                <span class="stage-tag">brief</span><span class="stage-arrow">→</span>
+                <span class="stage-tag">graph</span><span class="stage-arrow">→</span>
+                <span class="stage-tag">render</span><span class="stage-arrow">→</span>
+                <span class="stage-tag">emit</span>
+              </div>
+              <p style="margin-top:0.5rem;font-size:0.82rem;color:var(--text-2)"><strong>Use for:</strong> onboarding, incident reviews, knowledge transfer — any repo that needs to be explained to someone new</p>
+              <div class="cta-row"><a class="secondary-btn" href="recipe-dev.html">Full dev recipe →</a></div>
+            </article>
+          </div>
+
+          <!-- Revenue & ops -->
+          <h3 style="font-family:'IBM Plex Mono',monospace;font-size:0.8rem;color:var(--text-2);letter-spacing:.08em;text-transform:uppercase;margin:2rem 0 0.75rem">Revenue &amp; ops — L, G series</h3>
+          <div class="feature-grid">
+            <article class="feature-card">
+              <div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:0.75rem">
+                <span class="code-pill">L1</span>
+                <code class="run-cmd">bonfyre-run L1 event.json</code>
+              </div>
+              <h3>Revenue Track</h3>
+              <p>Tag a usage event, record it in the ledger, compute margin via BonfyreFinance. Use this as the automated post-transaction pipeline for any billable event — API call, content unlock, service delivery.</p>
+              <div class="stage-flow">
+                <span class="stage-tag">tag</span><span class="stage-arrow">→</span>
+                <span class="stage-tag">meter</span><span class="stage-arrow">→</span>
+                <span class="stage-tag">ledger</span><span class="stage-arrow">→</span>
+                <span class="stage-tag">finance</span>
+              </div>
+            </article>
+            <article class="feature-card">
+              <div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:0.75rem">
+                <span class="code-pill">G1</span>
+                <code class="run-cmd">bonfyre-run G1 request.json</code>
+              </div>
+              <h3>API Gateway Check</h3>
+              <p>Gate → license check → ingest → meter → ledger. Test harness for the access-control layer. Run it to validate that gating, ingestion, metering, and ledger recording all work before putting anything in front of users.</p>
+              <div class="stage-flow">
+                <span class="stage-tag">gate</span><span class="stage-arrow">→</span>
+                <span class="stage-tag">ingest</span><span class="stage-arrow">→</span>
+                <span class="stage-tag">meter</span><span class="stage-arrow">→</span>
+                <span class="stage-tag">ledger</span>
+              </div>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <!-- How execution works -->
+      <section class="section">
+        <div class="shell-container">
+          <div class="section-header">
+            <div>
+              <span class="section-kicker">DAG execution model</span>
+              <h2 class="section-title">Parallel where safe, sequential where required.</h2>
+              <p class="section-copy">bonfyre-run doesn't just chain binaries in order. It assigns every stage a topological level, then forks all stages at the same level in parallel. Stages that depend on each other run in sequence. Stages that don't run at the same time.</p>
+            </div>
+          </div>
+          <div class="feature-grid">
+            <article class="feature-card">
+              <span class="card-meta">Level assignment</span>
+              <h3>level = max(dep levels) + 1</h3>
+              <p>Every stage with no dependencies runs at level 0. A stage that depends on a level-0 stage runs at level 1. A stage that depends on two stages — one at level 1, one at level 3 — waits for the deeper one and runs at level 4. The algorithm iterates until stable, which means diamond-shaped DAGs (fan-out + fan-in) are handled correctly.</p>
+              <div class="code-block">
+<span class="comment"># A3 level assignment (bonfyre-run show A3)</span>
+<span class="level-badge">L0</span> ingest
+<span class="level-badge">L1</span> media-prep
+<span class="level-badge">L2</span> transcribe
+<span class="level-badge">L3</span> clean
+<span class="level-badge">L4</span> paragraph  <span class="comment"># ← parallel with tone + tag</span>
+<span class="level-badge">L4</span> tone       <span class="comment"># ← all depend on clean only</span>
+<span class="level-badge">L4</span> tag
+<span class="level-badge">L5</span> brief      <span class="comment"># ← depends on paragraph</span>
+<span class="level-badge">L6</span> embed      <span class="comment"># ← parallel with render + offer</span>
+<span class="level-badge">L6</span> render
+<span class="level-badge">L6</span> offer      <span class="comment"># depends on brief+tone</span></div>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">Variable substitution</span>
+              <h3>{input} and {out}/STAGE_ID</h3>
+              <p>Every stage argument supports two token types: <code>{input}</code> expands to the file or directory you passed to <code>bonfyre-run</code>. <code>{out}</code> expands to the run's output directory. Stage output directories — where each binary should write its results — are <code>{out}/stage-id</code> by convention. This means stages never need to hardcode paths, and the output tree is always predictable.</p>
+              <div class="code-block">
+<span class="comment"># In a recipe JSON:</span>
+{
+  "id": "transcribe",
+  "bin": "bonfyre-transcribe",
+  "args": ["{out}/ingest", "--out", "{out}/transcribe"],
+  "depends_on": ["ingest"]
+}
+
+<span class="comment"># Expands to (for --out /tmp/run01):</span>
+bonfyre-transcribe /tmp/run01/ingest \
+  --out /tmp/run01/transcribe</div>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">run-manifest.json</span>
+              <h3>Every run produces a signed receipt</h3>
+              <p>After every execution, bonfyre-run writes <code>run-manifest.json</code> into the output directory. It contains: the recipe code and hash, the input path, every stage with its status (ok/failed/skipped), exit code, and wall milliseconds, and the overall run status. If a stage fails, the manifest tells you exactly which one and why.</p>
+              <div class="code-block">
+{
+  <span class="flag">"recipe_code"</span>: <span class="path">"A1"</span>,
+  <span class="flag">"recipe_hash"</span>: <span class="path">"6fdc11a4..."</span>,
+  <span class="flag">"input"</span>:       <span class="path">"recording.wav"</span>,
+  <span class="flag">"out"</span>:         <span class="path">"./bonfyre-out/A1-20260417T..."</span>,
+  <span class="flag">"started_at"</span>:  <span class="path">"2026-04-17T14:22:01Z"</span>,
+  <span class="flag">"wall_ms"</span>:     <span class="path">184320.0</span>,
+  <span class="flag">"status"</span>:      <span class="path">"ok"</span>,
+  <span class="flag">"stages"</span>: [
+    {"id":"ingest",    "status":"ok", "exit_code":0, "wall_ms":320},
+    {"id":"transcribe","status":"ok", "exit_code":0, "wall_ms":182100},
+    {"id":"clean",     "status":"ok", "exit_code":0, "wall_ms":23},
+    {"id":"brief",     "status":"ok", "exit_code":0, "wall_ms":877}
+  ]
+}</div>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <!-- Command reference -->
+      <section class="section" id="command-ref">
+        <div class="shell-container">
+          <div class="section-header">
+            <div>
+              <span class="section-kicker">Command reference</span>
+              <h2 class="section-title">bonfyre-run and bonfyre-recipe commands.</h2>
+            </div>
+          </div>
+          <div class="feature-grid">
+            <article class="feature-card">
+              <span class="card-meta">bonfyre-run</span>
+              <h3>Running and inspecting pipelines</h3>
+              <div class="code-block">
+<span class="comment"># Execute a pipeline</span>
+<span class="cmd">bonfyre-run</span> <span class="path">A1</span> recording.wav
+<span class="cmd">bonfyre-run</span> <span class="path">A3</span> episode.wav <span class="flag">--out</span> /my/dir <span class="flag">--tier</span> pro
+
+<span class="comment"># Plan without executing</span>
+<span class="cmd">bonfyre-run</span> dry-run <span class="path">A3</span> episode.wav
+
+<span class="comment"># Inspect and validate</span>
+<span class="cmd">bonfyre-run</span> show <span class="path">A3</span>
+<span class="cmd">bonfyre-run</span> validate <span class="path">A3</span>
+
+<span class="comment"># Batch: run on every file in a dir</span>
+<span class="cmd">bonfyre-run</span> <span class="path">A1</span> ignored <span class="flag">--batch</span> ./recordings/
+
+<span class="comment"># Resume a partial run</span>
+<span class="cmd">bonfyre-run</span> <span class="path">A3</span> ep.wav <span class="flag">--out</span> /my/dir <span class="flag">--resume</span>
+
+<span class="comment"># Run only a slice of the pipeline</span>
+<span class="cmd">bonfyre-run</span> <span class="path">A3</span> ep.wav <span class="flag">--from-stage</span> brief <span class="flag">--to-stage</span> pack</div>
+              <table class="opts-table" style="margin-top:1rem">
+                <tr><td>--out DIR</td><td></td><td>Output directory (default: ./bonfyre-out/CODE-timestamp)</td></tr>
+                <tr><td>--dry-run</td><td></td><td>Print execution plan, no execution</td></tr>
+                <tr><td>--from-stage ID</td><td></td><td>Skip stages before this one</td></tr>
+                <tr><td>--to-stage ID</td><td></td><td>Stop after this stage</td></tr>
+                <tr><td>--resume</td><td></td><td>Skip stages whose output dir already exists</td></tr>
+                <tr><td>--tier TIER</td><td></td><td>Pass --tier to every stage that accepts it</td></tr>
+                <tr><td>--batch DIR</td><td></td><td>Run on every file in DIR, one subdir per input</td></tr>
+                <tr><td>--parallel N</td><td></td><td>Max concurrent stages per level (default: 8)</td></tr>
+                <tr><td>--quiet</td><td></td><td>Print only final manifest path</td></tr>
+                <tr><td>--verbose</td><td></td><td>Print full stage stdout</td></tr>
+                <tr><td>--db FILE</td><td></td><td>Override recipe registry path</td></tr>
+                <tr><td>--stage-opts S</td><td></td><td>Per-stage flags: "id:--flag val,id2:--flag2 val"</td></tr>
+              </table>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">bonfyre-recipe</span>
+              <h3>Managing the registry</h3>
+              <div class="code-block">
+<span class="comment"># List all registered recipes</span>
+<span class="cmd">bonfyre-recipe</span> list
+
+<span class="comment"># Show a recipe's stage chain</span>
+<span class="cmd">bonfyre-recipe</span> show <span class="path">A3</span>
+
+<span class="comment"># Add a recipe from a JSON file</span>
+<span class="cmd">bonfyre-recipe</span> add <span class="path">my-pipeline.json</span>
+
+<span class="comment"># Seed all built-in recipes</span>
+<span class="cmd">bonfyre-recipe</span> add <span class="flag">--builtin</span>
+
+<span class="comment"># Full-text search across recipes</span>
+<span class="cmd">bonfyre-recipe</span> search transcribe
+
+<span class="comment"># Check all stage binaries are on PATH</span>
+<span class="cmd">bonfyre-recipe</span> validate <span class="path">A1</span>
+
+<span class="comment"># Print SHA-256 hash of recipe</span>
+<span class="cmd">bonfyre-recipe</span> hash <span class="path">A1</span>
+
+<span class="comment"># Remove a recipe</span>
+<span class="cmd">bonfyre-recipe</span> rm <span class="path">A1</span>
+
+<span class="comment"># Write a starter recipe.json to CWD</span>
+<span class="cmd">bonfyre-recipe</span> init
+
+<span class="comment"># DB status (count, size, path)</span>
+<span class="cmd">bonfyre-recipe</span> status</div>
+              <p style="margin-top:1rem;font-size:0.85rem;color:var(--text-2)">Registry DB: <code>~/.local/share/bonfyre/recipes.db</code> — override with <code>$BONFYRE_RECIPE_DB</code></p>
+              <p style="font-size:0.85rem;color:var(--text-2)">FTS5 full-text search covers code, name, description, and stage binary names.</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <!-- Writing your own recipe -->
+      <section class="section">
+        <div class="shell-container">
+          <div class="section-header">
+            <div>
+              <span class="section-kicker">Custom recipes</span>
+              <h2 class="section-title">Any pipeline you build can become a recipe.</h2>
+              <p class="section-copy">Recipes are JSON documents. As long as a binary exists somewhere on your PATH, it can be a stage. Dependencies between stages define the DAG. Everything else is automatic.</p>
+            </div>
+          </div>
+          <div class="feature-grid">
+            <article class="feature-card">
+              <span class="card-meta">Recipe JSON schema</span>
+              <h3>One file. One command to run it.</h3>
+              <div class="code-block">
+{
+  <span class="flag">"code"</span>:        <span class="path">"X1"</span>,
+  <span class="flag">"name"</span>:        <span class="path">"My custom pipeline"</span>,
+  <span class="flag">"version"</span>:     <span class="path">"1.0.0"</span>,
+  <span class="flag">"description"</span>: <span class="path">"Ingest + transcribe + custom-analyze"</span>,
+  <span class="flag">"stages"</span>: [
+    {
+      <span class="flag">"id"</span>:         <span class="path">"ingest"</span>,
+      <span class="flag">"bin"</span>:        <span class="path">"bonfyre-ingest"</span>,
+      <span class="flag">"args"</span>:       [<span class="path">"{input}"</span>, <span class="path">"--out"</span>, <span class="path">"{out}/ingest"</span>],
+      <span class="flag">"depends_on"</span>: []
+    },
+    {
+      <span class="flag">"id"</span>:         <span class="path">"transcribe"</span>,
+      <span class="flag">"bin"</span>:        <span class="path">"bonfyre-transcribe"</span>,
+      <span class="flag">"args"</span>:       [<span class="path">"{out}/ingest"</span>, <span class="path">"--out"</span>, <span class="path">"{out}/transcribe"</span>],
+      <span class="flag">"depends_on"</span>: [<span class="path">"ingest"</span>]
+    },
+    {
+      <span class="flag">"id"</span>:         <span class="path">"analyze"</span>,
+      <span class="flag">"bin"</span>:        <span class="path">"my-custom-analyzer"</span>,
+      <span class="flag">"args"</span>:       [<span class="path">"{out}/transcribe"</span>, <span class="path">"--out"</span>, <span class="path">"{out}/analyze"</span>],
+      <span class="flag">"depends_on"</span>: [<span class="path">"transcribe"</span>]
+    }
+  ]
+}
+
+<span class="comment"># Register it:</span>
+<span class="cmd">bonfyre-recipe</span> add my-pipeline.json
+
+<span class="comment"># Run it:</span>
+<span class="cmd">bonfyre-run</span> <span class="path">X1</span> recording.wav</div>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">Getting started</span>
+              <h3>Start from a template, not from scratch.</h3>
+              <p>Run <code>bonfyre-recipe init</code> to write a <code>recipe.json</code> template to your current directory. It comes pre-populated with the A1 stage chain. Edit the stages, change the code and name, run <code>bonfyre-recipe add recipe.json</code>, and you have a named, registered, hashable pipeline.</p>
+              <p style="margin-top:0.75rem">The registry is a local SQLite file — it lives at <code>~/.local/share/bonfyre/recipes.db</code> and you own it. You can back it up, version-control the JSON source files, and share recipes with your team. Anyone with the same JSON file gets the same SHA-256 hash and the same reproducible run.</p>
+              <div class="code-block">
+<span class="comment"># First-time setup:</span>
+<span class="cmd">bonfyre-recipe</span> add <span class="flag">--builtin</span>   <span class="comment"># seed all 10 codes</span>
+<span class="cmd">bonfyre-recipe</span> status            <span class="comment"># verify</span>
+
+<span class="comment"># Then run any pipeline:</span>
+<span class="cmd">bonfyre-run</span> <span class="path">A1</span> recording.wav
+<span class="cmd">bonfyre-run</span> dry-run <span class="path">A3</span> episode.wav   <span class="comment"># see plan first</span>
+<span class="cmd">bonfyre-run</span> <span class="path">A3</span> episode.wav <span class="flag">--tier</span> pro</div>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <!-- CTA -->
+      <section class="section">
+        <div class="shell-container">
+          <div class="section-header">
+            <div>
+              <span class="section-kicker">Next steps</span>
+              <h2 class="section-title">Where to go from here.</h2>
+            </div>
+          </div>
+          <div class="path-grid">
+            <article class="story-card">
+              <span class="card-meta">See it in context</span>
+              <h3>Pipeline flows</h3>
+              <p>How each stage in the built-in recipes maps to a real binary, with timing, a worked example, and the full audio-to-deliverable breakdown.</p>
+              <div class="cta-row"><a class="primary-btn" href="pipeline-flows.html">Pipeline flows →</a></div>
+            </article>
+            <article class="story-card">
+              <span class="card-meta">By industry</span>
+              <h3>Industry recipes</h3>
+              <p>Which recipe code fits your use case. Legal, media, field, ops, sales, education, support, engineering — mapped to the right code with full rationale.</p>
+              <div class="cta-row"><a class="secondary-btn" href="industry-recipes.html">Industry recipes →</a></div>
+            </article>
+            <article class="story-card">
+              <span class="card-meta">See what shipped</span>
+              <h3>Live proof apps</h3>
+              <p>20 live GitHub Pages apps, each produced by a Bonfyre pipeline. Click through to see real pipeline output from real audio.</p>
+              <div class="cta-row"><a class="secondary-btn" href="apps.html">Live apps →</a></div>
+            </article>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <div class="shell-container footer-row">
+        <div>bonfyre-recipe + bonfyre-run — 10 codes, full DAG executor, run-manifest on every run.</div>
+        <div class="footer-links">
+          <a href="index.html">Overview</a>
+          <a href="explore.html">Explore</a>
+          <a href="industry-recipes.html">Industry Recipes</a>
+          <a href="pipeline-flows.html">Pipeline Flows</a>
+          <a href="apps.html">Live Apps</a>
+          <a href="https://github.com/Nickgonzales76017/bonfyre-oss" target="_blank" rel="noreferrer">GitHub</a>
+        </div>
+      </div>
+    </footer>
+  </div>
+  <script src="assets/site.js"></script>
+</body>
+</html>

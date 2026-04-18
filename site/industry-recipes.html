@@ -14,6 +14,7 @@
         <a class="nav-logo" href="index.html">Bonfyre</a>
         <nav class="nav-links" aria-label="Primary">
           <a href="explore.html">Explore</a>
+          <a href="recipe-run.html">Pipelines</a>
           <a href="docs.html">Docs</a>
           <a href="apps.html">Apps</a>
           <a href="changelog.html">Changelog</a>
@@ -49,24 +50,28 @@
               <h3>Voicemail → maintenance packet</h3>
               <p>Resident leaves a voicemail → BonfyreTranscribe → BonfyreBrief extracts issue type and follow-up items → BonfyrePack bundles a vendor-ready maintenance packet → BonfyreSync delivers to your system.</p>
               <p style="margin-top:0.75rem;color:var(--text-2);font-size:0.875rem"><strong>Input:</strong> voicemail &nbsp;·&nbsp; <strong>Output:</strong> structured maintenance ticket + vendor-ready PDF bundle</p>
+              <p style="margin-top:0.5rem;font-family:'IBM Plex Mono',monospace;font-size:0.76rem;color:#ff6b35;background:rgba(255,107,53,0.08);border:1px solid rgba(255,107,53,0.2);border-radius:4px;padding:0.4rem 0.75rem">bonfyre-run V1 voicemail.wav</p>
             </article>
             <article class="feature-card">
               <span class="card-meta">Law office</span>
               <h3>Client intake call → organised binder</h3>
               <p>Intake call → speaker-segmented transcript → BonfyreBrief structures issues → BonfyreProof hashes the original recording → BonfyrePack assembles a review-ready binder. Data never leaves the office.</p>
               <p style="margin-top:0.75rem;color:var(--text-2);font-size:0.875rem"><strong>Input:</strong> intake call &nbsp;·&nbsp; <strong>Output:</strong> Ed25519-signed structured binder, zero cloud exposure</p>
+              <p style="margin-top:0.5rem;font-family:'IBM Plex Mono',monospace;font-size:0.76rem;color:#ff6b35;background:rgba(255,107,53,0.08);border:1px solid rgba(255,107,53,0.2);border-radius:4px;padding:0.4rem 0.75rem">bonfyre-run V1 intake.wav</p>
             </article>
             <article class="feature-card">
               <span class="card-meta">Healthcare / dental</span>
               <h3>Staff recording → SOP and patient handout</h3>
               <p>Office manager records a procedure → BonfyreTranscribe + BonfyreParagraph → BonfyreBrief creates structured SOP → BonfyreRender produces a staff guide + printable patient handout → BonfyreEmit publishes both.</p>
               <p style="margin-top:0.75rem;color:var(--text-2);font-size:0.875rem"><strong>Input:</strong> procedure recording &nbsp;·&nbsp; <strong>Output:</strong> staff SOP + printable patient handout</p>
+              <p style="margin-top:0.5rem;font-family:'IBM Plex Mono',monospace;font-size:0.76rem;color:#ff6b35;background:rgba(255,107,53,0.08);border:1px solid rgba(255,107,53,0.2);border-radius:4px;padding:0.4rem 0.75rem">bonfyre-run A1 procedure.wav</p>
             </article>
             <article class="feature-card">
               <span class="card-meta">Podcast / media</span>
               <h3>Episode → monetised page</h3>
               <p>Raw episode → BonfyreTranscribe + BonfyreClips → BonfyreBrief + BonfyreRepurpose → show notes + social clips + BonfyreOffer pricing page + BonfyreEmit RSS feed. All local. All in one pipeline run.</p>
               <p style="margin-top:0.75rem;color:var(--text-2);font-size:0.875rem"><strong>Input:</strong> raw audio &nbsp;·&nbsp; <strong>Output:</strong> transcript + show notes + clips + checkout page + RSS item</p>
+              <p style="margin-top:0.5rem;font-family:'IBM Plex Mono',monospace;font-size:0.76rem;color:#ff6b35;background:rgba(255,107,53,0.08);border:1px solid rgba(255,107,53,0.2);border-radius:4px;padding:0.4rem 0.75rem">bonfyre-run M1 episode.wav</p>
               <div class="cta-row"><a class="secondary-btn" href="recipe-media.html">Full media recipe →</a></div>
             </article>
             <article class="feature-card">
@@ -74,18 +79,21 @@
               <h3>Program debrief → grant-language draft</h3>
               <p>Debrief recording → BonfyreTranscribe → BonfyreBrief extracts outcomes → BonfyreRepurpose generates grant-language draft + board update + impact summary → BonfyreEmit publishes to your site.</p>
               <p style="margin-top:0.75rem;color:var(--text-2);font-size:0.875rem"><strong>Input:</strong> program debrief &nbsp;·&nbsp; <strong>Output:</strong> grant draft + board update + impact summary page</p>
+              <p style="margin-top:0.5rem;font-family:'IBM Plex Mono',monospace;font-size:0.76rem;color:#ff6b35;background:rgba(255,107,53,0.08);border:1px solid rgba(255,107,53,0.2);border-radius:4px;padding:0.4rem 0.75rem">bonfyre-run A3 debrief.wav --tier pro</p>
             </article>
             <article class="feature-card">
               <span class="card-meta">Agency / consultant</span>
               <h3>Discovery call → proposal packet</h3>
               <p>Discovery call → BonfyreTranscribe + BonfyreBrief → BonfyreOffer applies dynamic pricing → BonfyrePack assembles a PDF/HTML proposal with scope, price, and proof summary → BonfyreOutreach queues follow-up.</p>
               <p style="margin-top:0.75rem;color:var(--text-2);font-size:0.875rem"><strong>Input:</strong> discovery call &nbsp;·&nbsp; <strong>Output:</strong> signed proposal packet + automated follow-up sequence</p>
+              <p style="margin-top:0.5rem;font-family:'IBM Plex Mono',monospace;font-size:0.76rem;color:#ff6b35;background:rgba(255,107,53,0.08);border:1px solid rgba(255,107,53,0.2);border-radius:4px;padding:0.4rem 0.75rem">bonfyre-run V1 discovery.wav</p>
             </article>
             <article class="feature-card">
               <span class="card-meta">Sales team</span>
               <h3>Sales call → CRM-ready summary</h3>
               <p>Call → BonfyreTranscribe → BonfyreBrief extracts stage, objections, and next steps → BonfyreTag applies custom tags → BonfyreMeter records the engagement → BonfyreSync pushes a structured summary to your CRM.</p>
               <p style="margin-top:0.75rem;color:var(--text-2);font-size:0.875rem"><strong>Input:</strong> sales call &nbsp;·&nbsp; <strong>Output:</strong> structured CRM entry with stage, objections, next steps</p>
+              <p style="margin-top:0.5rem;font-family:'IBM Plex Mono',monospace;font-size:0.76rem;color:#ff6b35;background:rgba(255,107,53,0.08);border:1px solid rgba(255,107,53,0.2);border-radius:4px;padding:0.4rem 0.75rem">bonfyre-run A1 call.wav</p>
               <div class="cta-row"><a class="secondary-btn" href="recipe-sales.html">Full sales recipe →</a></div>
             </article>
             <article class="feature-card">
@@ -93,6 +101,7 @@
               <h3>Incident recording → searchable postmortem</h3>
               <p>War room call → BonfyreTranscribe → BonfyreBrief extracts timeline + root cause + action items → BonfyreGraph links to related incidents → BonfyreRender produces a structured postmortem atlas page → BonfyreIndex makes it searchable.</p>
               <p style="margin-top:0.75rem;color:var(--text-2);font-size:0.875rem"><strong>Input:</strong> incident call &nbsp;·&nbsp; <strong>Output:</strong> linked, searchable postmortem atlas page</p>
+              <p style="margin-top:0.5rem;font-family:'IBM Plex Mono',monospace;font-size:0.76rem;color:#ff6b35;background:rgba(255,107,53,0.08);border:1px solid rgba(255,107,53,0.2);border-radius:4px;padding:0.4rem 0.75rem">bonfyre-run A3 warroom.wav</p>
               <div class="cta-row"><a class="secondary-btn" href="recipe-dev.html">Full dev recipe →</a></div>
             </article>
           </div>

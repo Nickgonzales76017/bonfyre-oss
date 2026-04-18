@@ -21,6 +21,7 @@
         <nav class="site-nav" aria-label="Primary">
           <a href="index.html">Overview</a>
           <a href="explore.html">Explore</a>
+          <a href="recipe-run.html">Pipelines</a>
           <a href="docs.html">Technical Docs</a>
           <a href="apps.html">Live Apps</a>
         </nav>
@@ -52,12 +53,49 @@
         </div>
       </section>
 
+      <!-- Cycle 4 -->
+      <section class="section">
+        <div class="shell-container">
+          <div class="section-header">
+            <div>
+              <span class="section-kicker">Current cycle — Cycle 4</span>
+              <h2 class="section-title">Pipeline registry, DAG executor, and 10 built-in recipe codes.</h2>
+              <p class="section-copy">Two new binaries that make the whole stack runnable in one command: <code>bonfyre-recipe</code> maintains a content-addressed SQLite registry of named pipelines, and <code>bonfyre-run</code> resolves a recipe code, builds a dependency graph, and executes stages level-parallel with Ed25519-signed run manifests on every invocation.</p>
+            </div>
+          </div>
+          <div class="feature-grid">
+
+            <article class="feature-card">
+              <span class="card-meta">New binary — bonfyre-recipe</span>
+              <h3>Content-addressed pipeline registry</h3>
+              <p>SQLite WAL-mode store with FTS5 full-text search, SHA-256 content addressing, and 10 built-in recipe codes (A1–A3, M1, P1–P2, V1, R1, L1, G1). Commands: <code>list</code>, <code>show</code>, <code>search</code>, <code>validate</code>, <code>add</code>, <code>init</code>. Custom recipes stored as JSON and loaded alongside built-ins.</p>
+              <p style="margin-top:0.75rem;color:var(--text-2);font-size:0.875rem"><strong>Why it matters:</strong> There's now a single authoritative source for what a pipeline is. Every team member, every CI step, and every audit trail references the same recipe hash. No drift between environments.</p>
+            </article>
+
+            <article class="feature-card">
+              <span class="card-meta">New binary — bonfyre-run</span>
+              <h3>DAG executor with level-parallel stages</h3>
+              <p>Resolves a recipe code, assigns topological dependency levels, forks up to 8 stages concurrently per level, substitutes <code>{input}</code>/<code>{out}</code> variables, and writes a signed <code>run-manifest.json</code> on every run. Flags: <code>--dry-run</code>, <code>--batch</code>, <code>--resume</code>, <code>--from-stage</code>, <code>--to-stage</code>, <code>--tier</code>.</p>
+              <p style="margin-top:0.75rem;color:var(--text-2);font-size:0.875rem"><strong>Why it matters:</strong> Running the full audio-to-publish pipeline went from a 23-step manual sequence to <code>bonfyre-run A3 episode.wav --tier pro</code>. Every run is reproducible, auditable, and partially resumable after failure.</p>
+            </article>
+
+            <article class="feature-card">
+              <span class="card-meta">Registry — 10 built-in recipe codes</span>
+              <h3>A-series, M, P, V, R, L, G series</h3>
+              <p>A1 (audio quick brief), A2 (audio archive), A3 (full pipeline, 23 stages), M1 (media/podcast), P1 (proof bundle), P2 (verified publish), V1 (verified brief with Ed25519 proof), R1 (repo onboarding guide), L1 (revenue event track), G1 (API gateway policy check). All 10 discoverable via <code>bonfyre-recipe list</code>.</p>
+              <p style="margin-top:0.75rem;color:var(--text-2);font-size:0.875rem"><strong>Why it matters:</strong> The shortcodes are the public API of the stack. Every recipe page, app card, and layer page now surfaces the relevant code so readers can immediately run what they're reading about.</p>
+            </article>
+
+          </div>
+        </div>
+      </section>
+
       <!-- Cycle 3 -->
       <section class="section">
         <div class="shell-container">
           <div class="section-header">
             <div>
-              <span class="section-kicker">Current cycle — Cycle 3</span>
+              <span class="section-kicker">Cycle 3</span>
               <h2 class="section-title">Transport, runtime, compression, and private inference.</h2>
               <p class="section-copy">Six additions this cycle: peer-to-peer artifact distribution, QUIC transport, a shared-nothing API reactor, hot-load pipeline stages, a zero-copy LMDB cache layer, and SIMD decode plus homomorphic scoring for the FPQ model compression layer.</p>
             </div>

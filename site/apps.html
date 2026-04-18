@@ -14,6 +14,7 @@
         <a class="nav-logo" href="index.html">Bonfyre</a>
         <nav class="nav-links" aria-label="Primary">
           <a href="explore.html">Explore</a>
+          <a href="recipe-run.html">Pipelines</a>
           <a href="docs.html">Docs</a>
           <a class="current" href="apps.html">Apps</a>
           <a href="changelog.html">Changelog</a>
@@ -79,10 +80,17 @@
           </div>
           <div class="feature-grid">
 
-            <article class="feature-card">
+            
+          <!-- pipeline codes intro -->
+          <div style="background:rgba(255,107,53,0.06);border:1px solid rgba(255,107,53,0.2);border-radius:8px;padding:1rem 1.25rem;margin-bottom:1.5rem;display:flex;align-items:center;gap:1rem;flex-wrap:wrap">
+            <span style="font-size:0.875rem;color:var(--text-1)">Every app below was produced by a bonfyre-run pipeline.</span>
+            <a href="recipe-run.html" style="font-family:'IBM Plex Mono',monospace;font-size:0.78rem;color:#ff6b35;background:rgba(255,107,53,0.1);border:1px solid rgba(255,107,53,0.25);border-radius:4px;padding:0.2rem 0.65rem;text-decoration:none">See all recipe codes →</a>
+          </div>
+          <article class="feature-card">
               <span class="card-meta">Operations</span>
               <h3><a href="https://nickgonzales76017.github.io/pages-shift-handoff/" target="_blank" rel="noreferrer">Shift Handoff Board</a></h3>
               <p>Outgoing shift records a 2-minute audio note, BonfyreTranscribe runs locally, BonfyreBrief structures decisions and open items, BonfyreRender publishes a clean handoff card. Updated: BonfyreMoQ allows live relay during handoff so the incoming team can listen in real time. BonfyreSwarm handles team-wide distribution of the handoff bundle. BonfyreMeter tracks handoff frequency for ops analytics.</p>
+              <p style="margin-top:0.6rem;font-family:'IBM Plex Mono',monospace;font-size:0.74rem;color:#ff6b35;background:rgba(255,107,53,0.08);border:1px solid rgba(255,107,53,0.2);border-radius:4px;padding:0.3rem 0.65rem"><span style="background:#ff6b35;color:#fff;padding:0.1rem 0.35rem;border-radius:3px;font-weight:600;margin-right:0.5rem">A1</span>bonfyre-run A1 handoff.wav</p>
               <div class="pill-row">
                 <span class="pill">BonfyreTranscribe</span>
                 <span class="pill">BonfyreBrief</span>
@@ -96,6 +104,7 @@
               <span class="card-meta">Family and archives</span>
               <h3><a href="https://nickgonzales76017.github.io/pages-family-oral-history/" target="_blank" rel="noreferrer">Family Oral History Museum</a></h3>
               <p>Raw family interviews become a searchable, browsable museum. BonfyreTranscriptFamily clusters recordings by speaker and topic. BonfyreIndex and BonfyreVec provide NEON SIMD hybrid search at under 5 ms. Updated: BonfyreFPQ runs local AI summarisation of older recordings without an API key. BonfyreSwarm lets family members distribute the archive peer-to-peer without a hosting service. BonfyreEmit publishes PDF and EPUB versions simultaneously.</p>
+              <p style="margin-top:0.6rem;font-family:'IBM Plex Mono',monospace;font-size:0.74rem;color:#ff6b35;background:rgba(255,107,53,0.08);border:1px solid rgba(255,107,53,0.2);border-radius:4px;padding:0.3rem 0.65rem"><span style="background:#ff6b35;color:#fff;padding:0.1rem 0.35rem;border-radius:3px;font-weight:600;margin-right:0.5rem">A2</span>bonfyre-run A2 story.wav</p>
               <div class="pill-row">
                 <span class="pill">BonfyreTranscriptFamily</span>
                 <span class="pill">BonfyreVec</span>
@@ -109,6 +118,7 @@
               <span class="card-meta">Engineering</span>
               <h3><a href="https://nickgonzales76017.github.io/pages-incident-postmortem/" target="_blank" rel="noreferrer">Incident Postmortem Atlas</a></h3>
               <p>War-room calls become verified postmortems. BonfyreGraph links related incidents across the full archive. BonfyreProof signs each record with Ed25519 -- tamper-evident. Updated: BonfyreMoQ relays the live war room so remote engineers participate without Zoom. BonfyreSpeechLoop provides partial transcripts during the call. BonfyrePipeline hot-load lets the incident template be updated without redeploying the binary. BonfyreQuery surfaces related past incidents in under 5 ms.</p>
+              <p style="margin-top:0.6rem;font-family:'IBM Plex Mono',monospace;font-size:0.74rem;color:#ff6b35;background:rgba(255,107,53,0.08);border:1px solid rgba(255,107,53,0.2);border-radius:4px;padding:0.3rem 0.65rem"><span style="background:#ff6b35;color:#fff;padding:0.1rem 0.35rem;border-radius:3px;font-weight:600;margin-right:0.5rem">A3</span>bonfyre-run A3 incident.wav</p>
               <div class="pill-row">
                 <span class="pill">BonfyreTranscribe</span>
                 <span class="pill">BonfyreGraph</span>
@@ -122,6 +132,7 @@
               <span class="card-meta">Media and podcasting</span>
               <h3><a href="https://nickgonzales76017.github.io/pages-podcast-repurposing/" target="_blank" rel="noreferrer">Podcast Repurposing Plant</a></h3>
               <p>Episode in, transcript and show notes and social clips and RSS feed and monetised checkout page out -- all locally in under 5 minutes. Updated: BonfyreMoQ handles live recording of remote guests without Zoom. BonfyreFPQ runs the brief and repurpose steps on a local model with no GPT-4 API key needed. BonfyreDistribute delivers the episode bundle over QUIC with fountain-code resilience. BonfyreOffer and BonfyrePay replace Gumroad for premium episode sales. BonfyreLedger keeps the immutable transaction log.</p>
+              <p style="margin-top:0.6rem;font-family:'IBM Plex Mono',monospace;font-size:0.74rem;color:#ff6b35;background:rgba(255,107,53,0.08);border:1px solid rgba(255,107,53,0.2);border-radius:4px;padding:0.3rem 0.65rem"><span style="background:#ff6b35;color:#fff;padding:0.1rem 0.35rem;border-radius:3px;font-weight:600;margin-right:0.5rem">M1</span>bonfyre-run M1 episode.wav</p>
               <div class="pill-row">
                 <span class="pill">BonfyreMoQ</span>
                 <span class="pill">BonfyreClips</span>
@@ -136,6 +147,7 @@
               <span class="card-meta">Legal and professional</span>
               <h3><a href="https://nickgonzales76017.github.io/pages-freelancer-evidence/" target="_blank" rel="noreferrer">Freelancer Evidence Machine</a></h3>
               <p>Client calls, project notes, and deliverable records become content-addressed proof bundles. BLAKE2b and Ed25519 signatures turn every deliverable into verifiable evidence. Updated: BonfyreTone scores call quality with 88 eGeMAPSv02 features so tone disputes have evidence too. BonfyreMeter records every client interaction. BonfyreLedger maintains an immutable log a freelancer can present in a payment dispute. BonfyreCMS serves a client-facing delivery portal at 287 KB with no npm dependency.</p>
+              <p style="margin-top:0.6rem;font-family:'IBM Plex Mono',monospace;font-size:0.74rem;color:#ff6b35;background:rgba(255,107,53,0.08);border:1px solid rgba(255,107,53,0.2);border-radius:4px;padding:0.3rem 0.65rem"><span style="background:#ff6b35;color:#fff;padding:0.1rem 0.35rem;border-radius:3px;font-weight:600;margin-right:0.5rem">V1</span>bonfyre-run V1 call.wav</p>
               <div class="pill-row">
                 <span class="pill">BonfyreProof</span>
                 <span class="pill">BonfyrePack</span>
@@ -150,6 +162,7 @@
               <span class="card-meta">Nonprofit and grants</span>
               <h3><a href="https://nickgonzales76017.github.io/pages-grant-evidence/" target="_blank" rel="noreferrer">Grant-Writing Evidence Base</a></h3>
               <p>Program debrief recordings become structured outcome evidence, grant-language drafts, board updates, and impact summaries. Updated: BonfyreEmit now publishes PDF, EPUB, JSON, and an HTML impact page simultaneously from one brief. BonfyreSync delivers to multiple targets -- funder website, board email, internal archive -- in one step. BonfyreProof signs the outcome evidence so funders can verify the data has not been modified.</p>
+              <p style="margin-top:0.6rem;font-family:'IBM Plex Mono',monospace;font-size:0.74rem;color:#ff6b35;background:rgba(255,107,53,0.08);border:1px solid rgba(255,107,53,0.2);border-radius:4px;padding:0.3rem 0.65rem"><span style="background:#ff6b35;color:#fff;padding:0.1rem 0.35rem;border-radius:3px;font-weight:600;margin-right:0.5rem">V1</span>bonfyre-run V1 debrief.wav</p>
               <div class="pill-row">
                 <span class="pill">BonfyreBrief</span>
                 <span class="pill">BonfyreRepurpose</span>
@@ -163,6 +176,7 @@
               <span class="card-meta">Personal</span>
               <h3><a href="https://nickgonzales76017.github.io/pages-personal-memory/" target="_blank" rel="noreferrer">Personal Memory Atlas</a></h3>
               <p>Daily recordings, notes, and media become a private, searchable, timeline-indexed personal archive. LMDB-backed vector search retrieves any memory by meaning, not just keyword. Updated: BonfyreFPQ runs local AI inference so patterns and themes are extracted without sending personal recordings to a cloud model. BonfyreMoQ enables live voice capture that feeds directly into the archive pipeline. BonfyreKVCache keeps the 512 MB hot-read path allocation-free for rapid browsing.</p>
+              <p style="margin-top:0.6rem;font-family:'IBM Plex Mono',monospace;font-size:0.74rem;color:#ff6b35;background:rgba(255,107,53,0.08);border:1px solid rgba(255,107,53,0.2);border-radius:4px;padding:0.3rem 0.65rem"><span style="background:#ff6b35;color:#fff;padding:0.1rem 0.35rem;border-radius:3px;font-weight:600;margin-right:0.5rem">A2</span>bonfyre-run A2 recording.wav</p>
               <div class="pill-row">
                 <span class="pill">BonfyreIngest</span>
                 <span class="pill">BonfyreEmbed</span>
@@ -176,6 +190,7 @@
               <span class="card-meta">Customer experience</span>
               <h3><a href="https://nickgonzales76017.github.io/pages-customer-voice/" target="_blank" rel="noreferrer">Customer Voice Observatory</a></h3>
               <p>Customer interviews and support recordings become an aggregated theme and sentiment map. Updated: BonfyreTone and BonfyreSpeechLoop score audio quality and extract tone in real time -- product teams see emotional signal alongside topic breakdowns. BonfyreQuery provides semantic retrieval across hundreds of calls in under 5 ms. BonfyreGraph surfaces which themes recur across the full customer archive, not just the current batch.</p>
+              <p style="margin-top:0.6rem;font-family:'IBM Plex Mono',monospace;font-size:0.74rem;color:#ff6b35;background:rgba(255,107,53,0.08);border:1px solid rgba(255,107,53,0.2);border-radius:4px;padding:0.3rem 0.65rem"><span style="background:#ff6b35;color:#fff;padding:0.1rem 0.35rem;border-radius:3px;font-weight:600;margin-right:0.5rem">A1</span>bonfyre-run A1 call.wav</p>
               <div class="pill-row">
                 <span class="pill">BonfyreTone</span>
                 <span class="pill">BonfyreSpeechLoop</span>
@@ -190,6 +205,7 @@
               <span class="card-meta">Developer tooling</span>
               <h3><a href="https://nickgonzales76017.github.io/pages-explain-repo/" target="_blank" rel="noreferrer">Explain This Repo</a></h3>
               <p>Drop any source tree and Bonfyre produces a navigable onboarding guide: module map, call graph, API surface, and a walkthrough of the key paths. Updated: BonfyreCMS serves the guide as a live 287 KB HTTP server -- readers can search, filter by module, and browse the call graph without a static rebuild. BonfyreQuery provides semantic code search. BonfyrePipeline hot-load allows the extraction templates to be updated without recompiling the binary.</p>
+              <p style="margin-top:0.6rem;font-family:'IBM Plex Mono',monospace;font-size:0.74rem;color:#ff6b35;background:rgba(255,107,53,0.08);border:1px solid rgba(255,107,53,0.2);border-radius:4px;padding:0.3rem 0.65rem"><span style="background:#ff6b35;color:#fff;padding:0.1rem 0.35rem;border-radius:3px;font-weight:600;margin-right:0.5rem">R1</span>bonfyre-run R1 ./repo</p>
               <div class="pill-row">
                 <span class="pill">BonfyreIngest</span>
                 <span class="pill">BonfyreGraph</span>
@@ -203,6 +219,7 @@
               <span class="card-meta">Civic and government</span>
               <h3><a href="https://nickgonzales76017.github.io/pages-town-in-a-box/" target="_blank" rel="noreferrer">Town in a Box</a></h3>
               <p>Council recordings become public record. Meetings are transcribed, structured into agenda items, decisions, and action items, and published as a searchable civic archive. Updated: BonfyreMoQ relays live meetings over QUIC so remote residents attend without Zoom. BonfyreSwarm distributes the public record archive peer-to-peer across civic websites with no single hosting point. BonfyreProof signs every record so citizens can verify the archive has not been modified since publication.</p>
+              <p style="margin-top:0.6rem;font-family:'IBM Plex Mono',monospace;font-size:0.74rem;color:#ff6b35;background:rgba(255,107,53,0.08);border:1px solid rgba(255,107,53,0.2);border-radius:4px;padding:0.3rem 0.65rem"><span style="background:#ff6b35;color:#fff;padding:0.1rem 0.35rem;border-radius:3px;font-weight:600;margin-right:0.5rem">A1</span>bonfyre-run A1 meeting.wav</p>
               <div class="pill-row">
                 <span class="pill">BonfyreTranscribe</span>
                 <span class="pill">BonfyreBrief</span>
@@ -231,6 +248,7 @@
               <span class="card-meta">Realtime media</span>
               <h3>Live Interview Studio</h3>
               <p>Browser-native realtime audio relay for remote interviews. BonfyreMoQ handles MoQ Transfork over QUIC -- no Zoom, no WebRTC SFU, $0 per stream. BonfyreTone scores audio quality inline with 88 eGeMAPSv02 features without routing through a cloud endpoint. BonfyreSpeechLoop provides partial transcripts during recording. Session ends and the standard pipeline fires: Transcribe to Brief to Repurpose to Emit to Pack. No post-production needed.</p>
+              <p style="margin-top:0.6rem;font-family:'IBM Plex Mono',monospace;font-size:0.74rem;color:#ff6b35;background:rgba(255,107,53,0.08);border:1px solid rgba(255,107,53,0.2);border-radius:4px;padding:0.3rem 0.65rem"><span style="background:#ff6b35;color:#fff;padding:0.1rem 0.35rem;border-radius:3px;font-weight:600;margin-right:0.5rem">A3</span>bonfyre-run A3 interview.wav</p>
               <div class="pill-row">
                 <span class="pill">BonfyreMoQ</span>
                 <span class="pill">BonfyreTone</span>
@@ -281,6 +299,7 @@
               <span class="card-meta">Revenue and ops</span>
               <h3>Revenue Ledger</h3>
               <p>Immutable financial record of every transaction, usage event, and margin calculation -- no accounting plugin required. BonfyreMeter records per-usage events in LMDB. BonfyreLedger is an append-only log that cannot be edited retroactively. BonfyreFinance computes margins from the ledger. BonfyreQuant runs projections. BonfyreOffer generates dynamic pricing surfaces. BonfyrePay handles checkout. Total platform cost above the payment processor: $0 per month.</p>
+              <p style="margin-top:0.6rem;font-family:'IBM Plex Mono',monospace;font-size:0.74rem;color:#ff6b35;background:rgba(255,107,53,0.08);border:1px solid rgba(255,107,53,0.2);border-radius:4px;padding:0.3rem 0.65rem"><span style="background:#ff6b35;color:#fff;padding:0.1rem 0.35rem;border-radius:3px;font-weight:600;margin-right:0.5rem">L1</span>bonfyre-run L1 event.json</p>
               <div class="pill-row">
                 <span class="pill">BonfyreMeter</span>
                 <span class="pill">BonfyreLedger</span>
@@ -306,6 +325,7 @@
               <span class="card-meta">Knowledge and memory</span>
               <h3>Knowledge Graph Explorer</h3>
               <p>Cross-archive semantic search and relationship mapping -- find everything related to any concept, person, or event across every recording ever made. BonfyreGraph maps entity relationships. BonfyreQuery unifies LMDB key-value, NEON SIMD vector, and BM25 full-text search in one call with retrieval under 5 ms. BonfyreWeaviateIndex connects to a self-hosted Weaviate instance for GraphQL queries. Navigate your archive like a graph, not a list.</p>
+              <p style="margin-top:0.6rem;font-family:'IBM Plex Mono',monospace;font-size:0.74rem;color:#ff6b35;background:rgba(255,107,53,0.08);border:1px solid rgba(255,107,53,0.2);border-radius:4px;padding:0.3rem 0.65rem"><span style="background:#ff6b35;color:#fff;padding:0.1rem 0.35rem;border-radius:3px;font-weight:600;margin-right:0.5rem">A2</span>bonfyre-run A2 corpus.wav</p>
               <div class="pill-row">
                 <span class="pill">BonfyreGraph</span>
                 <span class="pill">BonfyreQuery</span>
@@ -319,6 +339,7 @@
               <span class="card-meta">Legal and trust</span>
               <h3>Proof Verification Portal</h3>
               <p>Public verification interface for any BonfyreProof-signed bundle. Paste a bundle hash and the portal verifies the Ed25519 signature, checks the BLAKE2b manifest against each artifact, and confirms the bundle is complete and unmodified since signing. BonfyreAuth validates the signing key against a published key registry. BonfyreLedger records every verification event. Used by clients, auditors, and regulators who need to verify deliverables independently without installing anything.</p>
+              <p style="margin-top:0.6rem;font-family:'IBM Plex Mono',monospace;font-size:0.74rem;color:#ff6b35;background:rgba(255,107,53,0.08);border:1px solid rgba(255,107,53,0.2);border-radius:4px;padding:0.3rem 0.65rem"><span style="background:#ff6b35;color:#fff;padding:0.1rem 0.35rem;border-radius:3px;font-weight:600;margin-right:0.5rem">P2</span>bonfyre-run P2 deliverable/</p>
               <div class="pill-row">
                 <span class="pill">BonfyreProof</span>
                 <span class="pill">BonfyreHash</span>
@@ -331,6 +352,7 @@
               <span class="card-meta">Field and research</span>
               <h3>Field Research Station</h3>
               <p>Offline-first capture kit for field researchers, journalists, and archivists with no reliable internet. Record on-device, BonfyreTranscribe runs locally with no API, BonfyreEmbed generates vectors on-device, BonfyreCompress packs the artifact, BonfyreHash content-addresses it. When connectivity returns, BonfyreDistribute syncs using fountain codes that tolerate the lossy connections typical of satellite or rural mobile links. The full archive is searchable on-device via BonfyreQuery before any sync.</p>
+              <p style="margin-top:0.6rem;font-family:'IBM Plex Mono',monospace;font-size:0.74rem;color:#ff6b35;background:rgba(255,107,53,0.08);border:1px solid rgba(255,107,53,0.2);border-radius:4px;padding:0.3rem 0.65rem"><span style="background:#ff6b35;color:#fff;padding:0.1rem 0.35rem;border-radius:3px;font-weight:600;margin-right:0.5rem">A2</span>bonfyre-run A2 field.wav</p>
               <div class="pill-row">
                 <span class="pill">BonfyreIngest</span>
                 <span class="pill">BonfyreTranscribe</span>
@@ -344,6 +366,7 @@
               <span class="card-meta">Platform infrastructure</span>
               <h3>Edge API Gateway</h3>
               <p>Complete access control and API proxy layer -- no Auth0, no Kong, no cloud service. BonfyreGate provides token-authenticated routing with per-route rules. BonfyreProxy exposes an OpenAI-compatible endpoint locally. BonfyreAuth handles Ed25519-signed session tokens. BonfyreMFADict blocks credential-stuffing via pre-computed dictionary attack resistance. BonfyreTel manages phone-edge connections. The entire gateway stack fits in 1.8 MB and handles 4,096 concurrent connections per reactor core with zero per-MAU pricing.</p>
+              <p style="margin-top:0.6rem;font-family:'IBM Plex Mono',monospace;font-size:0.74rem;color:#ff6b35;background:rgba(255,107,53,0.08);border:1px solid rgba(255,107,53,0.2);border-radius:4px;padding:0.3rem 0.65rem"><span style="background:#ff6b35;color:#fff;padding:0.1rem 0.35rem;border-radius:3px;font-weight:600;margin-right:0.5rem">G1</span>bonfyre-run G1 request.json</p>
               <div class="pill-row">
                 <span class="pill">BonfyreGate</span>
                 <span class="pill">BonfyreProxy</span>

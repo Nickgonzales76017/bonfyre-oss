@@ -21,6 +21,7 @@
         <nav class="site-nav" aria-label="Primary">
           <a href="index.html">Overview</a>
           <a class="current" href="explore.html">Explore</a>
+          <a href="recipe-run.html">Pipelines</a>
           <a href="docs.html">Technical Docs</a>
           <a href="apps.html">Live Apps</a>
         </nav>
@@ -122,6 +123,67 @@
               <h3>Audio → packaged deliverable · Recording → knowledge · Content → pages · Work → revenue</h3>
               <p>Each binary handles one job. Content-addressed artifacts flow between stages. Re-runs skip unchanged work automatically. The worked example traces a 45-minute podcast episode from raw WAV to distributed, monetised deliverable — step by step, with timing.</p>
               <div class="cta-row"><a class="secondary-btn" href="pipeline-flows.html">Full pipeline flows →</a></div>
+            </article>
+          </div>
+        </div>
+      </section>
+
+
+      <!-- One-command pipeline execution -->
+      <section class="section" style="background:var(--surface-1,#111);border-top:1px solid var(--border,#222);border-bottom:1px solid var(--border,#222)">
+        <div class="shell-container">
+          <div class="section-header">
+            <div>
+              <span class="section-kicker">bonfyre-run</span>
+              <h2 class="section-title">Every pipeline here has a shortcode. One command runs it.</h2>
+              <p class="section-copy">bonfyre-recipe stores a SQLite registry of pipeline recipes. bonfyre-run resolves any code, validates the binaries on your PATH, executes the stage DAG — parallel where safe — and writes a run-manifest.json receipt when it's done. Type it once, get the whole pipeline.</p>
+            </div>
+          </div>
+          <div class="feature-grid">
+            <article class="feature-card">
+              <span class="card-meta" style="font-family:'IBM Plex Mono',monospace;color:var(--accent,#ff6b35)">Most common codes</span>
+              <h3>From recording to deliverable in one line</h3>
+              <table style="width:100%;border-collapse:collapse;font-size:0.82rem;margin-top:0.5rem">
+                <tr style="border-bottom:1px solid var(--border,#333)">
+                  <td style="padding:0.45rem 0;font-family:'IBM Plex Mono',monospace;color:#ff6b35;width:40px">A1</td>
+                  <td style="padding:0.45rem 0.75rem;color:var(--text-2)">audio → brief</td>
+                  <td style="padding:0.45rem 0;font-family:'IBM Plex Mono',monospace;font-size:0.75rem;color:#7eb8ff">bonfyre-run A1 recording.wav</td>
+                </tr>
+                <tr style="border-bottom:1px solid var(--border,#333)">
+                  <td style="padding:0.45rem 0;font-family:'IBM Plex Mono',monospace;color:#ff6b35">M1</td>
+                  <td style="padding:0.45rem 0.75rem;color:var(--text-2)">media → podcast</td>
+                  <td style="padding:0.45rem 0;font-family:'IBM Plex Mono',monospace;font-size:0.75rem;color:#7eb8ff">bonfyre-run M1 episode.wav</td>
+                </tr>
+                <tr style="border-bottom:1px solid var(--border,#333)">
+                  <td style="padding:0.45rem 0;font-family:'IBM Plex Mono',monospace;color:#ff6b35">A3</td>
+                  <td style="padding:0.45rem 0.75rem;color:var(--text-2)">full 23-stage pipeline</td>
+                  <td style="padding:0.45rem 0;font-family:'IBM Plex Mono',monospace;font-size:0.75rem;color:#7eb8ff">bonfyre-run A3 episode.wav --tier pro</td>
+                </tr>
+                <tr style="border-bottom:1px solid var(--border,#333)">
+                  <td style="padding:0.45rem 0;font-family:'IBM Plex Mono',monospace;color:#ff6b35">V1</td>
+                  <td style="padding:0.45rem 0.75rem;color:var(--text-2)">verified brief + signed proof</td>
+                  <td style="padding:0.45rem 0;font-family:'IBM Plex Mono',monospace;font-size:0.75rem;color:#7eb8ff">bonfyre-run V1 intake.wav</td>
+                </tr>
+                <tr style="border-bottom:1px solid var(--border,#333)">
+                  <td style="padding:0.45rem 0;font-family:'IBM Plex Mono',monospace;color:#ff6b35">R1</td>
+                  <td style="padding:0.45rem 0.75rem;color:var(--text-2)">repo → onboarding guide</td>
+                  <td style="padding:0.45rem 0;font-family:'IBM Plex Mono',monospace;font-size:0.75rem;color:#7eb8ff">bonfyre-run R1 ./my-repo</td>
+                </tr>
+                <tr>
+                  <td style="padding:0.45rem 0;font-family:'IBM Plex Mono',monospace;color:#ff6b35">P2</td>
+                  <td style="padding:0.45rem 0.75rem;color:var(--text-2)">proof + verified publish</td>
+                  <td style="padding:0.45rem 0;font-family:'IBM Plex Mono',monospace;font-size:0.75rem;color:#7eb8ff">bonfyre-run P2 deliverable/</td>
+                </tr>
+              </table>
+              <div class="cta-row" style="margin-top:1.25rem">
+                <a class="primary-btn" href="recipe-run.html">All 10 codes + full reference →</a>
+              </div>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">What happens when you run it</span>
+              <h3>Plan → validate → execute → manifest</h3>
+              <p>Every run follows the same four steps. First, <code>bonfyre-run</code> resolves the recipe from the SQLite registry (or from built-ins). Then it validates that each stage binary actually exists on your PATH — so you find out about missing binaries before the pipeline starts, not halfway through. Then it assigns topological levels and forks all stages at the same level concurrently. When done, a <code>run-manifest.json</code> lands in the output directory with each stage's exit code, wall time, and overall status.</p>
+              <p style="margin-top:0.75rem;font-size:0.85rem;color:var(--text-2)">Use <code>--dry-run</code> to see the full execution plan before committing. Use <code>--from-stage</code> and <code>--to-stage</code> to re-run a slice of the pipeline. Use <code>--batch DIR</code> to process a whole directory of recordings with one command.</p>
             </article>
           </div>
         </div>
