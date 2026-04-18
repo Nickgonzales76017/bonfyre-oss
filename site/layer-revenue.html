@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#ff6b35">
+  <meta name="description" content="Layer 5 of the Bonfyre stack: 8 binaries covering pricing, checkout, usage metering, immutable financial ledger, and team operations — with no SaaS markup above the payment processor.">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔥</text></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://api.fontshare.com/v2/css?f[]=cabinet-grotesk@400,500,700,800,900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/site.css">
+  <title>Bonfyre Layer 5 — Revenue & Ops</title>
+</head>
+<body>
+  <div class="site-shell">
+    <header class="site-header">
+      <div class="shell-container site-header-row">
+        <a class="brand" href="index.html"><span class="brand-mark">🔥</span><span>Bonfyre</span></a>
+        <nav class="site-nav" aria-label="Primary">
+          <a href="index.html">Overview</a>
+          <a href="explore.html">Explore</a>
+          <a href="docs.html">Technical Docs</a>
+          <a href="apps.html">Live Apps</a>
+        </nav>
+        <div class="header-actions">
+          <a class="header-btn" href="docs.html">← All layers</a>
+        </div>
+      </div>
+      <div class="ticker-bar">
+        <div class="shell-container ticker-row">
+          <span>Layer 5 of 6</span>
+          <span class="dot">•</span>
+          <span>Revenue &amp; ops</span>
+          <span class="dot">•</span>
+          <span>8 binaries</span>
+          <span class="dot">•</span>
+          <span>no SaaS markup above the payment processor</span>
+        </div>
+      </div>
+    </header>
+
+    <main>
+      <section class="page-hero">
+        <div class="shell-container">
+          <span class="hero-kicker">Binary reference · Layer 5</span>
+          <h1 class="hero-title">Revenue &amp; <span class="accent">ops.</span></h1>
+          <p class="lede">Everything between producing work and getting paid for it, tracked. Eight binaries: dynamic pricing pages, Stripe-compatible checkout, per-usage metering, append-only financial ledger, margin reports, follow-up sequencing, project tracking, and quantitative modelling. None phone home. None have a SaaS markup. None require a cloud service to run.</p>
+          <div class="hero-actions">
+            <a class="primary-btn" href="layer-platform.html">Next: Layer 6 — Platform →</a>
+            <a class="secondary-btn" href="layer-production.html">← Layer 4: Production</a>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="shell-container">
+          <div class="section-header">
+            <div>
+              <span class="section-kicker">What this layer eliminates</span>
+              <h2 class="section-title">The stack you're currently paying to replace this with.</h2>
+            </div>
+          </div>
+          <div class="compare-grid">
+            <article class="compare-card">
+              <span class="card-meta">Stripe Billing + usage metering</span>
+              <h3>$0.8% of revenue above Stripe's cut</h3>
+              <p class="compare-value">Stripe Billing adds 0.5–0.8% on top of standard processing fees for usage-based billing. BonfyreMeter records usage events in LMDB at zero per-event cost. You still pay Stripe's base processing fee — you just don't pay a SaaS margin on top of it.</p>
+            </article>
+            <article class="compare-card">
+              <span class="card-meta">Outreach / Apollo sequences</span>
+              <h3>$100–$150/user/month</h3>
+              <p class="compare-value">BonfyreOutreach sequences follow-up messages from pipeline outputs. No per-seat license. Sequence logic is config — YAML or JSON rules evaluated at pipeline time, not in a cloud CRM.</p>
+            </article>
+            <article class="compare-card">
+              <span class="card-meta">QuickBooks / Xero financial reporting</span>
+              <h3>$30–$80/month subscription</h3>
+              <p class="compare-value">BonfyreLedger maintains an append-only financial log. BonfyreFinance reads it and produces margin reports in JSON or PDF via BonfyreEmit. No subscription. The ledger is a plain file — importable into any accounting tool if you ever need it.</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="shell-container">
+          <div class="section-header">
+            <div>
+              <span class="section-kicker">Binary reference</span>
+              <h2 class="section-title">All 8 Layer 5 binaries.</h2>
+            </div>
+          </div>
+          <div class="feature-grid">
+
+            <article class="feature-card">
+              <span class="card-meta">BonfyreOffer</span>
+              <h3>Dynamic pricing surface generation</h3>
+              <p>Takes a brief JSON and a pricing rules file, and generates a structured offer: service tiers, pricing amounts (computed from brief context like project scope, materials mentioned, hours implied), payment terms, and an expiry date. Output is a proposal object — machine-readable, not just a document — that BonfyrePay can attach a checkout session to directly. Pricing rules are YAML — you define margins, discounts, and tier thresholds without modifying code.</p>
+            </article>
+
+            <article class="feature-card">
+              <span class="card-meta">BonfyrePay</span>
+              <h3>Checkout and payment handling</h3>
+              <p>Generates Stripe-compatible checkout sessions from BonfyreOffer proposals. Handles: one-time payments, subscription setup, and usage-based billing activation. On session completion, writes a payment confirmation to BonfyreLedger. On failure, writes a failure event. Does not store card data — passes through to Stripe's PCI-compliant handling. The checkout URL returned is a standard Stripe Checkout hosted page.</p>
+            </article>
+
+            <article class="feature-card">
+              <span class="card-meta">BonfyreMeter</span>
+              <h3>Usage metering and quota tracking</h3>
+              <p>Records per-usage events against named meters in LMDB: API call counts, processing minutes, storage bytes, seat counts, or any custom event type. Meters have configurable quotas and billing periods. When a quota is reached, BonfyreMeter emits a quota-exceeded event that BonfyreGate (Layer 6) can act on to rate-limit or block the relevant account. Meter data is the source for BonfyreFinance usage reports.</p>
+            </article>
+
+            <article class="feature-card">
+              <span class="card-meta">BonfyreLedger</span>
+              <h3>Immutable append-only financial audit trail</h3>
+              <p>Append-only log of all financial events: payments received, refunds issued, subscription activations, quota overages, and manual adjustments. Each entry is timestamped and linked to a source artifact ID (the BonfyrePack bundle that generated the billable event). The log is content-addressed and signed — entries cannot be backdated or silently modified. BonfyreFinance reads this ledger; it never writes to it.</p>
+            </article>
+
+            <article class="feature-card">
+              <span class="card-meta">BonfyreFinance</span>
+              <h3>Margin calculation and financial reporting</h3>
+              <p>Reads BonfyreLedger and BonfyreMeter data to produce structured financial reports: gross revenue by period, margin per offer type, usage cost breakdown, and projected run rate. Output formats are JSON (for programmatic use), a formatted PDF report via BonfyreEmit, and a CSV export for import into external accounting tools. Runs on-demand — point it at the ledger file and it computes immediately, no running service required.</p>
+            </article>
+
+            <article class="feature-card">
+              <span class="card-meta">BonfyreQuant</span>
+              <h3>Quantitative analysis and projection modelling</h3>
+              <p>Statistical analysis and scenario modelling over financial and usage time series. Forecasts revenue based on configurable growth assumptions, models quota usage against projected capacity, and performs sensitivity analysis (how does 20% churn affect the 6-month projection?). Uses LAPACK-compatible linear algebra over the ledger data. Output is a JSON report with named scenarios and confidence intervals.</p>
+            </article>
+
+            <article class="feature-card">
+              <span class="card-meta">BonfyreOutreach</span>
+              <h3>Follow-up sequencing and delivery</h3>
+              <p>Schedules and delivers follow-up messages from pipeline outputs. Sequence rules are defined in YAML: "3 days after offer sent with no response: send reminder. 7 days: send expiry warning. 14 days: close." Messages are templated from the offer or brief context. Delivery is via BonfyreTel (email/webhook). Tracking records whether each message was sent and whether a response event was received. No per-seat license. Sequence logic lives in config files, not a cloud platform.</p>
+            </article>
+
+            <article class="feature-card">
+              <span class="card-meta">BonfyreProject</span>
+              <h3>Action item and project state tracking</h3>
+              <p>Creates and tracks project items sourced from BonfyreBrief action item fields: owner, deadline, status (open/in-progress/resolved/blocked), source artifact link, and notes. Items are stored in LMDB, queryable via BonfyreQuery, and renderable via BonfyreRender as a project board page. When BonfyreTel confirms delivery of a committed action, BonfyreProject marks the item resolved. The project board is a static HTML page — no project management tool subscription required.</p>
+            </article>
+
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="shell-container">
+          <div class="section-header">
+            <div><span class="section-kicker">What comes next</span><h2 class="section-title">Layer 6 makes everything composable at scale.</h2></div>
+          </div>
+          <div class="feature-grid">
+            <article class="feature-card"><span class="card-meta">Output of Layer 5</span><h3>Payments tracked, usage metered, follow-ups sequenced</h3><p>A signed ledger of payments, a metered usage database, scheduled follow-up sequences, and tracked action items. Everything needed to run revenue operations without a cloud billing platform.</p></article>
+            <article class="feature-card"><span class="card-meta">Input to Layer 6</span><h3>BonfyreGate controls access based on meter state</h3><p>Layer 6's BonfyreGate reads Layer 5's BonfyreMeter quotas. When a quota is exceeded, Gate blocks further pipeline processing or API requests for the relevant account — without a separate policy service.</p></article>
+            <article class="feature-card"><span class="card-meta">Full pipeline</span><h3>Layer 1 through 5 in one run</h3><p>A single BonfyrePipeline definition can chain all five layers: ingest a recording, transcribe, brief, embed, offer, pay, meter, and deliver — triggered by one file drop. No manual intervention between steps.</p></article>
+          </div>
+          <div class="cta-row">
+            <a class="primary-btn" href="layer-platform.html">Layer 6: Platform & distribution →</a>
+            <a class="secondary-btn" href="docs.html">Back to docs</a>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <div class="shell-container footer-row">
+        <div>Bonfyre — 53 C binaries. Local AI. No cloud bill.</div>
+        <div class="footer-links">
+          <a href="index.html">Overview</a>
+          <a href="explore.html">Explore</a>
+          <a href="docs.html">Technical Docs</a>
+          <a href="apps.html">Live Apps</a>
+        </div>
+      </div>
+    </footer>
+  </div>
+  <script src="assets/site.js"></script>
+</body>
+</html>

@@ -220,39 +220,14 @@
             <div>
               <span class="section-kicker">Recent additions</span>
               <h2 class="section-title">What got added this cycle.</h2>
-              <p class="section-copy">Swarm delivery, QUIC transport, shared-nothing API reactor, hot-load pipeline stages, zero-copy LMDB cache, and SIMD decode upgrades.</p>
             </div>
           </div>
           <div class="feature-grid">
             <article class="feature-card">
-              <span class="card-meta">BonfyreSwarm</span>
-              <h3>BitTorrent v2 artifact CDN</h3>
-              <p>SHA-256 piece trees, 256 KB pieces, local peer knowledge, and Gate plus Meter hooks baked in. Artifact bundles don't need a CDN vendor. They self-distribute.</p>
-            </article>
-            <article class="feature-card">
-              <span class="card-meta">BonfyreDistribute</span>
-              <h3>QUIC family streams</h3>
-              <p>Artifact families multiplex over QUIC with surface-first priority, reconnect logic, and flow control tuned for sync-heavy artifact sets. No separate transport vendor needed.</p>
-            </article>
-            <article class="feature-card">
-              <span class="card-meta">bf_reactor</span>
-              <h3>Shared-nothing API runtime</h3>
-              <p>Per-core event loops, faster HTTP/1.1 request decode via bf_picohttpparser, SSE push support, and per-reactor mimalloc heaps. 4,096 concurrent connections per reactor core.</p>
-            </article>
-            <article class="feature-card">
-              <span class="card-meta">BonfyrePipeline hot-load</span>
-              <h3>Swap stages without rebuilding</h3>
-              <p>32-stage plugin registry, 16 live A/B pairs, and a coroutine-based execution path with channels and deadlines. Iterate on a stage without touching the rest of the pipeline.</p>
-            </article>
-            <article class="feature-card">
-              <span class="card-meta">bf_lmdb + bf_flatbuf</span>
-              <h3>Zero-copy read-hot cache</h3>
-              <p>Repeated artifact fetches pointer-cast directly into LMDB mmap pages. FlatBuffer manifests cut repeated JSON parse overhead. 512 MB default map, 4 named sub-databases.</p>
-            </article>
-            <article class="feature-card">
-              <span class="card-meta">FPQ SIMD + HE-SLI</span>
-              <h3>Faster decode, private scoring</h3>
-              <p>SIMD BP128 decodes 128 E8 INT7 values per block. HE-SLI adds depth-1 homomorphic encrypted linear scoring — inference stays in the encrypted domain for privacy-critical flows.</p>
+              <span class="card-meta">Cycle 3 additions</span>
+              <h3>Swarm · Distribute · bf_reactor · Pipeline hot-load · bf_lmdb+flatbuf · FPQ SIMD</h3>
+              <p>BitTorrent v2 artifact delivery, QUIC family streams, a shared-nothing per-core API reactor, hot-swappable pipeline stages, zero-copy LMDB cache, and SIMD + homomorphic encrypted scoring upgrades.</p>
+              <div class="cta-row"><a class="secondary-btn" href="changelog.html">Read the full changelog →</a></div>
             </article>
           </div>
         </div>

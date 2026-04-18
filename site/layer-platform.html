@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#ff6b35">
+  <meta name="description" content="Layer 6 of the Bonfyre stack: 14 binaries providing the runtime, transport, auth, delivery, and API infrastructure that makes all 53 binaries composable at scale.">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔥</text></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://api.fontshare.com/v2/css?f[]=cabinet-grotesk@400,500,700,800,900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/site.css">
+  <title>Bonfyre Layer 6 — Platform & Distribution</title>
+</head>
+<body>
+  <div class="site-shell">
+    <header class="site-header">
+      <div class="shell-container site-header-row">
+        <a class="brand" href="index.html"><span class="brand-mark">🔥</span><span>Bonfyre</span></a>
+        <nav class="site-nav" aria-label="Primary">
+          <a href="index.html">Overview</a>
+          <a href="explore.html">Explore</a>
+          <a href="docs.html">Technical Docs</a>
+          <a href="apps.html">Live Apps</a>
+        </nav>
+        <div class="header-actions">
+          <a class="header-btn" href="docs.html">← All layers</a>
+        </div>
+      </div>
+      <div class="ticker-bar">
+        <div class="shell-container ticker-row">
+          <span>Layer 6 of 6</span>
+          <span class="dot">•</span>
+          <span>Platform &amp; distribution</span>
+          <span class="dot">•</span>
+          <span>14 binaries</span>
+          <span class="dot">•</span>
+          <span>hot-swap stages · fountain codes · OpenAI-compatible proxy</span>
+        </div>
+      </div>
+    </header>
+
+    <main>
+      <section class="page-hero">
+        <div class="shell-container">
+          <span class="hero-kicker">Binary reference · Layer 6</span>
+          <h1 class="hero-title">Platform &amp; <span class="accent">distribution.</span></h1>
+          <p class="lede">Fourteen binaries that make the other five layers composable at scale. Hot-swappable pipeline stages, peer-to-peer artifact distribution, fountain-code QUIC delivery, an OpenAI-compatible local proxy, token auth, rate limiting, and a unified CLI. This is the layer that lets you run the full stack without a cloud service in the critical path.</p>
+          <div class="hero-actions">
+            <a class="primary-btn" href="docs.html">Full documentation</a>
+            <a class="secondary-btn" href="layer-revenue.html">← Layer 5: Revenue</a>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="shell-container">
+          <div class="section-header">
+            <div>
+              <span class="section-kicker">Key capabilities</span>
+              <h2 class="section-title">What makes this layer different from standard infrastructure.</h2>
+            </div>
+          </div>
+          <div class="feature-grid">
+            <article class="feature-card">
+              <span class="card-meta">Hot-load pipeline stages</span>
+              <h3>Swap a stage without restarting the pipeline</h3>
+              <p>BonfyrePipeline maintains a 32-slot plugin registry with 16 live A/B pairs. To update a processing stage, drop the new binary into the stage directory and call the hot-swap endpoint. The next artifact to arrive routes through the new code. No downtime. No rebuild. No in-flight artifacts are dropped — the swap is atomic at the function pointer level.</p>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">Fountain codes</span>
+              <h3>Up to 33% packet loss is recoverable without retransmit</h3>
+              <p>BonfyreDistribute delivers artifact families over QUIC with LT-code fountain coding. Any sufficient subset of received chunks reconstructs the full artifact — the receiver doesn't need every chunk, and any chunk is as useful as any other. This is why field researchers can sync archives over lossy satellite links without incomplete transfers.</p>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">OpenAI-compatible proxy</span>
+              <h3>Any tool that speaks the OpenAI API uses your local model instead</h3>
+              <p>BonfyreProxy exposes a <code>/v1/chat/completions</code> endpoint on localhost. Any existing tool configured to use OpenAI — LangChain, LlamaIndex, custom scripts — routes through BonfyreProxy to your local FPQ-compressed model instead. Zero per-token cost. No API key rotation. No rate limits. Drop-in replacement.</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="shell-container">
+          <div class="section-header">
+            <div>
+              <span class="section-kicker">Binary reference</span>
+              <h2 class="section-title">All 14 Layer 6 binaries.</h2>
+            </div>
+          </div>
+          <div class="feature-grid">
+
+            <article class="feature-card">
+              <span class="card-meta">BonfyrePipeline</span>
+              <h3>Hot-load stage runner — 32 slots, 16 A/B pairs</h3>
+              <p>The core execution environment for multi-stage pipelines. Registers stages as function pointers loaded from shared objects. Hot-swap replaces a function pointer atomically — the swap is visible to the next artifact that arrives, not the current one. Supports up to 32 stages per pipeline instance, 16 simultaneous A/B pairs for staged rollouts, and a coroutine-based execution path with per-stage channels, timeouts, and deadlines. BonfyrePipeline definitions are YAML files — stages, routing rules, failure handlers, and retry policies.</p>
+            </article>
+
+            <article class="feature-card">
+              <span class="card-meta">BonfyreQueue</span>
+              <h3>Artifact work queue between stages</h3>
+              <p>Persistent LMDB-backed FIFO queue between pipeline stages. Artifacts are enqueued with a priority, a deadline, and a payload (the BLAKE2b artifact ID). Workers dequeue and process. If a worker crashes mid-processing, the artifact is re-enqueued after a configurable visibility timeout — no work is silently lost. Supports multiple queue consumers in parallel for CPU-intensive stages. Queue state survives process restart.</p>
+            </article>
+
+            <article class="feature-card">
+              <span class="card-meta">BonfyreOrchestrate</span>
+              <h3>Multi-pipeline coordination and state tracking</h3>
+              <p>Coordinates execution across multiple BonfyrePipeline instances. Defines dependency relationships: "pipeline B starts when pipeline A produces an artifact matching this pattern." Tracks execution state across the full multi-pipeline graph: queued, in-progress, stalled, completed, failed. When a stage stalls past its deadline, BonfyreOrchestrate flags it and notifies via BonfyreTel. Used in the ops recipe to track multi-team incident resolution workflows.</p>
+            </article>
+
+            <article class="feature-card">
+              <span class="card-meta">BonfyreRuntime</span>
+              <h3>Shared in-process coroutine execution environment</h3>
+              <p>Provides the coroutine scheduler and channel primitives that BonfyrePipeline stages run on. M:N coroutine threading — many coroutines multiplexed over a small number of OS threads, with cooperative yielding at I/O boundaries. Coroutine stacks are 64 KB by default (configurable). Channels are typed, buffered or unbuffered, and select-able. This is what allows a single pipeline process to handle thousands of concurrent artifact transformations without thread-per-request overhead.</p>
+            </article>
+
+            <article class="feature-card">
+              <span class="card-meta">BonfyreSwarm</span>
+              <h3>Peer coordination and BitTorrent v2 artifact distribution</h3>
+              <p>Distributes artifact bundles peer-to-peer using BitTorrent v2 SHA-256 piece trees with 256 KB pieces. Local peer knowledge is maintained in LMDB — the swarm tracks which peers have which pieces locally without a central tracker. Gate and Meter hooks are baked in: access to swarm content can be quota-guarded. Used to distribute large model bundles and artifact archives to distributed team members without a CDN.</p>
+            </article>
+
+            <article class="feature-card">
+              <span class="card-meta">BonfyreDistribute</span>
+              <h3>Fountain-code QUIC artifact distribution</h3>
+              <p>Delivers artifact families over QUIC with LT-code fountain coding. Artifact family members multiplex over separate QUIC streams with surface-first priority — the most-needed artifact in a family gets the first available bandwidth. Reconnect logic resumes interrupted transfers using the manifest to identify already-received chunks. Up to 33% packet loss is recoverable without a full retransmit. Used for field sync over lossy connections and for distributing FPQ model shards to edge nodes.</p>
+            </article>
+
+            <article class="feature-card">
+              <span class="card-meta">BonfyreFPQ</span>
+              <h3>4× model compression with 99.97% cosine parity</h3>
+              <p>See the <a href="docs.html#fpq">full FPQ internals on docs.html</a>. Key facts: FPQ = Fractional Polynomial Quantisation — FP32 tensors quantised to INT8 with polynomial correction coefficients preserving 99.97% cosine similarity. SIMD BP128 decodes 128 E8 INT7 values per instruction block. HE-SLI adds depth-1 homomorphic encrypted linear scoring. Four quantisation levels: FPQ-4 through FPQ-1 at 4×, 6×, 8×, and 10× compression. 15 published models on HuggingFace.</p>
+            </article>
+
+            <article class="feature-card">
+              <span class="card-meta">BonfyreAPI</span>
+              <h3>OpenAPI surface, token auth, and structured logging</h3>
+              <p>An OpenAPI 3.1-compliant HTTP API surface over the full pipeline. Generates an OpenAPI spec from the BonfyreCLI command registry — every CLI command is automatically available as an API endpoint. Token auth via BLAKE2b-256 tokens. Structured JSON request/response logging with per-request trace IDs. Rate limiting hooks into BonfyreMeter and BonfyreGate. Used to expose Bonfyre pipelines as API endpoints to external tools or internal services.</p>
+            </article>
+
+            <article class="feature-card">
+              <span class="card-meta">BonfyreProxy</span>
+              <h3>OpenAI-compatible proxy with local model routing</h3>
+              <p>Runs on <code>localhost:8080</code> by default. Exposes <code>/v1/chat/completions</code>, <code>/v1/completions</code>, and <code>/v1/embeddings</code> endpoints matching the OpenAI API schema. Incoming requests are routed to your local FPQ-compressed model via BonfyreFPQ. Response format is identical to OpenAI — existing code using the OpenAI SDK requires only a base URL change. Supports model aliases: <code>"model": "gpt-4"</code> routes to whatever local model you've aliased to that name.</p>
+            </article>
+
+            <article class="feature-card">
+              <span class="card-meta">BonfyreGate</span>
+              <h3>Request gating, rate limiting, and policy enforcement</h3>
+              <p>Sits in front of BonfyreAPI and BonfyreProxy. Reads quota state from BonfyreMeter and applies configurable policies: rate limits per token, per account, or per endpoint; quota enforcement (block requests when meter quota is exceeded); IP-based allow/deny lists; and time-of-day access windows. Policy rules are YAML. No per-rule compute — all rules are compiled to a Hyperscan pattern set at startup for &gt;1 GB/s evaluation throughput.</p>
+            </article>
+
+            <article class="feature-card">
+              <span class="card-meta">BonfyreAuth</span>
+              <h3>BLAKE2b + Ed25519 auth and token management</h3>
+              <p>Issues and validates BLAKE2b-256 API tokens. Generates and stores Ed25519 keypairs for BonfyreProof bundle signing. Manages token rotation, expiry, and revocation in LMDB. No external auth service. No JWT library. Token validation is a single BLAKE2b hash comparison — under 1 µs. Ed25519 signature verification is ~50 µs. The entire auth system is a ~40 KB binary.</p>
+            </article>
+
+            <article class="feature-card">
+              <span class="card-meta">BonfyreMFADict</span>
+              <h3>MFA dictionary and credential store</h3>
+              <p>Stores and validates second-factor credentials: TOTP secrets (RFC 6238 compatible), backup codes, and WebAuthn credential IDs. TOTP validation uses constant-time comparison with a 1-step clock drift window. Backup codes are single-use and stored as BLAKE2b hashes — not plaintext. Integrates with BonfyreAuth for two-factor API access. Used in deployment configurations where API access requires MFA.</p>
+            </article>
+
+            <article class="feature-card">
+              <span class="card-meta">BonfyreTel</span>
+              <h3>Telemetry, structured metrics, log forwarding, and communications delivery</h3>
+              <p>Dual role: (1) pipeline telemetry and (2) outbound communications delivery. Telemetry: collects per-stage timing, error rates, and throughput metrics in a ring buffer; exposes a Prometheus-compatible <code>/metrics</code> endpoint; and forwards structured log lines to a configurable target (file, syslog, or HTTP endpoint). Communications: sends emails and webhooks from BonfyreOutreach sequences. Delivery confirmation is tracked — a sent event and a delivery confirmation event are written to BonfyreLedger separately.</p>
+            </article>
+
+            <article class="feature-card">
+              <span class="card-meta">BonfyreCLI</span>
+              <h3>Unified command-line interface for all 53 binaries</h3>
+              <p>Single entry point: <code>bonfyre [command] [subcommand] [flags]</code>. Every binary in all 6 layers is accessible as a CLI command. Tab-completion via <code>bonfyre completion [bash|zsh|fish]</code>. Pipeline runs: <code>bonfyre pipeline run --config podcast.yaml --input episode.mp3</code>. Direct binary calls: <code>bonfyre transcribe --input file.wav --output transcript.txt</code>. Built-in help for every command. BonfyreAPI generates an OpenAPI spec from the same command registry — CLI and API share the same command definitions.</p>
+            </article>
+
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="shell-container">
+          <div class="section-header">
+            <div><span class="section-kicker">The full picture</span><h2 class="section-title">Six layers. 53 binaries. One consistent data model.</h2></div>
+          </div>
+          <div class="feature-grid">
+            <article class="feature-card"><span class="card-meta">Content addressing throughout</span><h3>BLAKE2b ties all 6 layers together</h3><p>Every artifact produced by every layer carries a BLAKE2b hash. This is what makes the pipeline idempotent, what BonfyreProof signs, what BonfyreSync compares for incremental delivery, and what BonfyreSwarm uses as piece tree leaves. The hash is the universal artifact identifier.</p></article>
+            <article class="feature-card"><span class="card-meta">No required cloud services</span><h3>Layer 6 provides every infrastructure piece locally</h3><p>Auth, rate limiting, metrics, API surface, model inference, artifact distribution — all in Layer 6, all running locally. The only external service in a default Bonfyre deployment is the payment processor (Stripe). Everything else runs on your hardware.</p></article>
+            <article class="feature-card"><span class="card-meta">Start with one binary</span><h3>You don't need all 6 layers to start</h3><p>Most users start with Layer 1 + Layer 2 (ingest + transcribe) or Layer 2 + Layer 3 (transcribe + brief + search). Add layers as you need them. Each layer's binaries are independently callable — you're not required to use the full pipeline.</p></article>
+          </div>
+          <div class="cta-row">
+            <a class="primary-btn" href="docs.html">Full documentation</a>
+            <a class="secondary-btn" href="explore.html">See the use cases</a>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <div class="shell-container footer-row">
+        <div>Bonfyre — 53 C binaries. Local AI. No cloud bill.</div>
+        <div class="footer-links">
+          <a href="index.html">Overview</a>
+          <a href="explore.html">Explore</a>
+          <a href="docs.html">Technical Docs</a>
+          <a href="apps.html">Live Apps</a>
+        </div>
+      </div>
+    </footer>
+  </div>
+  <script src="assets/site.js"></script>
+</body>
+</html>

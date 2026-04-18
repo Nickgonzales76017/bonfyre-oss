@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#ff6b35">
+  <meta name="description" content="Layer 3 of the Bonfyre stack: 10 binaries that turn a clean transcript into structured briefs, semantic search indexes, entity graphs, and query-ready knowledge.">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔥</text></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://api.fontshare.com/v2/css?f[]=cabinet-grotesk@400,500,700,800,900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/site.css">
+  <title>Bonfyre Layer 3 — Knowledge & Memory</title>
+</head>
+<body>
+  <div class="site-shell">
+    <header class="site-header">
+      <div class="shell-container site-header-row">
+        <a class="brand" href="index.html"><span class="brand-mark">🔥</span><span>Bonfyre</span></a>
+        <nav class="site-nav" aria-label="Primary">
+          <a href="index.html">Overview</a>
+          <a href="explore.html">Explore</a>
+          <a href="docs.html">Technical Docs</a>
+          <a href="apps.html">Live Apps</a>
+        </nav>
+        <div class="header-actions">
+          <a class="header-btn" href="docs.html">← All layers</a>
+        </div>
+      </div>
+      <div class="ticker-bar">
+        <div class="shell-container ticker-row">
+          <span>Layer 3 of 6</span>
+          <span class="dot">•</span>
+          <span>Knowledge &amp; memory</span>
+          <span class="dot">•</span>
+          <span>10 binaries</span>
+          <span class="dot">•</span>
+          <span>sub-5 ms semantic retrieval · NEON SIMD</span>
+        </div>
+      </div>
+    </header>
+
+    <main>
+      <section class="page-hero">
+        <div class="shell-container">
+          <span class="hero-kicker">Binary reference · Layer 3</span>
+          <h1 class="hero-title">Knowledge &amp; <span class="accent">memory.</span></h1>
+          <p class="lede">This is the layer that turns a transcript into usable memory. Ten binaries: brief extraction, entity tagging, canonical resolution, vector embedding, SIMD similarity search, full-text and hybrid indexing, graph mapping, and a zero-copy hot-read cache. The result is an archive you can query by meaning — not by filename.</p>
+          <div class="hero-actions">
+            <a class="primary-btn" href="layer-production.html">Next: Layer 4 — Production →</a>
+            <a class="secondary-btn" href="layer-transcription.html">← Layer 2: Transcription</a>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="shell-container">
+          <div class="section-header">
+            <div>
+              <span class="section-kicker">Performance numbers</span>
+              <h2 class="section-title">The retrieval layer — measured.</h2>
+            </div>
+          </div>
+          <div class="stats-grid">
+            <article class="metric-card">
+              <span class="metric-number">&lt;5 ms</span>
+              <span class="metric-label">semantic retrieval via BonfyreVec + NEON SIMD cosine on 100K vectors</span>
+            </article>
+            <article class="metric-card">
+              <span class="metric-number">512 MB</span>
+              <span class="metric-label">default BonfyreKVCache LMDB map — zero-copy reads, pointer cast direct into mmap</span>
+            </article>
+            <article class="metric-card">
+              <span class="metric-number">30 ms</span>
+              <span class="metric-label">brief extraction pass for a 45-minute transcript via BonfyreBrief</span>
+            </article>
+            <article class="metric-card">
+              <span class="metric-number">3 modes</span>
+              <span class="metric-label">BonfyreQuery unifies LMDB key-value, vector similarity, and full-text search in one call</span>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="shell-container">
+          <div class="section-header">
+            <div>
+              <span class="section-kicker">Binary reference</span>
+              <h2 class="section-title">All 10 Layer 3 binaries.</h2>
+            </div>
+          </div>
+          <div class="feature-grid">
+
+            <article class="feature-card">
+              <span class="card-meta">BonfyreBrief</span>
+              <h3>Structured brief extraction</h3>
+              <p>Takes a clean, paragraph-structured transcript and produces a JSON brief: title, date, participants, topics covered, key decisions made, action items with owners and deadlines, unresolved questions, and a 3-sentence executive summary. The extraction uses a local summarisation model — no OpenAI API call. The brief is the canonical input for every downstream binary in Layers 4 and 5. A 45-minute transcript brief takes under 30 ms after the model is warm.</p>
+            </article>
+
+            <article class="feature-card">
+              <span class="card-meta">BonfyreTag</span>
+              <h3>Keyword and topic tagging</h3>
+              <p>Applies a two-pass tagger: first a dictionary-backed named entity pass (people, organisations, dates, products, locations, technical terms), then a topic classification pass using a lightweight classifier against a configurable taxonomy. Output is a JSON tag set attached to the brief. Tags are the primary input to BonfyreCanon for entity resolution and to BonfyreGraph for relationship mapping.</p>
+            </article>
+
+            <article class="feature-card">
+              <span class="card-meta">BonfyreCanon</span>
+              <h3>Deduplication and canonical entity resolution</h3>
+              <p>Resolves entity aliases across a corpus. If three recordings mention "the auth service," "auth-svc," and "svc-auth" — Canon resolves these to a single canonical entity. Uses a combination of string similarity, embedding proximity, and a user-editable alias dictionary. The canonical entity ID is what BonfyreGraph stores as a node — so graph queries are free of alias noise. Runs incrementally: add a new recording and only new entities need resolution.</p>
+            </article>
+
+            <article class="feature-card">
+              <span class="card-meta">BonfyreEmbed</span>
+              <h3>Sentence embedding generation</h3>
+              <p>Generates sentence-level vector embeddings from brief sections using a local embedding model (384-dimensional). Operates in batch when processing multiple transcripts — embedding 15 briefs is faster than embedding them one at a time due to batched inference. Output vectors are stored directly into BonfyreVec's LMDB index. No external embedding API. No network latency.</p>
+            </article>
+
+            <article class="feature-card">
+              <span class="card-meta">BonfyreVec</span>
+              <h3>NEON SIMD cosine similarity and BM25 hybrid ranking</h3>
+              <p>Stores embedding vectors in LMDB with a custom binary index format. Retrieval uses NEON SIMD vectorised cosine similarity — 128 dot products per instruction on ARM. On 100K stored vectors, nearest-neighbour retrieval completes in under 5 ms. Supports hybrid ranking: a BM25 keyword score is combined with the cosine similarity score to rank results that are both semantically similar and lexically relevant. Sub-linear retrieval at production scale on consumer hardware.</p>
+            </article>
+
+            <article class="feature-card">
+              <span class="card-meta">BonfyreIndex</span>
+              <h3>Full-text and hybrid search index management</h3>
+              <p>Maintains a full-text search index over brief content using a pure-C inverted index with BM25 scoring. Synced with BonfyreVec's vector index so BonfyreQuery can run hybrid searches — keyword filtering + semantic ranking in a single query. Supports incremental updates: adding a new brief updates the index in under 1 ms without a full rebuild. Index files are plain files — no running server required.</p>
+            </article>
+
+            <article class="feature-card">
+              <span class="card-meta">BonfyreQuery</span>
+              <h3>Unified query interface across LMDB, vector, and FTS</h3>
+              <p>Single API surface for all three retrieval modes: key-value lookup by artifact ID, vector similarity by embedding, and full-text search by keyword. Callers do not need to know which index backs a particular query — BonfyreQuery routes to the appropriate index and merges results. Supports compound queries: "find briefs similar to this one that also mention 'payment timeout'" (vector + keyword filter).</p>
+            </article>
+
+            <article class="feature-card">
+              <span class="card-meta">BonfyreKVCache</span>
+              <h3>Zero-copy LMDB key-value store (512 MB map)</h3>
+              <p>The hot-read path for all downstream binaries. Artifacts referenced multiple times in a pipeline run are pointer-cast directly from LMDB mmap pages — no copy into heap. Default map size is 512 MB with 4 named sub-databases (artifacts, embeddings, manifests, metadata). With bf_flatbuf, manifest fields are accessed without JSON parsing — direct struct overlay on the mmap pointer. Repeated artifact reads at near-memory speed.</p>
+            </article>
+
+            <article class="feature-card">
+              <span class="card-meta">BonfyreGraph</span>
+              <h3>Relationship graph for entities and artifacts</h3>
+              <p>Builds and queries a directed relationship graph whose nodes are canonical entities and artifacts, and whose edges are typed relationships: "mentioned-in", "related-to", "caused-by", "depends-on". Written to LMDB as an adjacency list. Graph traversal is BFS/DFS over the LMDB adjacency structure. Used by the ops recipe to automatically surface related incidents — "find all artifacts sharing 3+ entity nodes with this one."</p>
+            </article>
+
+            <article class="feature-card">
+              <span class="card-meta">BonfyreWeaviateIndex</span>
+              <h3>Self-hosted Weaviate connector</h3>
+              <p>For deployments where a full Weaviate instance is already running (common in larger team deployments), BonfyreWeaviateIndex syncs brief embeddings and structured metadata to the Weaviate schema. Supports GraphQL query passthrough. Does not replace BonfyreVec + BonfyreIndex in default deployments — it's an optional sync target for teams that already have Weaviate in their infrastructure and want Bonfyre content queryable alongside other data sources.</p>
+            </article>
+
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="shell-container">
+          <div class="section-header">
+            <div><span class="section-kicker">What comes next</span><h2 class="section-title">Layer 3 produces the assets Layer 4 turns into publishable surfaces.</h2></div>
+          </div>
+          <div class="feature-grid">
+            <article class="feature-card"><span class="card-meta">Output of Layer 3</span><h3>Structured brief + entity graph + search index</h3><p>A JSON brief, a tag set, canonical entity IDs, embedding vectors in LMDB, a full-text index, and a relationship graph. This is everything BonfyreRepurpose and BonfyreRender need to produce publishable output.</p></article>
+            <article class="feature-card"><span class="card-meta">Input to Layer 4</span><h3>BonfyreRepurpose derives multiple formats from the brief</h3><p>Because the brief is a structured JSON object — not raw text — BonfyreRepurpose can derive show notes, social clips, email copy, and HTML pages in a single model pass without re-reading the original transcript.</p></article>
+            <article class="feature-card"><span class="card-meta">Input to Layer 5</span><h3>BonfyreOffer and BonfyreLedger consume brief context directly</h3><p>The revenue layer binaries use brief fields — action items, participants, budget signals, decision outcomes — as their primary inputs for pricing, tracking, and financial reporting.</p></article>
+          </div>
+          <div class="cta-row">
+            <a class="primary-btn" href="layer-production.html">Layer 4: Production & publishing →</a>
+            <a class="secondary-btn" href="docs.html">Back to docs</a>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <div class="shell-container footer-row">
+        <div>Bonfyre — 53 C binaries. Local AI. No cloud bill.</div>
+        <div class="footer-links">
+          <a href="index.html">Overview</a>
+          <a href="explore.html">Explore</a>
+          <a href="docs.html">Technical Docs</a>
+          <a href="apps.html">Live Apps</a>
+        </div>
+      </div>
+    </footer>
+  </div>
+  <script src="assets/site.js"></script>
+</body>
+</html>

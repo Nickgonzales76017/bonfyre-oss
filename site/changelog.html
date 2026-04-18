@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#ff6b35">
+  <meta name="description" content="Bonfyre changelog — what shipped, what changed, and what's in progress across the 53-binary stack.">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔥</text></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://api.fontshare.com/v2/css?f[]=cabinet-grotesk@400,500,700,800,900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/site.css">
+  <title>Bonfyre Changelog</title>
+</head>
+<body>
+  <div class="site-shell">
+    <header class="site-header">
+      <div class="shell-container site-header-row">
+        <a class="brand" href="index.html"><span class="brand-mark">🔥</span><span>Bonfyre</span></a>
+        <nav class="site-nav" aria-label="Primary">
+          <a href="index.html">Overview</a>
+          <a href="explore.html">Explore</a>
+          <a href="docs.html">Technical Docs</a>
+          <a href="apps.html">Live Apps</a>
+        </nav>
+        <div class="header-actions">
+          <a class="header-btn" href="index.html">← Overview</a>
+        </div>
+      </div>
+      <div class="ticker-bar">
+        <div class="shell-container ticker-row">
+          <span>Changelog</span>
+          <span class="dot">•</span>
+          <span>what shipped, what changed</span>
+          <span class="dot">•</span>
+          <span>53 binaries · 26 runtime modules</span>
+        </div>
+      </div>
+    </header>
+
+    <main>
+      <section class="page-hero">
+        <div class="shell-container">
+          <span class="hero-kicker">Changelog</span>
+          <h1 class="hero-title">What <span class="accent">shipped.</span></h1>
+          <p class="lede">Each cycle adds binaries, improves performance, or expands the stack's reach. This page tracks what changed and why it matters. Technical detail on any addition is in the <a href="docs.html">Technical Docs</a>.</p>
+          <div class="hero-actions">
+            <a class="primary-btn" href="docs.html">Technical Docs</a>
+            <a class="secondary-btn" href="explore.html">See use cases</a>
+          </div>
+        </div>
+      </section>
+
+      <!-- Cycle 3 -->
+      <section class="section">
+        <div class="shell-container">
+          <div class="section-header">
+            <div>
+              <span class="section-kicker">Current cycle — Cycle 3</span>
+              <h2 class="section-title">Transport, runtime, compression, and private inference.</h2>
+              <p class="section-copy">Six additions this cycle: peer-to-peer artifact distribution, QUIC transport, a shared-nothing API reactor, hot-load pipeline stages, a zero-copy LMDB cache layer, and SIMD decode plus homomorphic scoring for the FPQ model compression layer.</p>
+            </div>
+          </div>
+          <div class="feature-grid">
+
+            <article class="feature-card">
+              <span class="card-meta">New binary — BonfyreSwarm</span>
+              <h3>BitTorrent v2 artifact CDN</h3>
+              <p>SHA-256 piece trees, 256 KB pieces, and local peer knowledge maintained in LMDB. Gate and Meter hooks baked in — access to swarm content can be quota-guarded without a separate policy service.</p>
+              <p style="margin-top:0.75rem;color:var(--text-2);font-size:0.875rem"><strong>Why it matters:</strong> Artifact bundles don't need a CDN vendor. They self-distribute to peers who already have pieces. Large model bundles and archive packs distribute to a team without a CDN subscription or S3 bucket.</p>
+            </article>
+
+            <article class="feature-card">
+              <span class="card-meta">New binary — BonfyreDistribute</span>
+              <h3>QUIC family streams with fountain codes</h3>
+              <p>Artifact families multiplex over QUIC with surface-first priority and reconnect logic. LT-code fountain coding means up to 33% packet loss is recoverable without a full retransmit.</p>
+              <p style="margin-top:0.75rem;color:var(--text-2);font-size:0.875rem"><strong>Why it matters:</strong> Field researchers syncing archives over satellite links no longer get incomplete transfers on lossy connections. BonfyreDistribute + fountain codes make lossy sync reliable.</p>
+            </article>
+
+            <article class="feature-card">
+              <span class="card-meta">Runtime addition — bf_reactor</span>
+              <h3>Shared-nothing API runtime</h3>
+              <p>Per-core event loops with faster HTTP/1.1 decode via bf_picohttpparser, SSE push support, and per-reactor mimalloc heaps. 4,096 concurrent connections per reactor core.</p>
+              <p style="margin-top:0.75rem;color:var(--text-2);font-size:0.875rem"><strong>Why it matters:</strong> Every binary that exposes an HTTP surface — BonfyreAPI, BonfyreProxy, BonfyreCMS — runs on bf_reactor. Per-core shared-nothing means no lock contention across cores. Throughput scales linearly with core count.</p>
+            </article>
+
+            <article class="feature-card">
+              <span class="card-meta">Pipeline addition — BonfyrePipeline hot-load</span>
+              <h3>Swap stages without rebuilding</h3>
+              <p>32-stage plugin registry, 16 live A/B pairs, and a coroutine-based execution path with channels and deadlines. Drop a new stage binary into the directory, call the hot-swap endpoint. The swap is atomic at the function pointer level.</p>
+              <p style="margin-top:0.75rem;color:var(--text-2);font-size:0.875rem"><strong>Why it matters:</strong> Iterating on a transcription cleanup pass or a brief extraction prompt no longer requires restarting the pipeline. Swap the stage in; the next artifact routes through the new code. A/B pairs make staged rollouts safe.</p>
+            </article>
+
+            <article class="feature-card">
+              <span class="card-meta">Runtime addition — bf_lmdb + bf_flatbuf</span>
+              <h3>Zero-copy read-hot cache</h3>
+              <p>Repeated artifact fetches pointer-cast directly into LMDB mmap pages. bf_flatbuf manifest fields are accessed via direct struct overlay — no JSON parse overhead on repeated reads. 512 MB default map, 4 named sub-databases.</p>
+              <p style="margin-top:0.75rem;color:var(--text-2);font-size:0.875rem"><strong>Why it matters:</strong> Pipeline stages that read the same brief multiple times (BonfyreRepurpose generating 4 formats) do zero heap allocation per read after the first. At high batch volumes, this is the difference between memory pressure and not.</p>
+            </article>
+
+            <article class="feature-card">
+              <span class="card-meta">FPQ addition — SIMD BP128 + HE-SLI</span>
+              <h3>Faster decode and private scoring</h3>
+              <p>SIMD BP128 decodes 128 E8 INT7 values per instruction block. HE-SLI adds depth-1 homomorphic encrypted linear scoring — inference stays in the encrypted domain for privacy-critical flows.</p>
+              <p style="margin-top:0.75rem;color:var(--text-2);font-size:0.875rem"><strong>Why it matters:</strong> SIMD BP128 accelerates FPQ decode on every inference call. HE-SLI enables scoring pipelines where the input data is sensitive — the model scores over encrypted representations, not cleartext. Legal and health data pipelines specifically.</p>
+            </article>
+
+          </div>
+        </div>
+      </section>
+
+      <!-- Cycle 2 -->
+      <section class="section">
+        <div class="shell-container">
+          <div class="section-header">
+            <div>
+              <span class="section-kicker">Cycle 2</span>
+              <h2 class="section-title">Revenue layer, knowledge layer, and Pages apps.</h2>
+              <p class="section-copy">The second cycle added the full revenue pipeline (Offer through Ledger), the knowledge and memory layer (Embed, Vec, Index, Graph, Query), and the first 10 live Pages apps proving the stack produces real publishable surfaces.</p>
+            </div>
+          </div>
+          <div class="feature-grid">
+            <article class="feature-card">
+              <span class="card-meta">Layer 5 — Revenue &amp; ops</span>
+              <h3>BonfyreOffer · Pay · Meter · Ledger · Finance · Outreach · Project</h3>
+              <p>The full pipeline from brief to ledger entry. Pricing page from brief context, Stripe-compatible checkout, LMDB-backed usage metering, append-only financial log, margin reports, follow-up sequencing, and project item tracking. No SaaS billing platform in the critical path.</p>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">Layer 3 — Knowledge &amp; memory</span>
+              <h3>BonfyreEmbed · Vec · Index · Graph · Query · Canon · KVCache</h3>
+              <p>Sentence embedding, NEON SIMD cosine retrieval (&lt;5 ms on 100K vectors), full-text + hybrid search, entity relationship graph, canonical entity resolution, and the zero-copy LMDB hot-read path. The archive layer that makes collections of recordings queryable by meaning.</p>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">Pages apps — first 10</span>
+              <h3>Shift Handoff · Podcast Plant · Oral History · Postmortem Atlas · +6 more</h3>
+              <p>Ten live GitHub Pages apps produced entirely by Bonfyre pipelines. Not mockups — working surfaces each of which demonstrates a different recipe pattern from the 53-binary stack. See the full catalog on <a href="apps.html">apps.html</a>.</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <!-- Cycle 1 -->
+      <section class="section">
+        <div class="shell-container">
+          <div class="section-header">
+            <div>
+              <span class="section-kicker">Cycle 1</span>
+              <h2 class="section-title">Core pipeline: ingest through publishing.</h2>
+              <p class="section-copy">The first cycle built the core data pipeline: audio in → transcript clean → brief extracted → page published. Layers 1 through 4, the 26-module shared runtime, and the FPQ model compression baseline.</p>
+            </div>
+          </div>
+          <div class="feature-grid">
+            <article class="feature-card">
+              <span class="card-meta">Layers 1–4</span>
+              <h3>Ingest → Transcribe → Brief → Publish</h3>
+              <p>BonfyreIngest + MediaPrep + Segment → BonfyreTranscribe + TranscriptClean + Paragraph → BonfyreBrief + Tag → BonfyreRender + Emit + Pack + Proof. The core pipeline from untouched audio to a signed, published artifact bundle.</p>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">26-module runtime</span>
+              <h3>The shared substrate</h3>
+              <p>bf_reactor, bf_lmdb, bf_mmap, bf_hashmap, bf_json, bf_msgpack, bf_lz4, bf_crypto, bf_bloom, and 17 more. 180 KB total. Every binary links the same library. A security fix propagates to all 53 binaries at the next build.</p>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">FPQ baseline</span>
+              <h3>INT8 quantisation with polynomial correction</h3>
+              <p>4× compression of FP32 model tensors to INT8 with polynomial correction coefficients. 99.97% cosine similarity to the original. First 4 models published on HuggingFace. GPU optional — CPU inference via SIMD decode on Apple Silicon and x86 AVX2.</p>
+            </article>
+          </div>
+          <div class="cta-row">
+            <a class="primary-btn" href="docs.html">Full technical documentation</a>
+            <a class="secondary-btn" href="index.html">Back to overview</a>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <div class="shell-container footer-row">
+        <div>Bonfyre — 53 C binaries. Local AI. No cloud bill.</div>
+        <div class="footer-links">
+          <a href="index.html">Overview</a>
+          <a href="explore.html">Explore</a>
+          <a href="docs.html">Technical Docs</a>
+          <a href="apps.html">Live Apps</a>
+        </div>
+      </div>
+    </footer>
+  </div>
+  <script src="assets/site.js"></script>
+</body>
+</html>

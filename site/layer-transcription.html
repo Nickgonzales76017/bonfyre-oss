@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#ff6b35">
+  <meta name="description" content="Layer 2 of the Bonfyre stack: 6 binaries that convert audio to clean, structured, speaker-attributed text with no API key and no per-minute charge.">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔥</text></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://api.fontshare.com/v2/css?f[]=cabinet-grotesk@400,500,700,800,900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/site.css">
+  <title>Bonfyre Layer 2 — Transcription & Cleanup</title>
+</head>
+<body>
+  <div class="site-shell">
+    <header class="site-header">
+      <div class="shell-container site-header-row">
+        <a class="brand" href="index.html"><span class="brand-mark">🔥</span><span>Bonfyre</span></a>
+        <nav class="site-nav" aria-label="Primary">
+          <a href="index.html">Overview</a>
+          <a href="explore.html">Explore</a>
+          <a href="docs.html">Technical Docs</a>
+          <a href="apps.html">Live Apps</a>
+        </nav>
+        <div class="header-actions">
+          <a class="header-btn" href="docs.html">← All layers</a>
+        </div>
+      </div>
+      <div class="ticker-bar">
+        <div class="shell-container ticker-row">
+          <span>Layer 2 of 6</span>
+          <span class="dot">•</span>
+          <span>Transcription &amp; cleanup</span>
+          <span class="dot">•</span>
+          <span>6 binaries</span>
+          <span class="dot">•</span>
+          <span>no API key · 15× faster than real-time</span>
+        </div>
+      </div>
+    </header>
+
+    <main>
+      <section class="page-hero">
+        <div class="shell-container">
+          <span class="hero-kicker">Binary reference · Layer 2</span>
+          <h1 class="hero-title">Transcription &amp; <span class="accent">cleanup.</span></h1>
+          <p class="lede">Six binaries that take a quality-verified audio file from Layer 1 and produce clean, speaker-attributed, paragraph-structured text. No API key. No per-minute charge. No audio leaving your machine. On M2 Pro hardware, BonfyreTranscribe processes at roughly 15× real-time — a 45-minute recording in 3 minutes.</p>
+          <div class="hero-actions">
+            <a class="primary-btn" href="layer-knowledge.html">Next: Layer 3 — Knowledge →</a>
+            <a class="secondary-btn" href="layer-ingest.html">← Layer 1: Ingest</a>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="shell-container">
+          <div class="section-header">
+            <div>
+              <span class="section-kicker">The transcription problem</span>
+              <h2 class="section-title">What raw Whisper output actually looks like and why it needs cleanup.</h2>
+            </div>
+          </div>
+          <div class="feature-grid">
+            <article class="feature-card">
+              <span class="card-meta">Hallucinations</span>
+              <h3>Whisper invents words — especially in silence</h3>
+              <p>The most common Whisper hallucinations are phrases injected into silence gaps: "Thank you for watching", "Subscribe to our channel", "This video was made possible by…" — phrases that appear verbatim in Whisper's training data but weren't in your recording. BonfyreTranscriptClean removes these with Hyperscan pattern matching at &gt;1 GB/s throughput.</p>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">Filler density</span>
+              <h3>Spoken word has 15–20% filler content that reads as noise</h3>
+              <p>A spoken conversation has "um", "uh", "you know", "like", "sort of", "I mean", and false starts at roughly one per every 5–7 words in casual speech. Readable transcripts are cleaned. BonfyreTranscriptClean removes these while preserving every substantive word — including intentional "like" when used as a comparison word.</p>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">Structure</span>
+              <h3>A wall of sentences is not a document</h3>
+              <p>Raw Whisper output is a continuous stream of sentences with no topic breaks. BonfyreParagraph segments this stream into thematic sections and infers section headings. The output has structure — it can be published directly, referenced by section, or consumed by BonfyreBrief for structured extraction.</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="shell-container">
+          <div class="section-header">
+            <div>
+              <span class="section-kicker">Cost comparison</span>
+              <h2 class="section-title">What BonfyreTranscribe costs vs. the alternatives.</h2>
+            </div>
+          </div>
+          <div class="stats-grid">
+            <article class="metric-card">
+              <span class="metric-number">$0</span>
+              <span class="metric-label">per minute with BonfyreTranscribe (after hardware)</span>
+            </article>
+            <article class="metric-card">
+              <span class="metric-number">$0.006</span>
+              <span class="metric-label">per minute with Deepgram (Nova-2) — $360 for 200 × 30-min recordings</span>
+            </article>
+            <article class="metric-card">
+              <span class="metric-number">15×</span>
+              <span class="metric-label">faster than real-time on M2 Pro — 45-min recording in 3 minutes</span>
+            </article>
+            <article class="metric-card">
+              <span class="metric-number">0</span>
+              <span class="metric-label">bytes sent off-device — audio never leaves the machine</span>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="shell-container">
+          <div class="section-header">
+            <div>
+              <span class="section-kicker">Binary reference</span>
+              <h2 class="section-title">All 6 Layer 2 binaries.</h2>
+            </div>
+          </div>
+          <div class="feature-grid">
+
+            <article class="feature-card">
+              <span class="card-meta">BonfyreTranscribe</span>
+              <h3>HCP-enhanced Whisper, local, no API key</h3>
+              <p>Runs a Hallucination-Constrained Prediction (HCP) layer on top of Whisper large-v3. HCP adds a secondary confidence model that suppresses low-confidence token predictions — the primary mechanism for reducing hallucinations beyond what BonfyreTranscriptClean catches. Accepts the speaker segment map from BonfyreSegment and produces a speaker-attributed SRT and plain-text transcript. Supports en, es, fr, de, ja, zh, pt, it, nl, and 80 other Whisper languages. No API key. No audio leaving the machine.</p>
+            </article>
+
+            <article class="feature-card">
+              <span class="card-meta">BonfyreTranscriptClean</span>
+              <h3>Hyperscan (&gt;1 GB/s) hallucination and filler filter</h3>
+              <p>Intel Hyperscan simultaneous multi-pattern matching across 400+ regex patterns covering: Whisper hallucination phrases, common filler words (um, uh, you know, like-as-filler), false starts, repeated stutter patterns, and transcript artifacts from silence gaps. Operates at &gt;1 GB/s — the entire cleanup pass on a 45-minute transcript completes in under 30 ms. Preserves intentional filler uses (e.g., "like" as comparison, "I mean" as rhetorical opener).</p>
+            </article>
+
+            <article class="feature-card">
+              <span class="card-meta">BonfyreParagraph</span>
+              <h3>Paragraph segmentation and heading inference</h3>
+              <p>Segments the clean transcript stream into thematic paragraphs using sentence embedding similarity between adjacent sentence groups. When similarity drops below a threshold, a paragraph break is inserted. Section headings are inferred from the first sentence of each new section using a local summarisation pass. The output is a structured document — headings, paragraphs, speaker labels — suitable for direct publishing or downstream brief extraction.</p>
+            </article>
+
+            <article class="feature-card">
+              <span class="card-meta">BonfyreTranscriptFamily</span>
+              <h3>Cluster related transcripts into a searchable family</h3>
+              <p>Takes a collection of transcripts and analyses them as a set: computes pairwise embedding similarity, clusters by shared entity mentions and topic overlap, and produces a family structure with named clusters. Used for interview series, lecture collections, meeting archives — any scenario where you have multiple related recordings that should be navigable as a unified corpus. The family structure becomes the navigation graph for BonfyreRender's archive output.</p>
+            </article>
+
+            <article class="feature-card">
+              <span class="card-meta">BonfyreClips</span>
+              <h3>Short-form clip extraction from long transcripts</h3>
+              <p>Identifies high-value segments in a long transcript using a salience score: novelty (not similar to prior segments), completeness (self-contained thought), and brevity (under 90 seconds of spoken content). Returns a ranked list of clip candidates with timestamps. Used by BonfyreRepurpose downstream to produce social clips, highlight reels, and excerpt packages from long-form content without manual selection.</p>
+            </article>
+
+            <article class="feature-card">
+              <span class="card-meta">BonfyreNarrate</span>
+              <h3>TTS-ready transcript formatting and narration prep</h3>
+              <p>Reformats a clean transcript for text-to-speech synthesis: expanding abbreviations, normalising numbers and dates to spoken form ("2024-01-15" → "January fifteenth twenty twenty-four"), removing punctuation that causes TTS pause artifacts, and inserting SSML tags for emphasis and pacing. Produces a narration-ready text file and an SSML document compatible with standard TTS engines. Used when pipeline output includes an audio version alongside the published page.</p>
+            </article>
+
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="shell-container">
+          <div class="section-header">
+            <div><span class="section-kicker">What comes next</span><h2 class="section-title">Layer 2 produces the structured text that Layer 3 indexes and extracts from.</h2></div>
+          </div>
+          <div class="feature-grid">
+            <article class="feature-card"><span class="card-meta">Output of Layer 2</span><h3>Clean, structured, speaker-attributed transcript</h3><p>A filler-free, hallucination-cleaned, paragraph-segmented transcript with speaker labels and section headings. This is what BonfyreBrief and BonfyreEmbed receive on their inputs.</p></article>
+            <article class="feature-card"><span class="card-meta">Input to Layer 3</span><h3>BonfyreBrief extracts structure from structured input</h3><p>Because Layer 2 produces genuinely structured text — not a word dump — BonfyreBrief's extraction is more accurate and requires fewer tokens. Structured input in = structured brief out.</p></article>
+            <article class="feature-card"><span class="card-meta">Also consumed by</span><h3>Layer 4 publishing binaries</h3><p>BonfyreRepurpose, BonfyreRender, and BonfyreEmit all consume Layer 2 output directly — the clean transcript is published alongside the brief on every generated page.</p></article>
+          </div>
+          <div class="cta-row">
+            <a class="primary-btn" href="layer-knowledge.html">Layer 3: Knowledge & memory →</a>
+            <a class="secondary-btn" href="docs.html">Back to docs</a>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <div class="shell-container footer-row">
+        <div>Bonfyre — 53 C binaries. Local AI. No cloud bill.</div>
+        <div class="footer-links">
+          <a href="index.html">Overview</a>
+          <a href="explore.html">Explore</a>
+          <a href="docs.html">Technical Docs</a>
+          <a href="apps.html">Live Apps</a>
+        </div>
+      </div>
+    </footer>
+  </div>
+  <script src="assets/site.js"></script>
+</body>
+</html>

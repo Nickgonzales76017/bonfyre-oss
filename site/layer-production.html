@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#ff6b35">
+  <meta name="description" content="Layer 4 of the Bonfyre stack: 8 binaries that turn a structured brief into pages, PDFs, proof bundles, and published output surfaces.">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔥</text></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://api.fontshare.com/v2/css?f[]=cabinet-grotesk@400,500,700,800,900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/site.css">
+  <title>Bonfyre Layer 4 — Production & Publishing</title>
+</head>
+<body>
+  <div class="site-shell">
+    <header class="site-header">
+      <div class="shell-container site-header-row">
+        <a class="brand" href="index.html"><span class="brand-mark">🔥</span><span>Bonfyre</span></a>
+        <nav class="site-nav" aria-label="Primary">
+          <a href="index.html">Overview</a>
+          <a href="explore.html">Explore</a>
+          <a href="docs.html">Technical Docs</a>
+          <a href="apps.html">Live Apps</a>
+        </nav>
+        <div class="header-actions">
+          <a class="header-btn" href="docs.html">← All layers</a>
+        </div>
+      </div>
+      <div class="ticker-bar">
+        <div class="shell-container ticker-row">
+          <span>Layer 4 of 6</span>
+          <span class="dot">•</span>
+          <span>Production &amp; publishing</span>
+          <span class="dot">•</span>
+          <span>8 binaries</span>
+          <span class="dot">•</span>
+          <span>HTML · PDF · EPUB · RSS · proof bundle</span>
+        </div>
+      </div>
+    </header>
+
+    <main>
+      <section class="page-hero">
+        <div class="shell-container">
+          <span class="hero-kicker">Binary reference · Layer 4</span>
+          <h1 class="hero-title">Production &amp; <span class="accent">publishing.</span></h1>
+          <p class="lede">Input is a structured brief. Output is something you can hand someone. Eight binaries: multi-format content derivation, HTML page generation, PDF and EPUB publishing, proof bundle signing, audio assembly, a self-contained CMS, and sync delivery. The full distance from processed data to a live page and a signed proof binder.</p>
+          <div class="hero-actions">
+            <a class="primary-btn" href="layer-revenue.html">Next: Layer 5 — Revenue →</a>
+            <a class="secondary-btn" href="layer-knowledge.html">← Layer 3: Knowledge</a>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="shell-container">
+          <div class="section-header">
+            <div>
+              <span class="section-kicker">What this layer produces</span>
+              <h2 class="section-title">One brief. Multiple publish surfaces. One pipeline run.</h2>
+            </div>
+          </div>
+          <div class="feature-grid">
+            <article class="feature-card">
+              <span class="card-meta">Multi-format without multiple model calls</span>
+              <h3>BonfyreRepurpose runs one pass, not four API calls</h3>
+              <p>Show notes, social post copy, email newsletter segment, and a LinkedIn update require the same source context but different formats and lengths. Most workflows run four separate GPT-4 API calls — one per format. BonfyreRepurpose derives all four in a single local model pass, because the brief contains all the context each format needs.</p>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">Verified provenance</span>
+              <h3>Every pack is tamper-evidently signed</h3>
+              <p>BonfyrePack assembles all outputs into a content-addressed archive. BonfyreProof signs the manifest with Ed25519. Any recipient can verify: (1) this bundle came from the keyholder, (2) no file inside has been modified since signing. Legal proof bundles, journalism source packs, and institutional archive submissions all use this layer.</p>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">CMS without the stack</span>
+              <h3>287 KB HTTP server with dynamic schemas</h3>
+              <p>BonfyreCMS is a complete content API in 287 KB: dynamic schemas, REST CRUD, full-text search, structured logging, and token auth. No Node.js. No npm. No Redis. For pipelines that need a queryable content API — not just static pages — BonfyreCMS replaces Contentful, Directus, or Strapi without the cloud dependency.</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="shell-container">
+          <div class="section-header">
+            <div>
+              <span class="section-kicker">Binary reference</span>
+              <h2 class="section-title">All 8 Layer 4 binaries.</h2>
+            </div>
+          </div>
+          <div class="feature-grid">
+
+            <article class="feature-card">
+              <span class="card-meta">BonfyreRepurpose</span>
+              <h3>Multi-format content extraction from briefs</h3>
+              <p>Accepts a brief JSON and a target format list. In a single local model pass, produces all requested output formats: show notes (800–1200 words), social post (under 280 chars), email segment (150–200 words), blog intro, newsletter summary, and LinkedIn update. Each format uses a format-specific prompt template applied to the brief. No separate API calls per format. No re-reading the original transcript. Output files are named and written to the artifact directory for downstream pickup.</p>
+            </article>
+
+            <article class="feature-card">
+              <span class="card-meta">BonfyreRender</span>
+              <h3>HTML page generation from structured data</h3>
+              <p>Takes a brief, the clean transcript, and an optional template identifier, and generates a complete HTML page: structured header, topic sections, participant list, action items, full transcript in an expandable section, and related-artifact links sourced from BonfyreGraph. Templates are plain HTML files in a configurable directory — no template engine dependency. Used to produce all live pages in the Pages app catalog. Batch mode processes a TranscriptFamily archive into a full linked site.</p>
+            </article>
+
+            <article class="feature-card">
+              <span class="card-meta">BonfyreEmit</span>
+              <h3>PDF, EPUB, JSON, and RSS publishing</h3>
+              <p>Takes the same structured brief and produces four formats simultaneously. PDF via Cairo/Pango for layout — no wkhtmltopdf, no headless Chrome. EPUB 3.0 with navigation landmarks. JSON export for programmatic consumption by other tools. RSS 2.0 feed with full content in the item body. All four formats are produced in a single Emit run — the brief is read once, not four times. Output artifacts are content-addressed and handed to BonfyrePack.</p>
+            </article>
+
+            <article class="feature-card">
+              <span class="card-meta">BonfyrePack</span>
+              <h3>Content-addressed artifact bundle packaging</h3>
+              <p>Assembles all outputs from a pipeline run — HTML, PDF, EPUB, JSON, RSS, audio files, source transcript — into a single archive with a BLAKE2b manifest. The manifest lists every file, its hash, its origin step, and its creation timestamp. The bundle ID is derived from the manifest hash — a stable, content-based identifier for this exact pipeline output. Packed bundles are the artifact unit that BonfyreProof signs, BonfyreSync delivers, and BonfyreSwarm distributes.</p>
+            </article>
+
+            <article class="feature-card">
+              <span class="card-meta">BonfyreProof</span>
+              <h3>BLAKE2b + Ed25519 proof bundle creation and verification</h3>
+              <p>Signs a BonfyrePack manifest with an Ed25519 key. The signature covers the manifest hash, not individual files — so bundle integrity verification is a single signature check, not a per-file operation. Produces a <code>.proof</code> file alongside the bundle. Any downstream recipient can call <code>bonfyre proof verify --bundle [id]</code> to check: (1) the signature is valid for the configured key, (2) the manifest hash matches the bundle contents. Used in legal workflows, journalism, institutional archive submissions, and anywhere tamper-evidence matters.</p>
+            </article>
+
+            <article class="feature-card">
+              <span class="card-meta">BonfyreStitch</span>
+              <h3>Multi-segment audio and content assembly</h3>
+              <p>Concatenates multiple audio segments or transcript sections into a single assembled output. Used for: assembling podcast episodes from guest segments + intro + outro, building highlight compilations from BonfyreClips output, and producing chapter-segmented audio files where each chapter corresponds to a BonfyreParagraph section. Output is a content-addressed audio file with a BonfyreHash manifest entry. Supports crossfade, silence padding, and level matching between segments.</p>
+            </article>
+
+            <article class="feature-card">
+              <span class="card-meta">BonfyreCMS</span>
+              <h3>287 KB C CMS with dynamic schemas, REST API, and full-text search</h3>
+              <p>A standalone HTTP server with: dynamic content schemas definable at runtime, full CRUD REST endpoints, built-in full-text search over structured fields, token-based auth (BLAKE2b-256 tokens), structured JSON logging, and a webhook system for pipeline triggers. 287 KB binary. No npm. No Node.js. No PostgreSQL required — LMDB-backed by default, optional SQLite backend. Handles 6,000+ requests/second per core on M2 Pro. Used when a pipeline needs a queryable API surface rather than static file output.</p>
+            </article>
+
+            <article class="feature-card">
+              <span class="card-meta">BonfyreSync</span>
+              <h3>Output delivery and target synchronisation</h3>
+              <p>Delivers packed artifacts to one or more targets: local filesystem path, SSH/SFTP host, S3-compatible object store, or a BonfyreCMS endpoint. Compares BLAKE2b manifests at source and target — only changed or new files are transferred. On reconnect after an interrupted sync, continues from where it left off using the manifest as the state record. Can be combined with BonfyreDistribute for QUIC delivery or BonfyreSwarm for peer-distributed delivery of larger artifact sets.</p>
+            </article>
+
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="shell-container">
+          <div class="section-header">
+            <div><span class="section-kicker">What comes next</span><h2 class="section-title">Layer 4 also feeds Layer 5 — the revenue surface.</h2></div>
+          </div>
+          <div class="feature-grid">
+            <article class="feature-card"><span class="card-meta">Output of Layer 4</span><h3>Published pages, signed bundles, delivered artifacts</h3><p>HTML pages at a host, PDF packs in a delivery folder, an RSS feed at a URL, a proof bundle with signature — all produced from the brief in one run. The pipeline's public face.</p></article>
+            <article class="feature-card"><span class="card-meta">Feed to Layer 5</span><h3>BonfyreOffer takes the brief and generates a pricing surface</h3><p>The same brief that produced a show notes page can produce a checkout page via BonfyreOffer. The revenue layer and publishing layer run in parallel from the same input — you don't have to choose between publishing and selling.</p></article>
+            <article class="feature-card"><span class="card-meta">No cloud provider required</span><h3>Static publish to GitHub Pages or any static host</h3><p>BonfyreSync's output is a folder of static files. GitHub Pages, Netlify, any rsync target, or even a USB drive. The pipeline doesn't require a cloud account to publish — it just produces files and delivers them wherever you tell it to.</p></article>
+          </div>
+          <div class="cta-row">
+            <a class="primary-btn" href="layer-revenue.html">Layer 5: Revenue & ops →</a>
+            <a class="secondary-btn" href="docs.html">Back to docs</a>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <div class="shell-container footer-row">
+        <div>Bonfyre — 53 C binaries. Local AI. No cloud bill.</div>
+        <div class="footer-links">
+          <a href="index.html">Overview</a>
+          <a href="explore.html">Explore</a>
+          <a href="docs.html">Technical Docs</a>
+          <a href="apps.html">Live Apps</a>
+        </div>
+      </div>
+    </footer>
+  </div>
+  <script src="assets/site.js"></script>
+</body>
+</html>

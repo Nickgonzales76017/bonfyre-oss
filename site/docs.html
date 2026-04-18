@@ -107,134 +107,51 @@
 
           <div class="feature-grid">
             <div class="feature-card">
-              <span class="card-meta">Layer 1 — Ingest &amp; signal</span>
+              <span class="card-meta">Layer 1 — Ingest &amp; signal · 7 binaries</span>
               <h3>Getting audio and media into the pipeline</h3>
-              <p style="margin-bottom:0.75rem;color:var(--text-2)">Before any model sees your audio, these binaries normalise it. BonfyreMediaPrep resamples to 16 kHz and loudness-normalises to broadcast standard so Whisper runs at peak accuracy. BonfyreSegment identifies speaker boundaries so the transcript has [Host] and [Guest] attribution rather than a word dump. BonfyreSpeechLoop and BonfyreTone score quality in real time using 88 eGeMAPSv02 features — so you know before the pipeline advances whether the recording is usable. BonfyreHash fingerprints every cleaned file: if you re-run the same pipeline tomorrow with the same recording, every step that hashes to the same value is skipped automatically.</p>
-              <div class="table-card" style="margin-top:1rem">
-                <table class="data-table">
-                  <thead><tr><th>Binary</th><th>Job</th></tr></thead>
-                  <tbody>
-                    <tr><td>BonfyreIngest</td><td>Multi-path audio intake, format normalisation</td></tr>
-                    <tr><td>BonfyreMediaPrep</td><td>Pre-processing before transcription or encoding</td></tr>
-                    <tr><td>BonfyreSpeechLoop</td><td>Real-time speech scoring loop (eGeMAPSv02)</td></tr>
-                    <tr><td>BonfyreTone</td><td>88-feature audio quality and tone classification</td></tr>
-                    <tr><td>BonfyreSegment</td><td>Speaker segmentation and diarisation</td></tr>
-                    <tr><td>BonfyreHash</td><td>BLAKE2b content addressing for all artifacts</td></tr>
-                    <tr><td>BonfyreCompress</td><td>LZ4 + zstd artifact compression</td></tr>
-                  </tbody>
-                </table>
-              </div>
+              <p>BonfyreMediaPrep normalises to 16 kHz and −23 LUFS before Whisper sees it. BonfyreSegment diarises speakers. BonfyreSpeechLoop and BonfyreTone score quality using 88 eGeMAPSv02 features. BonfyreHash fingerprints every artifact so re-runs skip already-processed files automatically.</p>
+              <p style="margin-top:0.75rem"><strong>Binaries:</strong> Ingest · MediaPrep · SpeechLoop · Tone · Segment · Hash · Compress</p>
+              <div class="cta-row"><a class="secondary-btn" href="layer-ingest.html">Full Layer 1 reference →</a></div>
             </div>
 
             <div class="feature-card">
-              <span class="card-meta">Layer 2 — Transcription &amp; cleanup</span>
-              <h3>Converting audio to clean, structured text</h3>
-              <p style="margin-bottom:0.75rem;color:var(--text-2)">BonfyreTranscribe runs a local HCP-enhanced Whisper. No API key. No per-minute charge. No audio leaving your machine. On an M2 Pro it processes roughly 15× faster than real-time. BonfyreTranscriptClean then passes the raw output through Intel Hyperscan pattern matching at over 1 GB/s to remove hallucinations (Whisper-invented phrases), filler words, false starts, and repeated words. What you get is a clean, legible transcript. BonfyreParagraph groups it into readable sections with implied headings. BonfyreTranscriptFamily clusters multiple related recordings so a series of interviews or episodes can be searched as a single family.</p>
-              <div class="table-card" style="margin-top:1rem">
-                <table class="data-table">
-                  <thead><tr><th>Binary</th><th>Job</th></tr></thead>
-                  <tbody>
-                    <tr><td>BonfyreTranscribe</td><td>HCP-enhanced Whisper, local, no API key</td></tr>
-                    <tr><td>BonfyreTranscriptClean</td><td>Hyperscan (&gt;1 GB/s) hallucination and filler filter</td></tr>
-                    <tr><td>BonfyreTranscriptFamily</td><td>Cluster related transcripts into a searchable family</td></tr>
-                    <tr><td>BonfyreParagraph</td><td>Paragraph segmentation and heading inference</td></tr>
-                    <tr><td>BonfyreClips</td><td>Short-form clip extraction from long transcripts</td></tr>
-                    <tr><td>BonfyreNarrate</td><td>TTS-ready transcript formatting and narration prep</td></tr>
-                  </tbody>
-                </table>
-              </div>
+              <span class="card-meta">Layer 2 — Transcription &amp; cleanup · 6 binaries</span>
+              <h3>Audio → clean, speaker-attributed, structured text</h3>
+              <p>BonfyreTranscribe: HCP-enhanced Whisper at 15× real-time, no API key, no audio off-device. BonfyreTranscriptClean: Hyperscan pattern matching at &gt;1 GB/s removing hallucinations and fillers in &lt;30 ms. BonfyreParagraph segments into readable sections. BonfyreTranscriptFamily clusters related recordings into a searchable corpus.</p>
+              <p style="margin-top:0.75rem"><strong>Binaries:</strong> Transcribe · TranscriptClean · TranscriptFamily · Paragraph · Clips · Narrate</p>
+              <div class="cta-row"><a class="secondary-btn" href="layer-transcription.html">Full Layer 2 reference →</a></div>
             </div>
 
-            <div class="feature-card">
-              <span class="card-meta">Layer 3 — Knowledge &amp; memory</span>
+                        <div class="feature-card">
+              <span class="card-meta">Layer 3 — Knowledge &amp; memory · 10 binaries</span>
               <h3>Structuring, tagging, and making things findable</h3>
-              <p style="margin-bottom:0.75rem;color:var(--text-2)">This is the layer that turns a transcript into usable memory. BonfyreBrief extracts a structured summary: title, topics, key decisions, action items, speaker breakdown. BonfyreEmbed generates sentence-level vectors from that brief. BonfyreVec stores them in a zero-copy LMDB index and uses NEON SIMD cosine similarity for sub-5 ms semantic retrieval. BonfyreQuery exposes a single interface across full-text search, vector similarity, and raw key-value lookups so you don’t have to choose a single retrieval strategy. BonfyreGraph maps relationships between artifacts — not just "find this record" but "find everything related to this record across all recordings." BonfyreKVCache is the zero-copy hot-read path that every downstream step goes through.</p>
-              <div class="table-card" style="margin-top:1rem">
-                <table class="data-table">
-                  <thead><tr><th>Binary</th><th>Job</th></tr></thead>
-                  <tbody>
-                    <tr><td>BonfyreBrief</td><td>Structured brief extraction (topics, decisions, actions)</td></tr>
-                    <tr><td>BonfyreTag</td><td>Keyword and topic tagging</td></tr>
-                    <tr><td>BonfyreCanon</td><td>Deduplication and canonical entity resolution</td></tr>
-                    <tr><td>BonfyreEmbed</td><td>Sentence embedding generation</td></tr>
-                    <tr><td>BonfyreVec</td><td>NEON SIMD cosine similarity and BM25 hybrid ranking</td></tr>
-                    <tr><td>BonfyreIndex</td><td>Full-text and hybrid search index management</td></tr>
-                    <tr><td>BonfyreQuery</td><td>Unified query interface across LMDB, vector, and FTS</td></tr>
-                    <tr><td>BonfyreKVCache</td><td>Zero-copy LMDB key-value store (512 MB map)</td></tr>
-                    <tr><td>BonfyreGraph</td><td>Relationship graph for entities and artifacts</td></tr>
-                    <tr><td>BonfyreWeaviateIndex</td><td>Self-hosted Weaviate connector</td></tr>
-                  </tbody>
-                </table>
-              </div>
+              <p>BonfyreBrief extracts structured summaries in &lt;30 ms. BonfyreEmbed + BonfyreVec provide NEON SIMD semantic retrieval in &lt;5 ms on 100K vectors. BonfyreQuery unifies LMDB key-value, vector, and full-text search in one call. BonfyreGraph maps entity relationships across the full archive. BonfyreKVCache is the 512 MB zero-copy hot-read path.</p>
+              <p style="margin-top:0.75rem"><strong>Binaries:</strong> Brief · Tag · Canon · Embed · Vec · Index · Query · KVCache · Graph · WeaviateIndex</p>
+              <div class="cta-row"><a class="secondary-btn" href="layer-knowledge.html">Full Layer 3 reference →</a></div>
             </div>
 
-            <div class="feature-card">
-              <span class="card-meta">Layer 4 — Production &amp; publishing</span>
+                        <div class="feature-card">
+              <span class="card-meta">Layer 4 — Production &amp; publishing · 8 binaries</span>
               <h3>Turning structured data into surface-ready outputs</h3>
-              <p style="margin-bottom:0.75rem;color:var(--text-2)">Input is a structured brief. Output is something you can hand someone. BonfyreRepurpose derives multiple formats (show notes, social clips, email copy, LinkedIn update) from one brief in a single model pass — not four separate API calls. BonfyreRender builds an HTML page. BonfyreEmit produces PDF, EPUB, JSON, and RSS simultaneously from the same source data. BonfyrePack bundles all outputs into a single content-addressed archive with a BLAKE2b manifest. BonfyreProof signs that bundle with an Ed25519 key so any recipient can verify it came from you and hasn’t been modified since. BonfyreCMS is a 287 KB standalone HTTP server with dynamic schemas, token auth, full-text search, and structured logging — for when you need a structured content API without pulling in npm.</p>
-              <div class="table-card" style="margin-top:1rem">
-                <table class="data-table">
-                  <thead><tr><th>Binary</th><th>Job</th></tr></thead>
-                  <tbody>
-                    <tr><td>BonfyreRepurpose</td><td>Multi-format content extraction from briefs</td></tr>
-                    <tr><td>BonfyreRender</td><td>HTML page generation from structured data</td></tr>
-                    <tr><td>BonfyreEmit</td><td>PDF, EPUB, JSON, RSS publishing</td></tr>
-                    <tr><td>BonfyrePack</td><td>Content-addressed artifact bundle packaging</td></tr>
-                    <tr><td>BonfyreProof</td><td>BLAKE2b + Ed25519 proof bundle creation and verification</td></tr>
-                    <tr><td>BonfyreStitch</td><td>Multi-segment audio/content assembly</td></tr>
-                    <tr><td>BonfyreCMS</td><td>287 KB C CMS with dynamic schemas, REST API, search</td></tr>
-                    <tr><td>BonfyreSync</td><td>Output delivery and target synchronisation</td></tr>
-                  </tbody>
-                </table>
-              </div>
+              <p>One brief, multiple surfaces. BonfyreRepurpose derives show notes, social clips, email copy, and LinkedIn updates in a single model pass. BonfyreEmit publishes PDF, EPUB, JSON, and RSS simultaneously. BonfyreProof signs every bundle with Ed25519 — recipients can verify it hasn’t been touched since you shipped it. BonfyreCMS is a 287 KB standalone HTTP server for when you need a content API without npm.</p>
+              <p style="margin-top:0.75rem"><strong>Binaries:</strong> Repurpose · Render · Emit · Pack · Proof · Stitch · CMS · Sync</p>
+              <div class="cta-row"><a class="secondary-btn" href="layer-production.html">Full Layer 4 reference →</a></div>
             </div>
 
             <div class="feature-card">
-              <span class="card-meta">Layer 5 — Revenue &amp; ops</span>
+              <span class="card-meta">Layer 5 — Revenue &amp; ops · 8 binaries</span>
               <h3>Pricing, billing, metering, and team operations</h3>
-              <p style="margin-bottom:0.75rem;color:var(--text-2)">This layer covers everything between producing work and getting paid for it. BonfyreOffer generates a dynamic pricing page from a brief. BonfyrePay handles Stripe-compatible checkout. BonfyreMeter records per-usage events against a quota in LMDB. BonfyreLedger maintains an immutable append-only financial log. BonfyreFinance computes margins and produces structured reports. BonfyreOutreach sequences follow-up messages. None of these phone home, none have a SaaS markup above the payment processor, and none require a running cloud service to function.</p>
-              <div class="table-card" style="margin-top:1rem">
-                <table class="data-table">
-                  <thead><tr><th>Binary</th><th>Job</th></tr></thead>
-                  <tbody>
-                    <tr><td>BonfyreOffer</td><td>Dynamic pricing surface generation</td></tr>
-                    <tr><td>BonfyrePay</td><td>Checkout and payment handling</td></tr>
-                    <tr><td>BonfyreMeter</td><td>Usage metering and quota tracking</td></tr>
-                    <tr><td>BonfyreLedger</td><td>Immutable financial audit trail</td></tr>
-                    <tr><td>BonfyreFinance</td><td>Margin calculation and financial reporting</td></tr>
-                    <tr><td>BonfyreQuant</td><td>Quantitative analysis and projection modelling</td></tr>
-                    <tr><td>BonfyreOutreach</td><td>Follow-up sequencing and delivery</td></tr>
-                    <tr><td>BonfyreProject</td><td>Action item and project state tracking</td></tr>
-                  </tbody>
-                </table>
-              </div>
+              <p>BonfyreOffer generates a pricing page from a brief. BonfyrePay handles Stripe-compatible checkout. BonfyreMeter records per-usage events in LMDB. BonfyreLedger is an immutable append-only financial log. BonfyreFinance computes margins. BonfyreOutreach sequences follow-ups. None phone home. None have a SaaS markup above the payment processor.</p>
+              <p style="margin-top:0.75rem"><strong>Binaries:</strong> Offer · Pay · Meter · Ledger · Finance · Quant · Outreach · Project</p>
+              <div class="cta-row"><a class="secondary-btn" href="layer-revenue.html">Full Layer 5 reference →</a></div>
             </div>
 
             <div class="feature-card">
-              <span class="card-meta">Layer 6 — Platform &amp; distribution</span>
-              <h3>Runtime, networking, auth, and delivery infrastructure</h3>
-              <p style="margin-bottom:0.75rem;color:var(--text-2)">This layer makes the other five composable at scale. BonfyrePipeline registers up to 32 stages and hot-swaps them without restarting the host process — push a new stage binary, atomic-swap the function pointer, and the next artifact routes through the new code. BonfyreQueue buffers work between stages. BonfyreOrchestrate coordinates multi-pipeline flows. BonfyreSwarm delivers artifacts peer-to-peer via BitTorrent v2 SHA-256 piece trees. BonfyreDistribute uses fountain codes over QUIC so up to 33% packet loss is recoverable without a full retransmit. BonfyreProxy exposes an OpenAI-compatible HTTP endpoint on localhost: any existing tool that speaks the OpenAI API routes automatically to your local FPQ-compressed model instead of paying per token.</p>
-              <div class="table-card" style="margin-top:1rem">
-                <table class="data-table">
-                  <thead><tr><th>Binary</th><th>Job</th></tr></thead>
-                  <tbody>
-                    <tr><td>BonfyrePipeline</td><td>Hot-load stage runner (32 slots, 16 A/B pairs)</td></tr>
-                    <tr><td>BonfyreQueue</td><td>Artifact work queue</td></tr>
-                    <tr><td>BonfyreOrchestrate</td><td>Multi-pipeline coordination</td></tr>
-                    <tr><td>BonfyreRuntime</td><td>Shared in-process coroutine execution environment</td></tr>
-                    <tr><td>BonfyreSwarm</td><td>Peer coordination and distributed task routing</td></tr>
-                    <tr><td>BonfyreDistribute</td><td>Fountain-code-based QUIC artifact distribution</td></tr>
-                    <tr><td>BonfyreFPQ</td><td>4× model compression, SIMD decode (99.97% cosine parity)</td></tr>
-                    <tr><td>BonfyreAPI</td><td>OpenAPI surface, token auth, structured logging</td></tr>
-                    <tr><td>BonfyreProxy</td><td>OpenAI-compatible proxy with local model routing</td></tr>
-                    <tr><td>BonfyreGate</td><td>Request gating, rate limiting, policy enforcement</td></tr>
-                    <tr><td>BonfyreAuth</td><td>BLAKE2b + Ed25519 auth and token management</td></tr>
-                    <tr><td>BonfyreMFADict</td><td>MFA dictionary and credential store</td></tr>
-                    <tr><td>BonfyreTel</td><td>Telemetry, structured metrics, log forwarding</td></tr>
-                    <tr><td>BonfyreCLI</td><td>Unified command-line interface for all binaries</td></tr>
-                  </tbody>
-                </table>
-              </div>
+              <span class="card-meta">Layer 6 — Platform &amp; distribution · 14 binaries</span>
+              <h3>Runtime, transport, auth, and delivery infrastructure</h3>
+              <p>BonfyrePipeline: 32-stage hot-swap runner, atomic function pointer replacement, no downtime. BonfyreDistribute: fountain codes over QUIC, 33% packet loss recoverable. BonfyreSwarm: BitTorrent v2 peer distribution. BonfyreProxy: OpenAI-compatible localhost endpoint — drop-in replacement for any tool using the OpenAI API. BonfyreGate: Hyperscan rate limiting at &gt;1 GB/s.</p>
+              <p style="margin-top:0.75rem"><strong>Binaries:</strong> Pipeline · Queue · Orchestrate · Runtime · Swarm · Distribute · FPQ · API · Proxy · Gate · Auth · MFADict · Tel · CLI</p>
+              <div class="cta-row"><a class="secondary-btn" href="layer-platform.html">Full Layer 6 reference →</a></div>
             </div>
           </div>
         </div>

@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#ff6b35">
+  <meta name="description" content="Layer 1 of the Bonfyre stack: 7 binaries that normalise, fingerprint, and quality-score every audio file before any model sees it.">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔥</text></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://api.fontshare.com/v2/css?f[]=cabinet-grotesk@400,500,700,800,900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/site.css">
+  <title>Bonfyre Layer 1 — Ingest & Signal</title>
+</head>
+<body>
+  <div class="site-shell">
+    <header class="site-header">
+      <div class="shell-container site-header-row">
+        <a class="brand" href="index.html"><span class="brand-mark">🔥</span><span>Bonfyre</span></a>
+        <nav class="site-nav" aria-label="Primary">
+          <a href="index.html">Overview</a>
+          <a href="explore.html">Explore</a>
+          <a href="docs.html">Technical Docs</a>
+          <a href="apps.html">Live Apps</a>
+        </nav>
+        <div class="header-actions">
+          <a class="header-btn" href="docs.html">← All layers</a>
+        </div>
+      </div>
+      <div class="ticker-bar">
+        <div class="shell-container ticker-row">
+          <span>Layer 1 of 6</span>
+          <span class="dot">•</span>
+          <span>Ingest &amp; signal</span>
+          <span class="dot">•</span>
+          <span>7 binaries</span>
+          <span class="dot">•</span>
+          <span>BLAKE2b content addressing throughout</span>
+        </div>
+      </div>
+    </header>
+
+    <main>
+      <section class="page-hero">
+        <div class="shell-container">
+          <span class="hero-kicker">Binary reference · Layer 1</span>
+          <h1 class="hero-title">Ingest &amp; <span class="accent">signal.</span></h1>
+          <p class="lede">Before any model sees your audio, these 7 binaries normalise it. They exist because garbage in = garbage out — and a model that receives a 44.1 kHz stereo recording with variable loudness produces noisier transcripts than one that receives a clean 16 kHz mono input with consistent levels. This layer ensures every downstream binary receives a consistent, quality-verified artifact.</p>
+          <div class="hero-actions">
+            <a class="primary-btn" href="layer-transcription.html">Next: Layer 2 — Transcription →</a>
+            <a class="secondary-btn" href="docs.html">Full documentation</a>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="shell-container">
+          <div class="section-header">
+            <div>
+              <span class="section-kicker">Why this layer exists</span>
+              <h2 class="section-title">What actually happens to audio before Whisper sees it.</h2>
+            </div>
+          </div>
+          <div class="feature-grid">
+            <article class="feature-card">
+              <span class="card-meta">Sample rate</span>
+              <h3>44.1 kHz podcast files are wrong for Whisper</h3>
+              <p>Whisper was trained on 16 kHz audio. Feeding it a 44.1 kHz file doesn't improve quality — it forces an internal resample that introduces rounding artifacts and slows decode. BonfyreMediaPrep resamples every file to 16 kHz before transcription. This alone reduces hallucination frequency in Whisper output.</p>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">Loudness normalisation</span>
+              <h3>Quiet recordings cause more hallucinations</h3>
+              <p>Whisper's hallucination rate triples on recordings below -30 LUFS. BonfyreMediaPrep normalises loudness to broadcast standard (EBU R128 / -23 LUFS) before the file ever reaches BonfyreTranscribe. What sounds like a minor pre-processing detail is the biggest single driver of transcript quality.</p>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">Speaker separation</span>
+              <h3>A transcript without speaker labels is half the work</h3>
+              <p>BonfyreSegment runs speaker diarisation before transcription — not after. Knowing speaker boundaries allows BonfyreTranscribe to treat each speaker turn independently, improving attribution accuracy. The output carries [Speaker A] and [Speaker B] labels inline, so every downstream binary knows whose words it's reading.</p>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">Content addressing</span>
+              <h3>BLAKE2b fingerprinting makes pipelines idempotent</h3>
+              <p>BonfyreHash writes a BLAKE2b-256 digest for every artifact it touches. If you re-run the same pipeline on the same recording tomorrow, every step that hashes to an existing artifact is skipped automatically — no redundant transcription, no redundant embedding, no redundant publishing. Incremental by default.</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="shell-container">
+          <div class="section-header">
+            <div>
+              <span class="section-kicker">Binary reference</span>
+              <h2 class="section-title">All 7 Layer 1 binaries.</h2>
+            </div>
+          </div>
+          <div class="feature-grid">
+
+            <article class="feature-card">
+              <span class="card-meta">BonfyreIngest</span>
+              <h3>Multi-path audio intake and format normalisation</h3>
+              <p>Accepts audio from disk, URL, stdin, or POSIX pipe. Detects container format (MP3, MP4, WAV, OGG, FLAC, M4A) using magic bytes, not file extension. Extracts the raw audio stream and hands it to BonfyreMediaPrep. Deduplicates on BLAKE2b hash — if the same audio arrives via two different paths it's processed once.</p>
+            </article>
+
+            <article class="feature-card">
+              <span class="card-meta">BonfyreMediaPrep</span>
+              <h3>Pre-processing for transcription and encoding</h3>
+              <p>Resamples to 16 kHz mono. Applies EBU R128 loudness normalisation to −23 LUFS. Trims leading and trailing silence (configurable threshold, default −50 dBFS). Optionally applies a high-pass filter at 80 Hz to remove low-frequency noise common in room recordings. Writes the normalised file and its BLAKE2b hash.</p>
+            </article>
+
+            <article class="feature-card">
+              <span class="card-meta">BonfyreSpeechLoop</span>
+              <h3>Real-time speech quality scoring loop</h3>
+              <p>Calculates 88 eGeMAPSv02 acoustic features per 25 ms frame: loudness, spectral flux, shimmer, jitter, formant bandwidth, and others. Produces a per-file quality score between 0–1. Scores below a configurable threshold (default 0.4) flag the recording for review before pipeline continues — preventing a low-quality file from consuming transcription compute. Processes in real time as audio plays or batch after ingest.</p>
+            </article>
+
+            <article class="feature-card">
+              <span class="card-meta">BonfyreTone</span>
+              <h3>88-feature audio quality and tone classification</h3>
+              <p>Shares the eGeMAPSv02 feature set with BonfyreSpeechLoop but focuses on tone classification: detects anger, distress, sarcasm, and disengagement markers. Outputs a tone vector alongside the transcript. BonfyreBrief downstream can note "speaker B showed elevated stress markers in segment 3–7." Used in support call pipelines where emotional context matters.</p>
+            </article>
+
+            <article class="feature-card">
+              <span class="card-meta">BonfyreSegment</span>
+              <h3>Speaker segmentation and diarisation</h3>
+              <p>Identifies speaker boundaries using embedding distance on overlapping 1.5-second windows. Produces a speaker-labelled segment map: timestamp ranges attributed to Speaker A, Speaker B, etc. This map is consumed by BonfyreTranscribe for per-speaker transcription and by BonfyreBrief for speaker-aware summary extraction. Handles up to 8 simultaneous speakers.</p>
+            </article>
+
+            <article class="feature-card">
+              <span class="card-meta">BonfyreHash</span>
+              <h3>BLAKE2b-256 content addressing for all artifacts</h3>
+              <p>Computes BLAKE2b-256 digests for every artifact produced by the pipeline. Writes a <code>.hash</code> manifest alongside each artifact. Downstream binaries check the manifest before processing — if the artifact already exists with a matching hash, the step is skipped. This is what makes a 15-recording batch pipeline skip 14 unchanged recordings when one new file is added.</p>
+            </article>
+
+            <article class="feature-card">
+              <span class="card-meta">BonfyreCompress</span>
+              <h3>LZ4 + zstd artifact compression</h3>
+              <p>Applies LZ4 for streaming compression (real-time artifact writing) and zstd level 3 for batch archive compression. LZ4 decodes at 4 GB/s — compressed artifacts read by downstream binaries at near-memory speed. Used automatically when BonfyrePack assembles artifact bundles. Can be called standalone to compress any artifact for long-term storage.</p>
+            </article>
+
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="shell-container">
+          <div class="section-header">
+            <div><span class="section-kicker">What comes next</span><h2 class="section-title">Layer 1 produces the inputs that Layer 2 consumes.</h2></div>
+          </div>
+          <div class="feature-grid">
+            <article class="feature-card"><span class="card-meta">Output of Layer 1</span><h3>Clean, normalised, fingerprinted audio</h3><p>A 16 kHz mono .wav file at −23 LUFS, speaker-segmented, quality-scored, with a BLAKE2b hash. This is what BonfyreTranscribe expects on its input.</p></article>
+            <article class="feature-card"><span class="card-meta">Input to Layer 2</span><h3>BonfyreTranscribe receives a guaranteed-quality file</h3><p>Because Layer 1 normalises before transcription, transcript accuracy is consistent across different recording environments, microphones, and loudness levels. The model never receives a file that hasn't been quality-checked.</p></article>
+            <article class="feature-card"><span class="card-meta">Skip behaviour</span><h3>Re-runs skip processed files automatically</h3><p>BonfyreHash means that running the full pipeline on 50 recordings the second time, when only 5 are new, completes the 45 existing hashes in milliseconds and only processes the 5 new files. No redundant work.</p></article>
+          </div>
+          <div class="cta-row">
+            <a class="primary-btn" href="layer-transcription.html">Layer 2: Transcription & cleanup →</a>
+            <a class="secondary-btn" href="docs.html">Back to docs</a>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <div class="shell-container footer-row">
+        <div>Bonfyre — 53 C binaries. Local AI. No cloud bill.</div>
+        <div class="footer-links">
+          <a href="index.html">Overview</a>
+          <a href="explore.html">Explore</a>
+          <a href="docs.html">Technical Docs</a>
+          <a href="apps.html">Live Apps</a>
+        </div>
+      </div>
+    </footer>
+  </div>
+  <script src="assets/site.js"></script>
+</body>
+</html>
