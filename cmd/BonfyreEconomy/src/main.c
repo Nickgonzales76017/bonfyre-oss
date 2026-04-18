@@ -141,9 +141,19 @@ static void cmd_route(sqlite3 *db,const char *recipe){
     sqlite3_finalize(st);
 
     printf("budget remaining for '%s': $%.4f\n",recipe,remaining);
+    /* look up actual average token usage from cost history; fall back to 1 000 */
+    long avg_tokens=1000;
+    { sqlite3_stmt *ts=NULL;
+      sqlite3_prepare_v2(db,
+          "SELECT CAST(AVG(tokens) AS INTEGER) FROM costs WHERE recipe=? AND tokens>0",
+          -1,&ts,NULL);
+      sqlite3_bind_text(ts,1,recipe,-1,SQLITE_STATIC);
+      if(sqlite3_step(ts)==SQLITE_ROW&&sqlite3_column_type(ts,0)!=SQLITE_NULL)
+          avg_tokens=(long)sqlite3_column_int64(ts,0);
+      sqlite3_finalize(ts); }
     const char *chosen="local"; double chosen_cost=0.0;
     for(int i=0;i<NCOSTS;i++){
-        double est=COSTS[i].usd_per_1m/1000.0; /* ~1k tokens avg */
+        double est=COSTS[i].usd_per_1m*(double)avg_tokens/1000000.0;
         if(est<=remaining){chosen=COSTS[i].model;chosen_cost=est;break;}
     }
     printf("recommended model : %s (est. cost/call: $%.6f)\n",chosen,chosen_cost);

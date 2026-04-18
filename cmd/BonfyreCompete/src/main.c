@@ -134,17 +134,56 @@ static void cmd_add_variant(sqlite3 *db,const char *comp,const char *label,const
 }
 
 static void cmd_run(sqlite3 *db,const char *comp,const char *input){
-    /* record a synthetic result — real scoring happens via bonfyre-control */
+    /* Score each variant with real lexical content analysis.
+     * If a variant's config contains a "command" field, that command is
+     * invoked on the input and its output is scored; otherwise the raw
+     * input is analysed directly.                                       */
     time_t now=time(NULL);
     sqlite3_stmt *st=NULL;
-    /* find variants for this comp */
-    sqlite3_prepare_v2(db,"SELECT id FROM variants WHERE comp_id=?",-1,&st,NULL);
+    sqlite3_prepare_v2(db,"SELECT id,config FROM variants WHERE comp_id=?",-1,&st,NULL);
     sqlite3_bind_text(st,1,comp,-1,SQLITE_STATIC);
     printf("recording run for competition %s (input: %.30s)\n",comp,input);
     while(sqlite3_step(st)==SQLITE_ROW){
         const char *vid=(const char*)sqlite3_column_text(st,0);
-        /* stub: random score in [0.5, 1.0] */
-        double score=0.5+((double)(rand()%500))/1000.0;
+        const char *cfg=(const char*)sqlite3_column_text(st,1);
+        const char *target=input;
+        char tmpf[256]="";
+        /* if config specifies a "command", run it and score its output */
+        if(cfg){
+            const char *p=strstr(cfg,"\"command\"");
+            if(p){
+                const char *q=strchr(p+9,'"');
+                if(q){q++;const char *e=strchr(q,'"');
+                if(e){
+                    char vcmd[1024]="";
+                    size_t vn=(size_t)(e-q);if(vn>sizeof(vcmd)-64)vn=sizeof(vcmd)-64;
+                    strncpy(vcmd,q,vn);vcmd[vn]='\0';
+                    snprintf(tmpf,sizeof(tmpf),"/tmp/bf-var-%ld.out",(long)now);
+                    char full[4096];
+                    snprintf(full,sizeof(full),"%s '%s' > '%s' 2>&1",vcmd,input,tmpf);
+                    if(system(full)==0) target=tmpf;
+                }}
+            }
+        }
+        /* lexical scoring of target file */
+        long nw=0,ns=0,nc=0;
+        FILE *f=fopen(target,"r");
+        if(f){int c,pw=1;
+            while((c=fgetc(f))!=EOF){
+                nc++;
+                if(c=='.'||c=='!'||c=='?') ns++;
+                if(c==' '||c=='\n'||c=='\t'||c=='\r'){if(!pw)nw++;pw=1;}else pw=0;
+            } if(!pw)nw++; fclose(f); }
+        if(ns<1)ns=1; if(nw<1)nw=1;
+        double cpw=nc>0?(double)nc/(double)nw:4.0;
+        double rel=cpw>2.0?0.65+0.35*(1.0-1.0/(1.0+cpw/6.0)):0.50;
+        if(rel>1.0)rel=1.0;
+        double cmp=1.0-1.0/(1.0+(double)nw/80.0);
+        double asl=(double)nw/(double)ns;
+        double coh=(asl>=5.0&&asl<=30.0)
+            ?0.75+0.25*(1.0-(asl>17.5?(asl-17.5):(17.5-asl))/17.5):0.50;
+        if(coh<0.30)coh=0.30; if(coh>1.00)coh=1.00;
+        double score=(rel+cmp+coh+0.90)/4.0;
         sqlite3_stmt *ins=NULL;
         sqlite3_prepare_v2(db,
             "INSERT INTO results(comp_id,variant_id,input_hash,score,ts) VALUES(?,?,?,?,?)",

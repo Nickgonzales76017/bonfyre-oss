@@ -193,14 +193,17 @@ static void cmd_show(sqlite3 *db,const char *fid){
 
 static void cmd_run_flow(sqlite3 *db,const char *fid,const char *input){
     time_t now=time(NULL);
-    /* check flow exists */
+    /* get entry stage */
     sqlite3_stmt *st=NULL;
     sqlite3_prepare_v2(db,"SELECT entry_stage FROM flows WHERE id=?",-1,&st,NULL);
     sqlite3_bind_text(st,1,fid,-1,SQLITE_STATIC);
-    if(sqlite3_step(st)!=SQLITE_ROW){fprintf(stderr,"flow not found: %s\n",fid);sqlite3_finalize(st);return;}
-    const char *entry=(const char*)sqlite3_column_text(st,0);
+    if(sqlite3_step(st)!=SQLITE_ROW){
+        fprintf(stderr,"flow not found: %s\n",fid);sqlite3_finalize(st);return;
+    }
+    char entry[64];snprintf(entry,sizeof(entry),"%s",(const char*)sqlite3_column_text(st,0));
     char eid[64];snprintf(eid,sizeof(eid),"run-%ld",(long)now);
     char run_id[256];snprintf(run_id,sizeof(run_id),"%s-%s",fid,eid);
+    sqlite3_finalize(st);
 
     sqlite3_stmt *ins=NULL;
     sqlite3_prepare_v2(db,
@@ -212,8 +215,82 @@ static void cmd_run_flow(sqlite3 *db,const char *fid,const char *input){
     sqlite3_bind_text(ins,4,entry,-1,SQLITE_STATIC);
     sqlite3_bind_int64(ins,5,(sqlite3_int64)now);
     sqlite3_step(ins);sqlite3_finalize(ins);
-    sqlite3_finalize(st);
-    printf("started run: %s\n  flow : %s\n  entry: %s\n  input: %.60s\n",run_id,fid,entry,input);
+    printf("started run: %s\n  flow : %s\n  entry: %s\n  input: %.60s\n",
+        run_id,fid,entry,input);
+
+    /* dispatch stages: stage id == recipe code by convention;
+     * traverse seq edges from entry_stage using the edges table.        */
+    char cur_stage[64];snprintf(cur_stage,sizeof(cur_stage),"%s",entry);
+    char cur_input[4096];snprintf(cur_input,sizeof(cur_input),"%s",input);
+    int failed=0;
+    for(int step=0;step<32;step++){
+        /* mark stage as running */
+        sqlite3_stmt *rs=NULL;
+        sqlite3_prepare_v2(db,
+            "INSERT OR IGNORE INTO run_stages(run_id,stage,status,started) VALUES(?,?,'running',?)",
+            -1,&rs,NULL);
+        sqlite3_bind_text(rs,1,run_id,-1,SQLITE_STATIC);
+        sqlite3_bind_text(rs,2,cur_stage,-1,SQLITE_STATIC);
+        sqlite3_bind_int64(rs,3,(sqlite3_int64)time(NULL));
+        sqlite3_step(rs);sqlite3_finalize(rs);
+
+        /* dispatch via bonfyre-run; output dir becomes next stage input */
+        char outdir[256];
+        snprintf(outdir,sizeof(outdir),"/tmp/bf-flow-%s-%d",eid,step);
+        char bfcmd[4096];
+        snprintf(bfcmd,sizeof(bfcmd),
+            "bonfyre-run '%s' '%s' --out '%s' --quiet >/dev/null 2>&1",
+            cur_stage,cur_input,outdir);
+        int rc=system(bfcmd);
+
+        /* update run_stage status */
+        sqlite3_stmt *upd1=NULL;
+        sqlite3_prepare_v2(db,
+            "UPDATE run_stages SET status=?,done=? WHERE run_id=? AND stage=?",
+            -1,&upd1,NULL);
+        sqlite3_bind_text(upd1,1,rc==0?"done":"failed",-1,SQLITE_STATIC);
+        sqlite3_bind_int64(upd1,2,(sqlite3_int64)time(NULL));
+        sqlite3_bind_text(upd1,3,run_id,-1,SQLITE_STATIC);
+        sqlite3_bind_text(upd1,4,cur_stage,-1,SQLITE_STATIC);
+        sqlite3_step(upd1);sqlite3_finalize(upd1);
+        printf("  stage %-20s %s\n",cur_stage,rc==0?"done":"failed");
+        if(rc!=0){failed=1;break;}
+
+        snprintf(cur_input,sizeof(cur_input),"%s",outdir);
+
+        /* look up next seq stage from edge table */
+        sqlite3_stmt *edge=NULL;
+        sqlite3_prepare_v2(db,
+            "SELECT to_stage FROM edges WHERE flow_id=? AND from_stage=? AND kind='seq' LIMIT 1",
+            -1,&edge,NULL);
+        sqlite3_bind_text(edge,1,fid,-1,SQLITE_STATIC);
+        sqlite3_bind_text(edge,2,cur_stage,-1,SQLITE_STATIC);
+        int has_next=(sqlite3_step(edge)==SQLITE_ROW);
+        if(has_next)
+            snprintf(cur_stage,sizeof(cur_stage),"%s",(const char*)sqlite3_column_text(edge,0));
+        sqlite3_finalize(edge);
+        if(!has_next) break;
+
+        /* update current_stage in run record */
+        sqlite3_stmt *upd2=NULL;
+        sqlite3_prepare_v2(db,
+            "UPDATE runs SET current_stage=? WHERE id=?",
+            -1,&upd2,NULL);
+        sqlite3_bind_text(upd2,1,cur_stage,-1,SQLITE_STATIC);
+        sqlite3_bind_text(upd2,2,run_id,-1,SQLITE_STATIC);
+        sqlite3_step(upd2);sqlite3_finalize(upd2);
+    }
+
+    /* mark run done or failed */
+    sqlite3_stmt *fin=NULL;
+    sqlite3_prepare_v2(db,
+        "UPDATE runs SET status=?,finished=? WHERE id=?",
+        -1,&fin,NULL);
+    sqlite3_bind_text(fin,1,failed?"failed":"done",-1,SQLITE_STATIC);
+    sqlite3_bind_int64(fin,2,(sqlite3_int64)time(NULL));
+    sqlite3_bind_text(fin,3,run_id,-1,SQLITE_STATIC);
+    sqlite3_step(fin);sqlite3_finalize(fin);
+    if(!failed) printf("run complete: %s\n",run_id);
 }
 
 static void cmd_inspect(sqlite3 *db,const char *run_id){

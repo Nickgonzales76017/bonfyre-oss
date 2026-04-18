@@ -30,6 +30,7 @@
  *   Set BONFYRE_CONTROL_SKIP=1 to bypass (bare execution, no routing logic).
  */
 
+#include <dirent.h>
 #include <errno.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -239,26 +240,113 @@ static void cmd_policy_rm(sqlite3 *db, const char *id) {
 }
 
 static void cmd_policy_add(sqlite3 *db, const char *file) {
-    (void)db;
     FILE *f = fopen(file, "r");
     if (!f) { perror(file); return; }
     char *buf = malloc(MAX_JSON);
     size_t n = fread(buf, 1, MAX_JSON - 1, f); fclose(f);
     buf[n] = '\0';
-    fprintf(stderr, "bonfyre-control: policy add: JSON parsing not fully implemented.\n");
-    fprintf(stderr, "Expected fields: id, name, kind, recipe (optional), rule\n");
+
+    /* extract top-level string fields with strstr (same pattern as bonfyre-flow) */
+    char pol_id[256]="", name[256]="", kind[64]="", recipe[256]="", rule[8192]="{}";
+    const char *p;
+#define EXTRACT(key, keylen, dst, dstsz) do { \
+    if ((p = strstr(buf, key))) { \
+        const char *q = strchr(p+(keylen), '"'); \
+        if (q) { q++; const char *e = strchr(q, '"'); \
+            if (e) { size_t _n = (size_t)(e-q); \
+                if (_n < (dstsz)-1) { strncpy((dst),q,_n); (dst)[_n]='\0'; } } } \
+    } } while(0)
+    EXTRACT("\"id\"",    4, pol_id,  sizeof(pol_id));
+    EXTRACT("\"name\"",  6, name,    sizeof(name));
+    EXTRACT("\"kind\"",  6, kind,    sizeof(kind));
+    EXTRACT("\"recipe\"",8, recipe,  sizeof(recipe));
+#undef EXTRACT
+    /* extract "rule": {...} as a JSON object */
+    if ((p = strstr(buf, "\"rule\""))) {
+        const char *ob = strchr(p+6, '{');
+        if (ob) {
+            int depth=0; const char *r=ob;
+            for (;*r;r++) {
+                if (*r=='{') depth++;
+                else if (*r=='}') { depth--; if(depth==0){r++;break;} }
+            }
+            size_t rn=(size_t)(r-ob);
+            if (rn > 0 && rn < sizeof(rule)-1) { strncpy(rule,ob,rn); rule[rn]='\0'; }
+        }
+    }
+    if (!pol_id[0]) {
+        fprintf(stderr,"policy JSON must have \"id\" field\n"); free(buf); return;
+    }
+    if (!name[0])   snprintf(name,  sizeof(name),   "%s", pol_id);
+    if (!kind[0] || (strcmp(kind,"cost")&&strcmp(kind,"latency")&&
+                     strcmp(kind,"route")&&strcmp(kind,"compete"))) {
+        fprintf(stderr,"policy \"kind\" must be: cost | latency | route | compete\n");
+        free(buf); return;
+    }
+    time_t now = time(NULL);
+    sqlite3_stmt *st = NULL;
+    sqlite3_prepare_v2(db,
+        "INSERT OR REPLACE INTO policies(id,name,kind,recipe,rule_json,active,created)"
+        " VALUES(?,?,?,?,?,1,?)", -1, &st, NULL);
+    sqlite3_bind_text(st,1,pol_id,-1,SQLITE_STATIC);
+    sqlite3_bind_text(st,2,name,  -1,SQLITE_STATIC);
+    sqlite3_bind_text(st,3,kind,  -1,SQLITE_STATIC);
+    if (recipe[0]) sqlite3_bind_text(st,4,recipe,-1,SQLITE_STATIC);
+    else           sqlite3_bind_null(st,4);
+    sqlite3_bind_text(st,5,rule,  -1,SQLITE_STATIC);
+    sqlite3_bind_int64(st,6,(sqlite3_int64)now);
+    int r = sqlite3_step(st); sqlite3_finalize(st);
+    if (r == SQLITE_DONE)
+        printf("policy added: %s  kind=%s  name=%s\n", pol_id, kind, name);
+    else
+        fprintf(stderr,"policy add failed: %s\n", sqlite3_errmsg(db));
     free(buf);
 }
 
 static void cmd_score(sqlite3 *db, const char *artifact) {
-    /* In production: calls scorer stage binaries and aggregates via HE-SLI. */
-    /* Here: inserts a placeholder score record so the schema is exercised.   */
-    double relevance    = 0.82 + ((double)(rand()%10)/100.0);
-    double completeness = 0.78 + ((double)(rand()%15)/100.0);
-    double coherence    = 0.85 + ((double)(rand()%8) /100.0);
-    double factuality   = 0.90 + ((double)(rand()%5) /100.0);
-    int    latency_ms   = 120  + rand()%80;
-    double cost_usd     = 0.0004 + ((double)(rand()%10)/10000.0);
+    /* HE-SLI scoring: lexical text analysis of artifact content.
+     * relevance/completeness/coherence are derived from word and sentence
+     * statistics.  factuality is fixed at 0.90 — requires a neural scorer.
+     * latency is estimated from file size; cost comes from the economy DB. */
+    struct stat _sb; long file_bytes=0;
+    if (stat(artifact,&_sb)==0) file_bytes=(long)_sb.st_size;
+    long nwords=0,nsents=0,nchars=0;
+    { FILE *_f=fopen(artifact,"r");
+      if(_f){ int _c,_pw=1;
+        while((_c=fgetc(_f))!=EOF){
+            nchars++;
+            if(_c=='.'||_c=='!'||_c=='?') nsents++;
+            if(_c==' '||_c=='\n'||_c=='\t'||_c=='\r'){if(!_pw)nwords++;_pw=1;}else _pw=0;
+        } if(!_pw)nwords++; fclose(_f); } }
+    if(nsents<1)nsents=1; if(nwords<1)nwords=1;
+    double _cpw=(double)nchars/(double)nwords;
+    double relevance = _cpw>2.0 ? 0.65+0.35*(1.0-1.0/(1.0+_cpw/6.0)) : 0.50;
+    if(relevance>1.0)relevance=1.0;
+    double completeness = 1.0-1.0/(1.0+(double)nwords/80.0);
+    double _asl=(double)nwords/(double)nsents;
+    double coherence = (_asl>=5.0&&_asl<=30.0)
+        ? 0.75+0.25*(1.0-(_asl>17.5?(_asl-17.5):(17.5-_asl))/17.5) : 0.50;
+    if(coherence<0.30)coherence=0.30; if(coherence>1.00)coherence=1.00;
+    double factuality   = 0.90; /* fixed — neural scorer not yet wired */
+    int    latency_ms   = 50 + (int)(file_bytes/1024);
+    /* cost: latest 20-run average from economy DB, else word-count heuristic */
+    double cost_usd = 0.0;
+    { char _edb[4096];
+      const char *_ev=getenv("BONFYRE_ECONOMY_DB");
+      if(_ev) snprintf(_edb,sizeof(_edb),"%s",_ev);
+      else { const char *_h=getenv("HOME");if(!_h)_h="/tmp";
+             snprintf(_edb,sizeof(_edb),"%s/.local/share/bonfyre/economy.db",_h); }
+      sqlite3 *_eco=NULL;
+      if(sqlite3_open_v2(_edb,&_eco,SQLITE_OPEN_READONLY,NULL)==SQLITE_OK){
+          sqlite3_stmt *_es=NULL;
+          if(sqlite3_prepare_v2(_eco,
+                  "SELECT AVG(usd) FROM (SELECT usd FROM costs ORDER BY ts DESC LIMIT 20)",
+                  -1,&_es,NULL)==SQLITE_OK){
+              if(sqlite3_step(_es)==SQLITE_ROW&&sqlite3_column_type(_es,0)!=SQLITE_NULL)
+                  cost_usd=sqlite3_column_double(_es,0);
+              sqlite3_finalize(_es); }
+          sqlite3_close(_eco); } }
+    if(cost_usd<=0.0) cost_usd=0.00002+(double)nwords*0.0000004;
     double composite    = (relevance + completeness + coherence + factuality) / 4.0;
     time_t now = time(NULL);
     sqlite3_stmt *st = NULL;
@@ -318,27 +406,82 @@ static void cmd_route(sqlite3 *db, const char *recipe, const char *input) {
     sqlite3_step(st); sqlite3_finalize(st);
 }
 
+/* lexical composite scorer — shared by cmd_compete and others */
+static double score_file_composite(const char *path) {
+    long nw=0,ns=0,nc=0;
+    FILE *f=fopen(path,"r"); if(!f) return 0.50;
+    int c,pw=1;
+    while((c=fgetc(f))!=EOF){
+        nc++;
+        if(c=='.'||c=='!'||c=='?') ns++;
+        if(c==' '||c=='\n'||c=='\t'||c=='\r'){if(!pw)nw++;pw=1;}else pw=0;
+    } if(!pw)nw++; fclose(f);
+    if(ns<1)ns=1; if(nw<1)nw=1;
+    double cpw=(double)nc/(double)nw;
+    double rel=cpw>2.0?0.65+0.35*(1.0-1.0/(1.0+cpw/6.0)):0.50;
+    if(rel>1.0)rel=1.0;
+    double cmp=1.0-1.0/(1.0+(double)nw/80.0);
+    double asl=(double)nw/(double)ns;
+    double coh=(asl>=5.0&&asl<=30.0)?0.75+0.25*(1.0-(asl>17.5?(asl-17.5):(17.5-asl))/17.5):0.50;
+    if(coh<0.30)coh=0.30; if(coh>1.00)coh=1.00;
+    return (rel+cmp+coh+0.90)/4.0;
+}
+
+/* find first regular file in a directory; returns 1 on success */
+static int first_file_in_dir(const char *dirpath, char *out, size_t outsz) {
+    DIR *d=opendir(dirpath); if(!d) return 0;
+    struct dirent *de;
+    while((de=readdir(d))!=NULL){
+        if(de->d_name[0]=='.') continue;
+        char fp[4096]; snprintf(fp,sizeof(fp),"%s/%s",dirpath,de->d_name);
+        struct stat sb; if(stat(fp,&sb)==0&&S_ISREG(sb.st_mode)){
+            snprintf(out,outsz,"%s",fp); closedir(d); return 1;
+        }
+    }
+    closedir(d); return 0;
+}
+
 static void cmd_compete(sqlite3 *db, const char *recipe, const char *input) {
-    printf("A/B competition: %s ← %s\n", recipe, input);
-    printf("  spawning variants...\n");
-    printf("  variant A: bonfyre-run %s (default)\n", recipe);
-    printf("  variant B: bonfyre-run %s --tier pro\n", recipe);
+    printf("A/B competition: %s \xe2\x86\x90 %s\n", recipe, input);
+    long ts=(long)time(NULL);
+    char outA[256],outB[256];
+    snprintf(outA,sizeof(outA),"/tmp/bf-cmp-a-%ld",ts);
+    snprintf(outB,sizeof(outB),"/tmp/bf-cmp-b-%ld",ts+1);
+    /* run variant A: default tier */
+    printf("  variant A: bonfyre-run %s (default)...\n",recipe);
+    char cmdA[2048],cmdB[2048];
+    snprintf(cmdA,sizeof(cmdA),
+        "bonfyre-run '%s' '%s' --out '%s' --quiet >/dev/null 2>&1",
+        recipe,input,outA);
+    system(cmdA);
+    /* run variant B: pro tier */
+    printf("  variant B: bonfyre-run %s --tier pro...\n",recipe);
+    snprintf(cmdB,sizeof(cmdB),
+        "bonfyre-run '%s' '%s' --out '%s' --tier pro --quiet >/dev/null 2>&1",
+        recipe,input,outB);
+    system(cmdB);
+    /* score each output; fall back to input file if variant produced no output */
+    char fileA[4096],fileB[4096];
+    if(!first_file_in_dir(outA,fileA,sizeof(fileA)))
+        snprintf(fileA,sizeof(fileA),"%s",input);
+    if(!first_file_in_dir(outB,fileB,sizeof(fileB)))
+        snprintf(fileB,sizeof(fileB),"%s",input);
     printf("  scoring outputs via HE-SLI...\n");
-    double score_a = 0.78 + ((double)(rand()%10)/100.0);
-    double score_b = 0.82 + ((double)(rand()%10)/100.0);
-    printf("  A composite: %.3f\n", score_a);
-    printf("  B composite: %.3f\n", score_b);
-    const char *winner = score_b > score_a ? "B (--tier pro)" : "A (default)";
-    printf("  winner: %s\n", winner);
-    time_t now = time(NULL);
-    sqlite3_stmt *st = NULL;
+    double score_a=score_file_composite(fileA);
+    double score_b=score_file_composite(fileB);
+    printf("  A composite: %.3f\n",score_a);
+    printf("  B composite: %.3f\n",score_b);
+    const char *winner=score_b>score_a?"B (--tier pro)":"A (default)";
+    printf("  winner: %s\n",winner);
+    time_t now=time(NULL);
+    sqlite3_stmt *st=NULL;
     sqlite3_prepare_v2(db,
         "INSERT INTO decisions(recipe,decision,reason,score,ts) VALUES(?,?,?,?,?)",
         -1,&st,NULL);
     sqlite3_bind_text(st,1,recipe,-1,SQLITE_STATIC);
     sqlite3_bind_text(st,2,"promote",-1,SQLITE_STATIC);
     sqlite3_bind_text(st,3,winner,-1,SQLITE_STATIC);
-    sqlite3_bind_double(st,4,score_b > score_a ? score_b : score_a);
+    sqlite3_bind_double(st,4,score_b>score_a?score_b:score_a);
     sqlite3_bind_int64(st,5,(sqlite3_int64)now);
     sqlite3_step(st); sqlite3_finalize(st);
 }
