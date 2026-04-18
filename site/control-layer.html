@@ -1,0 +1,1013 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#ff6b35">
+  <meta name="description" content="The Bonfyre control layer: ten C11 binaries that make every pipeline self-evaluating, self-routing, cost-aware, and continuously improving. bonfyre-control, bonfyre-time, bonfyre-entity, bonfyre-space, bonfyre-compete, bonfyre-economy, bonfyre-flow, bonfyre-learn, bonfyre-capability, bonfyre-tier.">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔥</text></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://api.fontshare.com/v2/css?f[]=cabinet-grotesk@400,500,700,800,900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/site.css">
+  <title>Bonfyre | The Control Layer — 10 self-modifying binaries</title>
+  <style>
+    .code-block {
+      background: var(--swiss-black);
+      border: 1px solid #2a2a2a;
+      border-radius: 8px;
+      padding: 1.25rem 1.5rem;
+      font-family: var(--font-mono);
+      font-size: 0.82rem;
+      line-height: 1.75;
+      overflow-x: auto;
+      color: #f0f0f0;
+      margin: 1rem 0;
+    }
+    .code-block .comment { color: #5c9f5c; }
+    .code-block .cmd     { color: #ff6b35; font-weight: 600; }
+    .code-block .flag    { color: #7eb8ff; }
+    .code-block .str     { color: #ffd580; }
+    .code-block .out     { color: #aaa; }
+
+    /* binary card grid */
+    .binary-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+      gap: 1.5rem;
+      margin: 2rem 0;
+    }
+    .binary-card {
+      background: #fff;
+      border: 1.5px solid var(--swiss-line);
+      border-radius: 10px;
+      padding: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+    .binary-card-head {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+    .binary-icon {
+      width: 38px;
+      height: 38px;
+      border-radius: 8px;
+      background: var(--swiss-orange);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.1rem;
+      flex-shrink: 0;
+    }
+    .binary-name {
+      font-family: var(--font-mono);
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: var(--swiss-orange);
+    }
+    .binary-tagline {
+      font-size: 0.8rem;
+      color: var(--swiss-muted);
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .binary-desc {
+      font-size: 0.875rem;
+      line-height: 1.6;
+      color: var(--swiss-ink);
+    }
+    .cmd-list {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.35rem;
+    }
+    .cmd-pill {
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      font-weight: 500;
+      background: rgba(255,107,53,0.08);
+      border: 1px solid rgba(255,107,53,0.2);
+      color: #c94a10;
+      border-radius: 4px;
+      padding: 0.15rem 0.5rem;
+    }
+
+    /* interconnect diagram */
+    .layer-diagram {
+      background: var(--swiss-black);
+      border-radius: 12px;
+      padding: 2rem;
+      margin: 2rem 0;
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      line-height: 2;
+      color: #bbb;
+      overflow-x: auto;
+    }
+    .ld-title  { color: #ff6b35; font-weight: 600; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.08em; }
+    .ld-binary { color: #ffd580; font-weight: 600; }
+    .ld-arrow  { color: #555; }
+    .ld-note   { color: #5c9f5c; font-style: italic; }
+
+    /* deep-dive section */
+    .deep-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(420px, 1fr));
+      gap: 2rem;
+      margin: 2rem 0;
+    }
+    .deep-card {
+      background: var(--swiss-panel-soft);
+      border-radius: 10px;
+      padding: 1.75rem;
+      border: 1px solid var(--swiss-line);
+    }
+    .deep-card h3 {
+      font-family: var(--font-mono);
+      font-size: 0.95rem;
+      color: var(--swiss-orange);
+      margin: 0 0 0.5rem;
+    }
+    .deep-card .schema-list {
+      font-family: var(--font-mono);
+      font-size: 0.78rem;
+      line-height: 1.8;
+      color: var(--swiss-muted);
+      margin: 0.75rem 0;
+      padding-left: 1rem;
+      border-left: 2px solid var(--swiss-line);
+    }
+    .deep-card p {
+      font-size: 0.875rem;
+      line-height: 1.65;
+      margin: 0.5rem 0;
+    }
+
+    /* metric table */
+    .metric-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.875rem;
+      margin: 1.5rem 0;
+    }
+    .metric-table th {
+      text-align: left;
+      padding: 0.55rem 1rem;
+      background: var(--swiss-black);
+      color: #888;
+      font-size: 0.72rem;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      font-family: var(--font-mono);
+    }
+    .metric-table td {
+      padding: 0.7rem 1rem;
+      border-bottom: 1px solid var(--swiss-line);
+      vertical-align: top;
+      font-family: var(--font-mono);
+      font-size: 0.82rem;
+    }
+    .metric-table tr:hover td { background: var(--swiss-panel-soft); }
+    .badge-instant { color: #33c653; font-weight: 600; }
+    .badge-fast    { color: #7eb8ff; font-weight: 600; }
+    .badge-batch   { color: #ffd580; font-weight: 600; }
+    .badge-deep    { color: #ff6b35; font-weight: 600; }
+
+    /* integration flow */
+    .flow-steps {
+      counter-reset: step;
+      list-style: none;
+      margin: 1.5rem 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+    }
+    .flow-steps li {
+      counter-increment: step;
+      display: flex;
+      align-items: flex-start;
+      gap: 1rem;
+      padding: 0.85rem 0;
+      border-bottom: 1px solid var(--swiss-line);
+      font-size: 0.875rem;
+      line-height: 1.6;
+    }
+    .flow-steps li:last-child { border-bottom: none; }
+    .flow-steps li::before {
+      content: counter(step, decimal-leading-zero);
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      font-weight: 700;
+      color: var(--swiss-orange);
+      background: rgba(255,107,53,0.1);
+      border: 1px solid rgba(255,107,53,0.25);
+      border-radius: 4px;
+      min-width: 2rem;
+      height: 1.6rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      margin-top: 0.1rem;
+    }
+    .flow-steps code {
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      color: var(--swiss-orange);
+      background: rgba(255,107,53,0.07);
+      border-radius: 3px;
+      padding: 0.05rem 0.35rem;
+    }
+
+    /* stat pills */
+    .stat-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
+      margin: 1.5rem 0;
+    }
+    .stat-box {
+      background: var(--swiss-panel-soft);
+      border: 1px solid var(--swiss-line);
+      border-radius: 8px;
+      padding: 1rem 1.5rem;
+      min-width: 130px;
+    }
+    .stat-box .num {
+      font-family: var(--font-display);
+      font-size: 2rem;
+      font-weight: 800;
+      color: var(--swiss-orange);
+      line-height: 1;
+    }
+    .stat-box .lbl {
+      font-size: 0.78rem;
+      color: var(--swiss-muted);
+      margin-top: 0.25rem;
+    }
+
+    @media (max-width: 700px) {
+      .binary-grid, .deep-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="site-shell">
+    <header class="site-header">
+      <div class="shell-container site-header-row">
+        <a class="brand" href="index.html"><span class="brand-mark">🔥</span><span>Bonfyre</span></a>
+        <nav class="site-nav" aria-label="Primary">
+          <a href="index.html">Overview</a>
+          <a href="explore.html">Explore</a>
+          <a href="recipe-run.html">Pipelines</a>
+          <a href="docs.html">Technical Docs</a>
+          <a href="apps.html">Live Apps</a>
+          <a class="current" href="control-layer.html">Control Layer</a>
+        </nav>
+        <div class="header-actions">
+          <a class="header-btn" href="https://github.com/Nickgonzales76017/bonfyre-oss/tree/main/cmd" target="_blank" rel="noreferrer">Source</a>
+        </div>
+      </div>
+      <div class="ticker-bar">
+        <div class="ticker-row" aria-hidden="true">
+          <span class="ticker-item"><span class="num">10</span><span>control binaries</span></span>
+          <span class="ticker-item"><span class="dot">•</span></span>
+          <span class="ticker-item"><span class="num">63</span><span>total binaries</span></span>
+          <span class="ticker-item"><span class="dot">•</span></span>
+          <span class="ticker-item"><span class="num">C11</span><span>zero deps</span></span>
+          <span class="ticker-item"><span class="dot">•</span></span>
+          <span class="ticker-item"><span class="num">SQLite3</span><span>WAL mode</span></span>
+          <span class="ticker-item"><span class="dot">•</span></span>
+          <span class="ticker-item"><span class="num">4</span><span>latency tiers</span></span>
+          <span class="ticker-item"><span class="dot">•</span></span>
+          <span class="ticker-item"><span class="num">15</span><span>built-in capabilities</span></span>
+          <span class="ticker-item"><span class="dot">•</span></span>
+          <span class="ticker-item"><span class="num">HE-SLI</span><span>scoring</span></span>
+          <span class="ticker-item"><span class="dot">•</span></span>
+          <span class="ticker-item"><span class="num">infinite</span><span>feedback loop</span></span>
+        </div>
+      </div>
+    </header>
+
+    <main>
+
+      <!-- ─── HERO ─────────────────────────────────────────────────────── -->
+      <section class="hero-section" style="padding: 5rem 0 3rem;">
+        <div class="shell-container">
+          <div class="hero-eyebrow" style="font-family:var(--font-mono);font-size:0.78rem;color:var(--swiss-orange);font-weight:600;letter-spacing:0.06em;text-transform:uppercase;margin-bottom:1rem;">
+            The Control Layer — v1.0.0
+          </div>
+          <h1 class="hero-headline" style="font-size:clamp(2.2rem,5vw,3.8rem);line-height:1.05;max-width:820px;margin:0 0 1.5rem;">
+            Ten binaries that make<br>Bonfyre <em>think about itself</em>.
+          </h1>
+          <p class="hero-sub" style="font-size:1.1rem;color:var(--swiss-muted);max-width:640px;line-height:1.7;margin:0 0 2rem;">
+            Every pipeline run generates signal. The control layer captures it,
+            scores every output, routes the next run to the cheapest model that
+            meets the SLA, runs A/B experiments to find what improves quality,
+            and tunes thresholds from the results. No human in the loop required.
+          </p>
+
+          <div class="stat-row">
+            <div class="stat-box"><div class="num">10</div><div class="lbl">new C11 binaries</div></div>
+            <div class="stat-box"><div class="num">63</div><div class="lbl">total in the suite</div></div>
+            <div class="stat-box"><div class="num">15</div><div class="lbl">built-in capabilities</div></div>
+            <div class="stat-box"><div class="num">4</div><div class="lbl">latency tiers</div></div>
+            <div class="stat-box"><div class="num">0</div><div class="lbl">external deps</div></div>
+          </div>
+
+          <div class="code-block" style="max-width:680px;">
+<span class="comment"># install all 10 control-layer binaries</span>
+<span class="cmd">make</span> <span class="flag">-C</span> <span class="str">cmd/BonfyreControl</span> <span class="out">&amp;&amp; make -C cmd/BonfyreTime \</span>
+  &amp;&amp; make -C cmd/BonfyreEntity  &amp;&amp; make -C cmd/BonfyreSpace \
+  &amp;&amp; make -C cmd/BonfyreCompete &amp;&amp; make -C cmd/BonfyreEconomy \
+  &amp;&amp; make -C cmd/BonfyreFlow    &amp;&amp; make -C cmd/BonfyreLearn \
+  &amp;&amp; make -C cmd/BonfyreCapability &amp;&amp; make -C cmd/BonfyreTier
+
+<span class="comment"># or install everything at once</span>
+<span class="cmd">make</span> install-all
+
+<span class="comment"># verify the control layer is alive</span>
+<span class="cmd">bonfyre-control</span> status
+<span class="out">bonfyre-control 1.0.0
+  policies    : 4
+  decisions   : 0
+  scores      : 0</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- ─── WHAT IS THE CONTROL LAYER ───────────────────────────────── -->
+      <section class="section-pad" style="padding:3rem 0;background:var(--swiss-panel-soft);border-top:1px solid var(--swiss-line);border-bottom:1px solid var(--swiss-line);">
+        <div class="shell-container">
+          <div style="max-width:720px;">
+            <h2 style="font-size:1.7rem;margin:0 0 1rem;">Beyond pipelines: a system that improves itself.</h2>
+            <p style="font-size:0.975rem;line-height:1.75;color:var(--swiss-muted);">
+              The original 53 Bonfyre binaries handle ingestion, transcription, tagging, summarization,
+              distribution, and delivery. They are excellent at doing exactly what they're told.
+              What they don't do — by design — is decide <em>how</em> to do it, <em>whether</em> the result
+              is good enough, or <em>what to try next when it isn't</em>.
+            </p>
+            <p style="font-size:0.975rem;line-height:1.75;color:var(--swiss-muted);margin-top:0.75rem;">
+              The control layer is that missing brain. It evaluates every artifact on the six HE-SLI dimensions
+              (relevance, completeness, coherence, factuality, latency, cost), routes each run to the
+              cheapest model that clears the quality bar, competitions the best candidates against each other,
+              and feeds the results back into threshold tuning — closing a loop that makes every subsequent
+              run incrementally better.
+            </p>
+          </div>
+
+          <div class="layer-diagram" style="margin-top:1.75rem;">
+<div class="ld-title">the self-improvement loop</div>
+<div>
+  <span class="ld-binary">bonfyre-run</span>  <span class="ld-arrow">──outputs──▶</span>  <span class="ld-binary">bonfyre-control score</span>        <span class="ld-note">← HE-SLI: relevance · completeness · coherence · factuality · latency · cost</span>
+  <span class="ld-binary">bonfyre-control route</span>  <span class="ld-arrow">──consults──▶</span>  <span class="ld-binary">bonfyre-economy route</span>  <span class="ld-arrow">──▶</span>  <span class="ld-binary">bonfyre-tier route</span>
+  <span class="ld-binary">bonfyre-compete run</span>  <span class="ld-arrow">──results──▶</span>  <span class="ld-binary">bonfyre-learn feedback</span>
+  <span class="ld-binary">bonfyre-learn tune</span>  <span class="ld-arrow">──updates──▶</span>  <span class="ld-binary">bonfyre-control policy</span>         <span class="ld-note">← loop closes here</span>
+  <span class="ld-binary">bonfyre-time</span>  <span class="ld-arrow">──fires trigger──▶</span>  <span class="ld-binary">bonfyre-run</span>  <span class="ld-arrow">──re-processes──▶</span>  <span class="ld-binary">bonfyre-entity resolve</span>
+  <span class="ld-binary">bonfyre-flow</span>  <span class="ld-arrow">──allocates──▶</span>  <span class="ld-binary">bonfyre-space</span>  <span class="ld-arrow">──shared state──▶</span>  <span class="ld-binary">next stage</span>
+  <span class="ld-binary">bonfyre-capability match</span>  <span class="ld-arrow">──finds──▶</span>  <span class="ld-binary">binary + model</span>  <span class="ld-arrow">──route dispatched</span>
+</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ─── BINARY GRID ───────────────────────────────────────────────── -->
+      <section class="section-pad" style="padding:4rem 0;">
+        <div class="shell-container">
+          <h2 style="font-size:1.8rem;margin:0 0 0.5rem;">The 10 binaries</h2>
+          <p style="color:var(--swiss-muted);margin:0 0 0.5rem;font-size:0.9rem;">Each is a standalone C11 binary: SQLite3 WAL backend, single-file source, zero cloud deps.</p>
+
+          <div class="binary-grid">
+
+            <!-- bonfyre-control -->
+            <div class="binary-card">
+              <div class="binary-card-head">
+                <div class="binary-icon">⚙</div>
+                <div>
+                  <div class="binary-name">bonfyre-control</div>
+                  <div class="binary-tagline">Central control plane</div>
+                </div>
+              </div>
+              <p class="binary-desc">
+                The nerve center. Scores every artifact on HE-SLI, enforces routing policies, runs
+                A/B competitions, evicts under-performing models, and produces a signed decision log
+                that every other binary can audit.
+              </p>
+              <ul class="cmd-list">
+                <li class="cmd-pill">status</li>
+                <li class="cmd-pill">score</li>
+                <li class="cmd-pill">route</li>
+                <li class="cmd-pill">compete</li>
+                <li class="cmd-pill">evict</li>
+                <li class="cmd-pill">inspect</li>
+                <li class="cmd-pill">policy list/add/rm</li>
+                <li class="cmd-pill">watch</li>
+              </ul>
+            </div>
+
+            <!-- bonfyre-time -->
+            <div class="binary-card">
+              <div class="binary-card-head">
+                <div class="binary-icon">⏱</div>
+                <div>
+                  <div class="binary-name">bonfyre-time</div>
+                  <div class="binary-tagline">Temporal pipeline manager</div>
+                </div>
+              </div>
+              <p class="binary-desc">
+                When a model is updated or an entity is resolved, old artifacts need to be
+                re-processed through the new lens. bonfyre-time schedules retroactive re-runs,
+                diffs outputs, fires event triggers, and maintains a full run history.
+              </p>
+              <ul class="cmd-list">
+                <li class="cmd-pill">status</li>
+                <li class="cmd-pill">schedule</li>
+                <li class="cmd-pill">rerun</li>
+                <li class="cmd-pill">diff</li>
+                <li class="cmd-pill">history</li>
+                <li class="cmd-pill">trigger add/list/rm</li>
+              </ul>
+            </div>
+
+            <!-- bonfyre-entity -->
+            <div class="binary-card">
+              <div class="binary-card-head">
+                <div class="binary-icon">🪪</div>
+                <div>
+                  <div class="binary-name">bonfyre-entity</div>
+                  <div class="binary-tagline">Universal identity resolution</div>
+                </div>
+              </div>
+              <p class="binary-desc">
+                Links cross-modal observations — face detections, voice labels, email addresses,
+                place names, text mentions — into a unified identity graph with confidence scores
+                and temporal evolution. Every pipeline that touches people feeds into this graph.
+              </p>
+              <ul class="cmd-list">
+                <li class="cmd-pill">resolve</li>
+                <li class="cmd-pill">show</li>
+                <li class="cmd-pill">merge</li>
+                <li class="cmd-pill">link/unlink</li>
+                <li class="cmd-pill">search</li>
+                <li class="cmd-pill">history</li>
+              </ul>
+            </div>
+
+            <!-- bonfyre-space -->
+            <div class="binary-card">
+              <div class="binary-card-head">
+                <div class="binary-icon">🗄</div>
+                <div>
+                  <div class="binary-name">bonfyre-space</div>
+                  <div class="binary-tagline">Shared memory substrate</div>
+                </div>
+              </div>
+              <p class="binary-desc">
+                Named key-value spaces that pipeline stages attach to instead of writing
+                intermediate files. Stages write outputs into a shared space; downstream
+                stages read directly — no temp files, no copies, no stale paths.
+              </p>
+              <ul class="cmd-list">
+                <li class="cmd-pill">open</li>
+                <li class="cmd-pill">put / get</li>
+                <li class="cmd-pill">list</li>
+                <li class="cmd-pill">stats</li>
+                <li class="cmd-pill">gc</li>
+                <li class="cmd-pill">attach / detach</li>
+              </ul>
+            </div>
+
+            <!-- bonfyre-compete -->
+            <div class="binary-card">
+              <div class="binary-card-head">
+                <div class="binary-icon">⚔</div>
+                <div>
+                  <div class="binary-name">bonfyre-compete</div>
+                  <div class="binary-tagline">Stage/model A/B competition</div>
+                </div>
+              </div>
+              <p class="binary-desc">
+                Registers multiple variants of any pipeline stage, runs them in parallel against
+                real inputs, scores the results on composite HE-SLI metrics, and promotes the winner
+                to production. Every decision is logged and auditable.
+              </p>
+              <ul class="cmd-list">
+                <li class="cmd-pill">pair</li>
+                <li class="cmd-pill">add-variant</li>
+                <li class="cmd-pill">run</li>
+                <li class="cmd-pill">score</li>
+                <li class="cmd-pill">promote / demote</li>
+                <li class="cmd-pill">history</li>
+              </ul>
+            </div>
+
+            <!-- bonfyre-economy -->
+            <div class="binary-card">
+              <div class="binary-card-head">
+                <div class="binary-icon">💰</div>
+                <div>
+                  <div class="binary-name">bonfyre-economy</div>
+                  <div class="binary-tagline">Cost-aware routing</div>
+                </div>
+              </div>
+              <p class="binary-desc">
+                Maintains per-recipe budget caps, tracks actual spend against them, and recommends
+                the cheapest model that still meets the quality bar. Prevents runaway inference costs
+                before they hit the invoice.
+              </p>
+              <ul class="cmd-list">
+                <li class="cmd-pill">budget set/show</li>
+                <li class="cmd-pill">route</li>
+                <li class="cmd-pill">cost estimate</li>
+                <li class="cmd-pill">cost record</li>
+                <li class="cmd-pill">report</li>
+                <li class="cmd-pill">reset</li>
+              </ul>
+            </div>
+
+            <!-- bonfyre-flow -->
+            <div class="binary-card">
+              <div class="binary-card-head">
+                <div class="binary-icon">🌊</div>
+                <div>
+                  <div class="binary-name">bonfyre-flow</div>
+                  <div class="binary-tagline">Coroutine-native pipeline programming</div>
+                </div>
+              </div>
+              <p class="binary-desc">
+                Pipelines as graphs. Define stages, branches (conditional routing), merges (fan-in),
+                and loops as JSON; bonfyre-flow stores, validates, executes, and tracks state for
+                every run. bonfyre-run executes individual stages; bonfyre-flow orchestrates them.
+              </p>
+              <ul class="cmd-list">
+                <li class="cmd-pill">define</li>
+                <li class="cmd-pill">run</li>
+                <li class="cmd-pill">branch</li>
+                <li class="cmd-pill">inspect</li>
+                <li class="cmd-pill">export</li>
+                <li class="cmd-pill">list / status</li>
+              </ul>
+            </div>
+
+            <!-- bonfyre-learn -->
+            <div class="binary-card">
+              <div class="binary-card-head">
+                <div class="binary-icon">🧠</div>
+                <div>
+                  <div class="binary-name">bonfyre-learn</div>
+                  <div class="binary-tagline">Artifact-level reinforcement</div>
+                </div>
+              </div>
+              <p class="binary-desc">
+                Collects outcome signals — user ratings, downstream errors, compete win/loss —
+                and uses rolling averages to automatically tighten or loosen per-stage quality
+                thresholds. Every tune is logged with the before/after values and the reason.
+              </p>
+              <ul class="cmd-list">
+                <li class="cmd-pill">feedback</li>
+                <li class="cmd-pill">tune</li>
+                <li class="cmd-pill">status</li>
+                <li class="cmd-pill">export</li>
+                <li class="cmd-pill">reset</li>
+                <li class="cmd-pill">history</li>
+              </ul>
+            </div>
+
+            <!-- bonfyre-capability -->
+            <div class="binary-card">
+              <div class="binary-card-head">
+                <div class="binary-icon">🔍</div>
+                <div>
+                  <div class="binary-name">bonfyre-capability</div>
+                  <div class="binary-tagline">Capability discovery</div>
+                </div>
+              </div>
+              <p class="binary-desc">
+                A searchable registry of everything Bonfyre can do. Each capability record maps
+                a task description to a binary, a model, a hardware tier, and a cost estimate.
+                Pipeline authors query it instead of hard-coding binary names or model IDs.
+              </p>
+              <ul class="cmd-list">
+                <li class="cmd-pill">list</li>
+                <li class="cmd-pill">search</li>
+                <li class="cmd-pill">show</li>
+                <li class="cmd-pill">match</li>
+                <li class="cmd-pill">register</li>
+                <li class="cmd-pill">index</li>
+              </ul>
+            </div>
+
+            <!-- bonfyre-tier -->
+            <div class="binary-card">
+              <div class="binary-card-head">
+                <div class="binary-icon">📊</div>
+                <div>
+                  <div class="binary-name">bonfyre-tier</div>
+                  <div class="binary-tagline">Latency tier management</div>
+                </div>
+              </div>
+              <p class="binary-desc">
+                Assigns every pipeline stage to a latency tier (instant / fast / batch / deep),
+                validates observed latencies against the SLA, logs violations, and surfaces
+                which stages are routinely blowing their budget. bonfyre-control and
+                bonfyre-economy consult tier routing before every dispatch.
+              </p>
+              <ul class="cmd-list">
+                <li class="cmd-pill">list / show</li>
+                <li class="cmd-pill">set</li>
+                <li class="cmd-pill">route</li>
+                <li class="cmd-pill">record</li>
+                <li class="cmd-pill">violations</li>
+                <li class="cmd-pill">history</li>
+              </ul>
+            </div>
+
+          </div>
+        </div>
+      </section>
+
+      <!-- ─── LATENCY TIERS ─────────────────────────────────────────────── -->
+      <section class="section-pad" style="padding:3.5rem 0;background:var(--swiss-panel-soft);border-top:1px solid var(--swiss-line);border-bottom:1px solid var(--swiss-line);">
+        <div class="shell-container">
+          <h2 style="font-size:1.6rem;margin:0 0 0.5rem;">Four latency tiers. Every stage, every recipe.</h2>
+          <p style="color:var(--swiss-muted);margin:0 0 1.5rem;font-size:0.875rem;">
+            bonfyre-tier enforces SLA contracts at the stage level. bonfyre-control and bonfyre-economy
+            use tier routing to pick the right execution path before dispatching.
+          </p>
+          <table class="metric-table">
+            <thead>
+              <tr>
+                <th>Tier</th>
+                <th>SLA</th>
+                <th>Use cases</th>
+                <th>Typical binaries</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><span class="badge-instant">instant</span></td>
+                <td>&lt; 10 ms</td>
+                <td>In-memory lookups, cache reads, metadata ops, entity resolution</td>
+                <td>bonfyre-entity, bonfyre-space, bonfyre-tier, bonfyre-capability</td>
+              </tr>
+              <tr>
+                <td><span class="badge-fast">fast</span></td>
+                <td>&lt; 100 ms</td>
+                <td>Local model inference, index queries, tagging, summarization (small)</td>
+                <td>bonfyre-tag, bonfyre-brief, bonfyre-economy, bonfyre-control</td>
+              </tr>
+              <tr>
+                <td><span class="badge-batch">batch</span></td>
+                <td>&lt; 10 s</td>
+                <td>Cloud inference, file I/O, moderate GPU compute, translation</td>
+                <td>bonfyre-run, bonfyre-translate, bonfyre-distribute, bonfyre-queue</td>
+              </tr>
+              <tr>
+                <td><span class="badge-deep">deep</span></td>
+                <td>&lt; 10 min</td>
+                <td>Large model inference, full transcription, GPU batch jobs</td>
+                <td>bonfyre-transcribe, bonfyre-model (large), bonfyre-compete</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div class="code-block" style="max-width:620px;margin-top:1.5rem;">
+<span class="comment"># assign stages to tiers for a recipe</span>
+<span class="cmd">bonfyre-tier</span> set podcast transcribe batch
+<span class="cmd">bonfyre-tier</span> set podcast entity-resolve instant
+<span class="cmd">bonfyre-tier</span> set podcast summarize fast
+
+<span class="comment"># log an observed latency and check SLA</span>
+<span class="cmd">bonfyre-tier</span> record podcast transcribe 3200
+<span class="out">recorded: podcast/transcribe 3200ms tier=batch ✓</span>
+
+<span class="comment"># surface violations</span>
+<span class="cmd">bonfyre-tier</span> violations podcast
+<span class="out">RECIPE               STAGE                     MS  TIER      WHEN</span>
+<span class="out">podcast              summarize              14200  fast      2025-06-01 09:12  ← SLA blown</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- ─── HE-SLI SCORING ───────────────────────────────────────────── -->
+      <section class="section-pad" style="padding:3.5rem 0;">
+        <div class="shell-container">
+          <h2 style="font-size:1.6rem;margin:0 0 0.5rem;">HE-SLI: six-dimensional quality scoring.</h2>
+          <p style="color:var(--swiss-muted);margin:0 0 1.5rem;font-size:0.875rem;max-width:680px;">
+            bonfyre-control uses six metrics to produce a composite quality score for every artifact.
+            Scores feed into routing decisions, compete rankings, and learn thresholds — closing the loop.
+          </p>
+          <table class="metric-table">
+            <thead>
+              <tr><th>Metric</th><th>Description</th><th>Range</th><th>Used by</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>relevance</td><td>Does the output address the intended input?</td><td>0.0–1.0</td><td>control, learn, compete</td></tr>
+              <tr><td>completeness</td><td>Is important information missing?</td><td>0.0–1.0</td><td>control, learn</td></tr>
+              <tr><td>coherence</td><td>Is the output internally consistent?</td><td>0.0–1.0</td><td>control, compete</td></tr>
+              <tr><td>factuality</td><td>Does it contradict verifiable facts?</td><td>0.0–1.0</td><td>control, learn</td></tr>
+              <tr><td>latency</td><td>Did the stage meet its tier SLA?</td><td>0.0–1.0</td><td>tier, economy</td></tr>
+              <tr><td>cost</td><td>Did the run stay within budget?</td><td>0.0–1.0</td><td>economy, control</td></tr>
+            </tbody>
+          </table>
+          <p style="color:var(--swiss-muted);font-size:0.8rem;">composite = mean(relevance, completeness, coherence, factuality)</p>
+
+          <div class="code-block" style="max-width:700px;margin-top:1.5rem;">
+<span class="comment"># score an artifact via bonfyre-control</span>
+<span class="cmd">bonfyre-control</span> score <span class="str">"output/run-001/transcript.json"</span> \
+  <span class="flag">--relevance</span> 0.91 <span class="flag">--completeness</span> 0.88 \
+  <span class="flag">--coherence</span> 0.94 <span class="flag">--factuality</span> 0.87 \
+  <span class="flag">--latency-ms</span> 3200 <span class="flag">--cost-usd</span> 0.0006
+
+<span class="out">artifact  : output/run-001/transcript.json</span>
+<span class="out">relevance : 0.910</span>
+<span class="out">completeness: 0.880</span>
+<span class="out">coherence : 0.940</span>
+<span class="out">factuality: 0.870</span>
+<span class="out">latency   : 0.936  (3200ms vs 5000ms SLA)</span>
+<span class="out">cost      : 0.988  ($0.0006 vs $0.05 budget)</span>
+<span class="out">composite : 0.900  ← PASS (threshold: 0.750)</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- ─── DEEP DIVE: SCHEMAS ───────────────────────────────────────── -->
+      <section class="section-pad" style="padding:3.5rem 0;background:var(--swiss-panel-soft);border-top:1px solid var(--swiss-line);border-bottom:1px solid var(--swiss-line);">
+        <div class="shell-container">
+          <h2 style="font-size:1.6rem;margin:0 0 0.5rem;">SQLite schemas. One file per binary.</h2>
+          <p style="color:var(--swiss-muted);margin:0 0 1.5rem;font-size:0.875rem;">
+            Every binary owns its own WAL-mode SQLite database under
+            <code style="font-family:var(--font-mono);font-size:0.8rem;">~/.local/share/bonfyre/&lt;name&gt;.db</code>.
+            Override with <code style="font-family:var(--font-mono);font-size:0.8rem;">$BONFYRE_&lt;NAME&gt;_DB</code>.
+          </p>
+
+          <div class="deep-grid">
+            <div class="deep-card">
+              <h3>bonfyre-control</h3>
+              <p>Stores every policy, routing decision, and HE-SLI score. FTS5 index on policies for fast keyword lookup.</p>
+              <div class="schema-list">policies(id, name, kind, recipe, rule, active)<br>decisions(run_id, recipe, stage, decision, score, latency_ms)<br>scores(artifact, relevance, completeness, coherence, factuality, latency_ms, cost_usd, composite)<br>policies_fts VIRTUAL TABLE fts5</div>
+            </div>
+            <div class="deep-card">
+              <h3>bonfyre-compete</h3>
+              <p>Tracks every competition, variant, and scored result. Promotes winners to the <code>promoted=1</code> flag.</p>
+              <div class="schema-list">competitions(id, recipe, stage, status, created)<br>variants(id, comp_id, label, config, promoted, wins, losses)<br>results(comp_id, variant_id, input_hash, score, metric, latency_ms, ts)</div>
+            </div>
+            <div class="deep-card">
+              <h3>bonfyre-economy</h3>
+              <p>Budget caps, actual costs per run, and routing decisions. <code>reset</code> zeroes spent without dropping history.</p>
+              <div class="schema-list">budgets(recipe, max_usd, spent, reset_period, updated)<br>costs(recipe, stage, model, usd, tokens, ts)<br>routes(recipe, chosen_model, reason, ts)</div>
+            </div>
+            <div class="deep-card">
+              <h3>bonfyre-entity</h3>
+              <p>Identity graph with confidence-weighted cross-modal observations. Merge operation re-points all observations, then deletes the source entity.</p>
+              <div class="schema-list">entities(id, display, kind, confidence, obs_count, first_seen, last_seen)<br>observations(entity, modal, value, source, confidence, ts)<br>links(a, b, confidence, reason, created)<br>entities_fts VIRTUAL TABLE fts5</div>
+            </div>
+            <div class="deep-card">
+              <h3>bonfyre-learn</h3>
+              <p>Rolling feedback with rolling-window threshold tuning. Seeded with defaults for 7 built-in stages at first open.</p>
+              <div class="schema-list">feedback(run_id, stage, score, label, ts)<br>thresholds(stage, quality[0.75], latency_ms[5000], updated)<br>optimizations(stage, metric, old_val, new_val, reason, ts)</div>
+            </div>
+            <div class="deep-card">
+              <h3>bonfyre-tier</h3>
+              <p>Tier SLAs seeded on first open. Every stage assignment + observed latency logged with a <code>violated</code> boolean.</p>
+              <div class="schema-list">tiers(name, max_ms, description) ← instant/fast/batch/deep<br>assignments(recipe, stage, tier, updated)<br>observations(recipe, stage, latency_ms, violated, tier, ts)</div>
+            </div>
+            <div class="deep-card">
+              <h3>bonfyre-flow</h3>
+              <p>Full flow graph stored as JSON blob. Edges carry kind (seq | branch | merge | loop) and an optional condition expression.</p>
+              <div class="schema-list">flows(id, name, definition_json, entry_stage, created, updated)<br>edges(flow_id, from_stage, to_stage, kind, condition)<br>runs(id, flow_id, input, status, current_stage, started, finished)<br>run_stages(run_id, stage, status, started, done, output)</div>
+            </div>
+            <div class="deep-card">
+              <h3>bonfyre-capability</h3>
+              <p>15 built-in capability records seeded at first open. FTS5 index for natural-language search. Register custom capabilities via JSON manifests.</p>
+              <div class="schema-list">capabilities(id, name, description, tags, binary, command, model_id, hardware_tier, cost_estimate, latency_tier, updated)<br>cap_fts VIRTUAL TABLE fts5</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ─── END-TO-END WALKTHROUGH ────────────────────────────────────── -->
+      <section class="section-pad" style="padding:3.5rem 0;">
+        <div class="shell-container">
+          <h2 style="font-size:1.6rem;margin:0 0 0.5rem;">End-to-end walkthrough: a self-improving podcast pipeline.</h2>
+          <p style="color:var(--swiss-muted);margin:0 0 0.25rem;font-size:0.875rem;max-width:680px;">
+            Start with a raw audio file. End with a continuously improving, cost-capped, SLA-enforced
+            pipeline that gets better every time it runs.
+          </p>
+
+          <ol class="flow-steps">
+            <li>
+              Ingest: <code>bonfyre-intake add episode.mp3</code> → artifact registered, space allocated via <code>bonfyre-space open podcast-ep1</code>.
+            </li>
+            <li>
+              Capability lookup: <code>bonfyre-capability match "transcribe spoken audio to text"</code> → finds <code>speech-to-text</code> → binary: <code>bonfyre-transcribe</code>, model: <code>whisper-large</code>, tier: <code>batch</code>.
+            </li>
+            <li>
+              Budget check: <code>bonfyre-economy route podcast</code> → <code>whisper-large</code> at $0.006/min within $0.50 cap. Approved.
+            </li>
+            <li>
+              Tier check: <code>bonfyre-tier route podcast transcribe</code> → tier=batch, SLA=10s.
+            </li>
+            <li>
+              Execute: <code>bonfyre-run --recipe podcast --stage transcribe</code> → output written to <code>bonfyre-space put podcast-ep1 transcript …</code>.
+            </li>
+            <li>
+              Latency log: <code>bonfyre-tier record podcast transcribe 3200</code> → SLA met ✓.
+            </li>
+            <li>
+              Cost log: <code>bonfyre-economy cost record podcast transcribe whisper-large 0.0006</code>.
+            </li>
+            <li>
+              Score: <code>bonfyre-control score output/transcript.json</code> → composite 0.90 → PASS.
+            </li>
+            <li>
+              Entity resolution: <code>bonfyre-entity resolve voice "Speaker_1"</code> → linked to <code>entity-002 (Alice Chen)</code>. bonfyre-time fires <code>entity_resolved</code> trigger.
+            </li>
+            <li>
+              Feedback: <code>bonfyre-learn feedback run-001 0.90 good</code> → rolling avg updates.
+            </li>
+            <li>
+              Threshold tune: <code>bonfyre-learn tune transcribe</code> → avg 0.90 &gt; threshold 0.75+0.10 → raise gate by 0.02 → new threshold: 0.77. Logged.
+            </li>
+            <li>
+              Next run: <code>bonfyre-control route podcast</code> consults updated thresholds, economy budget, tier SLAs → dispatches with refined gate. Loop closed.
+            </li>
+          </ol>
+        </div>
+      </section>
+
+      <!-- ─── BUILT-IN CAPABILITIES ────────────────────────────────────── -->
+      <section class="section-pad" style="padding:3.5rem 0;background:var(--swiss-panel-soft);border-top:1px solid var(--swiss-line);border-bottom:1px solid var(--swiss-line);">
+        <div class="shell-container">
+          <h2 style="font-size:1.6rem;margin:0 0 0.5rem;">15 built-in capabilities. Instantly queryable.</h2>
+          <p style="color:var(--swiss-muted);margin:0 0 1.5rem;font-size:0.875rem;">
+            <code style="font-family:var(--font-mono);font-size:0.8rem;">bonfyre-capability</code> seeds 15 records on first open.
+            Search by natural language; get back a binary, model, hardware tier, and cost estimate.
+          </p>
+          <table class="metric-table">
+            <thead>
+              <tr><th>ID</th><th>Name</th><th>Binary</th><th>Tier</th><th>Cost/call</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>audio-ingest</td><td>Audio Ingest</td><td>bonfyre-intake</td><td><span class="badge-instant">instant</span></td><td>$0.001</td></tr>
+              <tr><td>speech-to-text</td><td>Speech to Text</td><td>bonfyre-transcribe</td><td><span class="badge-batch">batch</span></td><td>$0.006</td></tr>
+              <tr><td>speaker-diarize</td><td>Speaker Diarization</td><td>bonfyre-transcribe</td><td><span class="badge-batch">batch</span></td><td>$0.010</td></tr>
+              <tr><td>summarize-text</td><td>Text Summarization</td><td>bonfyre-brief</td><td><span class="badge-fast">fast</span></td><td>$0.002</td></tr>
+              <tr><td>entity-resolve</td><td>Entity Resolution</td><td>bonfyre-entity</td><td><span class="badge-instant">instant</span></td><td>$0.000</td></tr>
+              <tr><td>translate-text</td><td>Text Translation</td><td>bonfyre-translate</td><td><span class="badge-fast">fast</span></td><td>$0.005</td></tr>
+              <tr><td>tag-artifact</td><td>Artifact Tagging</td><td>bonfyre-tag</td><td><span class="badge-fast">fast</span></td><td>$0.001</td></tr>
+              <tr><td>quality-eval</td><td>Quality Evaluation</td><td>bonfyre-control</td><td><span class="badge-instant">instant</span></td><td>$0.000</td></tr>
+              <tr><td>cost-route</td><td>Cost-Aware Routing</td><td>bonfyre-economy</td><td><span class="badge-instant">instant</span></td><td>$0.000</td></tr>
+              <tr><td>ab-compete</td><td>A/B Competition</td><td>bonfyre-compete</td><td><span class="badge-fast">fast</span></td><td>$0.000</td></tr>
+              <tr><td>flow-define</td><td>Flow Definition</td><td>bonfyre-flow</td><td><span class="badge-instant">instant</span></td><td>$0.000</td></tr>
+              <tr><td>memory-space</td><td>Shared Memory</td><td>bonfyre-space</td><td><span class="badge-instant">instant</span></td><td>$0.000</td></tr>
+              <tr><td>threshold-tune</td><td>Threshold Tuning</td><td>bonfyre-learn</td><td><span class="badge-fast">fast</span></td><td>$0.000</td></tr>
+              <tr><td>distribute</td><td>Distribution</td><td>bonfyre-distribute</td><td><span class="badge-batch">batch</span></td><td>$0.010</td></tr>
+              <tr><td>batch-queue</td><td>Batch Queue</td><td>bonfyre-queue</td><td><span class="badge-instant">instant</span></td><td>$0.000</td></tr>
+            </tbody>
+          </table>
+
+          <div class="code-block" style="margin-top:1.5rem;max-width:620px;">
+<span class="comment"># natural-language capability matching</span>
+<span class="cmd">bonfyre-capability</span> match <span class="str">"identify speakers in audio recording"</span>
+<span class="out">  speaker-diarize   bonfyre-transcribe  $0.0100</span>
+<span class="out">  speech-to-text    bonfyre-transcribe  $0.0060</span>
+<span class="out">  entity-resolve    bonfyre-entity      $0.0000</span>
+
+<span class="comment"># full-text search</span>
+<span class="cmd">bonfyre-capability</span> search transcrib
+<span class="out">ID                    BINARY               DESCRIPTION</span>
+<span class="out">speech-to-text        bonfyre-transcribe   Transcribe audio to text using Whisper</span>
+<span class="out">speaker-diarize       bonfyre-transcribe   Identify and separate speakers</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- ─── QUICK-REFERENCE COMMAND TABLE ───────────────────────────── -->
+      <section class="section-pad" style="padding:3.5rem 0;">
+        <div class="shell-container">
+          <h2 style="font-size:1.6rem;margin:0 0 1.5rem;">Command reference</h2>
+
+          <table class="metric-table">
+            <thead>
+              <tr><th>Binary</th><th>Key commands</th><th>DB location</th><th>Env override</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td style="font-family:var(--font-mono);color:var(--swiss-orange);">bonfyre-control</td>
+                <td>status · score · route · compete · evict · policy · watch</td>
+                <td style="font-family:var(--font-mono);font-size:0.78rem;">~/.local/share/bonfyre/control.db</td>
+                <td style="font-family:var(--font-mono);font-size:0.78rem;">$BONFYRE_CONTROL_DB</td>
+              </tr>
+              <tr>
+                <td style="font-family:var(--font-mono);color:var(--swiss-orange);">bonfyre-time</td>
+                <td>status · schedule · rerun · diff · history · trigger</td>
+                <td style="font-family:var(--font-mono);font-size:0.78rem;">~/.local/share/bonfyre/time.db</td>
+                <td style="font-family:var(--font-mono);font-size:0.78rem;">$BONFYRE_TIME_DB</td>
+              </tr>
+              <tr>
+                <td style="font-family:var(--font-mono);color:var(--swiss-orange);">bonfyre-entity</td>
+                <td>resolve · show · merge · link/unlink · search · history</td>
+                <td style="font-family:var(--font-mono);font-size:0.78rem;">~/.local/share/bonfyre/entity.db</td>
+                <td style="font-family:var(--font-mono);font-size:0.78rem;">$BONFYRE_ENTITY_DB</td>
+              </tr>
+              <tr>
+                <td style="font-family:var(--font-mono);color:var(--swiss-orange);">bonfyre-space</td>
+                <td>open · put · get · list · stats · gc · attach/detach</td>
+                <td style="font-family:var(--font-mono);font-size:0.78rem;">~/.local/share/bonfyre/space.db</td>
+                <td style="font-family:var(--font-mono);font-size:0.78rem;">$BONFYRE_SPACE_DB</td>
+              </tr>
+              <tr>
+                <td style="font-family:var(--font-mono);color:var(--swiss-orange);">bonfyre-compete</td>
+                <td>pair · add-variant · run · score · promote/demote · history</td>
+                <td style="font-family:var(--font-mono);font-size:0.78rem;">~/.local/share/bonfyre/compete.db</td>
+                <td style="font-family:var(--font-mono);font-size:0.78rem;">$BONFYRE_COMPETE_DB</td>
+              </tr>
+              <tr>
+                <td style="font-family:var(--font-mono);color:var(--swiss-orange);">bonfyre-economy</td>
+                <td>budget set/show · route · cost estimate/record · report · reset</td>
+                <td style="font-family:var(--font-mono);font-size:0.78rem;">~/.local/share/bonfyre/economy.db</td>
+                <td style="font-family:var(--font-mono);font-size:0.78rem;">$BONFYRE_ECONOMY_DB</td>
+              </tr>
+              <tr>
+                <td style="font-family:var(--font-mono);color:var(--swiss-orange);">bonfyre-flow</td>
+                <td>define · run · branch · inspect · export · list · rm</td>
+                <td style="font-family:var(--font-mono);font-size:0.78rem;">~/.local/share/bonfyre/flow.db</td>
+                <td style="font-family:var(--font-mono);font-size:0.78rem;">$BONFYRE_FLOW_DB</td>
+              </tr>
+              <tr>
+                <td style="font-family:var(--font-mono);color:var(--swiss-orange);">bonfyre-learn</td>
+                <td>feedback · tune · status · export · reset · history</td>
+                <td style="font-family:var(--font-mono);font-size:0.78rem;">~/.local/share/bonfyre/learn.db</td>
+                <td style="font-family:var(--font-mono);font-size:0.78rem;">$BONFYRE_LEARN_DB</td>
+              </tr>
+              <tr>
+                <td style="font-family:var(--font-mono);color:var(--swiss-orange);">bonfyre-capability</td>
+                <td>list · search · show · match · register · index</td>
+                <td style="font-family:var(--font-mono);font-size:0.78rem;">~/.local/share/bonfyre/capability.db</td>
+                <td style="font-family:var(--font-mono);font-size:0.78rem;">$BONFYRE_CAPABILITY_DB</td>
+              </tr>
+              <tr>
+                <td style="font-family:var(--font-mono);color:var(--swiss-orange);">bonfyre-tier</td>
+                <td>list · show · set · route · record · violations · history</td>
+                <td style="font-family:var(--font-mono);font-size:0.78rem;">~/.local/share/bonfyre/tier.db</td>
+                <td style="font-family:var(--font-mono);font-size:0.78rem;">$BONFYRE_TIER_DB</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ─── CTA ──────────────────────────────────────────────────────── -->
+      <section style="padding:4rem 0;text-align:center;border-top:1px solid var(--swiss-line);">
+        <div class="shell-container">
+          <h2 style="font-size:1.9rem;margin:0 0 1rem;">The full system is open source.</h2>
+          <p style="color:var(--swiss-muted);margin:0 0 2rem;font-size:0.95rem;max-width:560px;margin-left:auto;margin-right:auto;">
+            63 binaries, C11, zero external dependencies beyond SQLite3 and system libc.
+            Build the control layer in under a minute.
+          </p>
+          <div style="display:flex;gap:1rem;justify-content:center;flex-wrap:wrap;">
+            <a href="https://github.com/Nickgonzales76017/bonfyre-oss" target="_blank" rel="noreferrer"
+               style="display:inline-flex;align-items:center;gap:0.5rem;background:var(--swiss-ink);color:#fff;padding:0.8rem 1.75rem;border-radius:8px;text-decoration:none;font-weight:600;font-size:0.9rem;">
+              View on GitHub
+            </a>
+            <a href="recipe-run.html"
+               style="display:inline-flex;align-items:center;gap:0.5rem;background:var(--swiss-panel-soft);border:1.5px solid var(--swiss-line);color:var(--swiss-ink);padding:0.8rem 1.75rem;border-radius:8px;text-decoration:none;font-weight:600;font-size:0.9rem;">
+              Pipeline Reference →
+            </a>
+            <a href="docs.html"
+               style="display:inline-flex;align-items:center;gap:0.5rem;background:var(--swiss-panel-soft);border:1.5px solid var(--swiss-line);color:var(--swiss-ink);padding:0.8rem 1.75rem;border-radius:8px;text-decoration:none;font-weight:600;font-size:0.9rem;">
+              Technical Docs →
+            </a>
+          </div>
+        </div>
+      </section>
+
+    </main>
+
+    <footer class="site-footer">
+      <div class="shell-container footer-row">
+        <span class="footer-brand">🔥 Bonfyre</span>
+        <span class="footer-copy">Open-source audio intelligence pipeline. MIT License.</span>
+        <nav class="footer-nav" aria-label="Footer">
+          <a href="index.html">Overview</a>
+          <a href="control-layer.html">Control Layer</a>
+          <a href="recipe-run.html">Pipelines</a>
+          <a href="docs.html">Docs</a>
+          <a href="https://github.com/Nickgonzales76017/bonfyre-oss" target="_blank" rel="noreferrer">GitHub</a>
+        </nav>
+      </div>
+    </footer>
+  </div>
+  <script src="assets/site.js"></script>
+</body>
+</html>
