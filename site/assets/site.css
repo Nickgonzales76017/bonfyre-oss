@@ -159,9 +159,14 @@ img {
   overflow: hidden;
 }
 
+@keyframes ticker-scroll {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
 .ticker-row {
   display: flex;
-  gap: 28px;
+  width: max-content;
   align-items: center;
   white-space: nowrap;
   min-height: 44px;
@@ -169,10 +174,28 @@ img {
   font-size: 0.88rem;
   letter-spacing: 0.04em;
   text-transform: uppercase;
+  animation: ticker-scroll 28s linear infinite;
+  will-change: transform;
+}
+
+.ticker-row:hover {
+  animation-play-state: paused;
 }
 
 .ticker-row .dot {
   color: var(--swiss-orange);
+}
+
+.ticker-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 24px;
+}
+
+.ticker-item .num {
+  color: var(--swiss-orange);
+  font-weight: 600;
 }
 
 .page-hero {
