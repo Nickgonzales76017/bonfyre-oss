@@ -175,10 +175,6 @@
               <span class="metric-value green">10</span>
               <span class="metric-label">Built-in model deps</span>
             </article>
-            <article class="metric-card">
-              <span class="metric-value green">10</span>
-              <span class="metric-label">Built-in model deps</span>
-            </article>
           </div>
         </div>
       </section>
@@ -217,6 +213,18 @@
 <span class="cmd">bonfyre-run</span> <span class="path">P1</span> deliverable/ <span class="flag">--from-stage</span> proof
 <span class="cmd">bonfyre-run</span> <span class="path">R1</span> ./myrepo <span class="flag">--batch</span> repos/
 <span class="cmd">bonfyre-run</span> validate <span class="path">A1</span></div>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">bonfyre-model</span>
+              <h3>The model dependency manager</h3>
+              <p>A SQLite-backed content-addressed registry of AI model weights. Every recipe that touches AI stages declares a list of model IDs. <code>bonfyre-model pull --recipe A3</code> resolves all dependencies for that recipe, iterates each model's source priority chain (swarm → file → s3 → HuggingFace → https), downloads to a local cache, verifies SHA-256, and marks the model ready. Built-in models are seeded on first run — no manual setup required.</p>
+              <div class="code-block">
+<span class="cmd">bonfyre-model</span> pull <span class="flag">--recipe</span> <span class="path">A1</span>   <span class="comment"># ~150 MB</span>
+<span class="cmd">bonfyre-model</span> pull <span class="flag">--recipe</span> <span class="path">A3</span>   <span class="comment"># full suite ~8 GB</span>
+<span class="cmd">bonfyre-model</span> list
+<span class="cmd">bonfyre-model</span> show <span class="path">whisper-large-v3</span>
+<span class="cmd">bonfyre-model</span> verify <span class="path">llama-3-8b-instruct</span>
+<span class="cmd">bonfyre-model</span> status</div>
             </article>
           </div>
         </div>
@@ -575,6 +583,211 @@ bonfyre-transcribe /tmp/run01/ingest \
               <p style="margin-top:1rem;font-size:0.85rem;color:var(--text-2)">Registry DB: <code>~/.local/share/bonfyre/recipes.db</code> — override with <code>$BONFYRE_RECIPE_DB</code></p>
               <p style="font-size:0.85rem;color:var(--text-2)">FTS5 full-text search covers code, name, description, and stage binary names.</p>
             </article>
+            <article class="feature-card">
+              <span class="card-meta">bonfyre-model</span>
+              <h3>Managing model deps</h3>
+              <div class="code-block">
+<span class="comment"># List all registered models</span>
+<span class="cmd">bonfyre-model</span> list
+
+<span class="comment"># Show full record for one model</span>
+<span class="cmd">bonfyre-model</span> show <span class="path">whisper-large-v3</span>
+
+<span class="comment"># Pull all deps for a recipe code</span>
+<span class="cmd">bonfyre-model</span> pull <span class="flag">--recipe</span> <span class="path">A3</span>
+
+<span class="comment"># Pull a specific model by id</span>
+<span class="cmd">bonfyre-model</span> pull <span class="path">llama-3-8b-instruct</span>
+
+<span class="comment"># Verify cached file matches SHA-256</span>
+<span class="cmd">bonfyre-model</span> verify <span class="path">llama-3-8b-instruct</span>
+
+<span class="comment"># Print local cache path</span>
+<span class="cmd">bonfyre-model</span> path <span class="path">whisper-base</span>
+
+<span class="comment"># Add a custom model from a manifest</span>
+<span class="cmd">bonfyre-model</span> add <span class="path">model-manifest.json</span>
+
+<span class="comment"># Remove from registry (keep cache)</span>
+<span class="cmd">bonfyre-model</span> rm <span class="path">llama-3-70b-instruct-fpq</span>
+
+<span class="comment"># Remove registry record AND cached files</span>
+<span class="cmd">bonfyre-model</span> rm <span class="path">llama-3-70b-instruct-fpq</span> <span class="flag">--purge</span>
+
+<span class="comment"># List all downloaded files in cache</span>
+<span class="cmd">bonfyre-model</span> ls-cache
+
+<span class="comment"># Full-text search across model records</span>
+<span class="cmd">bonfyre-model</span> search whisper
+
+<span class="comment"># Show/add/remove sources for a model</span>
+<span class="cmd">bonfyre-model</span> sources <span class="path">whisper-large-v3</span>
+<span class="cmd">bonfyre-model</span> source add <span class="path">whisper-large-v3</span> <span class="path">"file:///data/models/wl3.gguf"</span> <span class="flag">--priority</span> 0
+
+<span class="comment"># DB status (count, size, path)</span>
+<span class="cmd">bonfyre-model</span> status</div>
+              <table class="opts-table" style="margin-top:1rem">
+                <tr><td>--db FILE</td><td></td><td>Override model registry path (default: <code>~/.local/share/bonfyre/models.db</code>)</td></tr>
+                <tr><td>--cache DIR</td><td></td><td>Override cache directory (default: <code>~/.cache/bonfyre/models/</code>)</td></tr>
+                <tr><td>--skip-check</td><td></td><td>Skip SHA-256 verification on pull</td></tr>
+              </table>
+              <p style="margin-top:1rem;font-size:0.85rem;color:var(--text-2)">Registry DB: <code>~/.local/share/bonfyre/models.db</code> — override with <code>$BONFYRE_MODEL_DB</code>. Cache root: <code>~/.cache/bonfyre/models/</code> — override with <code>$BONFYRE_MODEL_CACHE</code>.</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+
+      <!-- Model dependencies section -->
+      <section class="section" id="model-deps">
+        <div class="shell-container">
+          <div class="section-header">
+            <div>
+              <span class="section-kicker">Model dependencies</span>
+              <h2 class="section-title">Every recipe that uses AI declares its models.</h2>
+              <p class="section-copy">bonfyre-model is the third leg of the tripod. Before bonfyre-run fires any AI stage, the required weights must be present in the local cache and hash-verified. The registry maps each recipe code to the exact model IDs it needs — no guessing, no manual file management.</p>
+            </div>
+          </div>
+          <div class="feature-grid">
+
+            <article class="feature-card" style="grid-column:1/-1">
+              <span class="card-meta">Built-in model-to-recipe map</span>
+              <h3>Which models each recipe pulls.</h3>
+              <p style="margin-bottom:1rem;font-size:0.9rem;color:var(--text-2)">Run <code>bonfyre-model pull --recipe CODE</code> to fetch all deps for a specific code. Sizes are on-disk after download.</p>
+              <div style="overflow-x:auto">
+              <table class="opts-table" style="width:100%;border-collapse:collapse">
+                <thead>
+                  <tr style="border-bottom:1px solid var(--border)">
+                    <th style="text-align:left;padding:0.5rem 0.75rem;font-size:0.8rem;color:var(--text-2);font-weight:600">Recipe</th>
+                    <th style="text-align:left;padding:0.5rem 0.75rem;font-size:0.8rem;color:var(--text-2);font-weight:600">Models required</th>
+                    <th style="text-align:left;padding:0.5rem 0.75rem;font-size:0.8rem;color:var(--text-2);font-weight:600">Roles</th>
+                    <th style="text-align:right;padding:0.5rem 0.75rem;font-size:0.8rem;color:var(--text-2);font-weight:600">Total size</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr style="border-bottom:1px solid var(--border)">
+                    <td style="padding:0.5rem 0.75rem"><code>A1</code></td>
+                    <td style="padding:0.5rem 0.75rem;font-size:0.85rem">silero-vad, whisper-base</td>
+                    <td style="padding:0.5rem 0.75rem;font-size:0.85rem;color:var(--text-2)">score, transcribe</td>
+                    <td style="padding:0.5rem 0.75rem;text-align:right;font-size:0.85rem">~150 MB</td>
+                  </tr>
+                  <tr style="border-bottom:1px solid var(--border)">
+                    <td style="padding:0.5rem 0.75rem"><code>A2</code></td>
+                    <td style="padding:0.5rem 0.75rem;font-size:0.85rem">silero-vad, whisper-medium, nomic-embed-text, llama-3-8b-instruct</td>
+                    <td style="padding:0.5rem 0.75rem;font-size:0.85rem;color:var(--text-2)">score, transcribe, embed, infer</td>
+                    <td style="padding:0.5rem 0.75rem;text-align:right;font-size:0.85rem">~5.6 GB</td>
+                  </tr>
+                  <tr style="border-bottom:1px solid var(--border)">
+                    <td style="padding:0.5rem 0.75rem"><code>A3</code></td>
+                    <td style="padding:0.5rem 0.75rem;font-size:0.85rem">silero-vad, whisper-large-v3, pyannote-speaker-segmentation, nomic-embed-text, bge-reranker-base, llama-3-8b-instruct, <em>llama-3-70b-instruct-fpq (--tier pro)</em></td>
+                    <td style="padding:0.5rem 0.75rem;font-size:0.85rem;color:var(--text-2)">score, transcribe, score, embed, score, infer, infer</td>
+                    <td style="padding:0.5rem 0.75rem;text-align:right;font-size:0.85rem">~8 GB / ~17 GB pro</td>
+                  </tr>
+                  <tr style="border-bottom:1px solid var(--border)">
+                    <td style="padding:0.5rem 0.75rem"><code>M1</code></td>
+                    <td style="padding:0.5rem 0.75rem;font-size:0.85rem">silero-vad, whisper-large-v3, pyannote-speaker-segmentation, llama-3-8b-instruct-fpq</td>
+                    <td style="padding:0.5rem 0.75rem;font-size:0.85rem;color:var(--text-2)">score, transcribe, score, infer</td>
+                    <td style="padding:0.5rem 0.75rem;text-align:right;font-size:0.85rem">~5 GB</td>
+                  </tr>
+                  <tr style="border-bottom:1px solid var(--border)">
+                    <td style="padding:0.5rem 0.75rem"><code>V1</code></td>
+                    <td style="padding:0.5rem 0.75rem;font-size:0.85rem">silero-vad, whisper-medium, llama-3-8b-instruct</td>
+                    <td style="padding:0.5rem 0.75rem;font-size:0.85rem;color:var(--text-2)">score, transcribe, infer</td>
+                    <td style="padding:0.5rem 0.75rem;text-align:right;font-size:0.85rem">~5.4 GB</td>
+                  </tr>
+                  <tr style="border-bottom:1px solid var(--border)">
+                    <td style="padding:0.5rem 0.75rem"><code>R1</code></td>
+                    <td style="padding:0.5rem 0.75rem;font-size:0.85rem">nomic-embed-text, llama-3-8b-instruct</td>
+                    <td style="padding:0.5rem 0.75rem;font-size:0.85rem;color:var(--text-2)">embed, infer</td>
+                    <td style="padding:0.5rem 0.75rem;text-align:right;font-size:0.85rem">~4.9 GB</td>
+                  </tr>
+                  <tr>
+                    <td style="padding:0.5rem 0.75rem"><code>P1, P2, L1, G1</code></td>
+                    <td style="padding:0.5rem 0.75rem;font-size:0.85rem;color:var(--text-2)">—</td>
+                    <td style="padding:0.5rem 0.75rem;font-size:0.85rem;color:var(--text-2)">No model deps (proof/hash/sign/log/git operations)</td>
+                    <td style="padding:0.5rem 0.75rem;text-align:right;font-size:0.85rem">0 MB</td>
+                  </tr>
+                </tbody>
+              </table>
+              </div>
+            </article>
+
+            <article class="feature-card">
+              <span class="card-meta">Source priority chain</span>
+              <h3>Five sources. One retrieval order.</h3>
+              <p style="margin-bottom:1rem">When you pull a model, bonfyre-model iterates its registered sources in priority order (0 = highest priority) and stops at the first success. No vendor lock-in — you choose where each model lives.</p>
+              <table class="opts-table" style="width:100%">
+                <tr>
+                  <td style="width:2rem;font-weight:600;color:var(--text-2)">0</td>
+                  <td><code>swarm://</code></td>
+                  <td style="font-size:0.85rem;color:var(--text-2)">P2P local swarm via bonfyre-swarm. Fastest when a peer already has the model.</td>
+                </tr>
+                <tr>
+                  <td style="color:var(--text-2)">1</td>
+                  <td><code>file://</code></td>
+                  <td style="font-size:0.85rem;color:var(--text-2)">Local filesystem path. Copy from a shared NAS, external drive, or build artifact.</td>
+                </tr>
+                <tr>
+                  <td style="color:var(--text-2)">2</td>
+                  <td><code>s3://</code></td>
+                  <td style="font-size:0.85rem;color:var(--text-2)">AWS S3 or any S3-compatible store (MinIO, R2) via <code>aws s3 cp</code>.</td>
+                </tr>
+                <tr>
+                  <td style="color:var(--text-2)">3</td>
+                  <td><code>hf://</code></td>
+                  <td style="font-size:0.85rem;color:var(--text-2)">HuggingFace Hub. Resolved to a plain HTTPS range-request — no Python SDK needed.</td>
+                </tr>
+                <tr>
+                  <td style="color:var(--text-2)">4</td>
+                  <td><code>https://</code></td>
+                  <td style="font-size:0.85rem;color:var(--text-2)">Any HTTPS URL. Falls back to curl or wget, whichever is on PATH.</td>
+                </tr>
+              </table>
+              <div class="code-block" style="margin-top:1.25rem">
+<span class="comment"># Override built-in source with a local copy (priority 0 = first)</span>
+<span class="cmd">bonfyre-model</span> source add <span class="path">whisper-large-v3</span>   <span class="path">"file:///mnt/models/wl3.gguf"</span> <span class="flag">--priority</span> 0
+
+<span class="comment"># Add a private S3 mirror</span>
+<span class="cmd">bonfyre-model</span> source add <span class="path">llama-3-8b-instruct</span>   <span class="path">"s3://my-bucket/models/llama3-8b.gguf"</span> <span class="flag">--priority</span> 1
+
+<span class="comment"># See all sources with priorities</span>
+<span class="cmd">bonfyre-model</span> sources <span class="path">whisper-large-v3</span></div>
+            </article>
+
+            <article class="feature-card">
+              <span class="card-meta">Custom model manifests</span>
+              <h3>Register any model from any source.</h3>
+              <p style="margin-bottom:1rem">If your recipe uses a private fine-tuned model or a model not in the built-in list, register it with a JSON manifest and <code>bonfyre-model add</code>. Then reference it by ID in your recipe JSON just like a built-in model.</p>
+              <div class="code-block">
+<span class="comment">// model-manifest.json</span>
+{
+  <span class="flag">"id"</span>:       <span class="path">"my-finetuned-whisper"</span>,
+  <span class="flag">"format"</span>:  <span class="path">"gguf"</span>,
+  <span class="flag">"size_mb"</span>: <span class="path">800</span>,
+  <span class="flag">"sources"</span>: [
+    {
+      <span class="flag">"url"</span>:      <span class="path">"file:///data/models/finetuned-ws.gguf"</span>,
+      <span class="flag">"priority"</span>: <span class="path">0</span>
+    },
+    {
+      <span class="flag">"url"</span>:      <span class="path">"s3://my-bucket/models/finetuned-ws.gguf"</span>,
+      <span class="flag">"priority"</span>: <span class="path">1</span>
+    }
+  ]
+}
+
+<span class="comment"># Register it</span>
+<span class="cmd">bonfyre-model</span> add <span class="path">model-manifest.json</span>
+
+<span class="comment"># Now reference it in your recipe JSON:</span>
+<span class="comment">// "models": [{"id": "my-finetuned-whisper", "role": "transcribe"}]</span>
+
+<span class="comment"># Pull before running</span>
+<span class="cmd">bonfyre-model</span> pull <span class="path">my-finetuned-whisper</span>
+<span class="cmd">bonfyre-run</span> <span class="path">X1</span> recording.wav</div>
+              <p style="margin-top:0.9rem;font-size:0.85rem;color:var(--text-2)">SHA-256 is computed on first pull and stored in the registry. Subsequent pulls skip the download if the cached file verifies. Use <code>--skip-check</code> to bypass SHA-256 verification (fast, but not recommended for production).</p>
+            </article>
+
           </div>
         </div>
       </section>
@@ -599,6 +812,10 @@ bonfyre-transcribe /tmp/run01/ingest \
   <span class="flag">"name"</span>:        <span class="path">"My custom pipeline"</span>,
   <span class="flag">"version"</span>:     <span class="path">"1.0.0"</span>,
   <span class="flag">"description"</span>: <span class="path">"Ingest + transcribe + custom-analyze"</span>,
+  <span class="flag">"models"</span>: [
+    { <span class="flag">"id"</span>: <span class="path">"whisper-large-v3"</span>, <span class="flag">"role"</span>: <span class="path">"transcribe"</span> },
+    { <span class="flag">"id"</span>: <span class="path">"llama-3-8b-instruct"</span>, <span class="flag">"role"</span>: <span class="path">"infer"</span> }
+  ],
   <span class="flag">"stages"</span>: [
     {
       <span class="flag">"id"</span>:         <span class="path">"ingest"</span>,
@@ -624,8 +841,12 @@ bonfyre-transcribe /tmp/run01/ingest \
 <span class="comment"># Register it:</span>
 <span class="cmd">bonfyre-recipe</span> add my-pipeline.json
 
-<span class="comment"># Run it:</span>
+<span class="comment"># Pull declared model deps before running:</span>
+<span class="cmd">bonfyre-model</span> pull <span class="flag">--recipe</span> <span class="path">X1</span>
+
+<span class="comment"># Run it (models already cached):</span>
 <span class="cmd">bonfyre-run</span> <span class="path">X1</span> recording.wav</div>
+              <p style="margin-top:0.9rem;font-size:0.85rem;color:var(--text-2)">The <code>"models"</code> field is optional for recipes that use no AI stages. When present, <code>bonfyre-model pull --recipe X1</code> fetches every listed model in priority-chain order and verifies SHA-256 before bonfyre-run fires any stage. Custom model IDs must be registered with <code>bonfyre-model add model-manifest.json</code> first.</p>
             </article>
             <article class="feature-card">
               <span class="card-meta">Getting started</span>
