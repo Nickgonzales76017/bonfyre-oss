@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>BonfyreFPQ — Model Compression</title>
+  <meta name="description" content="Fountain-coded Polynomial Quantisation. FP32 to INT8 with SIMD decode, 4× model size reduction, 99.97% cosine similarity preserved.">
+  <link rel="stylesheet" href="assets/site.css">
+</head>
+<body>
+  <div class="layout">
+    <header class="topnav">
+      <div class="shell-container nav-row">
+        <a class="nav-logo" href="index.html">Bonfyre</a>
+        <nav class="nav-links" aria-label="Primary">
+          <a href="explore.html">Explore</a>
+          <a href="docs.html">Docs</a>
+          <a href="apps.html">Apps</a>
+          <a href="changelog.html">Changelog</a>
+          <a href="https://github.com/Nickgonzales76017/bonfyre-oss" target="_blank" rel="noreferrer">GitHub</a>
+        </nav>
+      </div>
+    </header>
+
+    <main>
+      <!-- Hero -->
+      <section class="section hero-section">
+        <div class="shell-container">
+          <div class="hero-eyebrow">
+            <a href="docs.html">← Back to docs</a>
+          </div>
+          <h1 class="hero-title">BonfyreFPQ</h1>
+          <p class="hero-sub">Fountain-coded Polynomial Quantisation. FP32 → INT8 with SIMD decode. A model that required a $10,000 cloud GPU runs on a $500 laptop.</p>
+          <div class="stats-grid" style="margin-top:2.5rem">
+            <div class="metric-card"><span class="metric-num">4×</span><span class="metric-label">Model size reduction</span></div>
+            <div class="metric-card"><span class="metric-num">99.97%</span><span class="metric-label">Cosine similarity preserved</span></div>
+            <div class="metric-card"><span class="metric-num">≤ 2%</span><span class="metric-label">SIMD decode overhead</span></div>
+            <div class="metric-card"><span class="metric-num">15</span><span class="metric-label">Models on HuggingFace</span></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- The problem -->
+      <section class="section">
+        <div class="shell-container">
+          <div class="section-header">
+            <div>
+              <span class="section-kicker">The problem it solves</span>
+              <h2 class="section-title">Large models shouldn't require large budgets.</h2>
+            </div>
+          </div>
+          <div class="feature-grid">
+            <article class="feature-card">
+              <span class="card-meta">Why models are heavy</span>
+              <h3>32 bits per weight × billions of weights</h3>
+              <p>A large AI model is a matrix of numbers. Each weight is a 32-bit float — 4 bytes. Llama-3-70B has 70 billion of them, which is 280 GB uncompressed. That doesn't fit on any consumer hardware. It barely fits on a single professional server GPU.</p>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">What FPQ does</span>
+              <h3>INT8 + polynomial correction coefficients</h3>
+              <p>FPQ converts each weight to an 8-bit integer (1 byte), then stores polynomial coefficients alongside the model that correct for the non-linear error INT8 truncation introduces. When inference runs, SIMD instructions expand weights back to FP32 on the fly. The model file shrinks 4×. Quality is 99.97% of the full-precision baseline.</p>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">The practical result</span>
+              <h3>$10,000 cloud GPU → $500 laptop</h3>
+              <p>Llama-3-70B uncompressed requires ~140 GB VRAM — a multi-card server setup. FPQ-compressed, it fits in 35 GB, which is a current-generation M-series MacBook Pro. With KV cache compression, it fits in 6 GB VRAM — a $350 consumer GPU.</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <!-- Technical detail cards -->
+      <section class="section">
+        <div class="shell-container">
+          <div class="section-header">
+            <div>
+              <span class="section-kicker">How it works</span>
+              <h2 class="section-title">Four technical components.</h2>
+            </div>
+          </div>
+          <div class="feature-grid">
+            <article class="feature-card">
+              <span class="card-meta">Quantisation</span>
+              <h3>FP32 → INT8 with polynomial correction</h3>
+              <p>INT8 truncation introduces non-linear rounding error. FPQ stores polynomial correction coefficients that reverse this during inference. Cosine similarity on re-expanded vectors across the 15 published models lands at 99.97% of full-precision baseline — not a rounding error, a verified measurement.</p>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">SIMD decode</span>
+              <h3>AVX2 / NEON vectorised re-expansion</h3>
+              <p>INT8 weights are expanded back to FP32 during inference using AVX2 (x86-64) or NEON (ARM) batched multiply-add instructions. This happens on the fly — weights are stored compressed, expanded at the moment the layer executes. Decode overhead is ≤ 2% versus loading uncompressed FP32 weights from disk. The bottleneck becomes disk I/O, not decompression CPU time.</p>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">KV cache compression</span>
+              <h3>4× more context in the same VRAM</h3>
+              <p>The attention KV cache accumulates during long-context inference and is where most VRAM goes during generation. FPQ quantises the KV cache independently of model weights. A model that needed 24 GB VRAM for a long context window fits in 6 GB after KV cache compression. Llama-3-70B fits on a 6 GB laptop GPU.</p>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">Fountain coding</span>
+              <h3>Erasure-resilient model distribution</h3>
+              <p>Model checkpoint shards are encoded with fountain codes — 256 KB pieces. Any k-of-n subset of pieces reconstructs the full checkpoint. Tolerates up to 33% packet loss before reconstruction fails. This is what lets BonfyreDistribute deliver FPQ-compressed models peer-to-peer without a central server or CDN.</p>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">Published models</span>
+              <h3>15 models on HuggingFace</h3>
+              <p>FPQ-quantised checkpoints are published and downloadable today. Each model ships with a companion metadata file that BonfyreFPQ uses to verify decode fidelity before first inference. If the verification fails, inference doesn't start.</p>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">HE-SLI extension</span>
+              <h3>Homomorphic encrypted linear scoring</h3>
+              <p>FPQ SIMD + HE-SLI adds depth-1 homomorphic encrypted linear scoring. SIMD BP128 decodes 128 E8 INT7 values per block. Inference stays in the encrypted domain for privacy-critical flows — results are produced without ever exposing plaintext input vectors to the model host.</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <!-- Hardware fit table -->
+      <section class="section">
+        <div class="shell-container">
+          <div class="section-header">
+            <div>
+              <span class="section-kicker">Hardware fit</span>
+              <h2 class="section-title">Which hardware runs which models.</h2>
+            </div>
+          </div>
+          <div class="table-card">
+            <table class="data-table">
+              <caption>Hardware fit by model tier (FPQ INT8)</caption>
+              <thead>
+                <tr>
+                  <th>Hardware</th>
+                  <th>Max model size (FPQ INT8)</th>
+                  <th>Example runnable</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td>M-series laptop (CPU / Metal)</td><td>~30 GB unified</td><td>Llama-3-70B, Mistral-22B</td></tr>
+                <tr><td>6 GB consumer GPU</td><td>~24 GB FPQ-compressed</td><td>Llama-3-70B KV-cached</td></tr>
+                <tr><td>24 GB professional GPU</td><td>~96 GB FPQ-compressed</td><td>Full 405B-class models</td></tr>
+                <tr><td>CPU-only (AVX2)</td><td>~7B models real-time</td><td>Mistral-7B, Phi-3</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- vs cloud inference -->
+      <section class="section">
+        <div class="shell-container">
+          <div class="section-header">
+            <div>
+              <span class="section-kicker">What it replaces</span>
+              <h2 class="section-title">vs cloud GPU for AI inference.</h2>
+            </div>
+          </div>
+          <div class="feature-grid">
+            <article class="feature-card">
+              <span class="card-meta">Cloud GPU baseline</span>
+              <h3>$10,000 server GPU to run Llama-3-70B</h3>
+              <p>Full-precision Llama-3-70B requires ~140 GB VRAM. That's 4–6 A100 or H100 GPUs. A single A100 is ~$10,000. Monthly cloud GPU cost for sustained inference: $2,000–$8,000/month depending on utilisation and provider.</p>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">FPQ result</span>
+              <h3>Consumer hardware, same model quality</h3>
+              <p>With FPQ compression, the same model runs on a $350 consumer GPU or a current-generation MacBook Pro. Recurring cost: $0/month in GPU API fees. The hardware is already under the desk.</p>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">Privacy side-effect</span>
+              <h3>No data leaves the machine</h3>
+              <p>Cloud GPU inference means your input data — audio, transcripts, documents — transits a third-party API. FPQ local inference means data stays on-device. HE-SLI extends this: even the model host can't see the plaintext input.</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <!-- What comes next -->
+      <section class="section">
+        <div class="shell-container">
+          <div class="section-header">
+            <div>
+              <span class="section-kicker">Related systems</span>
+              <h2 class="section-title">FPQ doesn't work alone.</h2>
+            </div>
+          </div>
+          <div class="path-grid">
+            <article class="path-card">
+              <span class="card-meta">Model distribution</span>
+              <h3>BonfyreDistribute</h3>
+              <p>Fountain-coded FPQ model shard delivery over QUIC. The same erasure coding that protects model chunks during distribution.</p>
+              <div class="cta-row"><a class="secondary-btn" href="layer-platform.html">Layer 6 reference →</a></div>
+            </article>
+            <article class="path-card">
+              <span class="card-meta">Runtime substrate</span>
+              <h3>26-module C runtime</h3>
+              <p>The SIMD primitives FPQ uses for INT8 decode live in bf_utf8 and bf_base64. The runtime is what keeps decode overhead at ≤ 2%.</p>
+              <div class="cta-row"><a class="secondary-btn" href="runtime.html">Runtime reference →</a></div>
+            </article>
+            <article class="path-card">
+              <span class="card-meta">Realtime inference</span>
+              <h3>BonfyreMoQ</h3>
+              <p>FPQ-compressed models delivered in the realtime media path. Audio scored locally without routing through a cloud inference endpoint.</p>
+              <div class="cta-row"><a class="secondary-btn" href="moq.html">MoQ reference →</a></div>
+            </article>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <div class="shell-container footer-row">
+        <div>BonfyreFPQ — Fountain-coded Polynomial Quantisation. Local inference at consumer hardware scale.</div>
+        <div class="footer-links">
+          <a href="index.html">Overview</a>
+          <a href="docs.html">Docs</a>
+          <a href="runtime.html">Runtime</a>
+          <a href="moq.html">MoQ</a>
+          <a href="https://github.com/Nickgonzales76017/bonfyre-oss" target="_blank" rel="noreferrer">GitHub</a>
+        </div>
+      </div>
+    </footer>
+  </div>
+  <script src="assets/site.js"></script>
+</body>
+</html>

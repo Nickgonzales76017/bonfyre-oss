@@ -175,39 +175,14 @@
             <div>
               <span class="section-kicker">26-module shared runtime</span>
               <h2 class="section-title">What every binary links against.</h2>
-              <p class="section-copy">The 26-module C library replaces the npm/pip dependencies most backends accumulate. Every binary gets it for free. Zero external dependencies beyond libc.</p>
             </div>
           </div>
           <div class="feature-grid">
             <article class="feature-card">
-              <span class="card-meta">I/O and concurrency</span>
-              <h3>bf_reactor · bf_pool · bf_pipeline · bf_queue</h3>
-              <p>Per-core event loops with kqueue/io_uring, coroutine-based pipeline execution with channels and deadlines, worker pool with work-stealing, and async artifact queue.</p>
-            </article>
-            <article class="feature-card">
-              <span class="card-meta">Storage and data</span>
-              <h3>bf_lmdb · bf_mmap · bf_hashmap · bf_csv · bf_flatbuf</h3>
-              <p>Zero-copy LMDB reads (pointer casts directly into mmap), custom open-addressing hashmap, CSV parsing, and FlatBuffer manifest handling for repeated-access hot paths.</p>
-            </article>
-            <article class="feature-card">
-              <span class="card-meta">Encoding and serialisation</span>
-              <h3>bf_json · bf_msgpack · bf_lz4 · bf_utf8 · bf_base64</h3>
-              <p>SIMD JSON parser, MessagePack serialisation, LZ4 streaming compression, Unicode validation and normalisation, and base64 encode/decode.</p>
-            </article>
-            <article class="feature-card">
-              <span class="card-meta">Security and identity</span>
-              <h3>bf_crypto · bf_bloom · bf_opts · bf_conf</h3>
-              <p>BLAKE2b hashing, XSalsa20-Poly1305 encryption, Ed25519 signing, Bloom filter for dedup, CLI option parsing, and structured config management.</p>
-            </article>
-            <article class="feature-card">
-              <span class="card-meta">Networking and HTTP</span>
-              <h3>bf_picohttpparser · bf_log · bf_mimalloc</h3>
-              <p>Zero-copy HTTP/1.1 request parsing, structured levelled logging with caller context, and optional mimalloc heap integration for per-reactor allocation.</p>
-            </article>
-            <article class="feature-card">
-              <span class="card-meta">Why this matters</span>
-              <h3>One shared library. 180 KB.</h3>
-              <p>The entire runtime fits in 180 KB. Every binary links the same modules. That means one security patch propagates to all 53 binaries at build time, not 53 separate dependency upgrades across 53 package managers.</p>
+              <span class="card-meta">26 modules · 180 KB total</span>
+              <h3>I/O · Storage · Encoding · Security · Networking · Config</h3>
+              <p>The entire C runtime is 180 KB. One security patch in bf_crypto propagates to all 53 binaries at the next build. Zero external dependencies beyond libc. Covers what a default Express.js install needs 50 MB of node_modules to provide.</p>
+              <div class="cta-row"><a class="secondary-btn" href="runtime.html">Full runtime reference →</a></div>
             </article>
           </div>
         </div>

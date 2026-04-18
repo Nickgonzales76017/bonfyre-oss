@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>26-Module Runtime — Bonfyre</title>
+  <meta name="description" content="The shared C runtime that all 53 Bonfyre binaries link against. 26 modules, 180 KB total, zero external dependencies.">
+  <link rel="stylesheet" href="assets/site.css">
+</head>
+<body>
+  <div class="layout">
+    <header class="topnav">
+      <div class="shell-container nav-row">
+        <a class="nav-logo" href="index.html">Bonfyre</a>
+        <nav class="nav-links" aria-label="Primary">
+          <a href="explore.html">Explore</a>
+          <a href="docs.html">Docs</a>
+          <a href="apps.html">Apps</a>
+          <a href="changelog.html">Changelog</a>
+          <a href="https://github.com/Nickgonzales76017/bonfyre-oss" target="_blank" rel="noreferrer">GitHub</a>
+        </nav>
+      </div>
+    </header>
+
+    <main>
+      <!-- Hero -->
+      <section class="section hero-section">
+        <div class="shell-container">
+          <div class="hero-eyebrow">
+            <a href="docs.html">← Back to docs</a>
+          </div>
+          <h1 class="hero-title">26-Module Shared Runtime</h1>
+          <p class="hero-sub">The C standard library that every Bonfyre binary links against. 180 KB total. Zero external dependencies beyond libc.</p>
+          <div class="stats-grid" style="margin-top:2.5rem">
+            <div class="metric-card"><span class="metric-num">26</span><span class="metric-label">Runtime modules</span></div>
+            <div class="metric-card"><span class="metric-num">180 KB</span><span class="metric-label">Total runtime size</span></div>
+            <div class="metric-card"><span class="metric-num">53</span><span class="metric-label">Binaries that link it</span></div>
+            <div class="metric-card"><span class="metric-num">0</span><span class="metric-label">External dependencies</span></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Why this exists -->
+      <section class="section">
+        <div class="shell-container">
+          <div class="section-header">
+            <div>
+              <span class="section-kicker">Why it exists</span>
+              <h2 class="section-title">One security patch. All 53 binaries.</h2>
+            </div>
+          </div>
+          <div class="feature-grid">
+            <article class="feature-card">
+              <span class="card-meta">The core problem</span>
+              <h3>53 binaries × N dependencies = N × 53 upgrade PRs</h3>
+              <p>Every service that pulls in an npm or pip dependency owns that dependency. A BLAKE2b bug in a hashlib means 53 separate patches. A shared C runtime means one patch, one build, all 53 binaries updated simultaneously.</p>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">Size comparison</span>
+              <h3>180 KB vs 50 MB</h3>
+              <p>The entire 26-module runtime is 180 KB. A default Express.js application with enough capability to cover three of these modules pulls in roughly 50 MB of node_modules. The runtime costs less than a single compressed JPEG.</p>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">Zero-copy design</span>
+              <h3>LMDB reads are pointer casts, not memcpy</h3>
+              <p>bf_lmdb reads return a pointer directly into the mmap'd LMDB page. No copy. No allocation. bf_flatbuf reads are similarly zero-copy — the FlatBuffer schema validates the memory in-place. Hot-path artifact reads are allocation-free.</p>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">SIMD everywhere</span>
+              <h3>Vectorised parsing across the stack</h3>
+              <p>bf_json uses SIMD to scan tokens. bf_utf8 validates bytes 16 at a time. bf_base64 encodes/decodes 32 bytes per operation. bf_csv SIMD-scans for field delimiters. Throughput on structured data is measured in GB/s, not MB/s.</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <!-- Module groups: I/O -->
+      <section class="section">
+        <div class="shell-container">
+          <div class="section-header">
+            <div>
+              <span class="section-kicker">I/O and concurrency</span>
+              <h2 class="section-title">How every binary handles work without threads.</h2>
+            </div>
+          </div>
+          <div class="feature-grid">
+            <article class="feature-card">
+              <span class="card-meta">bf_reactor</span>
+              <h3>Per-core event loop (io_uring / kqueue)</h3>
+              <p>Handles 4,096 concurrent connections per reactor instance without spawning a thread per connection. Uses io_uring on Linux and kqueue on macOS. BonfyreCMS, BonfyreAPI, BonfyreProxy, and BonfyreGate all embed the same reactor. Per-reactor mimalloc heaps eliminate allocation contention between cores.</p>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">bf_pool</span>
+              <h3>Arena + slab allocator</h3>
+              <p>Long-running pipelines need predictable memory. bf_pool eliminates heap fragmentation by managing memory in fixed-size arenas. Request-scoped allocations are freed in O(1) by resetting the arena — no per-object free() calls.</p>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">bf_pipeline</span>
+              <h3>Stage execution engine with hot-load</h3>
+              <p>32-slot plugin registry with atomic stage swap. Coroutine-based execution paths with channels and deadlines. A/B pairs allow 16 live experiments simultaneously. Swapping a pipeline stage mid-execution doesn't flush in-flight work.</p>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">bf_queue</span>
+              <h3>Lock-free work queue</h3>
+              <p>mpsc and spsc variants with back-pressure signalling. Stages that produce work faster than downstream can consume it don't spin or stall — they apply back-pressure, which propagates up the pipeline automatically.</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <!-- Storage -->
+      <section class="section">
+        <div class="shell-container">
+          <div class="section-header">
+            <div>
+              <span class="section-kicker">Storage and data</span>
+              <h2 class="section-title">Reading from disk costs nothing when the disk is a pointer.</h2>
+            </div>
+          </div>
+          <div class="feature-grid">
+            <article class="feature-card">
+              <span class="card-meta">bf_lmdb</span>
+              <h3>Zero-copy LMDB bindings · 512 MB map</h3>
+              <p>ACID-compliant. Supports 4 named sub-databases. Reads return a pointer into the mmap page — no copy, no allocation. The 512 MB default map handles 40 M+ short key-value records before a resize is needed.</p>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">bf_mmap</span>
+              <h3>Memory-mapped file I/O</h3>
+              <p>Shared access patterns across pipeline stages. Huge page support for workloads where TLB pressure matters (large model weight files, sustained artifact access). Reduces system call overhead for large sequential reads.</p>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">bf_hashmap</span>
+              <h3>Open-addressing hash table</h3>
+              <p>Robin Hood probing with a 75% load factor ceiling. In-memory index for keyed artifact lookups before hitting LMDB. Avoids the overhead of a tree-based map when keys are short strings or integers.</p>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">bf_csv · bf_flatbuf</span>
+              <h3>Structured data I/O</h3>
+              <p>bf_csv uses SIMD to scan for field delimiters, handling streaming multi-MB files in a single pass. bf_flatbuf provides zero-copy schema-verified FlatBuffer encoding — used for artifact manifests and pipeline IPC where repeated JSON parse overhead is measurable.</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <!-- Encoding -->
+      <section class="section">
+        <div class="shell-container">
+          <div class="section-header">
+            <div>
+              <span class="section-kicker">Encoding and serialisation</span>
+              <h2 class="section-title">The data path between stages.</h2>
+            </div>
+          </div>
+          <div class="feature-grid">
+            <article class="feature-card">
+              <span class="card-meta">bf_json</span>
+              <h3>Arena-allocated JSON parser</h3>
+              <p>SIMD token scanning with an arena-allocated AST. No malloc per token. Used in BonfyreAPI, BonfyreCMS, and anywhere a binary reads or emits structured configuration. Handles multi-MB documents without heap pressure.</p>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">bf_msgpack</span>
+              <h3>MessagePack for pipeline IPC</h3>
+              <p>Compact binary encoding for inter-stage messages. Smaller payloads than JSON, faster parse. Used wherever pipeline stages need to hand off structured data without the overhead of schema negotiation.</p>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">bf_lz4</span>
+              <h3>LZ4 frame streaming compression</h3>
+              <p>Streaming compress and decompress for the artifact store. LZ4 is chosen over zstd for latency-sensitive paths — compress/decompress at >500 MB/s so the cost is I/O bandwidth, not CPU cycles.</p>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">bf_utf8 · bf_base64</span>
+              <h3>Text and encoding primitives</h3>
+              <p>bf_utf8 validates and iterates codepoints 16 bytes at a time (SIMD). Used in the transcript layer wherever BonfyreTranscriptClean or BonfyreParagraph processes raw text. bf_base64 encodes/decodes 32 bytes per SIMD operation — used for token encoding and credential encoding in BonfyreAuth and BonfyreGate.</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <!-- Security / networking -->
+      <section class="section">
+        <div class="shell-container">
+          <div class="section-header">
+            <div>
+              <span class="section-kicker">Security, networking, and config</span>
+              <h2 class="section-title">The same crypto in every binary that touches auth or signing.</h2>
+            </div>
+          </div>
+          <div class="feature-grid">
+            <article class="feature-card">
+              <span class="card-meta">bf_crypto</span>
+              <h3>BLAKE2b · XSalsa20-Poly1305 · Ed25519</h3>
+              <p>Shared by BonfyreAuth, BonfyreProof, BonfyreHash, and BonfyreGate. One implementation of each primitive means one audit surface. BLAKE2b content-addresses artifacts. Ed25519 signs proof bundles. ChaCha20-Poly1305 encrypts at-rest or in-transit payloads.</p>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">bf_bloom</span>
+              <h3>Space-efficient deduplication</h3>
+              <p>Bloom filter in the ingest path. Before writing a new artifact to LMDB, bf_bloom rejects already-seen hashes in O(1) without a full lookup. Keeps the ingest layer from accumulating duplicate data silently.</p>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">bf_picohttpparser · bf_log</span>
+              <h3>HTTP parsing and structured logging</h3>
+              <p>bf_picohttpparser handles HTTP/1.1 request parsing with zero allocation overhead — used across BonfyreAPI, BonfyreCMS, and BonfyreProxy. bf_log is a non-blocking structured logger writing JSON lines into a ring buffer, so logging never blocks on slow I/O.</p>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">bf_opts · bf_conf · bf_mimalloc</span>
+              <h3>Config, flags, and heap</h3>
+              <p>bf_opts gives every binary a consistent flag surface. bf_conf reads TOML-like config files with environment variable overlay — no binary has its own config parsing logic. bf_mimalloc is the optional per-reactor allocator for hot paths where default malloc latency is measurable.</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <!-- Full module table -->
+      <section class="section">
+        <div class="shell-container">
+          <div class="section-header">
+            <div>
+              <span class="section-kicker">Complete inventory</span>
+              <h2 class="section-title">All 26 modules at a glance.</h2>
+            </div>
+          </div>
+          <div class="table-card">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Module</th>
+                  <th>Role</th>
+                  <th>Notes</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td>bf_reactor</td><td>io_uring / kqueue event loop</td><td>4,096 connections per cycle, async I/O core</td></tr>
+                <tr><td>bf_pool</td><td>Arena + slab memory allocator</td><td>No heap fragmentation on long-running pipelines</td></tr>
+                <tr><td>bf_pipeline</td><td>Stage execution engine</td><td>32 slot registry, hot-load atomic swap</td></tr>
+                <tr><td>bf_queue</td><td>Lock-free work queue</td><td>mpsc/spsc, back-pressure support</td></tr>
+                <tr><td>bf_lmdb</td><td>Zero-copy LMDB bindings</td><td>512 MB map, ACID, zero-copy reads</td></tr>
+                <tr><td>bf_mmap</td><td>Memory-mapped file I/O</td><td>Shared access patterns, huge page support</td></tr>
+                <tr><td>bf_hashmap</td><td>Open-addressing hash table</td><td>Robin Hood probing, 75% load factor</td></tr>
+                <tr><td>bf_csv</td><td>CSV parse / emit</td><td>SIMD-assisted field scan, streaming parser</td></tr>
+                <tr><td>bf_flatbuf</td><td>FlatBuffers serialisation</td><td>Zero-copy schema-verified message encoding</td></tr>
+                <tr><td>bf_json</td><td>JSON parse / emit</td><td>Arena-allocated AST, no malloc per token</td></tr>
+                <tr><td>bf_msgpack</td><td>MessagePack serialisation</td><td>Compact binary IPC between pipeline stages</td></tr>
+                <tr><td>bf_lz4</td><td>LZ4 frame compression</td><td>Streaming compress/decompress for artifact store</td></tr>
+                <tr><td>bf_utf8</td><td>UTF-8 validation and iteration</td><td>SIMD-accelerated, used in transcript layer</td></tr>
+                <tr><td>bf_base64</td><td>Base64 encode / decode</td><td>SIMD-assisted, token/credential encoding</td></tr>
+                <tr><td>bf_crypto</td><td>BLAKE2b + Ed25519 + ChaCha20-Poly1305</td><td>Shared by BonfyreAuth, BonfyreProof, BonfyreHash</td></tr>
+                <tr><td>bf_bloom</td><td>Bloom filter</td><td>Space-efficient deduplication in ingest paths</td></tr>
+                <tr><td>bf_opts</td><td>Argument parsing</td><td>Consistent flag surface across all 53 binaries</td></tr>
+                <tr><td>bf_conf</td><td>Config file loading</td><td>TOML-like, environment variable overlay</td></tr>
+                <tr><td>bf_picohttpparser</td><td>HTTP/1.1 header parsing</td><td>Used by BonfyreAPI, BonfyreCMS, BonfyreProxy</td></tr>
+                <tr><td>bf_log</td><td>Structured async logging</td><td>JSON lines, ring-buffered, non-blocking</td></tr>
+                <tr><td>bf_mimalloc</td><td>Microsoft mimalloc integration</td><td>Low-latency allocation for hot paths</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- What comes next -->
+      <section class="section">
+        <div class="shell-container">
+          <div class="section-header">
+            <div>
+              <span class="section-kicker">Where to go next</span>
+              <h2 class="section-title">The runtime powers three specialised subsystems.</h2>
+            </div>
+          </div>
+          <div class="path-grid">
+            <article class="path-card">
+              <span class="card-meta">Model compression</span>
+              <h3>BonfyreFPQ</h3>
+              <p>Polynomial quantisation, SIMD decode, and fountain-coded distribution. The runtime's SIMD primitives are what make FPQ decode overhead ≤ 2%.</p>
+              <div class="cta-row"><a class="secondary-btn" href="fpq.html">FPQ deep dive →</a></div>
+            </article>
+            <article class="path-card">
+              <span class="card-meta">Realtime media</span>
+              <h3>BonfyreMoQ</h3>
+              <p>Pure C WebTransport relay. bf_reactor handles the socket layer. bf_crypto handles auth. bf_log handles the audit trail. No Node.js.</p>
+              <div class="cta-row"><a class="secondary-btn" href="moq.html">MoQ deep dive →</a></div>
+            </article>
+            <article class="path-card">
+              <span class="card-meta">Full binary inventory</span>
+              <h3>All 53 binaries, six layers</h3>
+              <p>See which binaries are available, what layer they belong to, and where they fit in a pipeline.</p>
+              <div class="cta-row"><a class="secondary-btn" href="docs.html">Back to docs →</a></div>
+            </article>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <div class="shell-container footer-row">
+        <div>26-module C runtime — the substrate all 53 Bonfyre binaries link against.</div>
+        <div class="footer-links">
+          <a href="index.html">Overview</a>
+          <a href="docs.html">Docs</a>
+          <a href="fpq.html">FPQ</a>
+          <a href="moq.html">MoQ</a>
+          <a href="https://github.com/Nickgonzales76017/bonfyre-oss" target="_blank" rel="noreferrer">GitHub</a>
+        </div>
+      </div>
+    </footer>
+  </div>
+  <script src="assets/site.js"></script>
+</body>
+</html>

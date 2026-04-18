@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>BonfyreMoQ — Realtime Media</title>
+  <meta name="description" content="Pure C WebTransport relay. MoQ Transfork over QUIC. No Node.js in the media path. No SaaS relay bill. Inline AI scoring at under 20ms.">
+  <link rel="stylesheet" href="assets/site.css">
+</head>
+<body>
+  <div class="layout">
+    <header class="topnav">
+      <div class="shell-container nav-row">
+        <a class="nav-logo" href="index.html">Bonfyre</a>
+        <nav class="nav-links" aria-label="Primary">
+          <a href="explore.html">Explore</a>
+          <a href="docs.html">Docs</a>
+          <a href="apps.html">Apps</a>
+          <a href="changelog.html">Changelog</a>
+          <a href="https://github.com/Nickgonzales76017/bonfyre-oss" target="_blank" rel="noreferrer">GitHub</a>
+        </nav>
+      </div>
+    </header>
+
+    <main>
+      <!-- Hero -->
+      <section class="section hero-section">
+        <div class="shell-container">
+          <div class="hero-eyebrow">
+            <a href="docs.html">← Back to docs</a>
+          </div>
+          <h1 class="hero-title">BonfyreMoQ</h1>
+          <p class="hero-sub">Pure C WebTransport/MoQ relay. Low-latency realtime media fan-out without WebRTC complexity, SFU cloud bills, or Node.js in the media path.</p>
+          <div class="stats-grid" style="margin-top:2.5rem">
+            <div class="metric-card"><span class="metric-num">$0</span><span class="metric-label">Per stream cost</span></div>
+            <div class="metric-card"><span class="metric-num">&lt; 20 ms</span><span class="metric-label">AI scoring added latency</span></div>
+            <div class="metric-card"><span class="metric-num">88</span><span class="metric-label">Audio quality features scored</span></div>
+            <div class="metric-card"><span class="metric-num">33%</span><span class="metric-label">Packet loss before fountain decode fails</span></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- What it replaces -->
+      <section class="section">
+        <div class="shell-container">
+          <div class="section-header">
+            <div>
+              <span class="section-kicker">What it replaces</span>
+              <h2 class="section-title">vs Twilio · LiveKit · Agora.</h2>
+            </div>
+          </div>
+          <div class="compare-grid">
+            <article class="compare-card">
+              <span class="card-meta">vs Twilio / LiveKit (realtime)</span>
+              <span class="compare-value">$0 / stream</span>
+              <p>BonfyreMoQ is a pure C WebTransport/MoQ relay for private realtime audio and media fan-out. No SaaS relay bill. No Node.js in the media path. No per-stream markup. Inline AI scoring via BonfyreTone and BonfyreSpeechLoop runs locally without routing through a cloud inference endpoint.</p>
+            </article>
+            <article class="compare-card">
+              <span class="card-meta">vs WebRTC SFU servers</span>
+              <span class="compare-value">No STUN/TURN overhead</span>
+              <p>WebRTC SFU architectures require STUN/TURN servers for NAT traversal and scale complexity grows with fan-out. MoQ Transfork over QUIC provides a simpler transport model — multiplexed streams over a single QUIC connection, with surface-first priority for responsive delivery to heterogeneous clients.</p>
+            </article>
+            <article class="compare-card">
+              <span class="card-meta">vs cloud AI scoring</span>
+              <span class="compare-value">&lt; 20 ms added latency</span>
+              <p>Services like AWS Transcribe or Deepgram add 300–800 ms of round-trip latency for quality scoring because audio has to leave the device and come back. BonfyreTone and BonfyreSpeechLoop run inline in the relay path — inside the relay process — adding under 20 ms to the latency budget.</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <!-- Transport layer -->
+      <section class="section">
+        <div class="shell-container">
+          <div class="section-header">
+            <div>
+              <span class="section-kicker">Transport</span>
+              <h2 class="section-title">QUIC + WebTransport + MoQ Transfork.</h2>
+            </div>
+          </div>
+          <div class="feature-grid">
+            <article class="feature-card">
+              <span class="card-meta">QUIC transport</span>
+              <h3>Multiplexed streams over a single connection</h3>
+              <p>QUIC multiplexes independent streams over a single UDP connection. No head-of-line blocking — a dropped packet in one audio stream doesn't stall all other streams. QUIC's 0-RTT handshake reconnects sessions in under 1 ms after a brief network interruption.</p>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">WebTransport</span>
+              <h3>Browser-compatible without a plugin</h3>
+              <p>WebTransport uses QUIC under HTTP/3 and is natively available in modern browsers. Clients can consume BonfyreMoQ streams directly in the browser — no WebRTC plugin, no media server SDK, no npm package required on the client side.</p>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">MoQ Transfork</span>
+              <h3>Surface-first delivery priority</h3>
+              <p>The MoQ Transfork protocol layer manages stream priority. Artifact families multiplex with surface-first ordering — the content being actively displayed gets packets first. Reconnect logic and flow control are tuned for sync-heavy artifact sets where partial data arrival is worse than a brief stall.</p>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">Fountain codes for resilience</span>
+              <h3>Tolerates 33% packet loss</h3>
+              <p>FPQ-compressed model shards and artifact chunks are fountain-coded before transmission. Any k-of-n subset of 256 KB pieces reconstructs the full payload. Designed for field network conditions — unreliable mobile links, congested WiFi, overseas routes with high jitter.</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <!-- Inline AI -->
+      <section class="section">
+        <div class="shell-container">
+          <div class="section-header">
+            <div>
+              <span class="section-kicker">Inline AI scoring</span>
+              <h2 class="section-title">Quality and tone scoring inside the relay process.</h2>
+            </div>
+          </div>
+          <div class="feature-grid">
+            <article class="feature-card">
+              <span class="card-meta">BonfyreTone</span>
+              <h3>eGeMAPSv02 — 88 audio quality features</h3>
+              <p>eGeMAPSv02 is a standardised vocal feature set: fundamental frequency, jitter, shimmer, formant frequencies, spectral flux, and 82 others. BonfyreTone extracts all 88 in real time. Used for live call quality assessment, speaker mood classification, and post-session analysis without capturing raw audio off-device.</p>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">BonfyreSpeechLoop</span>
+              <h3>HCP-enhanced streaming recogniser</h3>
+              <p>Streaming speech recognition running in the relay path. Partial transcripts available within the latency budget of a single QUIC packet round-trip. Combined with BonfyreTone, it gives you quality-scored, partially-transcribed audio in one pass without two separate inference calls.</p>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">Privacy model</span>
+              <h3>No audio leaves your infrastructure</h3>
+              <p>AI scoring runs inside the relay process on your own hardware. No audio samples transit a cloud API. No transcript fragments are sent to an external endpoint. You get quality metrics and partial transcripts without a data privacy agreement with a third-party AI vendor.</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <!-- Integration points -->
+      <section class="section">
+        <div class="shell-container">
+          <div class="section-header">
+            <div>
+              <span class="section-kicker">What plugs in</span>
+              <h2 class="section-title">MoQ is one binary in a larger pipeline.</h2>
+            </div>
+          </div>
+          <div class="feature-grid">
+            <article class="feature-card">
+              <span class="card-meta">Gate + Auth</span>
+              <h3>Stream-level access control</h3>
+              <p>BonfyreGate sits in front of the relay. Token-authenticated connections. Ed25519-signed session tokens via bf_crypto. No dependency on a cloud auth provider — the same Auth + Gate pair used by BonfyreCMS and BonfyreAPI.</p>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">Meter</span>
+              <h3>Per-stream usage events</h3>
+              <p>BonfyreMeter records stream events to LMDB. Minute-granularity usage data for billing, analytics, or rate limiting. BonfyreLedger picks up those events for the immutable financial log. No third-party analytics SDK in the realtime path.</p>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">BonfyreDistribute</span>
+              <h3>Model and artifact fan-out</h3>
+              <p>FPQ-compressed model shards delivered peer-to-peer using fountain codes. The same transport layer that carries media also carries model weights and artifact bundles — no second CDN needed for AI assets alongside live media.</p>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">Post-session pipeline</span>
+              <h3>Live session → packaged deliverable</h3>
+              <p>When a session ends, the relay hands off to the standard pipeline: BonfyreTranscribe → BonfyreBrief → BonfyreRepurpose → BonfyreEmit → BonfyrePack → BonfyreProof. The same pipeline that processes pre-recorded audio handles live sessions without a separate code path.</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <!-- What comes next -->
+      <section class="section">
+        <div class="shell-container">
+          <div class="section-header">
+            <div>
+              <span class="section-kicker">Related systems</span>
+              <h2 class="section-title">MoQ connects to the full stack.</h2>
+            </div>
+          </div>
+          <div class="path-grid">
+            <article class="path-card">
+              <span class="card-meta">Model delivery</span>
+              <h3>BonfyreFPQ + BonfyreDistribute</h3>
+              <p>The fountain codes that make MoQ resilient are the same ones that distribute FPQ-compressed model shards. One mechanism, two use cases.</p>
+              <div class="cta-row"><a class="secondary-btn" href="fpq.html">FPQ reference →</a></div>
+            </article>
+            <article class="path-card">
+              <span class="card-meta">Platform layer</span>
+              <h3>Layer 6 — Platform &amp; distribution</h3>
+              <p>BonfyreMoQ, BonfyreDistribute, BonfyreSwarm, BonfyreQueue, BonfyreOrchestrate, and BonfyreRuntime are all in Layer 6. See the full layer.</p>
+              <div class="cta-row"><a class="secondary-btn" href="layer-platform.html">Layer 6 reference →</a></div>
+            </article>
+            <article class="path-card">
+              <span class="card-meta">Transcription layer</span>
+              <h3>Live audio → transcript</h3>
+              <p>After a live session, BonfyreTranscribe and BonfyreTranscriptClean process the recording. Layer 2 is where live audio becomes a structured deliverable.</p>
+              <div class="cta-row"><a class="secondary-btn" href="layer-transcription.html">Layer 2 reference →</a></div>
+            </article>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <div class="shell-container footer-row">
+        <div>BonfyreMoQ — Pure C WebTransport relay. Realtime media fan-out without the SaaS bill.</div>
+        <div class="footer-links">
+          <a href="index.html">Overview</a>
+          <a href="docs.html">Docs</a>
+          <a href="fpq.html">FPQ</a>
+          <a href="runtime.html">Runtime</a>
+          <a href="https://github.com/Nickgonzales76017/bonfyre-oss" target="_blank" rel="noreferrer">GitHub</a>
+        </div>
+      </div>
+    </footer>
+  </div>
+  <script src="assets/site.js"></script>
+</body>
+</html>

@@ -164,42 +164,15 @@
             <div>
               <span class="section-kicker">26-module runtime</span>
               <h2 class="section-title">The substrate every binary links against.</h2>
-              <p class="section-copy">No Node.js. No Python. No JVM. Every module is pure C — zero-copy, zero-allocation where measurable, no abstraction overhead. These 26 modules are the shared standard library all 53 binaries link against. A security fix in bf_crypto propagates to all 53 binaries at the next build — not 53 separate dependency PRs. The entire runtime is 180 KB. A default Express.js install pulls in roughly 50 MB of node_modules to cover what three of these modules provide.</p>
             </div>
           </div>
-          <div class="table-card">
-            <table class="data-table">
-              <thead>
-                <tr>
-                  <th>Module</th>
-                  <th>Role</th>
-                  <th>Notes</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr><td>bf_reactor</td><td>io_uring / kqueue event loop</td><td>4,096 connections per cycle, async I/O core</td></tr>
-                <tr><td>bf_pool</td><td>Arena + slab memory allocator</td><td>No heap fragmentation on long-running pipelines</td></tr>
-                <tr><td>bf_pipeline</td><td>Stage execution engine</td><td>32 slot registry, hot-load atomic swap</td></tr>
-                <tr><td>bf_queue</td><td>Lock-free work queue</td><td>mpsc/spsc, back-pressure support</td></tr>
-                <tr><td>bf_lmdb</td><td>Zero-copy LMDB bindings</td><td>512 MB map, ACID, zero-copy reads</td></tr>
-                <tr><td>bf_mmap</td><td>Memory-mapped file I/O</td><td>Shared access patterns, huge page support</td></tr>
-                <tr><td>bf_hashmap</td><td>Open-addressing hash table</td><td>Robin Hood probing, 75% load factor</td></tr>
-                <tr><td>bf_csv</td><td>CSV parse / emit</td><td>SIMD-assisted field scan, streaming parser</td></tr>
-                <tr><td>bf_flatbuf</td><td>FlatBuffers serialisation</td><td>Zero-copy schema-verified message encoding</td></tr>
-                <tr><td>bf_json</td><td>JSON parse / emit</td><td>Arena-allocated AST, no malloc per token</td></tr>
-                <tr><td>bf_msgpack</td><td>MessagePack serialisation</td><td>Compact binary IPC between pipeline stages</td></tr>
-                <tr><td>bf_lz4</td><td>LZ4 frame compression</td><td>Streaming compress/decompress for artifact store</td></tr>
-                <tr><td>bf_utf8</td><td>UTF-8 validation and iteration</td><td>SIMD-accelerated, used in transcript layer</td></tr>
-                <tr><td>bf_base64</td><td>Base64 encode / decode</td><td>SIMD-assisted, token/credential encoding</td></tr>
-                <tr><td>bf_crypto</td><td>BLAKE2b + Ed25519 + ChaCha20-Poly1305</td><td>Shared by BonfyreAuth, BonfyreProof, BonfyreHash</td></tr>
-                <tr><td>bf_bloom</td><td>Bloom filter</td><td>Space-efficient deduplication in ingest paths</td></tr>
-                <tr><td>bf_opts</td><td>Argument parsing</td><td>Consistent flag surface across all 53 binaries</td></tr>
-                <tr><td>bf_conf</td><td>Config file loading</td><td>TOML-like, environment variable overlay</td></tr>
-                <tr><td>bf_picohttpparser</td><td>HTTP/1.1 header parsing</td><td>Used by BonfyreAPI, BonfyreCMS, BonfyreProxy</td></tr>
-                <tr><td>bf_log</td><td>Structured async logging</td><td>JSON lines, ring-buffered, non-blocking</td></tr>
-                <tr><td>bf_mimalloc</td><td>Microsoft mimalloc integration</td><td>Low-latency allocation for hot paths</td></tr>
-              </tbody>
-            </table>
+          <div class="feature-grid">
+            <article class="feature-card">
+              <span class="card-meta">26 modules · 180 KB · zero external dependencies</span>
+              <h3>I/O · Storage · Encoding · Security · HTTP · Config</h3>
+              <p>bf_reactor, bf_lmdb, bf_crypto, bf_json, bf_pipeline, bf_log, and 20 more. One shared C library that all 53 binaries link against. One security patch propagates everywhere at build time — not 53 separate dependency PRs.</p>
+              <div class="cta-row"><a class="secondary-btn" href="runtime.html">Full runtime reference →</a></div>
+            </article>
           </div>
         </div>
       </section>
@@ -211,58 +184,15 @@
             <div>
               <span class="section-kicker">BonfyreFPQ</span>
               <h2 class="section-title">Model compression that fits large models onto your hardware.</h2>
-              <p class="section-copy">FPQ = Fountain-coded Polynomial Quantisation. FP32 → INT8 with SIMD decode, 4× size reduction, 99.97% cosine similarity preserved.</p>
             </div>
           </div>
           <div class="feature-grid">
             <article class="feature-card">
-              <span class="card-meta">Quantisation</span>
-              <h3>FP32 → INT8 with polynomial correction</h3>
-              <p>Polynomial coefficients correct for the non-linear error introduced by INT8 truncation. Cosine similarity on re-expanded vectors lands at 99.97% of full-precision baseline across the 15 published models.</p>
+              <span class="card-meta">FP32 → INT8 · 4× smaller · 99.97% quality preserved</span>
+              <h3>Polynomial quantisation · SIMD decode · fountain-coded distribution</h3>
+              <p>Llama-3-70B goes from a $10,000 server GPU requirement to a $500 laptop. KV cache compression gives 4× more context in the same VRAM. 15 models already published on HuggingFace. SIMD decode overhead ≤ 2%.</p>
+              <div class="cta-row"><a class="secondary-btn" href="fpq.html">Full FPQ reference →</a></div>
             </article>
-            <article class="feature-card">
-              <span class="card-meta">SIMD decode</span>
-              <h3>AVX2 / NEON vectorised re-expansion</h3>
-              <p>INT8 weights re-expanded to FP32 on the fly during inference using SIMD batched multiply-add. Decode overhead ≤ 2% vs loading uncompressed FP32 weights from disk.</p>
-            </article>
-            <article class="feature-card">
-              <span class="card-meta">Fountain coding</span>
-              <h3>Erasure-resilient chunk distribution</h3>
-              <p>Model checkpoint shards encoded with fountain codes (256 KB pieces). Any k-of-n chunk subset reconstructs the full checkpoint. Enables peer-to-peer model distribution via BonfyreDistribute without a central server.</p>
-            </article>
-            <article class="feature-card">
-              <span class="card-meta">KV cache compression</span>
-              <h3>4× more context in the same VRAM</h3>
-              <p>Attention KV cache quantised independently of weights. A model that needed 24 GB VRAM for a long context window now fits in 6 GB. Practically: Llama-3-70B on a 6 GB laptop GPU.</p>
-            </article>
-            <article class="feature-card">
-              <span class="card-meta">Published models</span>
-              <h3>15 models on HuggingFace</h3>
-              <p>Quantised checkpoints published and downloadable. Each model ships with a companion metadata file that BonfyreFPQ uses to verify decode fidelity before first inference.</p>
-            </article>
-            <article class="feature-card">
-              <span class="card-meta">Hardware fit</span>
-              <h3>GPU is optional</h3>
-              <p>FPQ models run on CPU-only laptops (M-series, x86-64 with AVX2), consumer GPU (6 BB VRAM), and professional GPU (24 GB VRAM). The limit table tells you which model fits which tier.</p>
-            </article>
-          </div>
-          <div class="table-card" style="margin-top:2rem">
-            <table class="data-table">
-              <caption>Hardware fit by model tier</caption>
-              <thead>
-                <tr>
-                  <th>Hardware</th>
-                  <th>Max model size (FPQ INT8)</th>
-                  <th>Example runnable</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr><td>M-series laptop (CPU / Metal)</td><td>~30 GB unified</td><td>Llama-3-70B, Mistral-22B</td></tr>
-                <tr><td>6 GB consumer GPU</td><td>~24 GB FPQ-compressed</td><td>Llama-3-70B KV-cached</td></tr>
-                <tr><td>24 GB professional GPU</td><td>~96 GB FPQ-compressed</td><td>Full 405B-class models</td></tr>
-                <tr><td>CPU-only (AVX2)</td><td>~7B models real-time</td><td>Mistral-7B, Phi-3</td></tr>
-              </tbody>
-            </table>
           </div>
         </div>
       </section>
@@ -278,19 +208,10 @@
           </div>
           <div class="feature-grid">
             <article class="feature-card">
-              <span class="card-meta">Transport</span>
-              <h3>QUIC + WebTransport</h3>
-              <p>MoQ Transfork over QUIC. Low-latency media fan-out without WebRTC complexity or SFU cloud bills. Relay runs on your own hardware — no Twilio or LiveKit dependency.</p>
-            </article>
-            <article class="feature-card">
-              <span class="card-meta">Inline AI scoring</span>
-              <h3>BonfyreTone + BonfyreSpeechLoop in the media path</h3>
-              <p>Audio streams scored for quality (eGeMAPSv02, 88 features) and tone in real time, without routing through a cloud inference endpoint. Latency budget: &lt; 20 ms added to relay path.</p>
-            </article>
-            <article class="feature-card">
-              <span class="card-meta">Delivery</span>
-              <h3>BonfyreDistribute for model and artifact fan-out</h3>
-              <p>FPQ-compressed model shards delivered peer-to-peer using fountain codes. Tolerates up to 33% packet loss before reconstruction fails. Designed for flaky field network conditions.</p>
+              <span class="card-meta">$0 per stream · &lt;20 ms AI scoring latency · 33% packet loss tolerance</span>
+              <h3>QUIC + WebTransport · BonfyreTone · BonfyreSpeechLoop · fountain codes</h3>
+              <p>MoQ Transfork over QUIC. Audio quality scored inline using eGeMAPSv02 (88 features) without routing through a cloud endpoint. FPQ model shards delivered peer-to-peer using fountain codes. No Twilio. No LiveKit. No SFU bill.</p>
+              <div class="cta-row"><a class="secondary-btn" href="moq.html">Full MoQ reference →</a></div>
             </article>
           </div>
         </div>
