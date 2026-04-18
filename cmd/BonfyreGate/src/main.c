@@ -24,19 +24,11 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <time.h>
-
+#include <bonfyre.h>
 #define VERSION "1.0.0"
 
-static void iso_timestamp(char *buf, size_t sz) {
-    time_t now = time(NULL); struct tm t; gmtime_r(&now, &t);
-    strftime(buf, sz, "%Y-%m-%dT%H:%M:%SZ", &t);
-}
-
-static void iso_timestamp_future(char *buf, size_t sz, int days) {
-    time_t now = time(NULL) + (time_t)days * 86400;
-    struct tm t; gmtime_r(&now, &t);
-    strftime(buf, sz, "%Y-%m-%dT%H:%M:%SZ", &t);
-}
+static void iso_timestamp(char *buf, size_t sz) { bf_iso_timestamp(buf, sz); }
+static void iso_timestamp_future(char *buf, size_t sz, int days) { bf_iso_timestamp_future(buf, sz, days); }
 
 /* Deterministic key ID from tier+org+timestamp */
 static void generate_key_id(const char *tier, const char *org, const char *ts, char *out, size_t sz) {
@@ -137,15 +129,7 @@ static char *read_file_full(const char *path) {
 }
 
 static int json_str(const char *json, const char *key, char *out, size_t sz) {
-    char needle[256]; snprintf(needle, sizeof(needle), "\"%s\"", key);
-    const char *p = strstr(json, needle);
-    if (!p) return 0;
-    p += strlen(needle);
-    while (*p && (*p == ' ' || *p == ':' || *p == '\t')) p++;
-    if (*p != '"') return 0; p++;
-    size_t i = 0;
-    while (*p && *p != '"' && i < sz - 1) out[i++] = *p++;
-    out[i] = '\0'; return 1;
+    return bf_json_scan_str(json, strlen(json), key, out, sz);
 }
 
 static int cmd_check(const char *key_path) {

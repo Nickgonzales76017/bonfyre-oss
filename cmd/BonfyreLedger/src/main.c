@@ -27,6 +27,7 @@
 #include <time.h>
 #include <unistd.h>
 #include <dirent.h>
+#include <bonfyre.h>
 
 /* Per-operation cost-to-replace estimates (USD).
  * These are what it would cost to recreate from scratch. */
@@ -89,15 +90,7 @@ static unsigned long dir_size(const char *path) {
 }
 
 static int json_str(const char *json, const char *key, char *out, size_t sz) {
-    char needle[256]; snprintf(needle, sizeof(needle), "\"%s\"", key);
-    const char *p = strstr(json, needle);
-    if (!p) return 0;
-    p += strlen(needle);
-    while (*p && (*p == ' ' || *p == ':' || *p == '\t')) p++;
-    if (*p != '"') return 0; p++;
-    size_t i = 0;
-    while (*p && *p != '"' && i < sz - 1) out[i++] = *p++;
-    out[i] = '\0'; return 1;
+    return bf_json_scan_str(json, strlen(json), key, out, sz);
 }
 
 static FamilyValue assess_family(const char *artifact_path) {

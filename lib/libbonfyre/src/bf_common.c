@@ -85,6 +85,18 @@ void bf_iso_timestamp(char *buf, size_t sz) {
     strftime(buf, sz, "%Y-%m-%dT%H:%M:%SZ", &t);
 }
 
+void bf_iso_timestamp_future(char *buf, size_t sz, int days_offset) {
+    time_t future = time(NULL) + (time_t)days_offset * 86400;
+    struct tm t;
+    struct tm *utc = gmtime(&future);
+    if (utc) {
+        t = *utc;
+    } else {
+        memset(&t, 0, sizeof(t));
+    }
+    strftime(buf, sz, "%Y-%m-%dT%H:%M:%SZ", &t);
+}
+
 /* ----------------------------------------------------------------
  * CLI arguments
  * ---------------------------------------------------------------- */

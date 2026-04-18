@@ -30,12 +30,7 @@
 /* ---------- utilities (shared pattern) ---------- */
 
 static int ensure_dir(const char *path) { return bf_ensure_dir(path); }
-static void iso_timestamp(char *buf, size_t sz) {
-    time_t now = time(NULL);
-    struct tm t;
-    gmtime_r(&now, &t);
-    strftime(buf, sz, "%Y-%m-%dT%H:%M:%SZ", &t);
-}
+static void iso_timestamp(char *buf, size_t sz) { bf_iso_timestamp(buf, sz); }
 
 static unsigned long file_size(const char *path) {
     struct stat st;
@@ -323,89 +318,6 @@ static int ingest_url(const char *url, const char *outdir, char *out_path, size_
     return 0;
 }
 
-/* ---------- SHA-256 (FIPS 180-4, inline, zero deps) ---------- */
-
-static const unsigned int K256[64] = {
-    0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,
-    0xd807aa98,0x12835b01,0x243185be,0x550c7dc3,0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174,
-    0xe49b69c1,0xefbe4786,0x0fc19dc6,0x240ca1cc,0x2de92c6f,0x4a7484aa,0x5cb0a9dc,0x76f988da,
-    0x983e5152,0xa831c66d,0xb00327c8,0xbf597fc7,0xc6e00bf3,0xd5a79147,0x06ca6351,0x14292967,
-    0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13,0x650a7354,0x766a0abb,0x81c2c92e,0x92722c85,
-    0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3,0xd192e819,0xd6990624,0xf40e3585,0x106aa070,
-    0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3,
-    0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2
-};
-#define RR(x,n) (((x)>>(n))|((x)<<(32-(n))))
-#define SHA_S0(x) (RR(x,2)^RR(x,13)^RR(x,22))
-#define SHA_S1(x) (RR(x,6)^RR(x,11)^RR(x,25))
-#define SHA_s0(x) (RR(x,7)^RR(x,18)^((x)>>3))
-#define SHA_s1(x) (RR(x,17)^RR(x,19)^((x)>>10))
-#define CH(e,f,g) (((e)&(f))^((~(e))&(g)))
-#define MAJ(a,b,c) (((a)&(b))^((a)&(c))^((b)&(c)))
-
-typedef struct { unsigned int h[8]; unsigned char buf[64]; unsigned long long total; } SHA256_CTX;
-
-static void sha256_init(SHA256_CTX *c) {
-    c->h[0]=0x6a09e667; c->h[1]=0xbb67ae85; c->h[2]=0x3c6ef372; c->h[3]=0xa54ff53a;
-    c->h[4]=0x510e527f; c->h[5]=0x9b05688c; c->h[6]=0x1f83d9ab; c->h[7]=0x5be0cd19;
-    c->total = 0;
-}
-static void sha256_block(SHA256_CTX *c, const unsigned char *data) {
-    unsigned int w[64], st[8], t1, t2;
-    for (int i = 0; i < 16; i++)
-        w[i] = ((unsigned int)data[i*4]<<24)|((unsigned int)data[i*4+1]<<16)|
-               ((unsigned int)data[i*4+2]<<8)|data[i*4+3];
-    for (int i = 16; i < 64; i++)
-        w[i] = SHA_s1(w[i-2]) + w[i-7] + SHA_s0(w[i-15]) + w[i-16];
-    for (int i = 0; i < 8; i++) st[i] = c->h[i];
-    for (int i = 0; i < 64; i++) {
-        t1 = st[7] + SHA_S1(st[4]) + CH(st[4],st[5],st[6]) + K256[i] + w[i];
-        t2 = SHA_S0(st[0]) + MAJ(st[0],st[1],st[2]);
-        st[7]=st[6]; st[6]=st[5]; st[5]=st[4]; st[4]=st[3]+t1;
-        st[3]=st[2]; st[2]=st[1]; st[1]=st[0]; st[0]=t1+t2;
-    }
-    for (int i = 0; i < 8; i++) c->h[i] += st[i];
-}
-static void sha256_update(SHA256_CTX *c, const unsigned char *data, size_t len) {
-    size_t off = (size_t)(c->total % 64); c->total += len;
-    for (size_t i = 0; i < len; i++) {
-        c->buf[off++] = data[i];
-        if (off == 64) { sha256_block(c, c->buf); off = 0; }
-    }
-}
-static void sha256_final(SHA256_CTX *c, unsigned char out[32]) {
-    unsigned long long bits = c->total * 8;
-    size_t off = (size_t)(c->total % 64);
-    c->buf[off++] = 0x80;
-    if (off > 56) { while (off < 64) c->buf[off++] = 0; sha256_block(c, c->buf); off = 0; }
-    while (off < 56) c->buf[off++] = 0;
-    for (int i = 7; i >= 0; i--) c->buf[56+(7-i)] = (unsigned char)(bits >> (i*8));
-    sha256_block(c, c->buf);
-    for (int i = 0; i < 8; i++) {
-        out[i*4]=(unsigned char)(c->h[i]>>24); out[i*4+1]=(unsigned char)(c->h[i]>>16);
-        out[i*4+2]=(unsigned char)(c->h[i]>>8); out[i*4+3]=(unsigned char)(c->h[i]);
-    }
-}
-
-static const char g_hex_lut[16] = "0123456789abcdef";
-
-static int compute_sha256(const char *path, char *hash_out, size_t hash_sz) {
-    FILE *fp = fopen(path, "rb");
-    if (!fp) return 1;
-    SHA256_CTX ctx; sha256_init(&ctx);
-    unsigned char buf[8192]; size_t n;
-    while ((n = fread(buf, 1, sizeof(buf), fp)) > 0) sha256_update(&ctx, buf, n);
-    fclose(fp);
-    unsigned char h[32]; sha256_final(&ctx, h);
-    if (hash_sz < 65) return 1;
-    for (int i = 0; i < 32; i++) {
-        hash_out[i*2]   = g_hex_lut[h[i] >> 4];
-        hash_out[i*2+1] = g_hex_lut[h[i] & 0x0f];
-    }
-    hash_out[64] = '\0';
-    return 0;
-}
-
 /* ---------- main ---------- */
 
 int main(int argc, char *argv[]) {
@@ -480,7 +392,7 @@ int main(int argc, char *argv[]) {
 
     /* ---- Hash ---- */
     char hash[128] = "unknown";
-    compute_sha256(norm_path[0] ? norm_path : input, hash, sizeof(hash));
+    bf_sha256_file(norm_path[0] ? norm_path : input, hash);
     unsigned long norm_sz = file_size(norm_path);
 
     /* ---- Intake manifest ---- */

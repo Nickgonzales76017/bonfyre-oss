@@ -30,109 +30,6 @@
 #define MAX_FILES 4096
 #define HASH_LEN 65
 
-/* ---------- SHA-256 implementation (FIPS 180-4, no deps) ---------- */
-
-static const unsigned int K256[64] = {
-    0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,
-    0xd807aa98,0x12835b01,0x243185be,0x550c7dc3,0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174,
-    0xe49b69c1,0xefbe4786,0x0fc19dc6,0x240ca1cc,0x2de92c6f,0x4a7484aa,0x5cb0a9dc,0x76f988da,
-    0x983e5152,0xa831c66d,0xb00327c8,0xbf597fc7,0xc6e00bf3,0xd5a79147,0x06ca6351,0x14292967,
-    0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13,0x650a7354,0x766a0abb,0x81c2c92e,0x92722c85,
-    0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3,0xd192e819,0xd6990624,0xf40e3585,0x106aa070,
-    0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3,
-    0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2
-};
-
-#define RR(x,n) (((x)>>(n))|((x)<<(32-(n))))
-#define S0(x) (RR(x,2)^RR(x,13)^RR(x,22))
-#define S1(x) (RR(x,6)^RR(x,11)^RR(x,25))
-#define s0(x) (RR(x,7)^RR(x,18)^((x)>>3))
-#define s1(x) (RR(x,17)^RR(x,19)^((x)>>10))
-#define CH(e,f,g) (((e)&(f))^((~(e))&(g)))
-#define MAJ(a,b,c) (((a)&(b))^((a)&(c))^((b)&(c)))
-
-typedef struct {
-    unsigned int h[8];
-    unsigned char buf[64];
-    unsigned long long total;
-} SHA256_CTX;
-
-static void sha256_init(SHA256_CTX *c) {
-    c->h[0]=0x6a09e667; c->h[1]=0xbb67ae85; c->h[2]=0x3c6ef372; c->h[3]=0xa54ff53a;
-    c->h[4]=0x510e527f; c->h[5]=0x9b05688c; c->h[6]=0x1f83d9ab; c->h[7]=0x5be0cd19;
-    c->total = 0;
-}
-
-static void sha256_block(SHA256_CTX *c, const unsigned char *data) {
-    unsigned int w[64], a, b, d, e, f, g, h, t1, t2;
-    a = c->h[0]; b = c->h[1]; d = c->h[2]; e = c->h[3] /* reuse var names */;
-    for (int i = 0; i < 16; i++)
-        w[i] = ((unsigned int)data[i*4]<<24)|((unsigned int)data[i*4+1]<<16)|
-               ((unsigned int)data[i*4+2]<<8)|data[i*4+3];
-    for (int i = 16; i < 64; i++)
-        w[i] = s1(w[i-2]) + w[i-7] + s0(w[i-15]) + w[i-16];
-    a=c->h[0]; b=c->h[1]; d=c->h[2]; f=c->h[3];
-    e=c->h[4]; g=c->h[5]; h=c->h[6];
-    unsigned int cc = c->h[7];
-    /* Use proper variable mapping: a,b,c,d,e,f,g,h */
-    unsigned int st[8];
-    for (int i = 0; i < 8; i++) st[i] = c->h[i];
-    for (int i = 0; i < 64; i++) {
-        t1 = st[7] + S1(st[4]) + CH(st[4],st[5],st[6]) + K256[i] + w[i];
-        t2 = S0(st[0]) + MAJ(st[0],st[1],st[2]);
-        st[7]=st[6]; st[6]=st[5]; st[5]=st[4]; st[4]=st[3]+t1;
-        st[3]=st[2]; st[2]=st[1]; st[1]=st[0]; st[0]=t1+t2;
-    }
-    for (int i = 0; i < 8; i++) c->h[i] += st[i];
-    (void)a; (void)b; (void)d; (void)e; (void)f; (void)g; (void)h; (void)cc;
-}
-
-/* #1: Block-aligned update — process full 64-byte blocks directly */
-static void sha256_update(SHA256_CTX *c, const unsigned char *data, size_t len) {
-    size_t off = (size_t)(c->total % 64);
-    c->total += len;
-    if (off > 0) {
-        size_t fill = 64 - off;
-        if (len < fill) { memcpy(c->buf + off, data, len); return; }
-        memcpy(c->buf + off, data, fill);
-        sha256_block(c, c->buf);
-        data += fill; len -= fill;
-    }
-    while (len >= 64) { sha256_block(c, data); data += 64; len -= 64; }
-    if (len > 0) memcpy(c->buf, data, len);
-}
-
-static void sha256_final(SHA256_CTX *c, unsigned char out[32]) {
-    unsigned long long bits = c->total * 8;
-    size_t off = (size_t)(c->total % 64);
-    c->buf[off++] = 0x80;
-    if (off > 56) {
-        while (off < 64) c->buf[off++] = 0;
-        sha256_block(c, c->buf);
-        off = 0;
-    }
-    while (off < 56) c->buf[off++] = 0;
-    for (int i = 7; i >= 0; i--) c->buf[56+(7-i)] = (unsigned char)(bits >> (i*8));
-    sha256_block(c, c->buf);
-    for (int i = 0; i < 8; i++) {
-        out[i*4]   = (unsigned char)(c->h[i]>>24);
-        out[i*4+1] = (unsigned char)(c->h[i]>>16);
-        out[i*4+2] = (unsigned char)(c->h[i]>>8);
-        out[i*4+3] = (unsigned char)(c->h[i]);
-    }
-}
-
-/* #2: Hex lookup table — no sprintf overhead */
-static const char HEX_LUT[16] = "0123456789abcdef";
-
-static void sha256_hex(const unsigned char hash[32], char hex[65]) {
-    for (int i = 0; i < 32; i++) {
-        hex[i*2]   = HEX_LUT[hash[i] >> 4];
-        hex[i*2+1] = HEX_LUT[hash[i] & 0x0f];
-    }
-    hex[64] = '\0';
-}
-
 /* ---------- commands ---------- */
 
 static int cmd_file(const char *path) {
@@ -143,15 +40,15 @@ static int cmd_file(const char *path) {
     if (bf_mmap_open(&m, path) != 0) {
         fprintf(stderr, "Cannot open: %s: %s\n", path, strerror(errno)); return 1;
     }
-    SHA256_CTX ctx;
-    sha256_init(&ctx);
+    BfSha256 ctx;
+    bf_sha256_init(&ctx);
     if (m.len > 0)
-        sha256_update(&ctx, (const unsigned char *)m.ptr, m.len);
+        bf_sha256_update(&ctx, (const unsigned char *)m.ptr, m.len);
     bf_mmap_close(&m);
     unsigned char h[32];
-    sha256_final(&ctx, h);
+    bf_sha256_final(&ctx, h);
     char hex[65];
-    sha256_hex(h, hex);
+    bf_sha256_digest_hex(h, hex);
     printf("%s  %s\n", hex, path);
     return 0;
 }
@@ -178,24 +75,24 @@ static int cmd_node(const char *op, const char *version, const char *params_json
     qsort(children, (size_t)nchildren, sizeof(char *), cmp_str_ptrs);
 
     /* Build canonical string */
-    SHA256_CTX ctx;
-    sha256_init(&ctx);
-    sha256_update(&ctx, (const unsigned char *)op, strlen(op));
-    sha256_update(&ctx, (const unsigned char *)"|", 1);
-    sha256_update(&ctx, (const unsigned char *)version, strlen(version));
-    sha256_update(&ctx, (const unsigned char *)"|", 1);
-    sha256_update(&ctx, (const unsigned char *)params_json, strlen(params_json));
-    sha256_update(&ctx, (const unsigned char *)"|", 1);
+    BfSha256 ctx;
+    bf_sha256_init(&ctx);
+    bf_sha256_update(&ctx, (const unsigned char *)op, strlen(op));
+    bf_sha256_update(&ctx, (const unsigned char *)"|", 1);
+    bf_sha256_update(&ctx, (const unsigned char *)version, strlen(version));
+    bf_sha256_update(&ctx, (const unsigned char *)"|", 1);
+    bf_sha256_update(&ctx, (const unsigned char *)params_json, strlen(params_json));
+    bf_sha256_update(&ctx, (const unsigned char *)"|", 1);
     for (int i = 0; i < nchildren; i++) {
-        sha256_update(&ctx, (const unsigned char *)children[i], strlen(children[i]));
+        bf_sha256_update(&ctx, (const unsigned char *)children[i], strlen(children[i]));
         if (i < nchildren - 1)
-            sha256_update(&ctx, (const unsigned char *)",", 1);
+            bf_sha256_update(&ctx, (const unsigned char *)",", 1);
         free(children[i]);
     }
     unsigned char h[32];
-    sha256_final(&ctx, h);
+    bf_sha256_final(&ctx, h);
     char hex[65];
-    sha256_hex(h, hex);
+    bf_sha256_digest_hex(h, hex);
     printf("%s\n", hex);
     return 0;
 }
@@ -236,20 +133,20 @@ static int cmd_dedup(const char *dir) {
 
         FILE *fp = fopen(path, "rb");
         if (!fp) continue;
-        SHA256_CTX ctx;
-        sha256_init(&ctx);
+        BfSha256 ctx;
+        bf_sha256_init(&ctx);
         /* Zero-copy: mmap each candidate file for SHA-256 hashing
          * Same gain as cmd_file: no bounce buffer, page cache is buf */
         bf_mmap_close(NULL); /* no-op, just to reference type */
         BfMmapFile _dm;
         if (bf_mmap_open(&_dm, path) != 0) continue;
-        sha256_init(&ctx);
+        bf_sha256_init(&ctx);
         if (_dm.len > 0)
-            sha256_update(&ctx, (const unsigned char *)_dm.ptr, _dm.len);
+            bf_sha256_update(&ctx, (const unsigned char *)_dm.ptr, _dm.len);
         bf_mmap_close(&_dm);
         unsigned char h[32];
-        sha256_final(&ctx, h);
-        sha256_hex(h, entries[count].hash);
+        bf_sha256_final(&ctx, h);
+        bf_sha256_digest_hex(h, entries[count].hash);
         snprintf(entries[count].path, PATH_MAX, "%s", path);
         entries[count].size = (unsigned long)st.st_size;
         count++;
@@ -331,14 +228,14 @@ static int cmd_merkle(const char *artifact_path, int verify_only) {
     while (nhashes > 1) {
         int next = 0;
         for (int i = 0; i < nhashes; i += 2) {
-            SHA256_CTX ctx;
-            sha256_init(&ctx);
-            sha256_update(&ctx, (const unsigned char *)hashes[i], strlen(hashes[i]));
+            BfSha256 ctx;
+            bf_sha256_init(&ctx);
+            bf_sha256_update(&ctx, (const unsigned char *)hashes[i], strlen(hashes[i]));
             if (i + 1 < nhashes)
-                sha256_update(&ctx, (const unsigned char *)hashes[i+1], strlen(hashes[i+1]));
+                bf_sha256_update(&ctx, (const unsigned char *)hashes[i+1], strlen(hashes[i+1]));
             unsigned char h[32];
-            sha256_final(&ctx, h);
-            sha256_hex(h, hashes[next]);
+            bf_sha256_final(&ctx, h);
+            bf_sha256_digest_hex(h, hashes[next]);
             next++;
         }
         nhashes = next;

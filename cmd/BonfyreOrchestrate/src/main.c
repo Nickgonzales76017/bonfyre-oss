@@ -291,46 +291,11 @@ static void build_state_key(const OrchestrateRequest *req, char *dst, size_t dst
 }
 
 static int json_string(const char *json, const char *key, char *dst, size_t dst_sz) {
-    char needle[64];
-    snprintf(needle, sizeof(needle), "\"%s\"", key);
-    const char *p = strstr(json, needle);
-    if (!p) return 0;
-    p += strlen(needle);
-    while (*p && isspace((unsigned char)*p)) p++;
-    if (*p != ':') return 0;
-    p++;
-    while (*p && isspace((unsigned char)*p)) p++;
-    if (*p != '"') return 0;
-    p++;
-    size_t j = 0;
-    while (*p && *p != '"' && j + 1 < dst_sz) {
-        if (*p == '\\' && p[1]) {
-            p++;
-            dst[j++] = (*p == 'n') ? '\n' : *p;
-        } else {
-            dst[j++] = *p;
-        }
-        p++;
-    }
-    dst[j] = '\0';
-    return j > 0;
+    return bf_json_scan_str(json, strlen(json), key, dst, dst_sz);
 }
 
 static int json_double(const char *json, const char *key, double *value) {
-    char needle[64];
-    snprintf(needle, sizeof(needle), "\"%s\"", key);
-    const char *p = strstr(json, needle);
-    if (!p) return 0;
-    p += strlen(needle);
-    while (*p && isspace((unsigned char)*p)) p++;
-    if (*p != ':') return 0;
-    p++;
-    while (*p && isspace((unsigned char)*p)) p++;
-    char *end = NULL;
-    double parsed = strtod(p, &end);
-    if (end == p) return 0;
-    if (value) *value = parsed;
-    return 1;
+    return bf_json_scan_double(json, strlen(json), key, value);
 }
 
 static void infer_defaults(OrchestrateRequest *req) {

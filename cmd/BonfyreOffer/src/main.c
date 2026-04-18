@@ -10,12 +10,7 @@
 #define MAX_PATH 2048
 
 static int ensure_dir(const char *path) { return bf_ensure_dir(path); }
-static void iso_timestamp(char *buffer, size_t size) {
-    time_t now = time(NULL);
-    struct tm tm_utc;
-    gmtime_r(&now, &tm_utc);
-    strftime(buffer, size, "%Y-%m-%dT%H:%M:%SZ", &tm_utc);
-}
+static void iso_timestamp(char *buf, size_t sz) { bf_iso_timestamp(buf, sz); }
 
 static char *read_file(const char *path, long *size_out) {
     FILE *fp = fopen(path, "rb");
@@ -40,23 +35,7 @@ static char *read_file(const char *path, long *size_out) {
 }
 
 static int extract_string_value(const char *json, const char *key, char *buffer, size_t size) {
-    char needle[256];
-    snprintf(needle, sizeof(needle), "\"%s\"", key);
-    const char *pos = strstr(json, needle);
-    if (!pos) return 0;
-    pos = strchr(pos + strlen(needle), ':');
-    if (!pos) return 0;
-    pos++;
-    while (*pos && isspace((unsigned char)*pos)) pos++;
-    if (*pos != '"') return 0;
-    pos++;
-    const char *end = strchr(pos, '"');
-    if (!end) return 0;
-    size_t len = (size_t)(end - pos);
-    if (len >= size) len = size - 1;
-    memcpy(buffer, pos, len);
-    buffer[len] = '\0';
-    return 1;
+    return bf_json_scan_str(json, strlen(json), key, buffer, size);
 }
 
 static int extract_int_value(const char *json, const char *key, int *value) {

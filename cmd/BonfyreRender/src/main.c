@@ -15,12 +15,7 @@ static void path_join(char *buffer, size_t size, const char *left, const char *r
     snprintf(buffer, size, "%s/%s", left, right);
 }
 
-static void iso_timestamp(char *buffer, size_t size) {
-    time_t now = time(NULL);
-    struct tm tm_utc;
-    gmtime_r(&now, &tm_utc);
-    strftime(buffer, size, "%Y-%m-%dT%H:%M:%SZ", &tm_utc);
-}
+static void iso_timestamp(char *buf, size_t sz) { bf_iso_timestamp(buf, sz); }
 
 static void resolve_executable_sibling(char *buffer, size_t size, const char *argv0, const char *sibling_dir, const char *binary_name) {
     if (argv0 && argv0[0] == '/') snprintf(buffer, size, "%s", argv0);

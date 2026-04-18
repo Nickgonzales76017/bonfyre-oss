@@ -32,7 +32,7 @@
 #include <time.h>
 #include <unistd.h>
 #include <sqlite3.h>
-
+#include <bonfyre.h>
 #define VERSION         "1.0.0"
 #define DEFAULT_HOST    "127.0.0.1"
 #define DEFAULT_PORT    8021
@@ -82,12 +82,7 @@ static const char *SCHEMA_SQL =
 
 /* ── Utility ───────────────────────────────────────────────────────── */
 
-static void iso_timestamp(char *buf, size_t len) {
-    time_t t = time(NULL);
-    struct tm tm;
-    gmtime_r(&t, &tm);
-    strftime(buf, len, "%Y-%m-%dT%H:%M:%SZ", &tm);
-}
+static void iso_timestamp(char *buf, size_t sz) { bf_iso_timestamp(buf, sz); }
 
 static const char *arg_get(int argc, char **argv, const char *flag) {
     for (int i = 1; i < argc - 1; i++)

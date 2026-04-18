@@ -28,6 +28,7 @@
 #include <sys/stat.h>
 #include <time.h>
 #include <unistd.h>
+#include <bonfyre.h>
 
 #include <sqlite3.h>
 
@@ -36,83 +37,6 @@
 #define HASH_HEX      65
 #define DB_ENV        "BONFYRE_RECIPE_DB"
 #define DB_SUBPATH    "/.local/share/bonfyre/recipes.db"
-
-/* ====================================================================
- * SHA-256  (FIPS 180-4, no external deps)
- * ==================================================================== */
-
-static const uint32_t K256[64] = {
-    0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,
-    0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,
-    0xd807aa98,0x12835b01,0x243185be,0x550c7dc3,
-    0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174,
-    0xe49b69c1,0xefbe4786,0x0fc19dc6,0x240ca1cc,
-    0x2de92c6f,0x4a7484aa,0x5cb0a9dc,0x76f988da,
-    0x983e5152,0xa831c66d,0xb00327c8,0xbf597fc7,
-    0xc6e00bf3,0xd5a79147,0x06ca6351,0x14292967,
-    0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13,
-    0x650a7354,0x766a0abb,0x81c2c92e,0x92722c85,
-    0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3,
-    0xd192e819,0xd6990624,0xf40e3585,0x106aa070,
-    0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,
-    0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3,
-    0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,
-    0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2
-};
-#define RR32(x,n)  (((x)>>(n))|((x)<<(32-(n))))
-#define S0(x)  (RR32(x,2)^RR32(x,13)^RR32(x,22))
-#define S1(x)  (RR32(x,6)^RR32(x,11)^RR32(x,25))
-#define s0(x)  (RR32(x,7)^RR32(x,18)^((x)>>3))
-#define s1(x)  (RR32(x,17)^RR32(x,19)^((x)>>10))
-#define CH(e,f,g)   (((e)&(f))^((~(e))&(g)))
-#define MAJ(a,b,c)  (((a)&(b))^((a)&(c))^((b)&(c)))
-
-typedef struct { uint32_t h[8]; uint8_t buf[64]; uint64_t total; } SHA256_CTX;
-
-static void sha256_init(SHA256_CTX *c){
-    static const uint32_t H0[8]={0x6a09e667,0xbb67ae85,0x3c6ef372,0xa54ff53a,
-                                  0x510e527f,0x9b05688c,0x1f83d9ab,0x5be0cd19};
-    memcpy(c->h,H0,32); c->total=0;
-}
-static void sha256_block(SHA256_CTX *c, const uint8_t *d){
-    uint32_t w[64],st[8],t1,t2;
-    for(int i=0;i<16;i++) w[i]=((uint32_t)d[i*4]<<24)|((uint32_t)d[i*4+1]<<16)|
-                                ((uint32_t)d[i*4+2]<<8)|d[i*4+3];
-    for(int i=16;i<64;i++) w[i]=s1(w[i-2])+w[i-7]+s0(w[i-15])+w[i-16];
-    memcpy(st,c->h,32);
-    for(int i=0;i<64;i++){
-        t1=st[7]+S1(st[4])+CH(st[4],st[5],st[6])+K256[i]+w[i];
-        t2=S0(st[0])+MAJ(st[0],st[1],st[2]);
-        st[7]=st[6];st[6]=st[5];st[5]=st[4];st[4]=st[3]+t1;
-        st[3]=st[2];st[2]=st[1];st[1]=st[0];st[0]=t1+t2;
-    }
-    for(int i=0;i<8;i++) c->h[i]+=st[i];
-}
-static void sha256_update(SHA256_CTX *c, const uint8_t *data, size_t len){
-    size_t off=(size_t)(c->total%64); c->total+=len;
-    if(off>0){ size_t fill=64-off; if(len<fill){memcpy(c->buf+off,data,len);return;}
-        memcpy(c->buf+off,data,fill); sha256_block(c,c->buf); data+=fill; len-=fill; }
-    while(len>=64){sha256_block(c,data);data+=64;len-=64;}
-    if(len>0) memcpy(c->buf,data,len);
-}
-static void sha256_final(SHA256_CTX *c, uint8_t out[32]){
-    uint64_t bits=c->total*8; size_t off=(size_t)(c->total%64);
-    c->buf[off++]=0x80;
-    if(off>56){while(off<64)c->buf[off++]=0;sha256_block(c,c->buf);off=0;}
-    while(off<56)c->buf[off++]=0;
-    for(int i=7;i>=0;i--) c->buf[56+(7-i)]=(uint8_t)(bits>>(i*8));
-    sha256_block(c,c->buf);
-    for(int i=0;i<8;i++){out[i*4]=(uint8_t)(c->h[i]>>24);out[i*4+1]=(uint8_t)(c->h[i]>>16);
-                         out[i*4+2]=(uint8_t)(c->h[i]>>8);out[i*4+3]=(uint8_t)(c->h[i]);}
-}
-static void sha256_hex(const char *text, size_t len, char hex[HASH_HEX]){
-    SHA256_CTX ctx; sha256_init(&ctx);
-    sha256_update(&ctx,(const uint8_t*)text,len);
-    uint8_t h[32]; sha256_final(&ctx,h);
-    static const char LUT[]="0123456789abcdef";
-    for(int i=0;i<32;i++){hex[i*2]=LUT[h[i]>>4];hex[i*2+1]=LUT[h[i]&0xf];}
-    hex[64]='\0';
-}
 
 /* ====================================================================
  * Minimal JSON helpers — targeted at recipe schema only
@@ -636,7 +560,7 @@ static int register_json(sqlite3 *db, const char *json_text, const char *source)
         fprintf(stderr,"recipe: JSON missing 'code' or 'name' field\n"); return 1;
     }
     if(!ver[0]) strcpy(ver,"1.0.0");
-    sha256_hex(json_text,strlen(json_text),hash);
+    bf_sha256_hex((const uint8_t*)json_text,strlen(json_text),hash);
     int rc=db_upsert(db,code,name,ver,desc,hash,json_text,source);
     if(rc!=SQLITE_OK){ fprintf(stderr,"recipe: db error %d\n",rc); return 1; }
     printf("registered %s (%s) hash=%s\n",code,name,hash);
@@ -749,7 +673,7 @@ static int cmd_hash(sqlite3 *db, const char *code){
         const char *bj=builtin_find(code); if(!bj){ fprintf(stderr,"recipe: unknown '%s'\n",code); return 1; }
         snprintf(json,sizeof(json),"%s",bj);
     }
-    char hex[HASH_HEX]; sha256_hex(json,strlen(json),hex);
+    char hex[HASH_HEX]; bf_sha256_hex((const uint8_t*)json,strlen(json),hex);
     printf("%s  %s\n",hex,code); return 0;
 }
 

@@ -1,12 +1,14 @@
 CC ?= cc
 CFLAGS ?= -O2 -Wall -Wextra -std=c11
+LOCAL_CFLAGS = -I../../lib/libbonfyre/include
+LDFLAGS_BF   = -L../../lib/libbonfyre -lbonfyre
 TARGET = bonfyre-index
 SRC = src/main.c
 
 all: $(TARGET)
 
 $(TARGET): $(SRC)
-	$(CC) $(CFLAGS) -o $(TARGET) $(SRC) -lsqlite3
+	$(CC) $(CFLAGS) $(LOCAL_CFLAGS) -o $(TARGET) $(SRC) $(LDFLAGS_BF) -lsqlite3
 
 clean:
 	rm -f $(TARGET)

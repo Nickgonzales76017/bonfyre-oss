@@ -213,6 +213,9 @@ void   bf_sha256_hex(const uint8_t *data, size_t len, char hex[65]);
 /* Convenience: hash a file and write hex string. Returns 0 on success. */
 int    bf_sha256_file(const char *path, char hex[65]);
 
+/* Convenience: format a pre-computed 32-byte digest as a 64-char hex string. */
+void   bf_sha256_digest_hex(const uint8_t hash[32], char hex[65]);
+
 /* ================================================================
  * FNV-1a-64
  *
@@ -239,6 +242,9 @@ int  bf_ensure_dir(const char *path);
 
 /* Write ISO-8601 UTC timestamp to buf. */
 void bf_iso_timestamp(char *buf, size_t sz);
+
+/* Write ISO-8601 UTC timestamp offset by days_offset days. */
+void bf_iso_timestamp_future(char *buf, size_t sz, int days_offset);
 
 /* Check if a file exists. */
 int  bf_file_exists(const char *path);

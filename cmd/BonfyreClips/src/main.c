@@ -30,12 +30,7 @@
 
 static int ensure_dir(const char *path) { return bf_ensure_dir(path); }
 
-static void iso_timestamp(char *buf, size_t sz) {
-    time_t now = time(NULL);
-    struct tm t;
-    gmtime_r(&now, &t);
-    strftime(buf, sz, "%Y-%m-%dT%H:%M:%SZ", &t);
-}
+static void iso_timestamp(char *buf, size_t sz) { bf_iso_timestamp(buf, sz); }
 
 static char *read_file_contents(const char *path) {
     return bf_read_file(path, NULL);

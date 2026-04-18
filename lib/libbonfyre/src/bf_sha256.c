@@ -107,6 +107,10 @@ void bf_sha256_hex(const uint8_t *data, size_t len, char hex[65]) {
     hash_to_hex(hash, hex);
 }
 
+void bf_sha256_digest_hex(const uint8_t hash[32], char hex[65]) {
+    hash_to_hex(hash, hex);
+}
+
 int bf_sha256_file(const char *path, char hex[65]) {
     FILE *f = fopen(path, "rb");
     if (!f) return -1;

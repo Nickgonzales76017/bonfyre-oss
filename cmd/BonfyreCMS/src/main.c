@@ -206,47 +206,17 @@ static sqlite3_int64 stmt_value_bytes(sqlite3_stmt *stmt, int col) {
 /* Extract a string value for a given key from flat JSON.
    Returns 1 on success, 0 if not found. */
 static int json_str(const char *json, const char *key, char *out, size_t sz) {
-    char needle[256];
-    snprintf(needle, sizeof(needle), "\"%s\"", key);
-    const char *p = strstr(json, needle);
-    if (!p) return 0;
-    p += strlen(needle);
-    while (*p && (*p == ' ' || *p == ':' || *p == '\t' || *p == '\n' || *p == '\r')) p++;
-    if (*p != '"') return 0;
-    p++;
-    size_t i = 0;
-    while (*p && *p != '"' && i < sz - 1) {
-        if (*p == '\\' && *(p+1)) { p++; }
-        out[i++] = *p++;
-    }
-    out[i] = '\0';
-    return 1;
+    return bf_json_scan_str(json, strlen(json), key, out, sz);
 }
 
 /* Extract an integer value */
 static int json_int(const char *json, const char *key, int *out) {
-    char needle[256];
-    snprintf(needle, sizeof(needle), "\"%s\"", key);
-    const char *p = strstr(json, needle);
-    if (!p) return 0;
-    p += strlen(needle);
-    while (*p && (*p == ' ' || *p == ':' || *p == '\t' || *p == '\n' || *p == '\r')) p++;
-    if (!isdigit((unsigned char)*p) && *p != '-') return 0;
-    *out = atoi(p);
-    return 1;
+    return bf_json_scan_int(json, strlen(json), key, out);
 }
 
 /* Extract a double value */
 static int json_double(const char *json, const char *key, double *out) {
-    char needle[256];
-    snprintf(needle, sizeof(needle), "\"%s\"", key);
-    const char *p = strstr(json, needle);
-    if (!p) return 0;
-    p += strlen(needle);
-    while (*p && (*p == ' ' || *p == ':' || *p == '\t' || *p == '\n' || *p == '\r')) p++;
-    char *end = NULL;
-    *out = strtod(p, &end);
-    return end != p;
+    return bf_json_scan_double(json, strlen(json), key, out);
 }
 
 /* Extract a boolean value */
