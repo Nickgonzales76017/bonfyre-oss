@@ -50,9 +50,13 @@ TASKS=("T04-C" "T07-C")
 DATASETS=("ag_news" "cnn_dm")
 # Per-task sizes: T07 is the structural candidate — run all 4 scales.
 # T04-C deferred at 2000 until cnn_dm cluster-mode is confirmed stable.
-declare -A TASK_SIZES
-TASK_SIZES["T04-C"]="250 500 1000"
-TASK_SIZES["T07-C"]="250 500 1000 2000"
+task_sizes() {
+    case "$1" in
+        T04-C) echo "250 500 1000 2000" ;;
+        T07-C) echo "250 500" ;;
+        *)     echo "250 500" ;;
+    esac
+}
 
 # ── helpers ────────────────────────────────────────────────────────────────────
 prep_corpus() {
@@ -126,7 +130,7 @@ run_experiment() {
 START_TS=$(date +%s)
 
 for task in "${TASKS[@]}"; do
-    read -ra sizes <<< "${TASK_SIZES[$task]}"
+    read -ra sizes <<< "$(task_sizes "$task")"
     for dataset in "${DATASETS[@]}"; do
         for n in "${sizes[@]}"; do
             run_experiment "$task" "$dataset" "$n"
