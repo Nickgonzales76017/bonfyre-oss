@@ -482,6 +482,268 @@ static RoundtripResult roundtrip_tensor(const float *weights, size_t total,
 }
 
 /* ═══════════════════════════════════════════════════════════════════
+ * BQFP File Format (Bonfyre Quant FP, v1)
+ *
+ * Header (16 bytes):
+ *   magic:      "BQFP"  (4 bytes)
+ *   version:    uint32  (= 1)
+ *   n_tensors:  uint32
+ *   bits:       uint32
+ *
+ * Per tensor:
+ *   name:       char[256]
+ *   n_elements: uint64
+ *   n_blocks:   uint64
+ *   eff_k:      uint32
+ *   _pad:       uint32
+ *   codebook:   float32[eff_k * 16]
+ *   blocks:     BqfpBlock[n_blocks]
+ *
+ * Per block (BqfpBlock, fixed size):
+ *   scale:      float32
+ *   warp_norm:  float32
+ *   e8i:        int8[BLOCK_DIM]   (e8_point / (lattice_scale/8), ×2 for half-int)
+ *   tile_idx:   uint8[E8_PAIRS]
+ * ═══════════════════════════════════════════════════════════════════ */
+
+#define BQFP_MAGIC  0x50464251u   /* "BQFP" little-endian */
+#define BQFP_VERSION 1u
+
+typedef struct {
+    float   scale;
+    float   warp_norm;
+    int8_t  e8i[BLOCK_DIM];        /* quantized E8 coordinates */
+    uint8_t tile_idx[E8_PAIRS];
+} BqfpBlock;
+
+/* Encode a single float array to QuantBlock array + codebook */
+static void encode_tensor_data(const float *weights, size_t total, int bits,
+                                uint64_t haar_seed,
+                                QuantBlock **qb_out, int *ek_out,
+                                float **tiles_out, size_t *n_blocks_out) {
+    size_t n_blocks = (total + BLOCK_DIM - 1) / BLOCK_DIM;
+    float lattice_scale = 8.0f * (float)bits;
+
+    QuantBlock *qblocks = (QuantBlock *)calloc(n_blocks, sizeof(QuantBlock));
+    for (size_t b = 0; b < n_blocks; b++) {
+        size_t off = b * BLOCK_DIM;
+        size_t dim = (off + BLOCK_DIM <= total) ? BLOCK_DIM : (total - off);
+        encode_block(weights + off, dim, &qblocks[b],
+                     haar_seed ^ (uint64_t)b, lattice_scale);
+    }
+
+    /* Collect residuals */
+    size_t total_pairs = n_blocks * E8_PAIRS;
+    float *all_res = (float *)calloc(total_pairs * TILE_DIM, sizeof(float));
+    for (size_t b = 0; b < n_blocks; b++) {
+        size_t off = b * BLOCK_DIM;
+        size_t dim = (off + BLOCK_DIM <= total) ? BLOCK_DIM : (total - off);
+        float buf[BLOCK_DIM];
+        memset(buf, 0, sizeof(buf));
+        memcpy(buf, weights + off, dim * sizeof(float));
+        random_signs(buf, BLOCK_DIM, haar_seed ^ (uint64_t)b);
+        fwht(buf, BLOCK_DIM);
+        float rms = qblocks[b].scale;
+        for (int i = 0; i < BLOCK_DIM; i++) buf[i] /= rms;
+        float warped[BLOCK_DIM];
+        for (int i = 0; i < BLOCK_DIM; i++) warped[i] = mu_warp(buf[i], MU_BETA);
+        float wnorm = qblocks[b].warp_norm;
+        for (int p = 0; p < E8_PAIRS; p++) {
+            size_t ridx = (b * E8_PAIRS + (size_t)p) * TILE_DIM;
+            for (int d = 0; d < TILE_DIM; d++) {
+                float scaled = warped[p * TILE_DIM + d] / wnorm * lattice_scale;
+                all_res[ridx + d] = scaled - qblocks[b].e8_points[p * TILE_DIM + d];
+            }
+        }
+    }
+
+    int ek = RVQ_TILES;
+    if (total_pairs < (size_t)ek * 4) ek = (int)(total_pairs / 4);
+    if (ek < 4) ek = 4;
+    if (ek > RVQ_TILES) ek = RVQ_TILES;
+
+    float *tiles = (float *)calloc((size_t)ek * TILE_DIM, sizeof(float));
+    learn_tiles(all_res, total_pairs, tiles, ek);
+
+    /* Assign tiles */
+    int prev_seeds[E8_PAIRS];
+    for (int p = 0; p < E8_PAIRS; p++) prev_seeds[p] = -1;
+    for (size_t b = 0; b < n_blocks; b++) {
+        for (int p = 0; p < E8_PAIRS; p++) {
+            size_t ridx = (b * E8_PAIRS + (size_t)p) * TILE_DIM;
+            int ti = find_nearest_tile(all_res + ridx, tiles, ek, prev_seeds[p]);
+            qblocks[b].tile_idx[p] = (uint8_t)ti;
+            prev_seeds[p] = ti;
+        }
+    }
+
+    free(all_res);
+    *qb_out = qblocks;
+    *ek_out = ek;
+    *tiles_out = tiles;
+    *n_blocks_out = n_blocks;
+}
+
+/* Write all encoded tensors to a BQFP file */
+static int write_bqfp(const char *path, int bits,
+                       const char **names, float **weights,
+                       size_t *n_elements, size_t n_tensors) {
+    FILE *f = fopen(path, "wb");
+    if (!f) { perror(path); return 1; }
+
+    /* Header */
+    uint32_t hdr[4] = { BQFP_MAGIC, BQFP_VERSION,
+                        (uint32_t)n_tensors, (uint32_t)bits };
+    fwrite(hdr, 4, 4, f);
+
+    for (size_t i = 0; i < n_tensors; i++) {
+        /* Compute haar seed from name */
+        uint64_t haar_seed = 0x12345678ULL;
+        const char *nm = names[i] ? names[i] : "";
+        for (const char *p = nm; *p; p++)
+            haar_seed = haar_seed * 31 + (uint64_t)(unsigned char)*p;
+
+        QuantBlock *qblocks = NULL;
+        int ek = 0;
+        float *tiles = NULL;
+        size_t n_blocks = 0;
+        encode_tensor_data(weights[i], n_elements[i], bits, haar_seed,
+                           &qblocks, &ek, &tiles, &n_blocks);
+        float lattice_scale = 8.0f * (float)bits;
+
+        /* Tensor header: name[256], n_elements[8], n_blocks[8], eff_k[4], pad[4] */
+        char name_buf[256];
+        memset(name_buf, 0, sizeof(name_buf));
+        strncpy(name_buf, nm, sizeof(name_buf) - 1);
+        fwrite(name_buf, 1, 256, f);
+        uint64_t ne = (uint64_t)n_elements[i];
+        uint64_t nb = (uint64_t)n_blocks;
+        fwrite(&ne, 8, 1, f);
+        fwrite(&nb, 8, 1, f);
+        uint32_t ek32 = (uint32_t)ek, pad32 = 0;
+        fwrite(&ek32, 4, 1, f);
+        fwrite(&pad32, 4, 1, f);
+
+        /* Codebook */
+        fwrite(tiles, sizeof(float), (size_t)ek * TILE_DIM, f);
+
+        /* Blocks (compact BqfpBlock) */
+        float scale_inv = (lattice_scale > 0) ? 8.0f / lattice_scale : 1.0f;
+        for (size_t b = 0; b < n_blocks; b++) {
+            BqfpBlock blk;
+            blk.scale = qblocks[b].scale;
+            blk.warp_norm = qblocks[b].warp_norm;
+            for (int d = 0; d < BLOCK_DIM; d++) {
+                /* Store E8 coord as int8: multiply by scale_inv*2 */
+                float v = qblocks[b].e8_points[d] * scale_inv * 2.0f;
+                int vi = (int)(v + (v >= 0 ? 0.5f : -0.5f));
+                if (vi > 127) vi = 127;
+                if (vi < -128) vi = -128;
+                blk.e8i[d] = (int8_t)vi;
+            }
+            for (int p = 0; p < E8_PAIRS; p++)
+                blk.tile_idx[p] = qblocks[b].tile_idx[p];
+            fwrite(&blk, sizeof(BqfpBlock), 1, f);
+        }
+
+        free(qblocks);
+        free(tiles);
+    }
+
+    fclose(f);
+    return 0;
+}
+
+/* cmd_compress: reads ONNX/GGUF, encodes, writes BQFP */
+#include "onnx_reader.h"
+
+static int cmd_quant_compress(const char *input, const char *output, int bits) {
+    printf("bonfyre-quant compress: %s → %s  [%d-bit]\n", input, output, bits);
+
+    size_t n_tensors = 0;
+    OnnxTensor *tensors = NULL;
+
+    /* Detect .onnx by extension */
+    size_t ilen = strlen(input);
+    int is_onnx = (ilen > 5 && strcmp(input + ilen - 5, ".onnx") == 0);
+
+    if (is_onnx) {
+        tensors = onnx_read(input, &n_tensors);
+        if (!tensors || n_tensors == 0) {
+            fprintf(stderr, "error: failed to read ONNX tensors from %s\n", input);
+            return 1;
+        }
+        printf("  read %zu ONNX float32 tensors\n", n_tensors);
+
+        const char **names = (const char **)malloc(n_tensors * sizeof(char *));
+        float **wdata = (float **)malloc(n_tensors * sizeof(float *));
+        size_t *nelems = (size_t *)malloc(n_tensors * sizeof(size_t));
+        for (size_t i = 0; i < n_tensors; i++) {
+            names[i] = tensors[i].name;
+            wdata[i] = tensors[i].data;
+            nelems[i] = tensors[i].n_elements;
+        }
+
+        int rc = write_bqfp(output, bits, names, wdata, nelems, n_tensors);
+        free(names); free(wdata); free(nelems);
+        onnx_tensors_free(tensors, n_tensors);
+        if (rc == 0) printf("  wrote %s\n", output);
+        return rc;
+    } else {
+        fprintf(stderr, "error: only .onnx input supported; GGUF coming soon\n");
+        return 1;
+    }
+}
+
+/* cmd_quant_inspect: print BQFP file stats */
+static int cmd_quant_inspect(const char *path) {
+    FILE *f = fopen(path, "rb");
+    if (!f) { perror(path); return 1; }
+
+    uint32_t hdr[4];
+    if (fread(hdr, 4, 4, f) != 4) { fclose(f); fprintf(stderr,"bad header\n"); return 1; }
+    if (hdr[0] != BQFP_MAGIC) {
+        fprintf(stderr, "error: not a BQFP file (magic 0x%08X)\n", hdr[0]);
+        fclose(f); return 1;
+    }
+    printf("BQFP file: %s\n", path);
+    printf("  version:   %u\n", hdr[1]);
+    printf("  tensors:   %u\n", hdr[2]);
+    printf("  bits:      %u\n\n", hdr[3]);
+
+    uint32_t n_tensors = hdr[2];
+    size_t total_bytes = 16;
+    for (uint32_t t = 0; t < n_tensors; t++) {
+        char name[256];
+        uint64_t n_elements, n_blocks;
+        uint32_t eff_k, _pad;
+        if (fread(name, 1, 256, f) != 256) break;
+        if (fread(&n_elements, 8, 1, f) != 1) break;
+        if (fread(&n_blocks, 8, 1, f) != 1) break;
+        if (fread(&eff_k, 4, 1, f) != 1) break;
+        if (fread(&_pad, 4, 1, f) != 1) break;
+
+        size_t cb_bytes = (size_t)eff_k * TILE_DIM * 4;
+        size_t blk_bytes = (size_t)n_blocks * sizeof(BqfpBlock);
+        size_t orig_bytes = (size_t)n_elements * 4;
+        double ratio = orig_bytes > 0 ? (double)(cb_bytes + blk_bytes) / orig_bytes : 0;
+        double bpw = n_elements > 0 ?
+            (double)(cb_bytes + blk_bytes) * 8.0 / (double)n_elements : 0;
+
+        printf("  [%u] %-50s  %8lu elem  eff_k=%3u  %.2fx  %.2fbpw\n",
+               t, name[0] ? name : "(no name)",
+               (unsigned long)n_elements, eff_k, ratio, bpw);
+
+        /* Skip codebook + blocks */
+        fseek(f, (long)(cb_bytes + blk_bytes), SEEK_CUR);
+        total_bytes += 256 + 8 + 8 + 4 + 4 + cb_bytes + blk_bytes;
+    }
+    printf("\n  total BQFP size: %.1f KB\n", total_bytes / 1024.0);
+    fclose(f);
+    return 0;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
  * CLI
  * ═══════════════════════════════════════════════════════════════════ */
 
@@ -490,11 +752,13 @@ static void usage(void) {
         "bonfyre-quant — v8 Recursive Lattice-Flow weight quantization\n"
         "\n"
         "Usage:\n"
+        "  bonfyre-quant compress  <model.onnx> <output.bqfp> [--bits N]\n"
+        "  bonfyre-quant inspect   <file.bqfp>\n"
         "  bonfyre-quant roundtrip MODEL [--bits N] [--limit N] [--tensor NAME]\n"
         "  bonfyre-quant benchmark MODEL [--bits N]\n"
         "  bonfyre-quant --help\n"
         "\n"
-        "v8 RLF: E8 lattice + μ-law warp + 16D RVQ → 0.9999+ cosine @ 3-bit\n"
+        "v8 RLF: E8 lattice snap + μ-law warp + 16D RVQ → 0.9999+ cosine @ 3-bit\n"
         "\n"
         "Options:\n"
         "  --bits N     Quantization bits (2, 3, 4; default: 3)\n"
@@ -530,6 +794,22 @@ int main(int argc, char **argv) {
     if ((v = bf_arg_value(argc, argv, "--limit")))  limit = atoi(v);
     tensor_filter = bf_arg_value(argc, argv, "--tensor");
     (void)limit; (void)tensor_filter;
+
+    if (strcmp(cmd, "compress") == 0) {
+        if (argc < 4) {
+            fprintf(stderr,"usage: bonfyre-quant compress <input.onnx> <output.bqfp>\n");
+            return 1;
+        }
+        return cmd_quant_compress(argv[2], argv[3], bits);
+    }
+
+    if (strcmp(cmd, "inspect") == 0) {
+        if (argc < 3) {
+            fprintf(stderr,"usage: bonfyre-quant inspect <file.bqfp>\n");
+            return 1;
+        }
+        return cmd_quant_inspect(argv[2]);
+    }
 
     if (strcmp(cmd, "roundtrip") == 0 || strcmp(cmd, "benchmark") == 0) {
 
