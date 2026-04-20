@@ -47,13 +47,15 @@
 #include <time.h>
 #include <sys/stat.h>
 
-#define VERSION    "1.0.0"
+#define VERSION    "1.1.0"
 #define BLOCK_DIM  256
 #define TILE_DIM   16
 #define E8_PAIRS   16
 #define MAX_PATH   4096
+#define MAX_LOOP   32
 #define MU_BETA    8.0f
 #define BQFP_MAGIC 0x50464251u
+#define FPQX_MAGIC 0x58515046u
 
 /* ═══════════════════════════════════════════════════════════════════
  * μ-law / FWHT / E8 reconstruction (mirrors bonfyre-quant)
@@ -436,6 +438,296 @@ static int cmd_bench(const char *model_path, int n) {
 }
 
 /* ═══════════════════════════════════════════════════════════════════
+ * auto-run helpers
+ * ═══════════════════════════════════════════════════════════════════ */
+
+/* cosine similarity between two float vectors */
+static float cosine_sim(const float *a, const float *b, size_t dim) {
+    double dot = 0.0, na = 0.0, nb = 0.0;
+    for (size_t i = 0; i < dim; i++) {
+        dot += (double)a[i] * (double)b[i];
+        na  += (double)a[i] * (double)a[i];
+        nb  += (double)b[i] * (double)b[i];
+    }
+    if (na < 1e-30 || nb < 1e-30) return 0.0f;
+    return (float)(dot / (sqrt(na) * sqrt(nb)));
+}
+
+/* mean (1 − cosine_sim) across n vectors — measures how much they changed */
+static float cosine_delta_batch(const float *old_v, const float *new_v,
+                                 uint32_t n, uint32_t dim) {
+    double sum = 0.0;
+    for (uint32_t i = 0; i < n; i++)
+        sum += 1.0 - (double)cosine_sim(old_v + (size_t)i*dim,
+                                         new_v + (size_t)i*dim, dim);
+    return (n > 0) ? (float)(sum / n) : 0.0f;
+}
+
+/* routing helper — wraps popen(bonfyre-model route), returns family string */
+static int sli_route_family(const char *stats_path, char *family_out, size_t fam_len) {
+    char model_bin[MAX_PATH] = "bonfyre-model";
+    const char *candidates[] = {
+        "./cmd/BonfyreModel/bonfyre-model",
+        "../BonfyreModel/bonfyre-model",
+        "bonfyre-model", NULL
+    };
+    for (int i = 0; candidates[i]; i++) {
+        struct stat st;
+        if (stat(candidates[i], &st) == 0) {
+            strncpy(model_bin, candidates[i], MAX_PATH-1);
+            model_bin[MAX_PATH-1] = '\0';
+            break;
+        }
+    }
+    char cmd[MAX_PATH + 256];
+    snprintf(cmd, sizeof(cmd), "'%s' route '%s' 2>/dev/null", model_bin, stats_path);
+    FILE *p = popen(cmd, "r");
+    if (!p) return 1;
+    char line[512] = "";
+    int ok = (fgets(line, sizeof(line), p) != NULL);
+    pclose(p);
+    if (!ok) return 1;
+    const char *fp = strstr(line, "family=");
+    if (!fp) return 1;
+    fp += 7;
+    size_t i = 0;
+    while (*fp && *fp != ' ' && *fp != '\n' && i < fam_len-1)
+        family_out[i++] = *fp++;
+    family_out[i] = '\0';
+    return (i > 0) ? 0 : 1;
+}
+
+/* apply a loaded BQFP model to all n_vecs vectors in place (writes to out_vecs) */
+static int apply_transform_all(const char *model_path, const float *in_vecs,
+                                uint32_t n_vecs, uint32_t dim, float *out_vecs) {
+    SliTensor st;
+    if (load_bqfp_first_tensor(model_path, &st)) return 1;
+    size_t rows = (st.n_elements >= (size_t)dim * dim) ? (size_t)dim
+                  : (size_t)sqrtf((float)st.n_elements);
+    if (rows < 1) rows = 1;
+    for (uint32_t v = 0; v < n_vecs; v++)
+        apply_transform(st.weights, rows, rows,
+                        in_vecs  + (size_t)v * dim,
+                        out_vecs + (size_t)v * dim);
+    sli_tensor_free(&st);
+    return 0;
+}
+
+/* apply 16×16 FPQX alignment matrix tiled across all vectors */
+static int apply_fpqx_alignment(float *vecs, uint32_t n_vecs, uint32_t dim,
+                                  const char *align_path) {
+    FILE *f = fopen(align_path, "rb");
+    if (!f) return 1;
+    uint32_t magic = 0;
+    if (fread(&magic, 4, 1, f) != 1 || magic != FPQX_MAGIC) { fclose(f); return 1; }
+    uint32_t hdr[3];
+    if (fread(hdr, 4, 3, f) != 3) { fclose(f); return 1; }
+    float M[TILE_DIM * TILE_DIM];
+    if (fread(M, sizeof(float), TILE_DIM*TILE_DIM, f) != (size_t)(TILE_DIM*TILE_DIM)) {
+        fclose(f); return 1;
+    }
+    fclose(f);
+    uint32_t n_tiles = dim / TILE_DIM;
+    float tmp[TILE_DIM];
+    for (uint32_t v = 0; v < n_vecs; v++) {
+        float *vec = vecs + (size_t)v * dim;
+        for (uint32_t t = 0; t < n_tiles; t++) {
+            float *tile = vec + (size_t)t * TILE_DIM;
+            memset(tmp, 0, sizeof(tmp));
+            for (int r = 0; r < TILE_DIM; r++)
+                for (int c = 0; c < TILE_DIM; c++)
+                    tmp[r] += M[r*TILE_DIM + c] * tile[c];
+            memcpy(tile, tmp, sizeof(tmp));
+        }
+    }
+    return 0;
+}
+
+/* write per-iteration artifact.json */
+static void write_iter_artifact(const char *path, int iter, const char *family,
+                                  float delta, int converged,
+                                  uint32_t n_vecs, uint32_t dim) {
+    FILE *f = fopen(path, "w");
+    if (!f) return;
+    fprintf(f,
+        "{\n"
+        "  \"bonfyre_artifact\": true,\n"
+        "  \"tool\": \"bonfyre-sli\",\n"
+        "  \"command\": \"auto-run\",\n"
+        "  \"iteration\": %d,\n"
+        "  \"family\": \"%s\",\n"
+        "  \"cosine_delta\": %.8f,\n"
+        "  \"converged\": %s,\n"
+        "  \"n_vecs\": %u,\n"
+        "  \"dim\": %u\n"
+        "}\n",
+        iter, family, (double)(delta < 0 ? 0.0f : delta),
+        converged ? "true" : "false", n_vecs, dim);
+    fclose(f);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+ * cmd_auto_run — routing + transform + FPQx alignment + convergence loop
+ *
+ * Options:
+ *   --in         embeddings.bin       (required)
+ *   --stats      corpus_stats.json    (required; drives geometry routing)
+ *   --out        results/             (required; creates iter-1/, iter-2/, …)
+ *   --loop       N                    (max iterations, default 3)
+ *   --chain      auto | T04:T16 | none (default auto — re-route each iter)
+ *   --fpqx       auto | none          (default none — auto loads <prev>-<next>-align.bin)
+ *   --thresh     0.001                (stop when mean cosine delta < threshold)
+ *   --models-dir DIR                  (where .bqfp files live, default .)
+ * ─────────────────────────────────────────────────────────────────────────
+ */
+static int cmd_auto_run(int argc, char **argv) {
+    const char *in_path    = bf_arg_value(argc, argv, "--in");
+    const char *stats_path = bf_arg_value(argc, argv, "--stats");
+    const char *out_dir    = bf_arg_value(argc, argv, "--out");
+    const char *models_dir = bf_arg_value(argc, argv, "--models-dir");
+    const char *loop_str   = bf_arg_value(argc, argv, "--loop");
+    const char *chain_arg  = bf_arg_value(argc, argv, "--chain");
+    const char *fpqx_arg   = bf_arg_value(argc, argv, "--fpqx");
+    const char *thresh_str = bf_arg_value(argc, argv, "--thresh");
+
+    if (!in_path)    { fprintf(stderr, "sli auto-run: --in required\n");    return 1; }
+    if (!stats_path) { fprintf(stderr, "sli auto-run: --stats required\n"); return 1; }
+    if (!out_dir)    { fprintf(stderr, "sli auto-run: --out required\n");   return 1; }
+
+    if (!models_dir) models_dir = ".";
+    int   max_iter  = (loop_str && atoi(loop_str) > 0) ? atoi(loop_str) : 3;
+    float threshold = thresh_str ? (float)atof(thresh_str) : 0.001f;
+    int   fpqx_auto = (fpqx_arg && strcmp(fpqx_arg, "auto") == 0);
+    int   chain_none = (chain_arg && strcmp(chain_arg, "none") == 0);
+    int   chain_auto = (!chain_arg || strcmp(chain_arg, "auto") == 0);
+
+    if (max_iter > MAX_LOOP) max_iter = MAX_LOOP;
+
+    /* Load input vectors */
+    float   *state = NULL;
+    uint32_t n_vecs = 0, dim = 0;
+    if (load_vectors(in_path, &state, &n_vecs, &dim)) return 1;
+
+    float *new_state = (float *)malloc((size_t)n_vecs * dim * sizeof(float));
+    if (!new_state) { free(state); return 1; }
+
+    printf("sli auto-run: %s  [loop=%d  thresh=%.4f  models=%s]\n",
+           in_path, max_iter, (double)threshold, models_dir);
+
+    char  prev_family[64] = "";
+    int   converged = 0;
+    float last_delta = -1.0f;
+    int   actual_iters = 0;
+
+    mkdir(out_dir, 0755);
+
+    for (int iter = 1; iter <= max_iter && !converged; iter++) {
+        actual_iters = iter;
+
+        /* ── 1. Route: determine best family ───────────────────────── */
+        char family[64] = "";
+        if (chain_none) {
+            strncpy(family, "T04", sizeof(family)-1);
+        } else if (chain_auto) {
+            if (sli_route_family(stats_path, family, sizeof(family))) {
+                fprintf(stderr, "sli auto-run iter %d: routing failed\n", iter);
+                free(state); free(new_state); return 1;
+            }
+        } else {
+            /* Fixed chain like "T04:T16" — pick token by iteration, wrap around */
+            char tmp[256];
+            strncpy(tmp, chain_arg, sizeof(tmp)-1); tmp[sizeof(tmp)-1] = '\0';
+            char *tok = strtok(tmp, ":");
+            char *chosen = tok;
+            for (int k = 1; k < iter && tok; k++) { tok = strtok(NULL, ":"); if (tok) chosen = tok; }
+            if (!chosen) {
+                /* wrap: restart and pick last available */
+                strncpy(tmp, chain_arg, sizeof(tmp)-1);
+                tok = strtok(tmp, ":");
+                chosen = tok;
+                while (tok) { chosen = tok; tok = strtok(NULL, ":"); }
+            }
+            if (chosen) strncpy(family, chosen, sizeof(family)-1);
+        }
+        if (!family[0]) strncpy(family, "T04", sizeof(family)-1);
+
+        /* ── 2. Apply transform ─────────────────────────────────────── */
+        char model_path[MAX_PATH];
+        snprintf(model_path, sizeof(model_path), "%s/%s.bqfp", models_dir, family);
+        memcpy(new_state, state, (size_t)n_vecs * dim * sizeof(float));
+        if (apply_transform_all(model_path, state, n_vecs, dim, new_state)) {
+            fprintf(stderr, "sli auto-run iter %d: transform failed (model=%s)\n",
+                    iter, model_path);
+            free(state); free(new_state); return 1;
+        }
+
+        /* ── 3. FPQx alignment if family changed ────────────────────── */
+        if (fpqx_auto && prev_family[0] && strcmp(family, prev_family) != 0) {
+            char align_path[MAX_PATH];
+            snprintf(align_path, sizeof(align_path), "%s/%s-%s-align.bin",
+                     models_dir, prev_family, family);
+            struct stat st_check;
+            if (stat(align_path, &st_check) == 0) {
+                if (apply_fpqx_alignment(new_state, n_vecs, dim, align_path) == 0)
+                    printf("  iter %d/%d: fpqx align %s→%s applied\n",
+                           iter, max_iter, prev_family, family);
+            }
+        }
+
+        /* ── 4. Cosine delta between old state and new state ─────────── */
+        float delta = (iter == 1) ? -1.0f
+                      : cosine_delta_batch(state, new_state, n_vecs, dim);
+        last_delta = delta;
+
+        /* ── 5. Save iteration output ────────────────────────────────── */
+        char iter_dir[MAX_PATH], vec_path[MAX_PATH], art_path[MAX_PATH];
+        snprintf(iter_dir, sizeof(iter_dir),  "%s/iter-%d",       out_dir, iter);
+        snprintf(vec_path, sizeof(vec_path),  "%s/vectors.bin",   iter_dir);
+        snprintf(art_path, sizeof(art_path),  "%s/artifact.json", iter_dir);
+        mkdir(iter_dir, 0755);
+        save_vectors(vec_path, new_state, n_vecs, dim);
+
+        int iter_converged = (delta >= 0.0f && delta < threshold);
+        write_iter_artifact(art_path, iter, family,
+                             (delta < 0) ? 0.0f : delta,
+                             iter_converged, n_vecs, dim);
+
+        if (delta < 0)
+            printf("  iter %d/%d: route → %s (delta=n/a) → %s/\n",
+                   iter, max_iter, family, iter_dir);
+        else
+            printf("  iter %d/%d: route → %s (delta=%.4f) → %s/\n",
+                   iter, max_iter, family, (double)delta, iter_dir);
+
+        /* ── 6. Convergence check ────────────────────────────────────── */
+        if (iter_converged) {
+            converged = 1;
+            printf("  converged at iter %d (delta=%.6f < threshold=%.6f)\n",
+                   iter, (double)delta, (double)threshold);
+        }
+
+        /* ── 7. Advance state ────────────────────────────────────────── */
+        float *tmp_swap = state; state = new_state; new_state = tmp_swap;
+        strncpy(prev_family, family, sizeof(prev_family)-1);
+    }
+
+    /* Final summary artifact */
+    char final_art[MAX_PATH];
+    snprintf(final_art, sizeof(final_art), "%s/artifact.json", out_dir);
+    write_iter_artifact(final_art, actual_iters, prev_family,
+                         (last_delta < 0) ? 0.0f : last_delta,
+                         converged, n_vecs, dim);
+
+    printf("  done: %d iteration%s, final delta=%.4f%s\n",
+           actual_iters, actual_iters == 1 ? "" : "s",
+           (double)((last_delta < 0) ? 0.0f : last_delta),
+           converged ? " (converged)" : "");
+
+    free(state); free(new_state);
+    return 0;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
  * CLI
  * ═══════════════════════════════════════════════════════════════════ */
 
@@ -443,19 +735,23 @@ static void usage(void) {
     fprintf(stderr,
         "bonfyre-sli v" VERSION " — Structured Layer Inference\n\n"
         "Usage:\n"
-        "  bonfyre-sli run     --in vecs.bin --model m.bqfp --out out.bin\n"
-        "  bonfyre-sli chain   --in vecs.bin --chain T04:T16 --models-dir DIR --out out.bin\n"
-        "  bonfyre-sli route   --in vecs.bin --stats corpus_stats.json --models-dir DIR --out out.bin\n"
-        "  bonfyre-sli bench   --model m.bqfp [--n 1000]\n"
-        "  bonfyre-sli inspect --model m.bqfp\n"
+        "  bonfyre-sli run      --in vecs.bin --model m.bqfp --out out.bin\n"
+        "  bonfyre-sli chain    --in vecs.bin --chain T04:T16 --models-dir DIR --out out.bin\n"
+        "  bonfyre-sli route    --in vecs.bin --stats corpus_stats.json --models-dir DIR --out out.bin\n"
+        "  bonfyre-sli auto-run --in vecs.bin --stats corpus_stats.json --out results/\n"
+        "               [--loop 3] [--chain auto|T04:T16|none] [--fpqx auto|none]\n"
+        "               [--thresh 0.001] [--models-dir DIR]\n"
+        "  bonfyre-sli bench    --model m.bqfp [--n 1000]\n"
+        "  bonfyre-sli inspect  --model m.bqfp\n"
         "\n"
         "Vector file format: [n_vecs:u32][dim:u32][float32 × n × d]\n"
         "\n"
-        "  run:    apply single BQFP model transform to input vectors\n"
-        "  chain:  apply T04 then T16 (or any family sequence) in order\n"
-        "  route:  use bonfyre-model route to pick family, then run\n"
-        "  bench:  throughput benchmark\n"
-        "  inspect: print BQFP tensor structure\n"
+        "  run:      apply single BQFP model transform to input vectors\n"
+        "  chain:    apply T04 then T16 (or any family sequence) in order\n"
+        "  route:    use bonfyre-model route to pick family, then run\n"
+        "  auto-run: routing + transform + FPQx alignment + convergence loop\n"
+        "  bench:    throughput benchmark\n"
+        "  inspect:  print BQFP tensor structure\n"
     );
 }
 
@@ -506,6 +802,10 @@ int main(int argc, char **argv) {
     if (strcmp(cmd, "bench") == 0) {
         if (!model_path) { fprintf(stderr,"sli bench: --model required\n"); return 1; }
         return cmd_bench(model_path, n_bench);
+    }
+
+    if (strcmp(cmd, "auto-run") == 0) {
+        return cmd_auto_run(argc, argv);
     }
 
     fprintf(stderr, "bonfyre-sli: unknown command '%s'\n", cmd);
