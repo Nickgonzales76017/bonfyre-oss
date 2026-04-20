@@ -435,6 +435,30 @@ def evolve(memory_dir: str, models_dir: str,
         report["rebuild_triggered"] = True
     report["steps"].append("rebuild_check")
 
+    # ── Step 6.5: Generate new lenses from hot conflict zones ─────────
+    try:
+        from scripts.claim_graph import ClaimGraph
+        from scripts.conflict_cluster import cluster_advanced, flag_hot_zones
+        cg = ClaimGraph(memory_dir)
+        clusters = cluster_advanced(cg, min_conflicts=3, min_confidence=0.25)
+        hot_zones = flag_hot_zones(
+            clusters, pressure_threshold=2.0, min_conflicts=3,
+            min_lenses=2, fragility_threshold=0.7)
+        
+        new_lenses = []
+        if hot_zones:
+            _log(f"Hot zones: {len(hot_zones)} conflict cluster(s) flagged")
+            new_lenses = _generate_lenses_from_hot_zones(
+                hot_zones, memory_dir, dry_run=dry_run)
+            if new_lenses:
+                _log(f"Generated {len(new_lenses)} new lens(es) from hot zones")
+                report["new_lenses"] = new_lenses
+        else:
+            _log("No hot zones detected — skipping lens generation")
+    except Exception as e:
+        _log(f"Lens generation skipped: {e}")
+    report["steps"].append("lens_generation")
+
     # ── Step 7: Write meta-metrics snapshot ───────────────────────────
     graph_dir = os.path.join(memory_dir, "graph")
     os.makedirs(graph_dir, exist_ok=True)
@@ -477,8 +501,103 @@ def _trigger_rebuild(models_dir: str, memory_dir: str):
         _log(f"rebuild trigger failed: {e}")
 
 
+def _generate_lenses_from_hot_zones(hot_zones: list, memory_dir: str,
+                                      dry_run: bool = False) -> list:
+    """
+    Generate new lens entries from hot conflict zones.
+
+    Hot zones indicate recurrent conflict patterns not resolved by current lenses.
+    For each unique cluster_type appearing ≥ 3 times without resolution:
+      - Mint a new lens ID (L11, L12, L13, ...)
+      - Write lens spec to auto_lenses.json
+      - Return list of generated lens metadata
+
+    Returns: list of {lens_id, cluster_type, description, threshold}
+    """
+    auto_lenses_path = os.path.join(memory_dir, "auto_lenses.json")
+    existing_lenses = {}
+    if os.path.exists(auto_lenses_path):
+        try:
+            existing_lenses = json.load(open(auto_lenses_path))
+        except Exception:
+            pass
+
+    # Count hot zone cluster types
+    from collections import Counter
+    cluster_types = [hz["cluster_type"] for hz in hot_zones if not hz.get("resolved")]
+    type_counts = Counter(cluster_types)
+
+    LENS_GENERATION_THRESHOLD = 3  # min hot zone recurrence to mint new lens
+
+    new_lenses = []
+    used_ids = set(existing_lenses.keys())
+    next_id = 11  # Start at L11 (L01-L10 are first-wave)
+    while f"L{next_id:02d}" in used_ids:
+        next_id += 1
+
+    for cluster_type, count in type_counts.items():
+        if count < LENS_GENERATION_THRESHOLD:
+            continue
+
+        # Already have a lens for this cluster type?
+        if any(lns.get("cluster_type") == cluster_type for lns in existing_lenses.values()):
+            continue
+
+        lens_id = f"L{next_id:02d}_{cluster_type}_auto"
+        next_id += 1
+
+        # Generate lens spec
+        lens_spec = {
+            "lens_id": lens_id,
+            "cluster_type": cluster_type,
+            "description": f"Auto-generated lens for recurring {cluster_type} conflicts",
+            "pressure_threshold": 2.0,
+            "min_confidence": 0.25,
+            "generated_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+            "source": "auto_evolve",
+            "spec_type": "expand_existing",  # Hint: extend L01-L10's logic for this cluster_type
+            "base_lenses": _suggest_base_lenses_for_cluster(cluster_type),
+        }
+
+        new_lenses.append(lens_spec)
+
+        if not dry_run:
+            existing_lenses[lens_id] = lens_spec
+
+    # Write auto_lenses.json
+    if new_lenses and not dry_run:
+        os.makedirs(os.path.dirname(auto_lenses_path), exist_ok=True)
+        with open(auto_lenses_path, "w") as f:
+            json.dump(existing_lenses, f, indent=2)
+        _log(f"  wrote {len(new_lenses)} new lens(es) → auto_lenses.json")
+
+    return new_lenses
+
+
+def _suggest_base_lenses_for_cluster(cluster_type: str) -> list:
+    """
+    Suggest which existing L01-L10 lenses should be extended/forked
+    to create a new lens for this cluster type.
+    """
+    CLUSTER_TO_BASE = {
+        "entity_variant":      ["L02_alias_expansion", "L09_entity_consistency"],
+        "timeline_anomaly":    ["L04_timeline_anomaly"],
+        "speaker_role":        ["L01_deposition_parser"],
+        "coercion_signal":     ["L06_coercion_language", "L03_euphemism_detector"],
+        "redaction_found":     ["L05_redaction_shape"],
+        "email_thread_depth":  ["L07_email_thread"],
+        "ocr_candidate":       ["L08_ocr_restore"],
+        "travel_anomaly":      ["L10_travel_anomaly"],
+        "hedge_signal":        ["L03_euphemism_detector"],
+        "question_asked":      ["L01_deposition_parser"],
+        "answer_given":        ["L01_deposition_parser"],
+    }
+    return CLUSTER_TO_BASE.get(cluster_type, [])
+
+
 def _log(msg: str):
     print(f"[auto_evolve] {msg}")
+
 
 
 # ── Ingest ────────────────────────────────────────────────────────────────
