@@ -574,7 +574,11 @@ static void write_iter_artifact(const char *path, int iter, const char *family,
  *   --stats      corpus_stats.json    (required; drives geometry routing)
  *   --out        results/             (required; creates iter-1/, iter-2/, …)
  *   --loop       N                    (max iterations, default 3)
- *   --chain      auto | T04:T16 | none (default auto — re-route each iter)
+ *   --chain      auto | fragment:auto | T04:T16 | none
+ *                  auto          — re-route each iter
+ *                  fragment:auto — iter 1 uses <family>-frag if present, then auto
+ *                  T04:T16       — fixed family sequence (wraps)
+ *                  none          — always T04
  *   --fpqx       auto | none          (default none — auto loads <prev>-<next>-align.bin)
  *   --thresh     0.001                (stop when mean cosine delta < threshold)
  *   --models-dir DIR                  (where .bqfp files live, default .)
@@ -597,9 +601,12 @@ static int cmd_auto_run(int argc, char **argv) {
     if (!models_dir) models_dir = ".";
     int   max_iter  = (loop_str && atoi(loop_str) > 0) ? atoi(loop_str) : 3;
     float threshold = thresh_str ? (float)atof(thresh_str) : 0.001f;
-    int   fpqx_auto = (fpqx_arg && strcmp(fpqx_arg, "auto") == 0);
-    int   chain_none = (chain_arg && strcmp(chain_arg, "none") == 0);
-    int   chain_auto = (!chain_arg || strcmp(chain_arg, "auto") == 0);
+    int   fpqx_auto        = (fpqx_arg  && strcmp(fpqx_arg,  "auto") == 0);
+    int   chain_none       = (chain_arg && strcmp(chain_arg, "none") == 0);
+    int   chain_auto       = (!chain_arg || strcmp(chain_arg, "auto") == 0);
+    /* fragment:auto — first iter uses <family>-frag.bqfp if present, then auto */
+    int   chain_frag_first = (chain_arg && strcmp(chain_arg, "fragment:auto") == 0);
+    if (chain_frag_first) chain_auto = 1; /* base routing still auto */
 
     if (max_iter > MAX_LOOP) max_iter = MAX_LOOP;
 
@@ -611,8 +618,9 @@ static int cmd_auto_run(int argc, char **argv) {
     float *new_state = (float *)malloc((size_t)n_vecs * dim * sizeof(float));
     if (!new_state) { free(state); return 1; }
 
-    printf("sli auto-run: %s  [loop=%d  thresh=%.4f  models=%s]\n",
-           in_path, max_iter, (double)threshold, models_dir);
+    printf("sli auto-run: %s  [loop=%d  thresh=%.4f  models=%s%s]\n",
+           in_path, max_iter, (double)threshold, models_dir,
+           chain_frag_first ? "  chain=fragment:auto" : "");
 
     char  prev_family[64] = "";
     int   converged = 0;
@@ -650,6 +658,24 @@ static int cmd_auto_run(int argc, char **argv) {
             if (chosen) strncpy(family, chosen, sizeof(family)-1);
         }
         if (!family[0]) strncpy(family, "T04", sizeof(family)-1);
+
+        /* ── fragment:auto first-hop ────────────────────────────────── */
+        /* On iter 1, try <family>-frag.bqfp as a cheap pre-processor.  */
+        /* If found: apply fragment, tag family as "<fam>-frag", so the  */
+        /* full-model transform on iter 2+ escalates from fragment space. */
+        char frag_path[MAX_PATH];
+        if (chain_frag_first && iter == 1) {
+            snprintf(frag_path, sizeof(frag_path), "%s/%s-frag.bqfp", models_dir, family);
+            struct stat frag_st;
+            if (stat(frag_path, &frag_st) == 0) {
+                /* Apply fragment pre-process */
+                memcpy(new_state, state, (size_t)n_vecs * dim * sizeof(float));
+                if (apply_transform_all(frag_path, state, n_vecs, dim, new_state) == 0) {
+                    float *tmp_frag = state; state = new_state; new_state = tmp_frag;
+                    printf("  preflight: fragment %s-frag applied\n", family);
+                }
+            }
+        }
 
         /* ── 2. Apply transform ─────────────────────────────────────── */
         char model_path[MAX_PATH];
