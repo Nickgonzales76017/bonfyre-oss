@@ -1273,17 +1273,31 @@ static double frontier_cosine(const char *json, const char *fa, const char *fb) 
         snprintf(pat_b, sizeof(pat_b), "\"family_b\": \"%s\"", b);
         const char *p = json;
         while ((p = strstr(p, pat_a)) != NULL) {
-            size_t rem = strlen(p);
-            size_t wlen = rem < 600 ? rem : 600;
-            char window[700];
-            memcpy(window, p, wlen);
-            window[wlen] = '\0';
-            if (strstr(window, pat_b)) {
-                const char *cm = strstr(window, "\"cosine_mean\":");
-                if (cm) {
-                    cm += strlen("\"cosine_mean\":");
-                    while (*cm == ' ') cm++;
-                    return atof(cm);
+            /* find the enclosing pair object: advance to the first '{' before p,
+             * then find the matching '}' — search only within that block */
+            const char *obj_start = p;
+            while (obj_start > json && *obj_start != '{') obj_start--;
+            /* find end of this object: next top-level '}' at depth 1 */
+            int depth = 0;
+            const char *obj_end = obj_start;
+            while (*obj_end) {
+                if (*obj_end == '{') depth++;
+                else if (*obj_end == '}') { depth--; if (depth == 0) break; }
+                obj_end++;
+            }
+            /* check that pat_b AND "cosine_mean" are within [obj_start, obj_end] */
+            size_t blen = (size_t)(obj_end - obj_start);
+            if (blen > 0 && blen < 2048) {
+                char block[2048];
+                memcpy(block, obj_start, blen);
+                block[blen] = '\0';
+                if (strstr(block, pat_b)) {
+                    const char *cm = strstr(block, "\"cosine_mean\":");
+                    if (cm) {
+                        cm += strlen("\"cosine_mean\":");
+                        while (*cm == ' ') cm++;
+                        return atof(cm);
+                    }
                 }
             }
             p++;
@@ -1293,7 +1307,8 @@ static double frontier_cosine(const char *json, const char *fa, const char *fb) 
 }
 
 static int cmd_route(sqlite3 *db, const char *stats_path,
-                     const char *frontier_path, const char *from_family) {
+                     const char *frontier_path, const char *from_family,
+                     const char *weights_path) {
     /* read stats JSON */
     char *stats_json = NULL;
     if(stats_path) {
@@ -1321,7 +1336,31 @@ static int cmd_route(sqlite3 *db, const char *stats_path,
         }
     }
     int   use_frontier = (frontier_json && from_family && from_family[0]);
-    const double FRONTIER_W = 0.30; /* 70% f1, 30% cosine_mean */
+    double FRONTIER_W = 0.30; /* default: 70% f1, 30% cosine_mean */
+
+    /* optionally load routing_weights.json to override FRONTIER_W */
+    if (weights_path) {
+        FILE *wf = fopen(weights_path, "r");
+        if (wf) {
+            fseek(wf,0,SEEK_END); long wsz=ftell(wf); fseek(wf,0,SEEK_SET);
+            char *wjson = malloc((size_t)wsz+1);
+            if (wjson) {
+                fread(wjson, 1, (size_t)wsz, wf);
+                wjson[wsz] = '\0';
+                /* parse "cosine_weight": N.NN */
+                const char *cw = strstr(wjson, "\"cosine_weight\":");
+                if (cw) {
+                    cw += strlen("\"cosine_weight\":");
+                    while (*cw == ' ') cw++;
+                    double loaded = atof(cw);
+                    if (loaded >= 0.0 && loaded <= 1.0)
+                        FRONTIER_W = loaded;
+                }
+                free(wjson);
+            }
+            fclose(wf);
+        }
+    }
 
     /* query all transform families; score each candidate */
     sqlite3_stmt *st;
@@ -1493,14 +1532,15 @@ int main(int argc, char **argv) {
     } else if(strcmp(cmd,"route")==0) {
         if(argc < 3) {
             fprintf(stderr,"usage: bonfyre-model route <corpus_stats.json> "
-                          "[--frontier <path>] [--from <family>]\n"); ret=1;
+                          "[--frontier <path>] [--from <family>] [--weights <path>]\n"); ret=1;
         } else {
-            const char *frontier_path = NULL, *from_family = NULL;
+            const char *frontier_path = NULL, *from_family = NULL, *weights_path = NULL;
             for(int i = 3; i < argc; i++) {
                 if(strcmp(argv[i],"--frontier")==0 && i+1<argc) frontier_path = argv[++i];
                 else if(strcmp(argv[i],"--from")==0 && i+1<argc) from_family = argv[++i];
+                else if(strcmp(argv[i],"--weights")==0 && i+1<argc) weights_path = argv[++i];
             }
-            ret = cmd_route(db, argv[2], frontier_path, from_family);
+            ret = cmd_route(db, argv[2], frontier_path, from_family, weights_path);
         }
 
     } else if(strcmp(cmd,"ls-cache")==0) {

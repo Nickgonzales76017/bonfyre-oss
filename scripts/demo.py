@@ -213,6 +213,8 @@ def main():
                     help="Skip fragment pre-process step")
     ap.add_argument("--onnx-model",  default=None,
                     help="Path to ONNX classifier head (default: T04 ag_news-1000)")
+    ap.add_argument("--conf-exit",    type=float, default=None,
+                    help="Stop looping early when ALL inputs reach this ONNX confidence (0-1)")
     args = ap.parse_args()
 
     texts = list(args.texts)
@@ -241,6 +243,8 @@ def main():
     print(f"  chain   : {args.chain}")
     print(f"  fpqx    : {args.fpqx}")
     print(f"  fragment: {'yes (T04-frag)' if use_frag else 'no'}")
+    if args.conf_exit is not None:
+        print(f"  conf-exit: {args.conf_exit:.2f}  (stop early when all inputs \u2265 threshold)")
     print("=" * 72)
     print()
 
@@ -294,25 +298,77 @@ def main():
             in_path = raw_path
             print("── 3. Fragment pre-process ──────────── (skipped)\n")
 
-        # ── 4. Auto-run: route → align → loop ────────────────────────
+        # ── 4. Auto-run: route → align → loop (with optional early exit) ────
         print(f"── 4. auto-run  chain={args.chain}  fpqx={args.fpqx}"
               f"  loop={args.loop}  thresh={args.thresh} ─────")
         auto_out = os.path.join(tmpdir, "auto")
 
-        log = sli_auto_run(
-            in_path, stats_path, auto_out,
-            models_dir, args.loop, args.chain, args.fpqx, args.thresh
-        )
-
-        iters = parse_iter_log(log)
-        # Also capture preflight line
-        has_preflight = "preflight:" in log
-        if has_preflight:
-            fam = routed_family
-            print(f"     preflight  family={fam}-frag  (fragment applied before iter 1)")
-        for it, fam, delta in iters:
-            delta_s = f"{delta:.4f}" if delta is not None else "n/a"
-            print(f"     iter {it:2d}  family={fam}  delta={delta_s}")
+        if args.conf_exit is not None:
+            # ── Early-exit path: run 1 iter at a time, classify after each ──
+            cur_in   = in_path
+            all_iters = []
+            exit_iter = None
+            for step in range(1, args.loop + 1):
+                step_out = os.path.join(tmpdir, f"auto-step{step}")
+                log_step = sli_auto_run(
+                    cur_in, stats_path, step_out,
+                    models_dir, 1, args.chain, args.fpqx, args.thresh
+                )
+                step_iters = parse_iter_log(log_step)
+                if step == 1 and "preflight:" in log_step:
+                    print(f"     preflight  family={routed_family}-frag  (fragment applied)")
+                for it, fam, delta in step_iters:
+                    abs_iter = step
+                    delta_s  = f"{delta:.4f}" if delta is not None else "n/a"
+                    # classify current state
+                    _, cur_vecs, _ = read_last_iter(step_out, 1)
+                    if cur_vecs:
+                        onnx_r = classify_onnx(cur_vecs, onnx_path)
+                        if onnx_r:
+                            max_c = min(r[1] for r in onnx_r)
+                            avg_c = sum(r[1] for r in onnx_r) / len(onnx_r)
+                            print(f"     iter {abs_iter:2d}  family={fam}  delta={delta_s}"
+                                  f"  conf_avg={avg_c*100:.1f}%  conf_min={max_c*100:.1f}%", end="")
+                            if max_c >= args.conf_exit and exit_iter is None:
+                                print(f"  ← EXIT (all ≥ {args.conf_exit*100:.0f}%)")
+                                exit_iter = abs_iter
+                            else:
+                                print()
+                        else:
+                            print(f"     iter {abs_iter:2d}  family={fam}  delta={delta_s}")
+                    all_iters.append((step, fam, delta))
+                # feed this iter's output as next iter's input
+                _, nxt_vecs, _ = read_last_iter(step_out, 1)
+                if not nxt_vecs:
+                    break
+                nxt_path = os.path.join(tmpdir, f"iter{step}_out.bin")
+                write_vecs(nxt_path, nxt_vecs)
+                cur_in = nxt_path
+                if exit_iter is not None:
+                    break
+            # use final step_out as auto_out
+            auto_out = step_out
+            iters    = all_iters
+            if exit_iter is not None:
+                saved = args.loop - exit_iter
+                print(f"\n     early exit at iter {exit_iter}  "
+                      f"({saved} loop iteration(s) saved)")
+            else:
+                print(f"\n     no early exit — ran all {args.loop} iterations")
+        else:
+            # ── Standard path (full loop) ─────────────────────────────────────
+            log = sli_auto_run(
+                in_path, stats_path, auto_out,
+                models_dir, args.loop, args.chain, args.fpqx, args.thresh
+            )
+            iters = parse_iter_log(log)
+            has_preflight = "preflight:" in log
+            if has_preflight:
+                fam = routed_family
+                print(f"     preflight  family={fam}-frag  (fragment applied before iter 1)")
+            for it, fam, delta in iters:
+                delta_s = f"{delta:.4f}" if delta is not None else "n/a"
+                print(f"     iter {it:2d}  family={fam}  delta={delta_s}")
         print()
 
         # ── 5. Read final output + convergence ────────────────────────
