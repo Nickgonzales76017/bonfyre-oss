@@ -99,6 +99,8 @@ def main():
         written += 1
 
     print(f"[prep_corpus] wrote {written} files → {args.out}/  (skipped {skipped} short docs)")
+    # Force-exit to avoid torch_shm_manager hanging in cleanup on macOS
+    os._exit(0)
 
 
 if __name__ == "__main__":
