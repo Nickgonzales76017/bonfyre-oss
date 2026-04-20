@@ -54,7 +54,8 @@
         "scripts/collapse_train.py",
         "--task",      "ner-bio",
         "--consensus", "{out}/consensus/labels.jsonl",
-        "--out",       "{out}/train"
+        "--out",       "{out}/train",
+        "--calibration"
       ],
       "depends_on": ["consensus"]
     },

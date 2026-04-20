@@ -32,7 +32,8 @@
         "--task",        "chunk-boundary",
         "--embed-dir-a", "{out}/embed-minilm",
         "--embed-dir-b", "{out}/embed-mpnet",
-        "--out",         "{out}/train"
+        "--out",         "{out}/train",
+        "--calibration"
       ],
       "depends_on": ["embed-minilm", "embed-mpnet"]
     },

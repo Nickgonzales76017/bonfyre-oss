@@ -392,6 +392,8 @@ def main():
     p.add_argument("--embed-dir-b",   default=None)
     p.add_argument("--consensus",     default=None)
     p.add_argument("--epochs",        type=int, default=EPOCHS)
+    p.add_argument("--calibration",   action="store_true",
+                   help="calibration mode: skip pass/fail gate, emit full profile")
     args = p.parse_args()
 
     os.makedirs(args.out, exist_ok=True)
@@ -450,11 +452,23 @@ def main():
     # ── eval ───────────────────────────────────────────────────────────────────
     metrics = evaluate(head, X, y if y.dim() == 1 else y.squeeze(1),
                        task, teacher_elapsed, collapse_elapsed)
-    print(f"[collapse_train] metrics: {metrics}")
 
-    status = "PASS" if metrics["pass"] else "FAIL"
-    print(f"[collapse_train] {status}: f1={metrics['f1_vs_consensus']} "
-          f"latency_ratio={metrics['latency_ratio']}")
+    if args.calibration:
+        # In calibration mode emit the full profile and never gate on pass/fail.
+        # Extra fields useful for comparing experiments:
+        metrics["n_samples"]       = int(X.shape[0])
+        metrics["n_params"]        = sum(p.numel() for p in head.parameters())
+        metrics["teacher_time_s"]  = round(teacher_elapsed, 3)
+        metrics["collapse_time_s"] = round(collapse_elapsed, 3)
+        metrics["epochs_requested"] = args.epochs
+        metrics["mode"]            = "calibration"
+        print(f"[collapse_train] CALIBRATION profile:")
+        for k, v in metrics.items():
+            print(f"  {k}: {v}")
+    else:
+        status = "PASS" if metrics["pass"] else "FAIL"
+        print(f"[collapse_train] {status}: f1={metrics['f1_vs_consensus']} "
+              f"latency_ratio={metrics['latency_ratio']}")
 
     # ── export ────────────────────────────────────────────────────────────────
     onnx_path = os.path.join(args.out, "model.onnx")
@@ -465,7 +479,7 @@ def main():
 
     write_artifact(args.out, task, metrics, onnx_path)
 
-    if not metrics["pass"]:
+    if not args.calibration and not metrics["pass"]:
         sys.exit(1)
     print(f"[collapse_train] done → {args.out}/")
 

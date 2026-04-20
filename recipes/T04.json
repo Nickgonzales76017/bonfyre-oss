@@ -24,7 +24,8 @@
         "--task",      "topic-map",
         "--tag-dir",   "{out}/tag",
         "--embed-dir", "{out}/embed",
-        "--out",       "{out}/train"
+        "--out",       "{out}/train",
+        "--calibration"
       ],
       "depends_on": ["tag", "embed"]
     },
