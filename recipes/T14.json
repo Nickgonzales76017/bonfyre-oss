@@ -1,0 +1,74 @@
+{
+  "code": "T14",
+  "name": "NER Consensus Collapse",
+  "version": "1.0.0",
+  "description": "Run three external NER teachers (elastic/dslim/babelscape ONNX models) in parallel, fuse predictions via majority-vote span agreement, then distill into a compressed BIO student. Inject model paths at runtime via bonfyre-run --stage-opts.",
+  "stages": [
+    {
+      "id": "teach-elastic",
+      "bin": "python3",
+      "args": [
+        "scripts/collapse_consensus.py", "teach",
+        "--model",  "__ELASTIC_MODEL__",
+        "--corpus", "{input}",
+        "--out",    "{out}/teach-elastic"
+      ],
+      "depends_on": []
+    },
+    {
+      "id": "teach-dslim",
+      "bin": "python3",
+      "args": [
+        "scripts/collapse_consensus.py", "teach",
+        "--model",  "__DSLIM_MODEL__",
+        "--corpus", "{input}",
+        "--out",    "{out}/teach-dslim"
+      ],
+      "depends_on": []
+    },
+    {
+      "id": "teach-babelscape",
+      "bin": "python3",
+      "args": [
+        "scripts/collapse_consensus.py", "teach",
+        "--model",  "__BABELSCAPE_MODEL__",
+        "--corpus", "{input}",
+        "--out",    "{out}/teach-babelscape"
+      ],
+      "depends_on": []
+    },
+    {
+      "id": "consensus",
+      "bin": "python3",
+      "args": [
+        "scripts/collapse_consensus.py", "merge",
+        "--inputs", "{out}/teach-elastic,{out}/teach-dslim,{out}/teach-babelscape",
+        "--out",    "{out}/consensus"
+      ],
+      "depends_on": ["teach-elastic", "teach-dslim", "teach-babelscape"]
+    },
+    {
+      "id": "train",
+      "bin": "python3",
+      "args": [
+        "scripts/collapse_train.py",
+        "--task",      "ner-bio",
+        "--consensus", "{out}/consensus/labels.jsonl",
+        "--out",       "{out}/train"
+      ],
+      "depends_on": ["consensus"]
+    },
+    {
+      "id": "compress",
+      "bin": "bonfyre-quant",
+      "args": ["compress", "{out}/train/model.onnx", "{out}/compress/model.fpq"],
+      "depends_on": ["train"]
+    },
+    {
+      "id": "hash",
+      "bin": "bonfyre-hash",
+      "args": ["merkle", "{out}/compress/artifact.json"],
+      "depends_on": ["compress"]
+    }
+  ]
+}

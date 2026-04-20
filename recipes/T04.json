@@ -1,0 +1,44 @@
+{
+  "code": "T04",
+  "name": "Topic Mapper Collapse",
+  "version": "1.0.0",
+  "description": "Mine topic signals from a corpus using bonfyre-tag (fastText teacher) and bonfyre-embed (MiniLM embedder), then distill into a compressed ONNX student. No external model downloads required.",
+  "stages": [
+    {
+      "id": "tag",
+      "bin": "bonfyre-tag",
+      "args": ["batch", "{input}"],
+      "depends_on": []
+    },
+    {
+      "id": "embed",
+      "bin": "bonfyre-embed",
+      "args": ["--input-dir", "{input}", "--out", "{out}/embed"],
+      "depends_on": []
+    },
+    {
+      "id": "train",
+      "bin": "python3",
+      "args": [
+        "scripts/collapse_train.py",
+        "--task",      "topic-map",
+        "--tag-dir",   "{out}/tag",
+        "--embed-dir", "{out}/embed",
+        "--out",       "{out}/train"
+      ],
+      "depends_on": ["tag", "embed"]
+    },
+    {
+      "id": "compress",
+      "bin": "bonfyre-quant",
+      "args": ["compress", "{out}/train/model.onnx", "{out}/compress/model.fpq"],
+      "depends_on": ["train"]
+    },
+    {
+      "id": "hash",
+      "bin": "bonfyre-hash",
+      "args": ["merkle", "{out}/compress/artifact.json"],
+      "depends_on": ["compress"]
+    }
+  ]
+}

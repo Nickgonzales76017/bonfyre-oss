@@ -430,6 +430,84 @@ static const char *BUILTIN_G1 =
      "\"args\":[\"{out}/meter\",\"--out\",\"{out}/ledger\"],\"depends_on\":[\"meter\"]}"
     "]}";
 
+static const char *BUILTIN_T04 =
+    "{\"code\":\"T04\",\"name\":\"topic mapper collapse\",\"version\":\"1.0.0\","
+    "\"description\":\"Mine topic signals via bonfyre-tag + bonfyre-embed, "
+    "distill into compressed ONNX student. No external downloads required.\","
+    "\"stages\":["
+    "{\"id\":\"tag\",\"bin\":\"bonfyre-tag\","
+     "\"args\":[\"batch\",\"{input}\"],\"depends_on\":[]},"
+    "{\"id\":\"embed\",\"bin\":\"bonfyre-embed\","
+     "\"args\":[\"--input-dir\",\"{input}\",\"--out\",\"{out}/embed\"],\"depends_on\":[]},"
+    "{\"id\":\"train\",\"bin\":\"python3\","
+     "\"args\":[\"scripts/collapse_train.py\",\"--task\",\"topic-map\","
+     "\"--tag-dir\",\"{out}/tag\",\"--embed-dir\",\"{out}/embed\","
+     "\"--out\",\"{out}/train\"],\"depends_on\":[\"tag\",\"embed\"]},"
+    "{\"id\":\"compress\",\"bin\":\"bonfyre-quant\","
+     "\"args\":[\"compress\",\"{out}/train/model.onnx\",\"{out}/compress/model.fpq\"],"
+     "\"depends_on\":[\"train\"]},"
+    "{\"id\":\"hash\",\"bin\":\"bonfyre-hash\","
+     "\"args\":[\"merkle\",\"{out}/compress/artifact.json\"],"
+     "\"depends_on\":[\"compress\"]}"
+    "]}";
+
+static const char *BUILTIN_T07 =
+    "{\"code\":\"T07\",\"name\":\"semantic chunker collapse\",\"version\":\"1.0.0\","
+    "\"description\":\"Two bonfyre-embed passes (MiniLM+MPNet) in parallel; "
+    "boundary signal distilled into compressed ONNX student.\","
+    "\"stages\":["
+    "{\"id\":\"embed-minilm\",\"bin\":\"bonfyre-embed\","
+     "\"args\":[\"--input-dir\",\"{input}\",\"--model\",\"all-MiniLM-L6-v2\","
+     "\"--out\",\"{out}/embed-minilm\"],\"depends_on\":[]},"
+    "{\"id\":\"embed-mpnet\",\"bin\":\"bonfyre-embed\","
+     "\"args\":[\"--input-dir\",\"{input}\",\"--model\",\"all-mpnet-base-v2\","
+     "\"--out\",\"{out}/embed-mpnet\"],\"depends_on\":[]},"
+    "{\"id\":\"train\",\"bin\":\"python3\","
+     "\"args\":[\"scripts/collapse_train.py\",\"--task\",\"chunk-boundary\","
+     "\"--embed-dir-a\",\"{out}/embed-minilm\",\"--embed-dir-b\",\"{out}/embed-mpnet\","
+     "\"--out\",\"{out}/train\"],\"depends_on\":[\"embed-minilm\",\"embed-mpnet\"]},"
+    "{\"id\":\"compress\",\"bin\":\"bonfyre-quant\","
+     "\"args\":[\"compress\",\"{out}/train/model.onnx\",\"{out}/compress/model.fpq\"],"
+     "\"depends_on\":[\"train\"]},"
+    "{\"id\":\"hash\",\"bin\":\"bonfyre-hash\","
+     "\"args\":[\"merkle\",\"{out}/compress/artifact.json\"],"
+     "\"depends_on\":[\"compress\"]}"
+    "]}";
+
+static const char *BUILTIN_T14 =
+    "{\"code\":\"T14\",\"name\":\"NER consensus collapse\",\"version\":\"1.0.0\","
+    "\"description\":\"Three external NER teachers in parallel, majority-vote span merge, "
+    "BIO student train + FPQ compress. Inject model paths via --stage-opts.\","
+    "\"stages\":["
+    "{\"id\":\"teach-elastic\",\"bin\":\"python3\","
+     "\"args\":[\"scripts/collapse_consensus.py\",\"teach\","
+     "\"--model\",\"__ELASTIC_MODEL__\",\"--corpus\",\"{input}\","
+     "\"--out\",\"{out}/teach-elastic\"],\"depends_on\":[]},"
+    "{\"id\":\"teach-dslim\",\"bin\":\"python3\","
+     "\"args\":[\"scripts/collapse_consensus.py\",\"teach\","
+     "\"--model\",\"__DSLIM_MODEL__\",\"--corpus\",\"{input}\","
+     "\"--out\",\"{out}/teach-dslim\"],\"depends_on\":[]},"
+    "{\"id\":\"teach-babelscape\",\"bin\":\"python3\","
+     "\"args\":[\"scripts/collapse_consensus.py\",\"teach\","
+     "\"--model\",\"__BABELSCAPE_MODEL__\",\"--corpus\",\"{input}\","
+     "\"--out\",\"{out}/teach-babelscape\"],\"depends_on\":[]},"
+    "{\"id\":\"consensus\",\"bin\":\"python3\","
+     "\"args\":[\"scripts/collapse_consensus.py\",\"merge\","
+     "\"--inputs\",\"{out}/teach-elastic,{out}/teach-dslim,{out}/teach-babelscape\","
+     "\"--out\",\"{out}/consensus\"],"
+     "\"depends_on\":[\"teach-elastic\",\"teach-dslim\",\"teach-babelscape\"]},"
+    "{\"id\":\"train\",\"bin\":\"python3\","
+     "\"args\":[\"scripts/collapse_train.py\",\"--task\",\"ner-bio\","
+     "\"--consensus\",\"{out}/consensus/labels.jsonl\","
+     "\"--out\",\"{out}/train\"],\"depends_on\":[\"consensus\"]},"
+    "{\"id\":\"compress\",\"bin\":\"bonfyre-quant\","
+     "\"args\":[\"compress\",\"{out}/train/model.onnx\",\"{out}/compress/model.fpq\"],"
+     "\"depends_on\":[\"train\"]},"
+    "{\"id\":\"hash\",\"bin\":\"bonfyre-hash\","
+     "\"args\":[\"merkle\",\"{out}/compress/artifact.json\"],"
+     "\"depends_on\":[\"compress\"]}"
+    "]}";
+
 /* Master table */
 typedef struct { const char *code; const char *json; } BuiltinEntry;
 static BuiltinEntry BUILTINS[] = {
@@ -443,6 +521,9 @@ static BuiltinEntry BUILTINS[] = {
     {"R1", NULL},
     {"L1", NULL},
     {"G1", NULL},
+    {"T04", NULL},
+    {"T07", NULL},
+    {"T14", NULL},
     {NULL, NULL}
 };
 static void init_builtins(void){
@@ -456,6 +537,9 @@ static void init_builtins(void){
     BUILTINS[7].json=BUILTIN_R1;
     BUILTINS[8].json=BUILTIN_L1;
     BUILTINS[9].json=BUILTIN_G1;
+    BUILTINS[10].json=BUILTIN_T04;
+    BUILTINS[11].json=BUILTIN_T07;
+    BUILTINS[12].json=BUILTIN_T14;
 }
 
 /* Lookup a built-in by code */

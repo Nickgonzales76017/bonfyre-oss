@@ -1,0 +1,52 @@
+{
+  "code": "T07",
+  "name": "Semantic Chunker Collapse",
+  "version": "1.0.0",
+  "description": "Run two bonfyre-embed passes in parallel (MiniLM + MPNet) to detect chunk boundaries via dual-model cosine drop, then distill boundary signal into a compressed ONNX student.",
+  "stages": [
+    {
+      "id": "embed-minilm",
+      "bin": "bonfyre-embed",
+      "args": [
+        "--input-dir", "{input}",
+        "--model",     "all-MiniLM-L6-v2",
+        "--out",       "{out}/embed-minilm"
+      ],
+      "depends_on": []
+    },
+    {
+      "id": "embed-mpnet",
+      "bin": "bonfyre-embed",
+      "args": [
+        "--input-dir", "{input}",
+        "--model",     "all-mpnet-base-v2",
+        "--out",       "{out}/embed-mpnet"
+      ],
+      "depends_on": []
+    },
+    {
+      "id": "train",
+      "bin": "python3",
+      "args": [
+        "scripts/collapse_train.py",
+        "--task",        "chunk-boundary",
+        "--embed-dir-a", "{out}/embed-minilm",
+        "--embed-dir-b", "{out}/embed-mpnet",
+        "--out",         "{out}/train"
+      ],
+      "depends_on": ["embed-minilm", "embed-mpnet"]
+    },
+    {
+      "id": "compress",
+      "bin": "bonfyre-quant",
+      "args": ["compress", "{out}/train/model.onnx", "{out}/compress/model.fpq"],
+      "depends_on": ["train"]
+    },
+    {
+      "id": "hash",
+      "bin": "bonfyre-hash",
+      "args": ["merkle", "{out}/compress/artifact.json"],
+      "depends_on": ["compress"]
+    }
+  ]
+}

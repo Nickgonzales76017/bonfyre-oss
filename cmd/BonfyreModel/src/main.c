@@ -585,6 +585,7 @@ static void cmd_help(void) {
         "  source rm <id> <url>       remove a pull source URL\n"
         "  ls-cache                   list cached files with sizes\n"
         "  status                     registry + cache stats\n"
+        "  push <id> --repo <hf/repo> upload FPQ artifact to HuggingFace\n"
         "  help                       this message\n\n"
         "SOURCE SCHEMES (evaluated in priority order)\n"
         "  swarm://hash               bonfyre-swarm local peer\n"
@@ -601,10 +602,116 @@ static void cmd_help(void) {
         "  bonfyre-model pull whisper-large-v3\n"
         "  bonfyre-model pull --recipe A3\n"
         "  bonfyre-model source add whisper-large-v3 file:///data/models/whisper.gguf\n"
-        "  bonfyre-model verify whisper-large-v3\n"
-        "  bonfyre-model path whisper-large-v3\n",
+        "  bonfyre-model push bonfyre-topic-mapper-v1 --repo bonfyre-oss/topic-mapper-v1\n",
         VERSION
     );
+}
+
+/* ====================================================================
+ * cmd_push — upload FPQ-compressed model to HuggingFace Hub
+ *
+ * Requires: HF_TOKEN env var (huggingface.co user access token)
+ * Strategy: huggingface-cli upload if available, else curl PUT fallback.
+ * After success, adds hf://<repo>/model.fpq as a source URL in models.db
+ * so the artifact is immediately pullable on other machines.
+ * ==================================================================== */
+static int cmd_push(sqlite3 *db, const char *model_id, const char *repo) {
+    const char *token = getenv("HF_TOKEN");
+    if (!token || !token[0]) {
+        fprintf(stderr, "error: HF_TOKEN environment variable required\n"
+                        "       export HF_TOKEN=hf_...\n");
+        return 1;
+    }
+
+    /* 1. Look up fpq_sha256 → derive local .fpq cache path */
+    char fpq_hash[HASH_HEX] = {0};
+    sqlite3_stmt *st;
+    sqlite3_prepare_v2(db,
+        "SELECT fpq_sha256 FROM models WHERE id=?", -1, &st, NULL);
+    sqlite3_bind_text(st, 1, model_id, -1, SQLITE_STATIC);
+    if (sqlite3_step(st) == SQLITE_ROW && sqlite3_column_text(st, 0))
+        strncpy(fpq_hash, (const char *)sqlite3_column_text(st, 0), sizeof(fpq_hash)-1);
+    sqlite3_finalize(st);
+
+    if (!fpq_hash[0]) {
+        fprintf(stderr, "error: no fpq_sha256 for model '%s'\n"
+                        "       run: bonfyre-quant compress <model> <out.fpq>\n"
+                        "       then: bonfyre-model add <artifact.json>\n",
+                model_id);
+        return 1;
+    }
+
+    char cache_dir[PATH_MAX];
+    get_cache_dir(cache_dir, sizeof(cache_dir));
+
+    char fpq_path[PATH_MAX];
+    snprintf(fpq_path, sizeof(fpq_path), "%s/%s.fpq", cache_dir, fpq_hash);
+
+    struct stat st2;
+    if (stat(fpq_path, &st2) != 0) {
+        fprintf(stderr, "error: .fpq not in cache at %s\n"
+                        "       run: bonfyre-model pull %s\n",
+                fpq_path, model_id);
+        return 1;
+    }
+
+    /* 2. Build artifact.json path (same stem, .json) */
+    char artifact_path[PATH_MAX];
+    snprintf(artifact_path, sizeof(artifact_path), "%s/%s.json", cache_dir, fpq_hash);
+
+    /* 3. Upload model.fpq — try huggingface-cli first, fall back to curl */
+    printf("Pushing %s → hf://%s ...\n", model_id, repo);
+    char cmd[8192];
+
+    /* huggingface-cli upload <repo> <local_path> <path_in_repo> */
+    snprintf(cmd, sizeof(cmd),
+        "huggingface-cli upload '%s' '%s' model.fpq --token '%s' --repo-type model 2>&1",
+        repo, fpq_path, token);
+    int rc = system(cmd);
+
+    if (rc != 0) {
+        /* Curl fallback — HF Hub LFS upload API */
+        fprintf(stderr, "[push] huggingface-cli failed (rc=%d), trying curl...\n", rc);
+        snprintf(cmd, sizeof(cmd),
+            "curl -s --fail -X PUT "
+            "  'https://huggingface.co/api/models/%s/upload/main/model.fpq' "
+            "  -H 'Authorization: Bearer %s' "
+            "  -H 'Content-Type: application/octet-stream' "
+            "  --data-binary '@%s' 2>&1",
+            repo, token, fpq_path);
+        rc = system(cmd);
+    }
+
+    if (rc != 0) {
+        fprintf(stderr, "error: push failed — check HF_TOKEN and repo permissions\n");
+        return 1;
+    }
+
+    /* 4. Upload artifact.json as model card metadata (best-effort) */
+    if (stat(artifact_path, &st2) == 0) {
+        snprintf(cmd, sizeof(cmd),
+            "curl -s -X PUT "
+            "  'https://huggingface.co/api/models/%s/upload/main/artifact.json' "
+            "  -H 'Authorization: Bearer %s' "
+            "  -H 'Content-Type: application/json' "
+            "  --data-binary '@%s' 2>&1",
+            repo, token, artifact_path);
+        system(cmd); /* non-fatal */
+    }
+
+    /* 5. Register hf://<repo>/model.fpq as pull source in models.db */
+    char hf_url[512];
+    snprintf(hf_url, sizeof(hf_url), "hf://%s/model.fpq", repo);
+    sqlite3_prepare_v2(db,
+        "INSERT OR IGNORE INTO sources(model_id, url, priority) VALUES(?,?,0)",
+        -1, &st, NULL);
+    sqlite3_bind_text(st, 1, model_id, -1, SQLITE_STATIC);
+    sqlite3_bind_text(st, 2, hf_url,   -1, SQLITE_STATIC);
+    sqlite3_step(st); sqlite3_finalize(st);
+
+    printf("Pushed: hf://%s/model.fpq\n", repo);
+    printf("  source registered — pull later with: bonfyre-model pull %s\n", model_id);
+    return 0;
 }
 
 static int cmd_list(sqlite3 *db) {
@@ -1157,6 +1264,18 @@ int main(int argc, char **argv) {
 
     } else if(strcmp(cmd,"status")==0) {
         ret = cmd_status(db);
+
+    } else if(strcmp(cmd,"push")==0) {
+        const char *push_id = NULL, *push_repo = NULL;
+        for(int i = 2; i < argc; i++) {
+            if(strcmp(argv[i],"--repo")==0 && i+1<argc) push_repo = argv[++i];
+            else push_id = argv[i];
+        }
+        if(!push_id || !push_repo) {
+            fprintf(stderr,"usage: bonfyre-model push <id> --repo <hf-org/name>\n"); ret=1;
+        } else {
+            ret = cmd_push(db, push_id, push_repo);
+        }
 
     } else if(strcmp(cmd,"version")==0 || strcmp(cmd,"--version")==0) {
         printf("bonfyre-model %s\n", VERSION);
