@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>BonfyreFPQ — Model Compression</title>
-  <meta name="description" content="Fountain-coded Polynomial Quantisation. FP32 to INT8 with SIMD decode, 4× model size reduction, 99.97% cosine similarity preserved.">
+  <title>BonfyreFPQ — Model Compression, BQFP Format, Transform Families &amp; SLI</title>
+  <meta name="description" content="Fountain-coded Polynomial Quantisation: FP32 to INT8, BQFP on-disk format, geometry-routing transform families (T04/T15/T16), cross-family alignment (bonfyre-fpqx), and structured layer inference (bonfyre-sli).">
   <link rel="stylesheet" href="assets/site.css">
 </head>
 <body>
@@ -37,6 +37,8 @@
             <div class="metric-card"><span class="metric-num">99.97%</span><span class="metric-label">Cosine similarity preserved</span></div>
             <div class="metric-card"><span class="metric-num">≤ 2%</span><span class="metric-label">SIMD decode overhead</span></div>
             <div class="metric-card"><span class="metric-num">15</span><span class="metric-label">Models on HuggingFace</span></div>
+            <div class="metric-card"><span class="metric-num">3</span><span class="metric-label">Transform families live</span></div>
+            <div class="metric-card"><span class="metric-num">280</span><span class="metric-label">Bytes per BQFP block</span></div>
           </div>
         </div>
       </section>
@@ -109,6 +111,117 @@
               <span class="card-meta">HE-SLI extension</span>
               <h3>Homomorphic encrypted linear scoring</h3>
               <p>FPQ SIMD + HE-SLI adds depth-1 homomorphic encrypted linear scoring. SIMD BP128 decodes 128 E8 INT7 values per block. Inference stays in the encrypted domain for privacy-critical flows — results are produced without ever exposing plaintext input vectors to the model host.</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <!-- BQFP format -->
+      <section class="section">
+        <div class="shell-container">
+          <div class="section-header">
+            <div>
+              <span class="section-kicker">BQFP format — Cycle 5</span>
+              <h2 class="section-title">On-disk format for quantised transform fragments.</h2>
+              <p class="section-copy">BQFP (Bonfyre Quantised Fragment Pack) is the binary container produced by <code>bonfyre-quant compress</code> and consumed by <code>bonfyre-sli</code>, <code>bonfyre-fpqx</code>, and <code>bonfyre-layer</code>. It stores any number of quantised tensors, each with its own E8 lattice codebook and block array.</p>
+            </div>
+          </div>
+          <div class="feature-grid">
+            <article class="feature-card">
+              <span class="card-meta">File header — 16 bytes</span>
+              <h3>Magic · version · tensor count · bits</h3>
+              <p>Four uint32 fields: magic <code>0x50464251</code> (“BQFP” little-endian), format version (1), number of tensors, bit width. The magic prevents accidental reads of non-BQFP files; all Bonfyre tools check this before proceeding. Bit width drives <code>lattice_scale = 8.0 × bits</code> used throughout the encode and decode paths.</p>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">Tensor header — 280 bytes</span>
+              <h3>Name · element count · block count · eff_k</h3>
+              <p>Per-tensor header: name[256] (null-padded), n_elements (uint64), n_blocks (uint64), eff_k (uint32), pad (uint32). Followed immediately by the codebook (<code>eff_k × 16</code> float32 values) then the block array. eff_k is the number of distinct 16-dimensional tiles in the codebook; typically 8 for 3-bit quantisation or 16 for 4-bit.</p>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">Block format — 280 bytes each</span>
+              <h3>scale · warp_norm · e8i[256] · tile_idx[16]</h3>
+              <p>Each block covers 256 elements of the original tensor. Fields: <code>scale</code> (float32) — per-block amplitude; <code>warp_norm</code> (float32) — pre-warp normalisation factor; <code>e8i[256]</code> (int8, 256 bytes) — E8 lattice int8 coordinates; <code>tile_idx[16]</code> (uint8, 16 bytes) — codebook indices for each of the 16 tile positions. Total: 4+4+256+16 = 280 bytes.</p>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">Encode path</span>
+              <h3>FWHT · signs · μ-law warp · E8 lattice quantise</h3>
+              <p>Per 256-element block: randomised Haar signs (xorshift64 seed from tensor name hash), Fast Walsh–Hadamard Transform, μ-law warp with β&nbsp;=&nbsp;8, scale and normalise, E8 lattice round to nearest int8, greedy tile assignment from codebook. Decode reverses exactly: int8 &rarr; float scale &rarr; tile residual add &rarr; μ-law unwarp &rarr; inverse FWHT &rarr; sign undo.</p>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">Tools</span>
+              <h3>bonfyre-quant compress · inspect</h3>
+              <p><code>bonfyre-quant compress model.onnx out.bqfp [--bits N]</code> encodes all initializer tensors from any ONNX model. Zero external dependencies — minimal C protobuf parser handles both <code>raw_data</code> and <code>float_data</code> initializer formats. <code>bonfyre-quant inspect out.bqfp</code> prints tensor names, element counts, block counts, and eff_k. <code>bonfyre-sli inspect --model out.bqfp</code> shows the same from the inference side.</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <!-- Transform families -->
+      <section class="section" style="background:var(--surface-1,#111);border-top:1px solid var(--border,#222);border-bottom:1px solid var(--border,#222)">
+        <div class="shell-container">
+          <div class="section-header">
+            <div>
+              <span class="section-kicker">Transform families — Cycle 5</span>
+              <h2 class="section-title">Quantised model fragments trained to specific corpus geometries.</h2>
+              <p class="section-copy">A transform family is a set of BQFP-compressed model weights trained to collapse a specific kind of textual structure into a compact representation. Each family declares a geometry and an optional geometry_condition. <code>bonfyre-model route corpus_stats.json</code> evaluates all registered families and returns the one with the highest F1 whose condition holds for your corpus.</p>
+            </div>
+          </div>
+          <div class="feature-grid">
+            <article class="feature-card">
+              <span class="card-meta" style="color:var(--accent,#ff6b35)">T04 — Topic Mapper Collapse</span>
+              <h3>Global geometry · mean F1&nbsp;=&nbsp;0.914 · 10/10 pass</h3>
+              <p>Trained on Python synth teachers (dataset labels + sentence-transformers/MiniLM). Validated across 8 corpus×scale combinations. Gate: f1_vs_consensus ≥ 0.85, latency_ratio ≤ 0.30. Geometry: global — activates on any corpus. Stability: 0.895 across 72 runs. Ideal for general-purpose topic categorisation where no long-form constraint applies.</p>
+              <div style="margin-top:0.75rem;font-family:'IBM Plex Mono',monospace;font-size:0.78rem;color:var(--accent,#ff6b35);background:rgba(255,107,53,0.08);border:1px solid rgba(255,107,53,0.2);border-radius:5px;padding:0.6rem 0.9rem">bonfyre-sli run --model T04.bqfp --in embeddings.bin --out results/</div>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta" style="color:var(--accent,#ff6b35)">T15 — Keyword Structure Collapse</span>
+              <h3>Global geometry · mean F1&nbsp;=&nbsp;0.911 · 12/12 pass</h3>
+              <p>TF-IDF bigram keyword extraction + MiniBatchKMeans cluster labels + MiniLM embeddings collapsed to ONNX topic-map student. Promoted from the 72-run diversity matrix. Geometry: global. avg F1=0.892 across ag_news+cnn_dm. Most consistent transform across diverse corpora — 12/12 pass rate is the highest in the production registry.</p>
+              <div style="margin-top:0.75rem;font-family:'IBM Plex Mono',monospace;font-size:0.78rem;color:var(--accent,#ff6b35);background:rgba(255,107,53,0.08);border:1px solid rgba(255,107,53,0.2);border-radius:5px;padding:0.6rem 0.9rem">bonfyre-model route corpus_stats.json</div>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta" style="color:var(--accent,#ff6b35)">T16 — Paragraph Boundary Collapse</span>
+              <h3>Long-form conditional · mean F1&nbsp;=&nbsp;0.931 · condition: avg_doc_len &gt; 500</h3>
+              <p>bonfyre-paragraph splits docs into paragraph chunks; MiniLM+MPNet embed paragraph pairs; chunk-boundary student trained on structural similarity drops. cnn_dm results: F1&nbsp;0.937/0.971. Fails on short-form (ag_news: F1&nbsp;0.0) — the geometry router will never select T16 for a corpus with short average document length. Highest F1 of the three families when the condition holds.</p>
+              <div style="margin-top:0.75rem;font-family:'IBM Plex Mono',monospace;font-size:0.78rem;color:var(--accent,#ff6b35);background:rgba(255,107,53,0.08);border:1px solid rgba(255,107,53,0.2);border-radius:5px;padding:0.6rem 0.9rem">bonfyre-sli route --stats corpus_stats.json --in vecs.bin --out out/</div>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">T17 — dropped</span>
+              <h3>Readability Complexity Collapse · avg F1&nbsp;=&nbsp;0.647 · 1/12 pass</h3>
+              <p>Post-diversity-matrix finding: pure readability lexical features (avg sentence length, word length, type-token ratio, punctuation density, long-word ratio, sentence count) produce diffuse clusters that fail the collapse geometry gate. F1 below 0.85 threshold in 11/12 experiments. Kept in the recipe registry as <code>status: dropped</code> for reproducibility, but not registered as a model source and not returned by the router.</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <!-- Cross-family alignment + SLI -->
+      <section class="section">
+        <div class="shell-container">
+          <div class="section-header">
+            <div>
+              <span class="section-kicker">bonfyre-fpqx + bonfyre-sli — Cycle 5</span>
+              <h2 class="section-title">Chain transform families without representation drift.</h2>
+              <p class="section-copy">Applying T04 then T16 without alignment produces incoherent projections because the two families were trained independently and their codebook spaces are not aligned. bonfyre-fpqx solves for the exact 16×16 rotation matrix that maps one family's tile space into another's. bonfyre-sli applies the decoded weight matrices — with or without alignment — to a batch of input embeddings in a single C binary.</p>
+            </div>
+          </div>
+          <div class="feature-grid">
+            <article class="feature-card">
+              <span class="card-meta">bonfyre-fpqx — align</span>
+              <h3>Greedy cosine anchor matching + least-squares solve</h3>
+              <p>For each tile in family A's codebook (eff_k tiles of 16 floats each), find the closest tile in family B by cosine similarity. Accept as an anchor if cosine &gt; 0.5. Accumulate anchor pairs into the symmetric matrices AtA and AtB for the 16×16 least-squares problem AᵀA&nbsp;×&nbsp;M&nbsp;=&nbsp;AᵀB. Solve via Gauss-Jordan elimination with 1×10⁻⁶ diagonal regularisation. Output: <code>fpqx_alignment.bin</code> (FPQX magic + 256 float32) and <code>fpqx_alignment.json</code>.</p>
+              <div style="margin-top:0.75rem;font-family:'IBM Plex Mono',monospace;font-size:0.78rem;color:var(--accent,#ff6b35);background:rgba(255,107,53,0.08);border:1px solid rgba(255,107,53,0.2);border-radius:5px;padding:0.6rem 0.9rem">bonfyre-fpqx align T04.bqfp T16.bqfp --out alignment/</div>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">bonfyre-sli — run · chain · route</span>
+              <h3>BQFP decode → linear projection → output embeddings</h3>
+              <p>Runs the full BQFP decode pipeline on the first tensor (signs→FWHT→warp→E8→tile→warp_norm→scale), treats the resulting float32 array as a projection matrix, and applies it to the input embedding batch. <strong>run</strong>: single family. <strong>chain</strong>: sequential families with optional FPQx alignment applied between steps. <strong>route</strong>: wraps <code>bonfyre-model route</code> to auto-select the family before running. Input/output file format: <code>[n:u32][dim:u32][float32×n×d]</code>.</p>
+              <div style="margin-top:0.75rem;font-family:'IBM Plex Mono',monospace;font-size:0.78rem;color:var(--accent,#ff6b35);background:rgba(255,107,53,0.08);border:1px solid rgba(255,107,53,0.2);border-radius:5px;padding:0.6rem 0.9rem">bonfyre-sli chain --in vecs.bin --chain T04:T16 --models-dir . --out out.bin</div>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">Full pipeline in one shell line</span>
+              <h3>corpus stats → route → decode → transform → artifact</h3>
+              <p>The complete Cycle 5 pipeline: (1) generate <code>corpus_stats.json</code> from your corpus; (2) <code>bonfyre-model route</code> selects the best family; (3) <code>bonfyre-sli route</code> loads the selected BQFP, decodes weights, applies the transform, and writes output embeddings + artifact.json with SHA-256. No Python runtime. No GPU. No cloud API. The entire stack is C11 binaries under 2.1 MB total.</p>
+              <div style="margin-top:0.75rem;font-family:'IBM Plex Mono',monospace;font-size:0.78rem;color:var(--accent,#ff6b35);background:rgba(255,107,53,0.08);border:1px solid rgba(255,107,53,0.2);border-radius:5px;padding:0.6rem 0.9rem">bonfyre-sli route --stats corpus_stats.json --in embeddings.bin --models-dir models/ --out results/</div>
             </article>
           </div>
         </div>
@@ -188,6 +301,18 @@
               <h3>BonfyreDistribute</h3>
               <p>Fountain-coded FPQ model shard delivery over QUIC. The same erasure coding that protects model chunks during distribution.</p>
               <div class="cta-row"><a class="secondary-btn" href="layer-platform.html">Layer 6 reference →</a></div>
+            </article>
+            <article class="path-card">
+              <span class="card-meta">BQFP cross-family alignment</span>
+              <h3>bonfyre-fpqx</h3>
+              <p>Align T04 → T16 without representation drift. Greedy cosine anchor matching, 16×16 Gauss-Jordan least-squares. Required any time you chain two quantised families.</p>
+              <div class="cta-row"><a class="secondary-btn" href="changelog.html">Cycle 5 changelog →</a></div>
+            </article>
+            <article class="path-card">
+              <span class="card-meta">Structured layer inference</span>
+              <h3>bonfyre-sli</h3>
+              <p>Decode BQFP weights back to float32 and run inference in C. Single family, chained families, or auto-routed by corpus geometry. No Python. No GPU.</p>
+              <div class="cta-row"><a class="secondary-btn" href="changelog.html">Cycle 5 changelog →</a></div>
             </article>
             <article class="path-card">
               <span class="card-meta">Runtime substrate</span>

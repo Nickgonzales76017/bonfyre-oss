@@ -34,43 +34,43 @@
         <div class="ticker-row" aria-hidden="true">
           <span class="ticker-item"><span>what shipped · what changed</span></span>
           <span class="ticker-item"><span class="dot">•</span></span>
-          <span class="ticker-item"><span class="num">53</span><span>binaries</span></span>
+          <span class="ticker-item"><span class="num">56</span><span>binaries</span></span>
           <span class="ticker-item"><span class="dot">•</span></span>
           <span class="ticker-item"><span class="num">26</span><span>runtime modules</span></span>
           <span class="ticker-item"><span class="dot">•</span></span>
-          <span class="ticker-item"><span>Cycle 4: bonfyre-recipe + bonfyre-run + bonfyre-model</span></span>
+          <span class="ticker-item"><span>Cycle 5: transform families · bonfyre-sli · bonfyre-fpqx · bonfyre-layer</span></span>
           <span class="ticker-item"><span class="dot">•</span></span>
-          <span class="ticker-item"><span>SQLite-native · zero cloud deps</span></span>
+          <span class="ticker-item"><span>geometry routing · T04/T15/T16 production · BQFP ONNX · loop N</span></span>
           <span class="ticker-item"><span class="dot">•</span></span>
           <span class="ticker-item"><span>what shipped · what changed</span></span>
           <span class="ticker-item"><span class="dot">•</span></span>
-          <span class="ticker-item"><span class="num">53</span><span>binaries</span></span>
+          <span class="ticker-item"><span class="num">56</span><span>binaries</span></span>
           <span class="ticker-item"><span class="dot">•</span></span>
           <span class="ticker-item"><span class="num">26</span><span>runtime modules</span></span>
           <span class="ticker-item"><span class="dot">•</span></span>
-          <span class="ticker-item"><span>Cycle 4: bonfyre-recipe + bonfyre-run + bonfyre-model</span></span>
+          <span class="ticker-item"><span>Cycle 5: transform families · bonfyre-sli · bonfyre-fpqx · bonfyre-layer</span></span>
           <span class="ticker-item"><span class="dot">•</span></span>
-          <span class="ticker-item"><span>SQLite-native · zero cloud deps</span></span>
+          <span class="ticker-item"><span>geometry routing · T04/T15/T16 production · BQFP ONNX · loop N</span></span>
           <span class="ticker-item"><span class="dot">•</span></span>
           <span class="ticker-item"><span>what shipped · what changed</span></span>
           <span class="ticker-item"><span class="dot">•</span></span>
-          <span class="ticker-item"><span class="num">53</span><span>binaries</span></span>
+          <span class="ticker-item"><span class="num">56</span><span>binaries</span></span>
           <span class="ticker-item"><span class="dot">•</span></span>
           <span class="ticker-item"><span class="num">26</span><span>runtime modules</span></span>
           <span class="ticker-item"><span class="dot">•</span></span>
-          <span class="ticker-item"><span>Cycle 4: bonfyre-recipe + bonfyre-run + bonfyre-model</span></span>
+          <span class="ticker-item"><span>Cycle 5: transform families · bonfyre-sli · bonfyre-fpqx · bonfyre-layer</span></span>
           <span class="ticker-item"><span class="dot">•</span></span>
-          <span class="ticker-item"><span>SQLite-native · zero cloud deps</span></span>
+          <span class="ticker-item"><span>geometry routing · T04/T15/T16 production · BQFP ONNX · loop N</span></span>
           <span class="ticker-item"><span class="dot">•</span></span>
           <span class="ticker-item"><span>what shipped · what changed</span></span>
           <span class="ticker-item"><span class="dot">•</span></span>
-          <span class="ticker-item"><span class="num">53</span><span>binaries</span></span>
+          <span class="ticker-item"><span class="num">56</span><span>binaries</span></span>
           <span class="ticker-item"><span class="dot">•</span></span>
           <span class="ticker-item"><span class="num">26</span><span>runtime modules</span></span>
           <span class="ticker-item"><span class="dot">•</span></span>
-          <span class="ticker-item"><span>Cycle 4: bonfyre-recipe + bonfyre-run + bonfyre-model</span></span>
+          <span class="ticker-item"><span>Cycle 5: transform families · bonfyre-sli · bonfyre-fpqx · bonfyre-layer</span></span>
           <span class="ticker-item"><span class="dot">•</span></span>
-          <span class="ticker-item"><span>SQLite-native · zero cloud deps</span></span>
+          <span class="ticker-item"><span>geometry routing · T04/T15/T16 production · BQFP ONNX · loop N</span></span>
         </div>
       </div>
     </header>
@@ -88,12 +88,77 @@
         </div>
       </section>
 
+      <!-- Cycle 5 -->
+      <section class="section">
+        <div class="shell-container">
+          <div class="section-header">
+            <div>
+              <span class="section-kicker">Current cycle — Cycle 5</span>
+              <h2 class="section-title">Transform families, geometry routing, ONNX layer surgery, and structured inference.</h2>
+              <p class="section-copy">Seven additions this cycle: bonfyre-model v1.1.0 adds a geometry-aware transform family registry and automatic routing. A 72-run diversity matrix across ag_news&nbsp;&times;&nbsp;cnn_dm promoted three families (T04, T15, T16) to production and dropped T17. Four new C binaries — bonfyre-layer, bonfyre-fpqx, bonfyre-sli, plus ONNX input for bonfyre-quant and iterative loop support in bonfyre-runtime — complete the BQFP inference pipeline end to end.</p>
+            </div>
+          </div>
+          <div class="feature-grid">
+
+            <article class="feature-card">
+              <span class="card-meta">bonfyre-model v1.1.0</span>
+              <h3>Transform family schema + geometry router</h3>
+              <p>New schema columns: <code>transform_family</code>, <code>geometry</code>, <code>geometry_condition</code>, <code>layer_frag_spec</code>, <code>mean_f1</code>. Live migration via <code>ALTER TABLE</code> on open — existing databases upgrade in place. New <code>family [name]</code> command lists models by family. New <code>route &lt;corpus_stats.json&gt;</code> command reads corpus statistics, evaluates geometry predicates (<code>avg_doc_len &gt; 500</code>), and returns the highest-F1 family whose condition passes. JFIELD macro extended to parse unquoted numeric values.</p>
+              <p style="margin-top:0.75rem;color:var(--text-2);font-size:0.875rem"><strong>Why it matters:</strong> The model registry now knows what kind of input a transform expects. Route with <code>bonfyre-model route corpus_stats.json</code> — T16 selects on long-form corpora; T04/T15 route to general content. No manual selection.</p>
+            </article>
+
+            <article class="feature-card">
+              <span class="card-meta">72-run diversity matrix</span>
+              <h3>T04 · T15 · T16 promoted — T17 dropped</h3>
+              <p>72 evaluation runs across ag_news&nbsp;&times;&nbsp;cnn_dm&nbsp;&times;&nbsp;3 corpus scales with F1-vs-consensus and latency-ratio gates. Results: <strong>T04</strong> Topic Mapper (global, mean F1&nbsp;=&nbsp;0.914, 10/10 pass, stability&nbsp;0.895), <strong>T15</strong> Keyword Structure (global, mean F1&nbsp;=&nbsp;0.911, 12/12 pass), <strong>T16</strong> Paragraph Boundary (long-form only, mean F1&nbsp;=&nbsp;0.931, 5/8 pass, activates when <code>avg_doc_len&nbsp;&gt;&nbsp;500</code>). <strong>T17</strong> Readability Complexity dropped — avg F1&nbsp;=&nbsp;0.647 across 12 experiments; lexical readability features produce diffuse clusters insufficient for collapse geometry.</p>
+              <p style="margin-top:0.75rem;color:var(--text-2);font-size:0.875rem"><strong>Why it matters:</strong> Three production-grade transform families are live in the registry with verified F1, geometry, and routing conditions. T16's conditional geometry is the first example of corpus-adaptive routing in the stack.</p>
+            </article>
+
+            <article class="feature-card">
+              <span class="card-meta">bonfyre-quant — ONNX input</span>
+              <h3>Compress any ONNX model to BQFP format</h3>
+              <p>New <code>compress &lt;model.onnx&gt; &lt;output.bqfp&gt; [--bits N]</code> command auto-detects ONNX files and encodes all initializer tensors to BQFP. New <code>inspect &lt;file.bqfp&gt;</code> prints full tensor and codebook structure. A minimal protobuf parser in C (zero external deps) handles both <code>raw_data</code> and <code>float_data</code> initializer formats. BQFP format: E8 lattice INT8 per 256-element block, 16-entry tile codebook per tensor, 280 bytes/block. Per-tensor headers carry element count, block count, eff_k, and 256-byte tensor name.</p>
+              <p style="margin-top:0.75rem;color:var(--text-2);font-size:0.875rem"><strong>Why it matters:</strong> Any ONNX model — PyTorch export, HuggingFace, scikit-learn — is now a first-class citizen in the BQFP pipeline. The compression step runs in a single sub-400 KB C binary with no Python bridge.</p>
+            </article>
+
+            <article class="feature-card">
+              <span class="card-meta">bonfyre-runtime — loop N</span>
+              <h3>Iterative pipeline execution with artifact chaining</h3>
+              <p>New <code>loop &lt;N&gt; &lt;binary&gt; [args...]</code> command. Creates per-iteration output directories (<code>base-1</code>, <code>base-2</code>, … or <code>/tmp/bonfyre-loop-PID-I</code> if no <code>--out</code>). Replaces <code>--out DIR</code> with <code>--out DIR-I</code> and chains <code>artifact.json</code> from the previous iteration as <code>--in</code> for the next. Halts immediately on non-zero exit. Works with any binary — not only Bonfyre tools.</p>
+              <p style="margin-top:0.75rem;color:var(--text-2);font-size:0.875rem"><strong>Why it matters:</strong> Iterative refinement passes — repeated scoring, re-embedding, or progressive summarisation — no longer need shell scripts. Loop chains artifacts automatically and stops on failure, with a clean output tree for post-run inspection.</p>
+            </article>
+
+            <article class="feature-card">
+              <span class="card-meta">bonfyre-layer — C port</span>
+              <h3>ONNX layer surgery in pure C</h3>
+              <p>Full C port of the Python bonfyre-layer binary (~830 lines, no Python runtime dependency). Commands: <code>inspect</code>, <code>layers</code>, <code>pull-layer N:M</code>, <code>pull-head N</code>, <code>pack-transform</code>, <code>schema</code>. <code>pull-layer</code> extracts NodeProto slice with all required initializers via a dynamic write buffer, wraps in a new ModelProto with opset&nbsp;17, and writes a SHA-256 artifact manifest. Minimal ONNX protobuf reader/writer — parse_graph, parse_node, WBuf dynamic write buffer.</p>
+              <p style="margin-top:0.75rem;color:var(--text-2);font-size:0.875rem"><strong>Why it matters:</strong> Layer extraction, hashing, and registration in the transform family registry runs entirely in a ~200 KB binary. No NumPy, no ONNX Python package, no virtual environment. <code>bonfyre-layer pull-layer 0:2 model.onnx fragment.onnx</code> and you have a layer fragment with verified SHA.</p>
+            </article>
+
+            <article class="feature-card">
+              <span class="card-meta">bonfyre-fpqx — cross-family alignment</span>
+              <h3>Align codebooks between transform families</h3>
+              <p>Reads two BQFP files, greedy-matches codebook tiles by cosine similarity (threshold&nbsp;0.5), then solves a 16&times;16 least-squares alignment matrix via Gauss-Jordan elimination with 1e-6 regularisation. Writes <code>fpqx_alignment.bin</code> (FPQX magic&nbsp;+&nbsp;256 float32) and <code>fpqx_alignment.json</code>. Commands: <code>align &lt;a.bqfp&gt; &lt;b.bqfp&gt; --out DIR</code>, <code>eval</code>, <code>inspect</code>. Anchor pairs with cosine below threshold are discarded; underdetermined systems fall back to identity.</p>
+              <p style="margin-top:0.75rem;color:var(--text-2);font-size:0.875rem"><strong>Why it matters:</strong> Chaining T04 → T16 without alignment produces representation drift. bonfyre-fpqx computes the rotation matrix that maps T04's codebook space into T16's so sequential inference stays coherent across families.</p>
+            </article>
+
+            <article class="feature-card">
+              <span class="card-meta">bonfyre-sli — Structured Layer Inference</span>
+              <h3>Decode BQFP weights and run transform inference in C</h3>
+              <p>Full BQFP decode + inference pipeline: e8i int8 &rarr; lattice scale &rarr; tile residual correction by codebook lookup &rarr; &mu;-law unwarp (&beta;&nbsp;=&nbsp;8) &rarr; inverse FWHT &rarr; sign undo &rarr; float32 weight matrix. Applies matrix as a linear projection over input embedding vectors. Commands: <code>run</code> (single family), <code>chain</code> (multi-family, e.g. <code>--chain T04:T16</code> with optional FPQx alignment), <code>route</code> (calls <code>bonfyre-model route</code> to auto-select family), <code>bench</code>, <code>inspect</code>. Input/output wire format: <code>[n:u32][dim:u32][float32&times;n&times;d]</code>.</p>
+              <p style="margin-top:0.75rem;color:var(--text-2);font-size:0.875rem"><strong>Why it matters:</strong> The full loop — corpus stats &rarr; geometry routing &rarr; BQFP decode &rarr; transform apply — runs in a single C binary with no Python and no GPU. <code>bonfyre-sli route --stats corpus_stats.json --in embeddings.bin --out results/</code> is the complete pipeline.</p>
+            </article>
+
+          </div>
+        </div>
+      </section>
+
       <!-- Cycle 4 -->
       <section class="section">
         <div class="shell-container">
           <div class="section-header">
             <div>
-              <span class="section-kicker">Current cycle — Cycle 4</span>
+              <span class="section-kicker">Cycle 4</span>
               <h2 class="section-title">Pipeline registry, DAG executor, and 10 built-in recipe codes.</h2>
               <p class="section-copy">Three new binaries that make the whole stack runnable in one command: <code>bonfyre-recipe</code> maintains a content-addressed SQLite registry of named pipelines, and <code>bonfyre-run</code> resolves a recipe code, builds a dependency graph, and executes stages level-parallel with Ed25519-signed run manifests on every invocation.</p>
             </div>

@@ -4,14 +4,14 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#ff6b35">
-  <meta name="description" content="Bonfyre technical reference: all 53 binaries by layer, 26-module runtime, FPQ internals, key limits, benchmarks, and hardware fit.">
+  <meta name="description" content="Bonfyre technical reference: all 56 binaries by layer, 26-module runtime, FPQ internals, BQFP format, transform families, SLI inference, key limits, benchmarks, and hardware fit.">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔥</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link href="https://api.fontshare.com/v2/css?f[]=cabinet-grotesk@400,500,700,800,900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="assets/site.css">
-  <title>Bonfyre | Technical Reference — 53 Binaries, 26-Module Runtime, FPQ Internals</title>
+  <title>Bonfyre | Technical Reference — 56 Binaries, 26-Module Runtime, FPQ &amp; BQFP Internals</title>
 </head>
 <body>
   <div class="site-shell">
@@ -32,7 +32,7 @@
       </div>
       <div class="ticker-bar">
         <div class="ticker-row" aria-hidden="true">
-          <span class="ticker-item"><span class="num">53</span><span>C11 binaries</span></span>
+          <span class="ticker-item"><span class="num">56</span><span>C11 binaries</span></span>
           <span class="ticker-item"><span class="dot">•</span></span>
           <span class="ticker-item"><span class="num">26</span><span>runtime modules</span></span>
           <span class="ticker-item"><span class="dot">•</span></span>
@@ -42,25 +42,11 @@
           <span class="ticker-item"><span class="dot">•</span></span>
           <span class="ticker-item"><span class="num">4096</span><span>conns/reactor</span></span>
           <span class="ticker-item"><span class="dot">•</span></span>
-          <span class="ticker-item"><span>sub-5 ms semantic retrieval</span></span>
+          <span class="ticker-item"><span>geometry routing · T04/T15/T16 production</span></span>
           <span class="ticker-item"><span class="dot">•</span></span>
-          <span class="ticker-item"><span>SQLite-native · BLAKE2b · NEON SIMD</span></span>
+          <span class="ticker-item"><span>bonfyre-sli · bonfyre-fpqx · bonfyre-layer</span></span>
           <span class="ticker-item"><span class="dot">•</span></span>
-          <span class="ticker-item"><span class="num">53</span><span>C11 binaries</span></span>
-          <span class="ticker-item"><span class="dot">•</span></span>
-          <span class="ticker-item"><span class="num">26</span><span>runtime modules</span></span>
-          <span class="ticker-item"><span class="dot">•</span></span>
-          <span class="ticker-item"><span class="num">4×</span><span>FPQ compression</span></span>
-          <span class="ticker-item"><span class="dot">•</span></span>
-          <span class="ticker-item"><span class="num">99.97%</span><span>cosine parity</span></span>
-          <span class="ticker-item"><span class="dot">•</span></span>
-          <span class="ticker-item"><span class="num">4096</span><span>conns/reactor</span></span>
-          <span class="ticker-item"><span class="dot">•</span></span>
-          <span class="ticker-item"><span>sub-5 ms semantic retrieval</span></span>
-          <span class="ticker-item"><span class="dot">•</span></span>
-          <span class="ticker-item"><span>SQLite-native · BLAKE2b · NEON SIMD</span></span>
-          <span class="ticker-item"><span class="dot">•</span></span>
-          <span class="ticker-item"><span class="num">53</span><span>C11 binaries</span></span>
+          <span class="ticker-item"><span class="num">56</span><span>C11 binaries</span></span>
           <span class="ticker-item"><span class="dot">•</span></span>
           <span class="ticker-item"><span class="num">26</span><span>runtime modules</span></span>
           <span class="ticker-item"><span class="dot">•</span></span>
@@ -70,9 +56,23 @@
           <span class="ticker-item"><span class="dot">•</span></span>
           <span class="ticker-item"><span class="num">4096</span><span>conns/reactor</span></span>
           <span class="ticker-item"><span class="dot">•</span></span>
-          <span class="ticker-item"><span>sub-5 ms semantic retrieval</span></span>
+          <span class="ticker-item"><span>geometry routing · T04/T15/T16 production</span></span>
           <span class="ticker-item"><span class="dot">•</span></span>
-          <span class="ticker-item"><span>SQLite-native · BLAKE2b · NEON SIMD</span></span>
+          <span class="ticker-item"><span>bonfyre-sli · bonfyre-fpqx · bonfyre-layer</span></span>
+          <span class="ticker-item"><span class="dot">•</span></span>
+          <span class="ticker-item"><span class="num">56</span><span>C11 binaries</span></span>
+          <span class="ticker-item"><span class="dot">•</span></span>
+          <span class="ticker-item"><span class="num">26</span><span>runtime modules</span></span>
+          <span class="ticker-item"><span class="dot">•</span></span>
+          <span class="ticker-item"><span class="num">4×</span><span>FPQ compression</span></span>
+          <span class="ticker-item"><span class="dot">•</span></span>
+          <span class="ticker-item"><span class="num">99.97%</span><span>cosine parity</span></span>
+          <span class="ticker-item"><span class="dot">•</span></span>
+          <span class="ticker-item"><span class="num">4096</span><span>conns/reactor</span></span>
+          <span class="ticker-item"><span class="dot">•</span></span>
+          <span class="ticker-item"><span>geometry routing · T04/T15/T16 production</span></span>
+          <span class="ticker-item"><span class="dot">•</span></span>
+          <span class="ticker-item"><span>bonfyre-sli · bonfyre-fpqx · bonfyre-layer</span></span>
           <span class="ticker-item"><span class="dot">•</span></span>
           <span class="ticker-item"><span class="num">53</span><span>C11 binaries</span></span>
           <span class="ticker-item"><span class="dot">•</span></span>
@@ -96,7 +96,7 @@
         <div class="shell-container">
           <span class="hero-kicker">Technical Reference</span>
           <h1 class="hero-title">All the numbers. <span class="accent">All the internals.</span></h1>
-          <p class="lede">Complete reference for all 53 binaries, 26 runtime modules, FPQ compression, key limits, benchmarks, and hardware fit. No hand-waving — if a number is here it was measured.</p>
+          <p class="lede">Complete reference for all 56 binaries, 26 runtime modules, FPQ/BQFP compression, transform families, key limits, benchmarks, and hardware fit. No hand-waving — if a number is here it was measured.</p>
           <div class="hero-actions">
             <a class="primary-btn" href="#binary-inventory">Binary inventory</a>
             <a class="secondary-btn" href="#fpq">FPQ internals</a>
@@ -147,9 +147,9 @@
         <div class="shell-container">
           <div class="section-header">
             <div>
-              <span class="section-kicker">53 binaries</span>
+              <span class="section-kicker">56 binaries</span>
               <h2 class="section-title">Complete inventory by functional layer.</h2>
-              <p class="section-copy">Each binary handles one job, links only the C it needs, and communicates via content-addressed artifacts.</p>
+              <p class="section-copy">Three C binaries added this cycle (bonfyre-layer, bonfyre-fpqx, bonfyre-sli) plus ONNX input for bonfyre-quant and <code>loop N</code> for bonfyre-runtime. Each binary handles one job, links only the C it needs, and communicates via content-addressed artifacts.</p>
             </div>
           </div>
 
@@ -295,13 +295,37 @@
             <div>
               <span class="section-kicker">bonfyre-recipe · bonfyre-run</span>
               <h2 class="section-title">Pipeline registry and executor.</h2>
-              <p class="section-copy">Two new C binaries ship with the 53. bonfyre-recipe manages a SQLite-backed content-addressed registry of pipeline recipes. bonfyre-run executes any registered recipe as a level-parallel DAG. Source in <code>cmd/BonfyreRecipe</code> and <code>cmd/BonfyreRun</code>.</p>
+              <p class="section-copy">Five additions this cycle: bonfyre-model v1.1.0 adds transform family schema and geometry routing. Three new C binaries: bonfyre-layer (ONNX layer surgery), bonfyre-fpqx (cross-family codebook alignment), bonfyre-sli (BQFP decode + structured inference). Plus bonfyre-recipe manages a SQLite-backed content-addressed registry; bonfyre-run executes any recipe as a level-parallel DAG. Source in <code>cmd/</code>.</p>
             </div>
           </div>
           <div class="feature-grid">
             <article class="feature-card">
-              <span class="card-meta">bonfyre-recipe internals</span>
-              <h3>SQLite WAL + FTS5 + SHA-256 content addressing</h3>
+              <span class="card-meta">bonfyre-model v1.1.0 internals</span>
+              <h3>Transform family schema + geometry router</h3>
+              <p>New columns on <code>models</code> table: <code>transform_family</code>, <code>geometry</code>, <code>geometry_condition</code>, <code>layer_frag_spec</code>, <code>mean_f1</code>. Live migration via idempotent <code>ALTER TABLE ... ADD COLUMN IF NOT EXISTS</code> on DB open — existing installs upgrade in place. <code>family [name]</code> lists by transform family. <code>route &lt;stats.json&gt;</code> parses corpus statistics JSON (keys: <code>avg_doc_len</code>, <code>n_docs</code>, etc.), evaluates each registered family's <code>geometry_condition</code> predicate, and returns the family with the highest <code>mean_f1</code> whose condition passes. Families with no condition always qualify.</p>
+              <p style="margin-top:0.75rem;color:var(--text-2);font-size:0.875rem">Three production families registered: T04 (global, F1&nbsp;0.914), T15 (global, F1&nbsp;0.911), T16 (long-form only, F1&nbsp;0.931, condition: <code>avg_doc_len &gt; 500</code>).</p>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">bonfyre-quant — ONNX BQFP internals</span>
+              <h3>Minimal protobuf parser + BQFP block encoding</h3>
+              <p>New <code>compress &lt;model.onnx&gt; &lt;out.bqfp&gt;</code> command. Minimal C protobuf parser walks <code>ModelProto.graph.initializer</code> chain; handles field 9 (<code>raw_data</code>, bytes) and field 4 (<code>float_data</code>, repeated float). BQFP block format: scale (f32) + warp_norm (f32) + e8i[256] (int8) + tile_idx[16] (uint8) = 280 bytes/block. Per-tensor header: name[256] + n_elements(u64) + n_blocks(u64) + eff_k(u32) + pad(u32). File header: magic <code>0x50464251</code> + version + n_tensors + bits.</p>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">bonfyre-layer internals</span>
+              <h3>ONNX protobuf reader/writer + layer slice extraction</h3>
+              <p>Pure C ONNX protobuf reader: walks field tags, copies NodeProto blobs verbatim, collects required initializers by name-match against node inputs. Dynamic write buffer (<code>WBuf</code>): grows by 2× on overflow, saves via single <code>fwrite</code>. <code>pull-layer N:M</code> command: copies nodes[N..M-1] raw blobs + all referenced initializer tensors, wraps in a new ModelProto with opset 17, writes artifact.json with sha256 (via <code>shasum</code>/<code>sha256sum</code>), layer_spec, n_params, format=onnx.</p>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">bonfyre-fpqx internals</span>
+              <h3>Cosine anchor matching + Gauss-Jordan alignment</h3>
+              <p>Reads BQFP codebook (eff_k × 16 float32) from first tensor header. Greedy O(k²) cosine matching: for each tile in family A, find closest tile in family B by cosine similarity; accept if cosine &gt; 0.5 (threshold). Accumulate anchor pairs into AtA (16×16) and AtB (16×16) matrices for least-squares solve. Gauss-Jordan with in-place augmented matrix + 1e-6 diagonal regularisation. Output: FPQX binary (<code>magic 0x58515046</code> + 4-word header + 256 float32) + <code>fpqx_alignment.json</code> with family names and cosine statistics.</p>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">bonfyre-sli internals</span>
+              <h3>BQFP decode path + linear projection inference</h3>
+              <p>Decode per-block: e8i[256] int8 &rarr; float via <code>e8i * (lattice_scale/8/2)</code>; add tile residual <code>codebook[tile_idx[p] * 16 + d]</code>; divide by lattice_scale, multiply by warp_norm; &mu;-law unwarp <code>sign(y) * (pow(1+β, |y|) - 1) / β</code> with β&nbsp;=&nbsp;8; multiply by block.scale; inverse FWHT; undo signs with per-tensor Haar seed. Inference: matrix-vector multiply W × v where W is the decoded first-tensor weight matrix. Input wire: <code>[n:u32][dim:u32][float32×n×d]</code>. Chain command applies intermediate transforms, removes step files, and respects FPQx alignment JSON if present.</p>
+            </article>
+
               <p>Registry at <code>~/.local/share/bonfyre/recipes.db</code>. Schema: <code>recipes</code> table (code, name, version, json_text, hash, source, timestamps) + FTS5 virtual table for full-text search over code/name/description/stage binaries. Every insert triggers FTS sync. SHA-256 is computed inline (FIPS 180-4) — no external crypto dependency. The hash is stable across machines for the same JSON.</p>
               <div class="cta-row"><a class="secondary-btn" href="https://github.com/Nickgonzales76017/bonfyre-oss/tree/main/cmd/BonfyreRecipe" target="_blank" rel="noreferrer">Source →</a></div>
             </article>
@@ -327,7 +351,7 @@
 
     <footer class="footer">
       <div class="shell-container footer-row">
-        <div>Technical reference for Bonfyre — 53 binaries, 26 runtime modules, measured numbers.</div>
+        <div>Technical reference for Bonfyre — 56 binaries, 26 runtime modules, transform families, BQFP internals, measured numbers.</div>
         <div class="footer-links">
           <a href="index.html">Overview</a>
           <a href="explore.html">Explore</a>
