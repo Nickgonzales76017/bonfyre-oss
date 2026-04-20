@@ -1048,7 +1048,7 @@ static int cmd_add(sqlite3 *db, const char *json_path) {
     char buf[MAX_JSON]; size_t n = fread(buf,1,sizeof(buf)-1,f); fclose(f);
     buf[n]='\0';
 
-    /* Minimal JSON field extraction — no external parser needed */
+    /* Minimal JSON field extraction — handles both quoted strings and bare numbers */
     #define JFIELD(key, dest, dsz) do { \
         const char *_p = strstr(buf,"\"" key "\""); \
         dest[0]='\0'; \
@@ -1057,6 +1057,11 @@ static int cmd_add(sqlite3 *db, const char *json_path) {
                 _p++; while(*_p==' '||*_p=='\t') _p++; \
                 if(*_p=='"') { _p++; size_t _i=0; \
                     while(*_p&&*_p!='"'&&_i<(dsz)-1) dest[_i++]=*_p++; \
+                    dest[_i]='\0'; \
+                } else if(*_p!='\0'&&*_p!='n'&&*_p!=']'&&*_p!='}') { \
+                    size_t _i=0; \
+                    while(*_p&&*_p!=','&&*_p!='}'&&*_p!=']'&&*_p!='\n'&&_i<(dsz)-1) dest[_i++]=*_p++; \
+                    while(_i>0&&(dest[_i-1]==' '||dest[_i-1]=='\t'||dest[_i-1]=='\r')) _i--; \
                     dest[_i]='\0'; } \
             } \
         } \
@@ -1180,13 +1185,13 @@ static int cmd_family(sqlite3 *db, const char *family) {
     int rc;
     if(family) {
         rc = sqlite3_prepare_v2(db,
-            "SELECT id, name, geometry, geometry_condition, mean_f1, format "
+            "SELECT id, name, geometry, geometry_condition, mean_f1, format, transform_family "
             "FROM models WHERE transform_family=? ORDER BY mean_f1 DESC",
             -1, &st, NULL);
         sqlite3_bind_text(st,1,family,-1,SQLITE_STATIC);
     } else {
         rc = sqlite3_prepare_v2(db,
-            "SELECT id, name, geometry, geometry_condition, mean_f1, format "
+            "SELECT id, name, geometry, geometry_condition, mean_f1, format, transform_family "
             "FROM models WHERE transform_family IS NOT NULL ORDER BY transform_family, mean_f1 DESC",
             -1, &st, NULL);
     }
@@ -1200,9 +1205,10 @@ static int cmd_family(sqlite3 *db, const char *family) {
         const char *geom = (const char*)sqlite3_column_text(st,2);
         const char *cond = (const char*)sqlite3_column_text(st,3);
         double f1        = sqlite3_column_double(st,4);
+        const char *fam  = (const char*)sqlite3_column_text(st,6);
         printf("%-36s  %-10s  %-12s  %-28s  %.3f\n",
                id ? id : "",
-               family ? family : "",
+               fam ? fam : (family ? family : ""),
                geom ? geom : "—",
                cond ? cond : "—",
                f1);
