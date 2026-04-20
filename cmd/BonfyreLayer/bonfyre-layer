@@ -265,23 +265,40 @@ def cmd_pull_layer(args):
     out_onnx = os.path.join(args.out, "layer_fragment.onnx")
 
     try:
-        # extract_model API: older onnx takes (model, input_names, output_names)
-        # newer onnx takes (model, input_names, output_names) same signature
-        input_names  = sorted(external_inputs)
+        # Separate real graph inputs from initializer weights
+        graph_input_names = {inp.name for inp in model.graph.input}
+        initializer_names = {init.name for init in model.graph.initializer}
+
+        # input_names: only the live data-flow inputs (not weight initializers)
+        input_names  = sorted(n for n in external_inputs
+                              if n in graph_input_names or n not in initializer_names)
+        # If nothing survived, fall back to all external inputs minus initializers
+        if not input_names:
+            input_names = sorted(external_inputs - initializer_names)
         output_names = sorted(set(subgraph_outputs))
 
-        try:
+        import inspect, tempfile
+        sig = inspect.signature(extract_model)
+        params = list(sig.parameters.keys())
+
+        if params[0] in ("input_path", "input_model_path"):
+            # onnx >= 1.14: extract_model(input_path, output_path, input_names, output_names)
+            # Run shape inference first so intermediate value_info is populated
+            inferred = onnx.shape_inference.infer_shapes(model)
+            with tempfile.NamedTemporaryFile(suffix=".onnx", delete=False) as tmp:
+                onnx.save(inferred, tmp.name)
+                tmp_path = tmp.name
+            try:
+                extract_model(tmp_path, out_onnx, input_names, output_names,
+                              check_model=False)
+            finally:
+                os.unlink(tmp_path)
+            sub = onnx.load(out_onnx)
+        else:
+            # onnx < 1.14: extract_model(model, input_names, output_names)
             sub = extract_model(model, input_names, output_names)
-        except TypeError:
-            # Some versions require keyword args
-            from onnx.utils import extract_model as em2
-            import inspect
-            sig = inspect.signature(em2)
-            if "check_model" in sig.parameters:
-                sub = em2(model, input_names, output_names, check_model=False)
-            else:
-                raise
-        onnx.save(sub, out_onnx)
+            onnx.save(sub, out_onnx)
+
         n_params = count_params(sub)
         inp_shapes, out_shapes = input_output_shapes(sub)
     except Exception as e:
