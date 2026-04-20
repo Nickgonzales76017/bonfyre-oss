@@ -30,6 +30,9 @@
 
 set -euo pipefail
 
+# Prevent HF tokenizers deadlock on macOS forked processes
+export TOKENIZERS_PARALLELISM=false
+
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 OUT_ROOT="/tmp/bonfyre-diversity"
 BF_RUN="bonfyre-run"
@@ -45,8 +48,11 @@ done
 
 mkdir -p "$OUT_ROOT"
 RESULTS_TSV="$OUT_ROOT/results.tsv"
-echo -e "experiment\ttask\tdataset\tn_docs\tf1_vs_consensus\tlatency_ratio\tn_params\tpass\tcollapse_time_s" \
-    > "$RESULTS_TSV"
+# Write header only if the file doesn't exist yet (preserve results on restart)
+if [[ ! -f "$RESULTS_TSV" ]]; then
+    echo -e "experiment\ttask\tdataset\tn_docs\tf1_vs_consensus\tlatency_ratio\tn_params\tpass\tcollapse_time_s" \
+        > "$RESULTS_TSV"
+fi
 
 # ── matrix definition ──────────────────────────────────────────────────────────
 TASKS=("T04-C" "T07-C" "T08-C" "T14-C" "T15-C" "T16-C")
@@ -56,8 +62,12 @@ SIZES=(250 1000)
 # ── helpers ────────────────────────────────────────────────────────────────────
 prep_corpus() {
     local dataset=$1 n=$2 dir=$3
-    if [[ -d "$dir" ]] && [[ $(ls "$dir"/*.txt 2>/dev/null | wc -l) -ge $n ]]; then
-        echo "[diversity] corpus already present: $dir ($n docs)"
+    local count=0
+    if [[ -d "$dir" ]]; then
+        count=$(find "$dir" -maxdepth 1 -name '*.txt' | wc -l | tr -d ' ')
+    fi
+    if [[ $count -ge $n ]]; then
+        echo "[diversity] corpus already present: $dir ($count docs)"
         return 0
     fi
     echo "[diversity] preparing corpus: $dataset × $n → $dir"
@@ -67,7 +77,8 @@ prep_corpus() {
         --dataset "$dataset" \
         --out     "$dir"     \
         --n       "$n"       \
-        $extra_args
+        $extra_args \
+    || { echo "[diversity] ERROR: corpus prep failed for $dataset/$n — skipping experiment"; return 1; }
 }
 
 extract_metric() {
@@ -78,6 +89,7 @@ extract_metric() {
 run_experiment() {
     local task=$1 dataset=$2 n=$3
     local exp_id="${task}-${dataset}-${n}"
+    local task_base="${task%-C}"
     local corpus_dir="$OUT_ROOT/corpus/${dataset}-${n}"
     local run_out="$OUT_ROOT/runs/${exp_id}"
     local metrics_path="$run_out/train/metrics.json"
@@ -87,7 +99,10 @@ run_experiment() {
     echo " EXPERIMENT: $exp_id"
     echo "════════════════════════════════════════"
 
-    prep_corpus "$dataset" "$n" "$corpus_dir"
+    prep_corpus "$dataset" "$n" "$corpus_dir" \
+        || { echo "[diversity] SKIP: $exp_id (corpus unavailable)"
+             echo -e "${exp_id}\t${task_base}\t${dataset}\t${n}\tN/A\tN/A\tN/A\tN/A\tN/A" >> "$RESULTS_TSV"
+             return 0; }
 
     if [[ -f "$metrics_path" ]]; then
         echo "[diversity] already ran — skipping (delete $run_out to rerun)"
@@ -102,8 +117,12 @@ run_experiment() {
             || echo "[diversity] WARNING: $exp_id exited non-zero (calibration — continuing)"
     fi
 
-    local task_base="${task%-C}"
     if [[ -f "$metrics_path" ]]; then
+        # skip if row already written (restart-safe dedup)
+        if grep -qF "${exp_id}" "$RESULTS_TSV" 2>/dev/null; then
+            echo "[diversity] $exp_id → already in results.tsv (skipping append)"
+            return 0
+        fi
         local f1=$(extract_metric "$metrics_path" "f1_vs_consensus")
         local lr=$(extract_metric "$metrics_path" "latency_ratio")
         local np=$(extract_metric "$metrics_path" "n_params")

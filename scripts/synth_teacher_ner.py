@@ -40,6 +40,9 @@ def regex_fallback(text):
 
 
 def main():
+    # Prevent tokenizers deadlock on macOS/forked processes
+    os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
+
     p = argparse.ArgumentParser()
     p.add_argument("corpus_dir")
     p.add_argument("out_dir")
@@ -79,8 +82,6 @@ def main():
             model=args.model,
             aggregation_strategy="simple",
             device=-1,
-            truncation=True,
-            max_length=512,
         )
         use_hf = True
         print(f"[synth_ner] HF NER pipeline ready")

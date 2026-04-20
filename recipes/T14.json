@@ -2,6 +2,8 @@
   "code": "T14",
   "name": "NER Consensus Collapse",
   "version": "1.0.0",
+  "status": "frozen",
+  "freeze_reason": "Diversity run April 2026: high collapse_time (1s-4.6s vs <0.3s for T04/T15), middling F1 (0.77-0.82), ag_news experiments incomplete (tokenizers deadlock). Poor value density. Revisit with faster NER teacher or synthetic consensus improvements.",
   "description": "Run three external NER teachers (elastic/dslim/babelscape ONNX models) in parallel, fuse predictions via majority-vote span agreement, then distill into a compressed BIO student. Inject model paths at runtime via bonfyre-run --stage-opts.",
   "stages": [
     {

@@ -1,0 +1,44 @@
+{
+  "code": "T16",
+  "name": "Paragraph Boundary Collapse",
+  "version": "1.0.0",
+  "description": "Production: bonfyre-paragraph splits docs into chunks; MiniLM+MPNet embed paragraph pairs; chunk-boundary student trained on structural similarity drops. Conditional transform — activates on long-form (cnn_dm: F1=0.937/0.971). Fails on short-form (ag_news: F1=0.0). Route only when corpus avg_doc_len > 500 chars.",
+  "geometry": "long-form",
+  "geometry_condition": "avg_doc_len > 500",
+  "status": "production",
+  "stages": [
+    {
+      "id": "para-embed",
+      "bin": "python3",
+      "args": [
+        "scripts/synth_teacher_paragraphs.py",
+        "{input}",
+        "{out}/para",
+        "--model-a", "all-MiniLM-L6-v2",
+        "--model-b", "all-mpnet-base-v2"
+      ],
+      "depends_on": []
+    },
+    {
+      "id": "train",
+      "bin": "python3",
+      "args": [
+        "scripts/collapse_train.py",
+        "--task",        "chunk-boundary",
+        "--embed-dir-a", "{out}/para/embed-a",
+        "--embed-dir-b", "{out}/para/embed-b",
+        "--out",         "{out}/train"
+      ],
+      "depends_on": ["para-embed"]
+    },
+    {
+      "id": "finalize",
+      "bin": "python3",
+      "args": [
+        "scripts/finalize_artifact.py",
+        "{out}/train"
+      ],
+      "depends_on": ["train"]
+    }
+  ]
+}

@@ -1,5 +1,6 @@
 {
   "code": "T07-C",
+  "status": "killed",
   "name": "Semantic Chunker Collapse (Calibration)",
   "version": "1.0.0",
   "description": "Calibration variant of T07. Uses Python synth_teacher_embed.py with two models (MiniLM + MPNet) instead of bonfyre-embed C binary, so no ONNX runtime install is required. Produces the same collapse_train chunk-boundary output as T07.",
@@ -40,16 +41,10 @@
       "depends_on": ["embed-minilm", "embed-mpnet"]
     },
     {
-      "id": "compress",
-      "bin": "bonfyre-quant",
-      "args": ["compress", "{out}/train/model.onnx", "{out}/compress/model.fpq"],
+      "id": "finalize",
+      "bin": "python3",
+      "args": ["scripts/finalize_artifact.py", "{out}/train"],
       "depends_on": ["train"]
-    },
-    {
-      "id": "hash",
-      "bin": "bonfyre-hash",
-      "args": ["merkle", "{out}/compress/artifact.json"],
-      "depends_on": ["compress"]
     }
   ]
 }

@@ -2,6 +2,8 @@
   "code": "T07",
   "name": "Semantic Chunker Collapse",
   "version": "1.0.0",
+  "status": "killed",
+  "kill_reason": "Diversity run April 2026: F1<0.27 across all corpora+scales, no improvement with scale. Dead end — chunk-boundary signal without structural paragraph anchors (use T16 instead).",
   "description": "Run two bonfyre-embed passes in parallel (MiniLM + MPNet) to detect chunk boundaries via dual-model cosine drop, then distill boundary signal into a compressed ONNX student.",
   "stages": [
     {

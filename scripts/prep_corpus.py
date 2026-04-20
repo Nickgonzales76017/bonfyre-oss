@@ -40,10 +40,10 @@ CONFIGS = {
         "label_names": None,
     },
     "wiki": {
-        "path":        "wikipedia",
+        "path":        "wikimedia/wikipedia",
         "split":       "train",
         "field":       "text",
-        "config":      "20220301.en",
+        "config":      "20231101.en",
         "label_field": None,
         "label_names": None,
     },

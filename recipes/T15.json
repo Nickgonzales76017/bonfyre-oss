@@ -1,0 +1,54 @@
+{
+  "code": "T15",
+  "name": "Keyword Structure Collapse",
+  "version": "1.0.0",
+  "description": "Production: TF-IDF bigram keyword extraction + MiniBatchKMeans cluster labels + MiniLM embeddings → collapse to ONNX topic-map student. Promoted from diversity run (avg F1=0.892 across ag_news+cnn_dm, global geometry).",
+  "geometry": "global",
+  "status": "production",
+  "stages": [
+    {
+      "id": "keywords",
+      "bin": "python3",
+      "args": [
+        "scripts/synth_teacher_keywords.py",
+        "{input}",
+        "{out}/keywords",
+        "--top-k", "8",
+        "--k", "6"
+      ],
+      "depends_on": []
+    },
+    {
+      "id": "embed",
+      "bin": "python3",
+      "args": [
+        "scripts/synth_teacher_embed.py",
+        "{input}",
+        "{out}/embed",
+        "--model", "all-MiniLM-L6-v2"
+      ],
+      "depends_on": []
+    },
+    {
+      "id": "train",
+      "bin": "python3",
+      "args": [
+        "scripts/collapse_train.py",
+        "--task",      "topic-map",
+        "--tag-dir",   "{out}/keywords",
+        "--embed-dir", "{out}/embed",
+        "--out",       "{out}/train"
+      ],
+      "depends_on": ["keywords", "embed"]
+    },
+    {
+      "id": "finalize",
+      "bin": "python3",
+      "args": [
+        "scripts/finalize_artifact.py",
+        "{out}/train"
+      ],
+      "depends_on": ["train"]
+    }
+  ]
+}

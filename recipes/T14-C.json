@@ -1,5 +1,6 @@
 {
   "code": "T14-C",
+  "status": "frozen",
   "name": "NER Consensus Collapse (Calibration)",
   "version": "1.0.0",
   "description": "Calibration variant of T14. HuggingFace dslim/bert-base-NER (with regex fallback) produces per-sentence BIO labels → collapse to ONNX ner-bio student. Tests entity-extraction collapse family.",
