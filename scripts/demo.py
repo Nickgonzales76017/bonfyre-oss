@@ -43,6 +43,21 @@ FPQX_BIN    = os.path.join(REPO_ROOT, "cmd", "BonfyreFPQX", "bonfyre-fpqx")
 TOPIC_LABELS = {0: "World", 1: "Sports", 2: "Business", 3: "Sci/Tech"}
 CHUNK_LABELS = {0: "continuous", 1: "boundary"}
 
+# ── Per-family ONNX heads + escalation chain ─────────────────────────────
+FAMILY_HEADS = {
+    "T04": {
+        "path": "/tmp/bonfyre-72/runs/T04-C-ag_news-1000/train/model.onnx",
+        "n_class": 4,
+        "labels": {0: "World", 1: "Sports", 2: "Business", 3: "Sci/Tech"},
+    },
+    "T15": {
+        "path": "/tmp/bonfyre-72/runs/T15-C-cnn_dm-1000/train/model.onnx",
+        "n_class": 6,
+        "labels": {0: "Politics", 1: "Tech", 2: "Business", 3: "Health", 4: "World", 5: "Sports"},
+    },
+}
+ESCALATION_CHAIN = {"T04": "T15", "T15": "T16", "T16": None}
+
 # ── I/O helpers ───────────────────────────────────────────────────────────
 
 def write_vecs(path, vecs):
@@ -198,6 +213,38 @@ def classify_onnx(embs, onnx_path):
     return results
 
 
+def classify_onnx_family(embs, family):
+    """
+    Family-aware ONNX classify: uses FAMILY_HEADS dict for path and label map.
+    Falls back to T04 head if family not in FAMILY_HEADS.
+    """
+    head = FAMILY_HEADS.get(family)
+    if head is None:
+        fallback = FAMILY_HEADS.get("T04")
+        if fallback is None:
+            return None
+        head = fallback
+    try:
+        import onnxruntime as ort
+        import numpy as np
+    except ImportError:
+        return None
+    if not os.path.exists(head["path"]):
+        return None
+    sess = ort.InferenceSession(head["path"], providers=["CPUExecutionProvider"])
+    input_name = sess.get_inputs()[0].name
+    data = np.array(embs, dtype=np.float32)
+    logits = sess.run(None, {input_name: data})[0]
+    exp_l = np.exp(logits - logits.max(axis=1, keepdims=True))
+    probs = exp_l / exp_l.sum(axis=1, keepdims=True)
+    label_map = head["labels"]
+    results = []
+    for p in probs:
+        idx = int(p.argmax())
+        results.append((label_map.get(idx, f"class_{idx}"), float(p[idx])))
+    return results
+
+
 # ── Main ──────────────────────────────────────────────────────────────────
 
 def main():
@@ -215,6 +262,12 @@ def main():
                     help="Path to ONNX classifier head (default: T04 ag_news-1000)")
     ap.add_argument("--conf-exit",    type=float, default=None,
                     help="Stop looping early when ALL inputs reach this ONNX confidence (0-1)")
+    ap.add_argument("--frag-exit",    type=float, default=None,
+                    help="Exit after fragment preflight if ALL inputs reach this confidence (0-1)")
+    ap.add_argument("--escalate",     action="store_true",
+                    help="Enable mid-loop family escalation on confidence drop (requires --conf-exit)")
+    ap.add_argument("--escalate-drop", type=float, default=0.05,
+                    help="Avg-confidence drop threshold that triggers escalation (default: 0.05)")
     args = ap.parse_args()
 
     texts = list(args.texts)
@@ -243,8 +296,12 @@ def main():
     print(f"  chain   : {args.chain}")
     print(f"  fpqx    : {args.fpqx}")
     print(f"  fragment: {'yes (T04-frag)' if use_frag else 'no'}")
+    if args.frag_exit is not None:
+        print(f"  frag-exit: {args.frag_exit:.2f}  (exit after fragment if all inputs ≥ threshold)")
     if args.conf_exit is not None:
-        print(f"  conf-exit: {args.conf_exit:.2f}  (stop early when all inputs \u2265 threshold)")
+        print(f"  conf-exit: {args.conf_exit:.2f}  (stop looping when all inputs ≥ threshold)")
+    if args.escalate:
+        print(f"  escalate : drop ≥ {args.escalate_drop:.2f} triggers T04→T15→T16")
     print("=" * 72)
     print()
 
@@ -273,15 +330,52 @@ def main():
         print(f"     → routed to family: {routed_family}{bias_str}")
         print()
 
-        # ── 3. Fragment pre-process ─────────────────────────────────
-        # When --chain fragment:auto is active, SLI handles the fragment
-        # preflight internally (iter 1 applies <family>-frag if present).
-        # We still surface it here for diagnostic visibility.
-        if use_frag and args.chain == "fragment:auto":
+        # ── 3. Fragment pre-process (with optional exit gate) ─────────────
+        active_chain = args.chain
+
+        if use_frag and args.frag_exit is not None:
+            print("── 3. Fragment pre-process + gate check ─────────────────────────────")
+            frag_out = os.path.join(tmpdir, "frag_out.bin")
+            ok = sli_run(raw_path, frag_bqfp, frag_out)
+            if ok:
+                frag_vecs, _ = read_vecs(frag_out)
+                cos_vals = [cosine(embs[i], frag_vecs[i]) for i in range(len(embs))]
+                print(f"     {len(embs)} vectors transformed"
+                      f"  (raw→frag cosine: {sum(cos_vals)/len(cos_vals):.4f})")
+                frag_onnx = classify_onnx_family(frag_vecs, routed_family)
+                if frag_onnx:
+                    min_conf = min(r[1] for r in frag_onnx)
+                    avg_conf = sum(r[1] for r in frag_onnx) / len(frag_onnx)
+                    print(f"     frag-gate: conf_avg={avg_conf*100:.1f}%"
+                          f"  conf_min={min_conf*100:.1f}%"
+                          f"  threshold={args.frag_exit*100:.0f}%", end="")
+                    if min_conf >= args.frag_exit:
+                        print("  ← FRAGMENT EXIT\n")
+                        print("=" * 72)
+                        print(" RESULTS  (fragment-only, 0 loop iterations)")
+                        print("=" * 72)
+                        print(f"  {'#':<4}  {'label':<12}  {'conf':>5}  input text")
+                        print("  " + "─" * 70)
+                        for i, text in enumerate(texts):
+                            excerpt = (text[:48] + "…") if len(text) > 51 else text
+                            lbl, cf = frag_onnx[i]
+                            print(f"  {i+1:<4}  {lbl:<12}  {cf*100:5.1f}%  {excerpt}")
+                        print()
+                        print("=" * 72)
+                        return
+                    else:
+                        print()
+                in_path = frag_out
+                active_chain = "auto" if args.chain == "fragment:auto" else args.chain
+            else:
+                print("     (fragment run failed — using raw embeddings)")
+                in_path = raw_path
+            print()
+        elif use_frag and args.chain == "fragment:auto":
             print("── 3. Fragment pre-process ──────────── (built into chain; handled by SLI)\n")
             in_path = raw_path
         elif use_frag:
-            print("── 3. Fragment pre-process (T04-frag, sub-model first-hop) ─────")
+            print("── 3. Fragment pre-process (T04-frag, sub-model first-hop) ─────────")
             frag_out = os.path.join(tmpdir, "frag_out.bin")
             ok = sli_run(raw_path, frag_bqfp, frag_out)
             if ok:
@@ -299,45 +393,63 @@ def main():
             print("── 3. Fragment pre-process ──────────── (skipped)\n")
 
         # ── 4. Auto-run: route → align → loop (with optional early exit) ────
-        print(f"── 4. auto-run  chain={args.chain}  fpqx={args.fpqx}"
+        print(f"── 4. auto-run  chain={active_chain}  fpqx={args.fpqx}"
               f"  loop={args.loop}  thresh={args.thresh} ─────")
         auto_out = os.path.join(tmpdir, "auto")
 
         if args.conf_exit is not None:
-            # ── Early-exit path: run 1 iter at a time, classify after each ──
-            cur_in   = in_path
-            all_iters = []
-            exit_iter = None
+            # ── Early-exit path: run 1 iter at a time, classify + escalate ──
+            cur_in         = in_path
+            cur_chain      = active_chain
+            current_family = routed_family
+            prev_conf_avg  = None
+            all_iters      = []
+            exit_iter      = None
             for step in range(1, args.loop + 1):
                 step_out = os.path.join(tmpdir, f"auto-step{step}")
                 log_step = sli_auto_run(
                     cur_in, stats_path, step_out,
-                    models_dir, 1, args.chain, args.fpqx, args.thresh
+                    models_dir, 1, cur_chain, args.fpqx, args.thresh
                 )
                 step_iters = parse_iter_log(log_step)
-                if step == 1 and "preflight:" in log_step:
+                if step == 1 and "preflight:" in log_step and cur_chain != "auto":
                     print(f"     preflight  family={routed_family}-frag  (fragment applied)")
                 for it, fam, delta in step_iters:
                     abs_iter = step
                     delta_s  = f"{delta:.4f}" if delta is not None else "n/a"
-                    # classify current state
                     _, cur_vecs, _ = read_last_iter(step_out, 1)
                     if cur_vecs:
-                        onnx_r = classify_onnx(cur_vecs, onnx_path)
+                        onnx_r = classify_onnx_family(cur_vecs, current_family)
                         if onnx_r:
-                            max_c = min(r[1] for r in onnx_r)
+                            min_c = min(r[1] for r in onnx_r)
                             avg_c = sum(r[1] for r in onnx_r) / len(onnx_r)
                             print(f"     iter {abs_iter:2d}  family={fam}  delta={delta_s}"
-                                  f"  conf_avg={avg_c*100:.1f}%  conf_min={max_c*100:.1f}%", end="")
-                            if max_c >= args.conf_exit and exit_iter is None:
+                                  f"  conf_avg={avg_c*100:.1f}%  conf_min={min_c*100:.1f}%",
+                                  end="")
+                            # Check escalation before exit
+                            esc_msg = ""
+                            if args.escalate and prev_conf_avg is not None:
+                                drop = prev_conf_avg - avg_c
+                                if drop >= args.escalate_drop:
+                                    next_fam = ESCALATION_CHAIN.get(current_family)
+                                    if next_fam:
+                                        esc_msg = (
+                                            f"  → ESCALATE {current_family}→{next_fam}"
+                                            f" (conf {prev_conf_avg*100:.1f}%→{avg_c*100:.1f}%)"
+                                        )
+                                        current_family = next_fam
+                                        cur_chain = "auto"
+                            if esc_msg:
+                                print(esc_msg)
+                            elif min_c >= args.conf_exit and exit_iter is None:
                                 print(f"  ← EXIT (all ≥ {args.conf_exit*100:.0f}%)")
                                 exit_iter = abs_iter
                             else:
                                 print()
+                            prev_conf_avg = avg_c
                         else:
                             print(f"     iter {abs_iter:2d}  family={fam}  delta={delta_s}")
                     all_iters.append((step, fam, delta))
-                # feed this iter's output as next iter's input
                 _, nxt_vecs, _ = read_last_iter(step_out, 1)
                 if not nxt_vecs:
                     break
@@ -346,7 +458,6 @@ def main():
                 cur_in = nxt_path
                 if exit_iter is not None:
                     break
-            # use final step_out as auto_out
             auto_out = step_out
             iters    = all_iters
             if exit_iter is not None:
@@ -359,7 +470,7 @@ def main():
             # ── Standard path (full loop) ─────────────────────────────────────
             log = sli_auto_run(
                 in_path, stats_path, auto_out,
-                models_dir, args.loop, args.chain, args.fpqx, args.thresh
+                models_dir, args.loop, active_chain, args.fpqx, args.thresh
             )
             iters = parse_iter_log(log)
             has_preflight = "preflight:" in log
