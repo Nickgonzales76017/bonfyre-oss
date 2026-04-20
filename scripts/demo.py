@@ -421,6 +421,15 @@ def main():
                     help="With --speech-in: run the ASR confidence gate on each Whisper "
                          "segment independently, report per-segment escalation, then "
                          "process the full transcript through the text pipeline.")
+    ap.add_argument("--memory-dir", default=None,
+                    help="Write run metrics to Bonfyre transform memory (SQLite). "
+                         "Creates <memory_dir>/memory.db if absent. "
+                         "When set, every run is automatically ingested for "
+                         "self-evolution (failure detection, routing adjustment).")
+    ap.add_argument("--auto-evolve", action="store_true",
+                    help="After recording to memory, run one auto_evolve cycle: "
+                         "detect failures, adjust routing, and discover paths. "
+                         "Requires --memory-dir.")
     args = ap.parse_args()
 
     texts = list(args.texts)
@@ -504,11 +513,12 @@ def main():
     _metrics = {
         "schema":            "bonfyre-metrics-v1",
         "n_inputs":          0,
+        "input_texts":       [],   # stored for failure corpus extraction
         "routed_family":     None,
         "fragment_exit":     False,
         "early_exit_iter":   None,
         "full_loop":         False,
-        "escalations":       [],
+        "escalations":       [],   # list of {from, to, iter, conf_before, conf_after}
         "iterations_ran":    0,
         "avg_confidence":    None,
         "min_confidence":    None,
@@ -556,16 +566,47 @@ def main():
         _metrics["timestamp"] = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
         path = args.metrics_out
         # Append-safe: maintain a JSON array of runs
-        try:
-            existing = json.load(open(path))
-            if not isinstance(existing, list):
-                existing = [existing]
-        except Exception:
-            existing = []
-        existing.append(_metrics)
-        with open(path, "w") as f:
-            json.dump(existing, f, indent=2)
-        print(f"  metrics → {path}  ({len(existing)} run(s) recorded)")
+        if path:
+            try:
+                existing = json.load(open(path))
+                if not isinstance(existing, list):
+                    existing = [existing]
+            except Exception:
+                existing = []
+            existing.append(_metrics)
+            with open(path, "w") as f:
+                json.dump(existing, f, indent=2)
+            print(f"  metrics → {path}  ({len(existing)} run(s) recorded)")
+
+        # ── Memory recording (--memory-dir) ──────────────────────────
+        if args.memory_dir:
+            try:
+                import sys as _sys
+                _pkg_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+                if _pkg_root not in _sys.path:
+                    _sys.path.insert(0, _pkg_root)
+                from scripts.bonfyre_memory import BonfyreMemory as _BM
+                _mem = _BM(args.memory_dir)
+                _rid = _mem.record_run(_metrics)
+                print(f"  memory  → {args.memory_dir}  (run_id={_rid})")
+                # Auto-evolve (--auto-evolve)
+                if args.auto_evolve:
+                    from scripts.auto_evolve import evolve as _evolve
+                    _ev = _evolve(
+                        memory_dir=args.memory_dir,
+                        models_dir=args.models_dir,
+                        dry_run=False,
+                        skip_discover=True,   # skip during hot path
+                    )
+                    if _ev.get("new_families"):
+                        for _nf in _ev["new_families"]:
+                            print(f"  ★ NEW FAMILY: {_nf['family_id']}  "
+                                  f"(from {_nf['from_pattern']} on {_nf['from_family']})")
+                    if _ev.get("routing_adjusted"):
+                        print(f"  routing weights updated → "
+                              f"{args.memory_dir}/graph/frontier_adjusted.json")
+            except Exception as _mem_exc:
+                print(f"  [memory] WARNING: {_mem_exc}")
 
     print("=" * 72)
     print(" BONFYRE  end-to-end demo")
@@ -606,6 +647,7 @@ def main():
         from_fam = "T04" if use_frag else None
         routed_family, cosine_bias = route(stats_path, frontier_path, from_fam)
         _metrics["n_inputs"]      = len(texts)
+        _metrics["input_texts"]   = [t[:200] for t in texts]  # cap length for storage
         _metrics["routed_family"] = routed_family
         print(f"     n_docs={stats['n_docs']}  avg_doc_len={stats['avg_doc_len']}"
               f"  vocab={stats['vocab_size']}")
@@ -727,8 +769,13 @@ def main():
                                             f"  → ESCALATE {current_family}→{next_fam}"
                                             f" (conf {prev_conf_avg*100:.1f}%→{avg_c*100:.1f}%)"
                                         )
-                                        _metrics["escalations"].append(
-                                            f"{current_family}→{next_fam}")
+                                        _metrics["escalations"].append({
+                                            "from": current_family,
+                                            "to": next_fam,
+                                            "iter": abs_iter,
+                                            "conf_before": round(prev_conf_avg, 4),
+                                            "conf_after":  round(avg_c, 4),
+                                        })
                                         current_family = next_fam
                                         cur_chain = "auto"
                             if esc_msg:
