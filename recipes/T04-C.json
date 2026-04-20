@@ -1,0 +1,54 @@
+{
+  "code": "T04-C",
+  "name": "Topic Mapper Collapse (Calibration)",
+  "version": "1.0.0",
+  "description": "Calibration variant of T04. Uses Python synth teachers (dataset labels + sentence-transformers) instead of bonfyre-tag/bonfyre-embed C binaries, so no fastText model or ONNX runtime install is required. Produces the same collapse_train output as T04.",
+  "stages": [
+    {
+      "id": "tag",
+      "bin": "python3",
+      "args": [
+        "scripts/synth_teacher_tags.py",
+        "{input}",
+        "{out}/tag"
+      ],
+      "depends_on": []
+    },
+    {
+      "id": "embed",
+      "bin": "python3",
+      "args": [
+        "scripts/synth_teacher_embed.py",
+        "{input}",
+        "{out}/embed",
+        "--model", "all-MiniLM-L6-v2"
+      ],
+      "depends_on": []
+    },
+    {
+      "id": "train",
+      "bin": "python3",
+      "args": [
+        "scripts/collapse_train.py",
+        "--task",      "topic-map",
+        "--tag-dir",   "{out}/tag",
+        "--embed-dir", "{out}/embed",
+        "--out",       "{out}/train",
+        "--calibration"
+      ],
+      "depends_on": ["tag", "embed"]
+    },
+    {
+      "id": "compress",
+      "bin": "bonfyre-quant",
+      "args": ["compress", "{out}/train/model.onnx", "{out}/compress/model.fpq"],
+      "depends_on": ["train"]
+    },
+    {
+      "id": "hash",
+      "bin": "bonfyre-hash",
+      "args": ["merkle", "{out}/compress/artifact.json"],
+      "depends_on": ["compress"]
+    }
+  ]
+}

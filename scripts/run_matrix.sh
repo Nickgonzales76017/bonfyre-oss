@@ -41,7 +41,9 @@ echo -e "experiment\ttask\tdataset\tn_docs\tf1_vs_consensus\tlatency_ratio\tn_pa
     > "$RESULTS_TSV"
 
 # ── matrix definition ──────────────────────────────────────────────────────────
-TASKS=("T04" "T07")
+# T04-C / T07-C: calibration variants — use Python synth teachers,
+# no fastText model or bonfyre-embed ONNX install required.
+TASKS=("T04-C" "T07-C")
 DATASETS=("ag_news" "cnn_dm")
 SIZES=(250 500)
 
@@ -53,7 +55,9 @@ prep_corpus() {
         return
     fi
     echo "[matrix] downloading $dataset ($n docs) → $dir"
-    python3 "$SCRIPT_DIR/prep_corpus.py" --dataset "$dataset" --out "$dir" --n "$n"
+    local label_flag=""
+    [[ "$dataset" == "ag_news" ]] && label_flag="--write-labels"
+    python3 "$SCRIPT_DIR/prep_corpus.py" --dataset "$dataset" --out "$dir" --n "$n" $label_flag
 }
 
 extract_metric() {
@@ -87,11 +91,13 @@ run_experiment() {
         echo "[matrix] already ran — skipping (delete $run_out to rerun)"
     else
         mkdir -p "$run_out"
-        # bonfyre-run resolves recipe by code and runs stages from repo root
+        # Run from REPO_ROOT so scripts/ relative paths resolve inside bonfyre-run stages
         (cd "$REPO_ROOT" && "$BF_RUN" "$task" "$corpus_dir" --out "$run_out") \
             || echo "[matrix] WARNING: $exp_id exited non-zero (calibration mode — continuing)"
     fi
 
+    # Strip -C suffix for task column (T04-C → T04, T07-C → T07)
+    local task_base="${task%-C}"
     # collect results (may be absent if pipeline failed before train stage)
     if [[ -f "$metrics_path" ]]; then
         local f1=$(extract_metric "$metrics_path" "f1_vs_consensus")
@@ -99,12 +105,12 @@ run_experiment() {
         local np=$(extract_metric "$metrics_path" "n_params")
         local ps=$(extract_metric "$metrics_path" "pass")
         local ct=$(extract_metric "$metrics_path" "collapse_time_s")
-        echo -e "${exp_id}\t${task}\t${dataset}\t${n}\t${f1}\t${lr}\t${np}\t${ps}\t${ct}" \
+        echo -e "${exp_id}\t${task_base}\t${dataset}\t${n}\t${f1}\t${lr}\t${np}\t${ps}\t${ct}" \
             >> "$RESULTS_TSV"
         echo "[matrix] $exp_id → f1=$f1  latency_ratio=$lr  pass=$ps"
     else
         echo "[matrix] $exp_id → no metrics (train stage did not complete)"
-        echo -e "${exp_id}\t${task}\t${dataset}\t${n}\tN/A\tN/A\tN/A\tN/A\tN/A" \
+        echo -e "${exp_id}\t${task_base}\t${dataset}\t${n}\tN/A\tN/A\tN/A\tN/A\tN/A" \
             >> "$RESULTS_TSV"
     fi
 }

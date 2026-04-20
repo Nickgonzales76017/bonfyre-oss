@@ -1,0 +1,55 @@
+{
+  "code": "T07-C",
+  "name": "Semantic Chunker Collapse (Calibration)",
+  "version": "1.0.0",
+  "description": "Calibration variant of T07. Uses Python synth_teacher_embed.py with two models (MiniLM + MPNet) instead of bonfyre-embed C binary, so no ONNX runtime install is required. Produces the same collapse_train chunk-boundary output as T07.",
+  "stages": [
+    {
+      "id": "embed-minilm",
+      "bin": "python3",
+      "args": [
+        "scripts/synth_teacher_embed.py",
+        "{input}",
+        "{out}/embed-minilm",
+        "--model", "all-MiniLM-L6-v2"
+      ],
+      "depends_on": []
+    },
+    {
+      "id": "embed-mpnet",
+      "bin": "python3",
+      "args": [
+        "scripts/synth_teacher_embed.py",
+        "{input}",
+        "{out}/embed-mpnet",
+        "--model", "all-mpnet-base-v2"
+      ],
+      "depends_on": []
+    },
+    {
+      "id": "train",
+      "bin": "python3",
+      "args": [
+        "scripts/collapse_train.py",
+        "--task",        "chunk-boundary",
+        "--embed-dir-a", "{out}/embed-minilm",
+        "--embed-dir-b", "{out}/embed-mpnet",
+        "--out",         "{out}/train",
+        "--calibration"
+      ],
+      "depends_on": ["embed-minilm", "embed-mpnet"]
+    },
+    {
+      "id": "compress",
+      "bin": "bonfyre-quant",
+      "args": ["compress", "{out}/train/model.onnx", "{out}/compress/model.fpq"],
+      "depends_on": ["train"]
+    },
+    {
+      "id": "hash",
+      "bin": "bonfyre-hash",
+      "args": ["merkle", "{out}/compress/artifact.json"],
+      "depends_on": ["compress"]
+    }
+  ]
+}

@@ -24,22 +24,28 @@ except ImportError:
 
 CONFIGS = {
     "ag_news": {
-        "path":   "ag_news",
-        "split":  "train",
-        "field":  "text",
-        "config": None,
+        "path":        "ag_news",
+        "split":       "train",
+        "field":       "text",
+        "config":      None,
+        "label_field": "label",
+        "label_names": ["World", "Sports", "Business", "Sci/Tech"],
     },
     "cnn_dm": {
-        "path":   "cnn_dailymail",
-        "split":  "train",
-        "field":  "article",
-        "config": "3.0.0",
+        "path":        "cnn_dailymail",
+        "split":       "train",
+        "field":       "article",
+        "config":      "3.0.0",
+        "label_field": None,   # no label; will use "news" as fallback
+        "label_names": None,
     },
     "wiki": {
-        "path":   "wikipedia",
-        "split":  "train",
-        "field":  "text",
-        "config": "20220301.en",
+        "path":        "wikipedia",
+        "split":       "train",
+        "field":       "text",
+        "config":      "20220301.en",
+        "label_field": None,
+        "label_names": None,
     },
 }
 
@@ -53,6 +59,8 @@ def main():
                    help="number of documents to write (default 500)")
     p.add_argument("--min-len", type=int, default=80,
                    help="skip documents shorter than this many chars (default 80)")
+    p.add_argument("--write-labels", action="store_true",
+                   help="also write <stem>.label alongside each .txt (ag_news only)")
     args = p.parse_args()
 
     cfg = CONFIGS[args.dataset]
@@ -76,9 +84,18 @@ def main():
         if len(text) < args.min_len:
             skipped += 1
             continue
-        fname = os.path.join(args.out, f"{written:06d}.txt")
-        with open(fname, "w", encoding="utf-8") as f:
+        stem = f"{written:06d}"
+        with open(os.path.join(args.out, f"{stem}.txt"), "w", encoding="utf-8") as f:
             f.write(text + "\n")
+        if args.write_labels:
+            lf = cfg.get("label_field")
+            ln = cfg.get("label_names")
+            if lf and ln and lf in row:
+                label = ln[int(row[lf])]
+            else:
+                label = "news"
+            with open(os.path.join(args.out, f"{stem}.label"), "w") as f:
+                f.write(label + "\n")
         written += 1
 
     print(f"[prep_corpus] wrote {written} files → {args.out}/  (skipped {skipped} short docs)")
