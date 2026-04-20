@@ -1,0 +1,52 @@
+{
+  "code": "T40-C",
+  "name": "TTS Tier Routing Collapse — Fast (Calibration)",
+  "version": "1.0.0",
+  "description": "Calibration recipe for TTS output tier routing. Given transcript .txt files, Stage 1 computes pure-Python readability complexity features (avg sentence len, word len, type-token ratio — no model required) and clusters into 3 tiers: fast (low complexity → bonfyre-narrate default), standard (medium complexity → tone-aware narrate), quality (high complexity / rich vocabulary → narrate --verify --refine). Stage 2 embeds with MiniLM. Stage 3 collapses to an ONNX head that routes each text input to the appropriate TTS execution tier without running the full narration pipeline. Use with demo_speech_loop.py --tts-head to make the TTS call adaptive.",
+  "stages": [
+    {
+      "id": "tts_tier",
+      "bin": "python3",
+      "args": [
+        "scripts/synth_teacher_readability.py",
+        "{input}",
+        "{out}/tts_tier",
+        "--k", "3"
+      ],
+      "depends_on": []
+    },
+    {
+      "id": "embed",
+      "bin": "python3",
+      "args": [
+        "scripts/synth_teacher_embed.py",
+        "{input}",
+        "{out}/embed",
+        "--model", "all-MiniLM-L6-v2"
+      ],
+      "depends_on": []
+    },
+    {
+      "id": "train",
+      "bin": "python3",
+      "args": [
+        "scripts/collapse_train.py",
+        "--task",      "topic-map",
+        "--tag-dir",   "{out}/tts_tier",
+        "--embed-dir", "{out}/embed",
+        "--out",       "{out}/train",
+        "--calibration"
+      ],
+      "depends_on": ["tts_tier", "embed"]
+    },
+    {
+      "id": "finalize",
+      "bin": "python3",
+      "args": [
+        "scripts/finalize_artifact.py",
+        "{out}/train"
+      ],
+      "depends_on": ["train"]
+    }
+  ]
+}

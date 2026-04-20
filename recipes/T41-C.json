@@ -1,0 +1,62 @@
+{
+  "code": "T41-C",
+  "name": "TTS Tier Routing Collapse — Quality (Calibration)",
+  "version": "1.0.0",
+  "description": "Calibration recipe for quality-aware TTS routing. Extends T40-C by combining two teacher signals: readability complexity (synth_teacher_readability) and sentiment polarity (synth_teacher_sentiment). Transcripts with high complexity AND strong sentiment signal (positive or negative) route to bonfyre-narrate --verify --refine (quality tier). Neutral low-complexity text routes to fast tier. The combined signal produces a 2-stage routing head: Stage 1 readability tags become a complexity label; Stage 2 sentiment score enriches the embed-level signal by appending sentiment logits to the embedding (done inline in collapse_train via the risk-score task which already handles 2-signal fusion). The trained head is used in the TTS ladder: T40→T41 if text is complex+emotive.",
+  "stages": [
+    {
+      "id": "readability",
+      "bin": "python3",
+      "args": [
+        "scripts/synth_teacher_readability.py",
+        "{input}",
+        "{out}/readability",
+        "--k", "3"
+      ],
+      "depends_on": []
+    },
+    {
+      "id": "embed",
+      "bin": "python3",
+      "args": [
+        "scripts/synth_teacher_embed.py",
+        "{input}",
+        "{out}/embed",
+        "--model", "all-MiniLM-L6-v2"
+      ],
+      "depends_on": []
+    },
+    {
+      "id": "sentiment",
+      "bin": "python3",
+      "args": [
+        "scripts/synth_teacher_sentiment.py",
+        "{input}",
+        "{out}/sentiment"
+      ],
+      "depends_on": []
+    },
+    {
+      "id": "train",
+      "bin": "python3",
+      "args": [
+        "scripts/collapse_train.py",
+        "--task",      "risk-score",
+        "--embed-dir", "{out}/embed",
+        "--risk-dir",  "{out}/sentiment",
+        "--out",       "{out}/train",
+        "--calibration"
+      ],
+      "depends_on": ["readability", "embed", "sentiment"]
+    },
+    {
+      "id": "finalize",
+      "bin": "python3",
+      "args": [
+        "scripts/finalize_artifact.py",
+        "{out}/train"
+      ],
+      "depends_on": ["train"]
+    }
+  ]
+}

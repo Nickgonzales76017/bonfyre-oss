@@ -1,0 +1,51 @@
+{
+  "code": "T32-C",
+  "name": "Transcript Intent + Urgency Collapse (Calibration)",
+  "version": "1.0.0",
+  "description": "Calibration recipe for the tagging families on top of ASR. Given .txt transcript files (produced by synth_teacher_asr.py or bonfyre-transcribe), Stage 1 applies rule-based intent + urgency classification (zero deps, no model download) to produce 5-class labels: question-high, question-low, command-high, command-low, statement. Stage 2 embeds the same .txt files with MiniLM. Stage 3 collapses to an ONNX topic-map student. The trained head routes transcripts into the correct processing branch (Q&A loop / task dispatch / narrative output) in demo.py and demo_speech_loop.py. Compatible with --conf-exit and --escalate in the SLI adaptive ladder.",
+  "stages": [
+    {
+      "id": "intent",
+      "bin": "python3",
+      "args": [
+        "scripts/synth_teacher_intent.py",
+        "{input}",
+        "{out}/intent"
+      ],
+      "depends_on": []
+    },
+    {
+      "id": "embed",
+      "bin": "python3",
+      "args": [
+        "scripts/synth_teacher_embed.py",
+        "{input}",
+        "{out}/embed",
+        "--model", "all-MiniLM-L6-v2"
+      ],
+      "depends_on": []
+    },
+    {
+      "id": "train",
+      "bin": "python3",
+      "args": [
+        "scripts/collapse_train.py",
+        "--task",      "topic-map",
+        "--tag-dir",   "{out}/intent",
+        "--embed-dir", "{out}/embed",
+        "--out",       "{out}/train",
+        "--calibration"
+      ],
+      "depends_on": ["intent", "embed"]
+    },
+    {
+      "id": "finalize",
+      "bin": "python3",
+      "args": [
+        "scripts/finalize_artifact.py",
+        "{out}/train"
+      ],
+      "depends_on": ["train"]
+    }
+  ]
+}

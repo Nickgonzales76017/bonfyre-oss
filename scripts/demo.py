@@ -417,6 +417,10 @@ def main():
     ap.add_argument("--speech-gt",    default=None,
                     help="Ground-truth transcript text or .txt file for WER computation "
                          "(only used with --speech-in)")
+    ap.add_argument("--segment-route", action="store_true",
+                    help="With --speech-in: run the ASR confidence gate on each Whisper "
+                         "segment independently, report per-segment escalation, then "
+                         "process the full transcript through the text pipeline.")
     args = ap.parse_args()
 
     texts = list(args.texts)
@@ -434,6 +438,48 @@ def main():
             print(f"         transcript : {_speech_meta['transcript'][:80]}")
             print(f"         avg_logprob: {_speech_meta.get('avg_logprob', 'n/a')}")
             print(f"         first_seg_ms: {_speech_meta.get('first_segment_ms', 'n/a')}ms")
+
+            # ── Per-segment ASR gate (--segment-route) ───────────────
+            if args.segment_route and _speech_meta.get("segments"):
+                print()
+                print("[speech/segment-route] per-segment ASR confidence gate:")
+                print(f"  {'seg':<4} {'logprob':>8} {'family':>5} {'label':<10}  text")
+                print("  " + "─" * 64)
+                _seg_escalated = 0
+                _seg_clear     = 0
+                for _si, _seg in enumerate(_speech_meta["segments"]):
+                    _st = _seg.get("text", "").strip()
+                    if not _st:
+                        continue
+                    _slp = _seg.get("avg_logprob", -0.5)
+                    # Embed segment text and check S01/S02 ONNX (graceful skip if unavailable)
+                    try:
+                        from sentence_transformers import SentenceTransformer as _ST
+                        _seg_emb = _ST("all-MiniLM-L6-v2").encode(
+                            [_st], normalize_embeddings=True)[0].tolist()
+                    except Exception:
+                        _seg_emb = None
+                    _s01_path = FAMILY_HEADS.get("S01", {}).get("path", "")
+                    _s01_lbls = FAMILY_HEADS.get("S01", {}).get("labels", {})
+                    _s02_path = FAMILY_HEADS.get("S02", {}).get("path", "")
+                    _s02_lbls = FAMILY_HEADS.get("S02", {}).get("labels", {})
+                    _asr_fam, _asr_lbl, _asr_esc = "S01", "unknown", False
+                    if _seg_emb:
+                        _r1 = classify_onnx_family([_seg_emb], "S01")
+                        if _r1:
+                            _asr_lbl = _r1[0][0]
+                            if _asr_lbl != "clear":
+                                _r2 = classify_onnx_family([_seg_emb], "S02")
+                                if _r2:
+                                    _asr_fam, _asr_lbl, _asr_esc = "S02", _r2[0][0], True
+                                    _seg_escalated += 1
+                    if _asr_lbl == "clear":
+                        _seg_clear += 1
+                    _esc_flag = " ←ESC" if _asr_esc else "     "
+                    print(f"  {_si:<4} {_slp:>8.3f} {_asr_fam:>5} "
+                          f"{_asr_lbl:<10}{_esc_flag}  '{_st[:40]}'")
+                print(f"\n  clear={_seg_clear}/{len(_speech_meta['segments'])}  "
+                      f"escalated={_seg_escalated}")
             print()
         else:
             print(f"[speech] ERROR: could not transcribe {args.speech_in}")
