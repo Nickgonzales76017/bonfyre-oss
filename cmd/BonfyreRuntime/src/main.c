@@ -78,7 +78,12 @@ static void print_usage(void) {
             "  bonfyre-runtime run <input> [pipeline args...]\n"
             "  bonfyre-runtime run-ledger <input> [pipeline args...]\n"
             "  bonfyre-runtime queue <queue args...>\n"
-            "  bonfyre-runtime ledger <ledger args...>\n");
+            "  bonfyre-runtime ledger <ledger args...>\n"
+            "  bonfyre-runtime loop <N> <binary> [args...]\n"
+            "\n"
+            "  loop: runs <binary> N times; passes previous artifact.json as --in\n"
+            "        to each subsequent iteration.  Uses --out DIR-1, DIR-2, ...\n"
+            "        if --out DIR is present in args, else /tmp/bonfyre-loop-PID-i.\n");
 }
 
 int main(int argc, char **argv) {
@@ -155,6 +160,107 @@ int main(int argc, char **argv) {
             NULL
         };
         return run_command_to_file(ledger_argv, ledger_json);
+    }
+
+    if (strcmp(argv[1], "loop") == 0) {
+        if (argc < 4) {
+            fprintf(stderr, "usage: bonfyre-runtime loop <N> <binary> [args...]\n");
+            return 1;
+        }
+        int n_iters = atoi(argv[2]);
+        if (n_iters <= 0 || n_iters > 1000) {
+            fprintf(stderr, "loop: N must be 1..1000 (got %s)\n", argv[2]);
+            return 1;
+        }
+        const char *binary = argv[3];
+
+        /* Find --out DIR in user args, if any */
+        const char *base_out = NULL;
+        for (int i = 4; i < argc - 1; i++) {
+            if (strcmp(argv[i], "--out") == 0) { base_out = argv[i + 1]; break; }
+        }
+
+        char prev_artifact[PATH_MAX];
+        prev_artifact[0] = '\0';
+
+        pid_t self_pid = getpid();
+
+        for (int iter = 1; iter <= n_iters; iter++) {
+            /* Build output dir for this iteration */
+            char iter_out[PATH_MAX];
+            if (base_out) {
+                snprintf(iter_out, sizeof(iter_out), "%s-%d", base_out, iter);
+            } else {
+                snprintf(iter_out, sizeof(iter_out),
+                         "/tmp/bonfyre-loop-%d-%d", (int)self_pid, iter);
+            }
+
+            /* mkdir -p iter_out */
+            {
+                char tmp[PATH_MAX];
+                snprintf(tmp, sizeof(tmp), "%s", iter_out);
+                for (char *p = tmp + 1; *p; p++) {
+                    if (*p == '/') {
+                        *p = '\0';
+                        mkdir(tmp, 0755);
+                        *p = '/';
+                    }
+                }
+                mkdir(tmp, 0755);
+            }
+
+            /* Build child argv:
+             *   binary [original args, with --out replaced by iter_out]
+             *   [--in prev_artifact  if iter > 1]
+             */
+            int extra = (iter > 1) ? 2 : 0;  /* --in <path> */
+            char **child = (char **)calloc((size_t)(argc - 4 + 3 + extra + 2),
+                                           sizeof(char *));
+            if (!child) return 1;
+            int ci = 0;
+            child[ci++] = (char *)binary;
+
+            int skip_next = 0;
+            for (int i = 4; i < argc; i++) {
+                if (skip_next) { skip_next = 0; continue; }
+                if (strcmp(argv[i], "--out") == 0) {
+                    child[ci++] = "--out";
+                    child[ci++] = iter_out;
+                    skip_next = 1; /* skip original DIR */
+                } else {
+                    child[ci++] = argv[i];
+                }
+            }
+            if (!base_out) {
+                child[ci++] = "--out";
+                child[ci++] = iter_out;
+            }
+            if (iter > 1 && prev_artifact[0]) {
+                child[ci++] = "--in";
+                child[ci++] = prev_artifact;
+            }
+            child[ci] = NULL;
+
+            fprintf(stderr, "bonfyre-runtime loop [%d/%d]: %s\n",
+                    iter, n_iters, binary);
+
+            int rc = run_command(child);
+            free(child);
+            if (rc != 0) {
+                fprintf(stderr, "bonfyre-runtime loop: iteration %d failed (rc=%d)\n",
+                        iter, rc);
+                return rc;
+            }
+
+            /* Next iteration's --in = this iteration's artifact.json */
+            path_join(prev_artifact, sizeof(prev_artifact),
+                      iter_out, "artifact.json");
+            /* If no artifact.json was written, clear so --in is not passed */
+            if (access(prev_artifact, F_OK) != 0) prev_artifact[0] = '\0';
+        }
+
+        fprintf(stderr, "bonfyre-runtime loop: completed %d iterations\n", n_iters);
+        return 0;
     }
 
     print_usage();
