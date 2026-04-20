@@ -2,9 +2,9 @@
   "code": "T17",
   "name": "Readability Complexity Collapse",
   "version": "1.0.0",
-  "description": "Production: pure-Python readability feature extraction (avg sentence len, word len, type-token ratio, punct density, long-word ratio, sentence count) → MiniBatchKMeans complexity clusters → MiniLM embeddings → collapse to ONNX topic-map student. Zero external ML dependencies for the teacher stage. Promoted from diversity run if F1 >= 0.85 across corpora.",
+  "description": "Production: pure-Python readability feature extraction (avg sentence len, word len, type-token ratio, punct density, long-word ratio, sentence count) \u2192 MiniBatchKMeans complexity clusters \u2192 MiniLM embeddings \u2192 collapse to ONNX topic-map student. Zero external ML dependencies for the teacher stage. Promoted from diversity run if F1 >= 0.85 across corpora.",
   "geometry": "pending",
-  "status": "calibration",
+  "status": "dropped",
   "stages": [
     {
       "id": "readability",
@@ -13,7 +13,8 @@
         "scripts/synth_teacher_readability.py",
         "{input}",
         "{out}/readability",
-        "--k", "5"
+        "--k",
+        "5"
       ],
       "depends_on": []
     },
@@ -24,7 +25,8 @@
         "scripts/synth_teacher_embed.py",
         "{input}",
         "{out}/embed",
-        "--model", "all-MiniLM-L6-v2"
+        "--model",
+        "all-MiniLM-L6-v2"
       ],
       "depends_on": []
     },
@@ -33,12 +35,19 @@
       "bin": "python3",
       "args": [
         "scripts/collapse_train.py",
-        "--task",      "topic-map",
-        "--tag-dir",   "{out}/readability",
-        "--embed-dir", "{out}/embed",
-        "--out",       "{out}/train"
+        "--task",
+        "topic-map",
+        "--tag-dir",
+        "{out}/readability",
+        "--embed-dir",
+        "{out}/embed",
+        "--out",
+        "{out}/train"
       ],
-      "depends_on": ["readability", "embed"]
+      "depends_on": [
+        "readability",
+        "embed"
+      ]
     },
     {
       "id": "finalize",
@@ -47,7 +56,14 @@
         "scripts/finalize_artifact.py",
         "{out}/train"
       ],
-      "depends_on": ["train"]
+      "depends_on": [
+        "train"
+      ]
     }
-  ]
+  ],
+  "drop_reason": "avg F1=0.647 across 12 experiments, 1/12 pass. Readability lexical features produce diffuse clusters insufficient for collapse geometry.",
+  "72run_stats": {
+    "mean_f1": 0.647,
+    "pass_rate": "1/12"
+  }
 }

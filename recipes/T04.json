@@ -1,8 +1,13 @@
 {
   "code": "T04",
   "name": "Topic Mapper Collapse",
-  "version": "1.1.0",
-  "description": "Production collapse recipe for topic mapping. Uses Python synth teachers (dataset labels + sentence-transformers/MiniLM) validated across 8 corpus×scale combinations (F1 0.847–0.964, stability 0.867). Gate: f1_vs_consensus >= 0.80, latency_ratio <= 0.30.",
+  "version": "1.2.0",
+  "description": "Production collapse recipe for topic mapping. Uses Python synth teachers (dataset labels + sentence-transformers/MiniLM) validated across 8 corpus×scale combinations (F1 0.847–0.968, stability 0.895). Gate: f1_vs_consensus >= 0.85, latency_ratio <= 0.30.",
+  "status": "production",
+  "geometry": "global",
+  "transform_family": "T04",
+  "gate": { "f1_vs_consensus": 0.85, "latency_ratio": 0.30 },
+  "72run_stats": { "mean_f1": 0.914, "pass_rate": "10/10", "stability": 0.895 },
   "stages": [
     {
       "id": "tag",
@@ -38,16 +43,10 @@
       "depends_on": ["tag", "embed"]
     },
     {
-      "id": "quant-verify",
-      "bin": "bonfyre-quant",
-      "args": ["roundtrip", "{out}/train/model.onnx", "--bits", "3"],
+      "id": "finalize",
+      "bin": "python3",
+      "args": ["scripts/finalize_artifact.py", "{out}/train"],
       "depends_on": ["train"]
-    },
-    {
-      "id": "hash",
-      "bin": "bonfyre-hash",
-      "args": ["merkle", "{out}/train/artifact.json"],
-      "depends_on": ["quant-verify"]
     }
   ]
 }
