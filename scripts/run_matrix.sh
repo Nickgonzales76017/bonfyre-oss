@@ -1,10 +1,13 @@
 #!/usr/bin/env bash
-# run_matrix.sh — run the 16-experiment collapse calibration matrix.
+# run_matrix.sh — run the collapse calibration matrix.
 #
-# Experiments (4 tasks × 2 datasets × 2 corpus sizes = 16):
-#   Tasks:    T04 (topic-map)  T07 (chunk-boundary)
+# Experiments (2 tasks × 2 datasets × per-task sizes):
+#   Tasks:    T04 (topic-map)      sizes: 250 500 1000
+#             T07 (chunk-boundary) sizes: 250 500 1000 2000
 #   Datasets: ag_news  cnn_dm
-#   Sizes:    250 docs  500 docs
+#
+# Goal: map collapse behavior across task × corpus × scale.
+# Not selecting winners — increasing resolution of the map.
 #
 # (T14 requires external NER teacher models; excluded from the baseline matrix.
 #  Add it manually once you have model paths to inject via --stage-opts.)
@@ -45,7 +48,11 @@ echo -e "experiment\ttask\tdataset\tn_docs\tf1_vs_consensus\tlatency_ratio\tn_pa
 # no fastText model or bonfyre-embed ONNX install required.
 TASKS=("T04-C" "T07-C")
 DATASETS=("ag_news" "cnn_dm")
-SIZES=(250 500)
+# Per-task sizes: T07 is the structural candidate — run all 4 scales.
+# T04-C deferred at 2000 until cnn_dm cluster-mode is confirmed stable.
+declare -A TASK_SIZES
+TASK_SIZES["T04-C"]="250 500 1000"
+TASK_SIZES["T07-C"]="250 500 1000 2000"
 
 # ── helpers ────────────────────────────────────────────────────────────────────
 prep_corpus() {
@@ -119,8 +126,9 @@ run_experiment() {
 START_TS=$(date +%s)
 
 for task in "${TASKS[@]}"; do
+    read -ra sizes <<< "${TASK_SIZES[$task]}"
     for dataset in "${DATASETS[@]}"; do
-        for n in "${SIZES[@]}"; do
+        for n in "${sizes[@]}"; do
             run_experiment "$task" "$dataset" "$n"
         done
     done
