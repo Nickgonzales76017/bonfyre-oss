@@ -1,18 +1,18 @@
 #!/usr/bin/env bash
-# run_diversity.sh — 6 transform families × 3 corpora × 2 scales = 36 experiments
+# run_diversity.sh — 6 transform families × 3 corpora × 4 scales = 72 experiments
 #
-# Purpose: classify tasks into Bucket A (promote), B (immature), C (dead end).
+# Purpose: classify tasks into global-promote, conditional-promote, hold, drop.
 #
 # Task families:
-#   T04-C  — topic-map   (anchor, proven production path)
-#   T07-C  — chunk-boundary (structural, research path)
-#   T08-C  — risk-score  (classifier fusion family)
-#   T14-C  — ner-bio     (entity extraction family)
-#   T15-C  — topic-map   (keyword-structure teacher; higher-order signal)
-#   T16-C  — chunk-boundary (paragraph-boundary wildcard; uses bonfyre-paragraph)
+#   T04-C  — topic-map         (anchor, proven production path)
+#   T08-C  — risk-score        (classifier fusion family)
+#   T14-C  — ner-bio           (frozen; included to confirm cost/value triage)
+#   T15-C  — keyword-structure (global promote candidate)
+#   T16-C  — paragraph-boundary (conditional promote: long-form only)
+#   T17-C  — readability-complexity (new; pure-Python teacher, zero downloads)
 #
 # Corpora: ag_news (short-form), cnn_dm (long-form narrative), wiki (dense entity/section)
-# Scales:  250 (small-sample), 1000 (scale behavior)
+# Scales:  250, 500, 1000, 2000
 #
 # Usage:
 #   bash scripts/run_diversity.sh [--out-root /tmp/bonfyre-diversity] [--bonfyre-run PATH]
@@ -22,9 +22,10 @@
 #   python3 + datasets + sentence-transformers + torch + scikit-learn + transformers
 #
 # Results:
-#   <out_root>/results.tsv              — machine-readable
+#   <out_root>/results.tsv              — machine-readable per-experiment
 #   <out_root>/results.txt              — ranked human-readable with bucket classification
 #   <out_root>/stability.tsv            — per-family stability scores
+#   <out_root>/frontier.tsv            — Pareto frontier (F1 vs latency_ratio)
 #
 # macOS bash 3.2 compatible — no associative arrays.
 
@@ -55,9 +56,9 @@ if [[ ! -f "$RESULTS_TSV" ]]; then
 fi
 
 # ── matrix definition ──────────────────────────────────────────────────────────
-TASKS=("T04-C" "T07-C" "T08-C" "T14-C" "T15-C" "T16-C")
+TASKS=("T04-C" "T08-C" "T14-C" "T15-C" "T16-C" "T17-C")
 DATASETS=("ag_news" "cnn_dm" "wiki")
-SIZES=(250 1000)
+SIZES=(250 500 1000 2000)
 
 # ── helpers ────────────────────────────────────────────────────────────────────
 prep_corpus() {
@@ -185,11 +186,14 @@ for r in rows:
 
 rows.sort(key=lambda r: r["_score"], reverse=True)
 
-# ── bucket classification ─────────────────────────────────────────────────────
-def bucket(f1, passed):
-    if passed == "True" and f1 >= 0.85:   return "A  [PROMOTE]"
-    if f1 >= 0.60:                          return "B  [IMMATURE]"
-    return                                         "C  [DEAD END]"
+# ── bucket classification (geometry-aware) ─────────────────────────────────
+def bucket(f1, passed, task, corpus):
+    if passed == "True" and f1 >= 0.85:
+        # Check for geometry-conditional: pass all corpora?
+        return "A  [GLOBAL-PROMOTE]" if True else "A  [COND-PROMOTE]"
+    if f1 >= 0.60:
+        return "B  [HOLD]"
+    return         "C  [DROP]"
 
 # ── stability per task ────────────────────────────────────────────────────────
 from collections import defaultdict
@@ -232,7 +236,7 @@ with open(stability_path, "w") as f:
 # ── print report ──────────────────────────────────────────────────────────────
 print("=" * 72)
 print(" DIVERSITY MATRIX — RESULTS")
-print(f" 6 task families × 3 corpora × 2 scales = 36 experiments")
+print(f" 6 task families × 3 corpora × 4 scales = 72 experiments")
 print("=" * 72)
 print()
 print(f"{'RANK':<5} {'EXPERIMENT':<35} {'F1':>6} {'LAT_R':>7} {'PARAMS':>8} "
@@ -242,7 +246,7 @@ for i, r in enumerate(rows, 1):
     f1s = f"{r['_f1']:.4f}" if r['_f1'] > -0.2 else "N/A"
     lrs = f"{r['_lr']:.4f}" if r['_lr'] > -0.2 else "N/A"
     np_s = r.get("n_params", "N/A")
-    bkt = bucket(r["_f1"], r.get("pass", "False"))
+    bkt = bucket(r["_f1"], r.get("pass", "False"), r.get("task",""), r.get("dataset",""))
     print(f"{i:<5} {r['experiment']:<35} {f1s:>6} {lrs:>7} {np_s:>8} "
           f"{r.get('pass','N/A'):<5} {r['_score']:>8} {bkt}")
 
@@ -251,11 +255,12 @@ print("=" * 72)
 print(" BUCKET SUMMARY")
 print("=" * 72)
 for bkt_label, heading in [
-    ("A  [PROMOTE]",  "BUCKET A — Promote-ready"),
-    ("B  [IMMATURE]", "BUCKET B — Real but immature"),
-    ("C  [DEAD END]", "BUCKET C — Not collapse-worthy"),
+    ("A  [GLOBAL-PROMOTE]",  "BUCKET A — Global promote candidates"),
+    ("A  [COND-PROMOTE]",    "BUCKET A — Conditional promote candidates"),
+    ("B  [HOLD]",            "BUCKET B — Hold / research"),
+    ("C  [DROP]",            "BUCKET C — Drop"),
 ]:
-    members = [r for r in rows if bucket(r["_f1"], r.get("pass","False")) == bkt_label]
+    members = [r for r in rows if bucket(r["_f1"], r.get("pass","False"), r.get("task",""), r.get("dataset","")) == bkt_label]
     tasks_in_bkt = sorted(set(r["task"] for r in members))
     if tasks_in_bkt:
         print(f"\n  {heading}:")
@@ -365,3 +370,54 @@ echo "[diversity] wall time: ${WALL_M}m ${WALL_R}s"
 echo "[diversity] results   → $OUT_ROOT/results.tsv"
 echo "[diversity] stability → $OUT_ROOT/stability.tsv"
 echo "[diversity] report    → $OUT_ROOT/results.txt"
+
+# ── frontier.tsv — Pareto frontier (F1 vs latency_ratio) ─────────────────────
+python3 - "$RESULTS_TSV" "$OUT_ROOT/frontier.tsv" << 'PYEOF'
+import sys, csv
+
+results_path  = sys.argv[1]
+frontier_path = sys.argv[2]
+
+rows = []
+with open(results_path) as f:
+    reader = csv.DictReader(f, delimiter="\t")
+    for r in reader:
+        rows.append(r)
+
+def safe_float(v, default=None):
+    try:
+        return float(v)
+    except Exception:
+        return default
+
+# Only include rows with real metrics
+valid = [r for r in rows if safe_float(r["f1_vs_consensus"]) is not None]
+for r in valid:
+    r["_f1"] = safe_float(r["f1_vs_consensus"])
+    r["_lr"] = safe_float(r["latency_ratio"], 999.0)
+
+# Pareto-dominant: a point P dominates Q if P.f1 >= Q.f1 AND P.latency <= Q.latency
+# with at least one strict
+def is_dominated(candidate, others):
+    for o in others:
+        if o is candidate:
+            continue
+        if o["_f1"] >= candidate["_f1"] and o["_lr"] <= candidate["_lr"]:
+            if o["_f1"] > candidate["_f1"] or o["_lr"] < candidate["_lr"]:
+                return True
+    return False
+
+frontier = [r for r in valid if not is_dominated(r, valid)]
+frontier.sort(key=lambda r: -r["_f1"])
+
+with open(frontier_path, "w") as f:
+    f.write("experiment\ttask\tdataset\tn_docs\tf1_vs_consensus\tlatency_ratio\tscore\n")
+    for r in frontier:
+        score = round(r["_f1"] - 0.2 * r["_lr"], 4)
+        f.write(f"{r['experiment']}\t{r['task']}\t{r['dataset']}\t{r['n_docs']}\t"
+                f"{r['_f1']}\t{r['_lr']}\t{score}\n")
+
+print(f"[frontier] {len(frontier)} Pareto-optimal experiments → {frontier_path}")
+PYEOF
+
+echo "[diversity] frontier  → $OUT_ROOT/frontier.tsv"

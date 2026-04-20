@@ -1,5 +1,6 @@
 # Compiled binaries
 cmd/*/bonfyre-*
+!cmd/BonfyreLayer/bonfyre-layer
 !cmd/*/src/
 lib/liblambda-tensors/*.a
 lib/liblambda-tensors/*.so

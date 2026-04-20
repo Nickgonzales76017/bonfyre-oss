@@ -1,0 +1,52 @@
+{
+  "code": "T17-C",
+  "name": "Readability Complexity Collapse (Calibration)",
+  "version": "1.0.0",
+  "description": "Calibration variant. Pure-Python readability feature extraction (avg sentence len, word len, type-token ratio, punct density, long-word ratio) + MiniBatchKMeans complexity clustering → MiniLM embeddings → collapse to ONNX topic-map student. No ML model downloads; zero external dependencies beyond standard library. Tests whether lexical/structural complexity signal produces stable collapse behavior.",
+  "stages": [
+    {
+      "id": "readability",
+      "bin": "python3",
+      "args": [
+        "scripts/synth_teacher_readability.py",
+        "{input}",
+        "{out}/readability",
+        "--k", "5"
+      ],
+      "depends_on": []
+    },
+    {
+      "id": "embed",
+      "bin": "python3",
+      "args": [
+        "scripts/synth_teacher_embed.py",
+        "{input}",
+        "{out}/embed",
+        "--model", "all-MiniLM-L6-v2"
+      ],
+      "depends_on": []
+    },
+    {
+      "id": "train",
+      "bin": "python3",
+      "args": [
+        "scripts/collapse_train.py",
+        "--task",      "topic-map",
+        "--tag-dir",   "{out}/readability",
+        "--embed-dir", "{out}/embed",
+        "--out",       "{out}/train",
+        "--calibration"
+      ],
+      "depends_on": ["readability", "embed"]
+    },
+    {
+      "id": "finalize",
+      "bin": "python3",
+      "args": [
+        "scripts/finalize_artifact.py",
+        "{out}/train"
+      ],
+      "depends_on": ["train"]
+    }
+  ]
+}

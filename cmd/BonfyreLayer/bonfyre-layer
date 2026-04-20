@@ -1,0 +1,493 @@
+#!/usr/bin/env python3
+"""
+bonfyre-layer — Layer-aware model inspection and extraction tool.
+
+Part of the Bonfyre layer-aware infrastructure (Track B).
+Extends bonfyre-model to operate on sub-model artifacts:
+layers, blocks, heads, projections, and transform fragments.
+
+This is the foundation for geometry-aware routing and transform composition.
+Instead of thinking in full-model checkpoints, Bonfyre becomes able to:
+  - inspect layer structure of any cached model
+  - pull layer ranges as self-contained ONNX sub-graphs
+  - pull named heads/projections
+  - pack layer fragments into transform artifacts
+  - point recipes at those artifacts via layer_range / head target specs
+
+Commands:
+  bonfyre-layer inspect <model_path>           full architecture summary
+  bonfyre-layer layers  <model_path>           list nodes with shape info
+  bonfyre-layer pull-layer <model_path> --range START:END --out <dir>
+  bonfyre-layer pull-head  <model_path> --name <node_name> --out <dir>
+  bonfyre-layer pack-transform <name> <part1.onnx> [part2.onnx ...] --out <dir>
+  bonfyre-layer schema                         print recipe target schema
+
+<model_path> can be:
+  - an absolute path to a .onnx file
+  - a bonfyre model ID (looked up in ~/.local/share/bonfyre/models.db or
+    ~/.cache/bonfyre/models/<sha256>.onnx)
+
+Layer Artifact Schema (written to artifact.json alongside .onnx):
+  {
+    "type": "layer_fragment",
+    "source_model": "<id or path>",
+    "layer_spec": { "type": "layer_range"|"head"|"slice"|"fragment",
+                    "range": "0:3" | "name": "classifier" },
+    "onnx_nodes": [...],
+    "input_names": [...],
+    "output_names": [...],
+    "input_shapes": [...],
+    "output_shapes": [...],
+    "n_params": int,
+    "sha256": "...",
+    "fpq_sha256": null    // filled by finalize_artifact.py
+  }
+
+Recipe Target Schema Extension:
+  Standard (full model):
+    { "model": "hf://org/repo/model.onnx" }
+
+  Layer range:
+    { "model": "hf://org/repo",
+      "target": { "type": "layer_range", "range": "0:3", "format": "onnx" } }
+
+  Named head:
+    { "model": "hf://org/repo",
+      "target": { "type": "head", "name": "token_classifier", "format": "onnx" } }
+
+  Packed transform fragment:
+    { "model": "bonfyre://transform/<name>",
+      "target": { "type": "fragment" } }
+"""
+import argparse
+import hashlib
+import json
+import os
+import sys
+
+LAYER_ARTIFACT_VERSION = "1.0.0"
+
+RECIPE_TARGET_SCHEMA = {
+    "$schema": "bonfyre-layer-target-v1",
+    "description": "Recipe target schema for layer-aware Bonfyre transforms.",
+    "variants": {
+        "full_model": {
+            "description": "Standard full-model target (existing behavior).",
+            "example": {"model": "hf://org/repo/model.onnx"}
+        },
+        "layer_range": {
+            "description": "Contiguous layer range extracted as standalone ONNX subgraph.",
+            "example": {
+                "model": "hf://org/repo",
+                "target": {"type": "layer_range", "range": "0:3", "format": "onnx"}
+            }
+        },
+        "head": {
+            "description": "Named head/projection by ONNX node name prefix.",
+            "example": {
+                "model": "hf://org/repo",
+                "target": {"type": "head", "name": "classifier", "format": "onnx"}
+            }
+        },
+        "slice": {
+            "description": "Arbitrary named-node selection across non-contiguous layers.",
+            "example": {
+                "model": "hf://org/repo",
+                "target": {
+                    "type": "slice",
+                    "spec": "encoder.0-3,proj.out",
+                    "format": "onnx"
+                }
+            }
+        },
+        "fragment": {
+            "description": "Pre-packed transform fragment (output of bonfyre-layer pack-transform).",
+            "example": {
+                "model": "bonfyre://transform/my-complexity-head",
+                "target": {"type": "fragment"}
+            }
+        }
+    }
+}
+
+
+# ── ONNX helpers ───────────────────────────────────────────────────────────────
+
+def load_onnx(path: str):
+    try:
+        import onnx
+        return onnx.load(path)
+    except ImportError:
+        sys.exit("[bonfyre-layer] missing dep: pip install onnx")
+
+
+def onnx_node_info(model) -> list:
+    """Return list of dicts with node metadata."""
+    nodes = []
+    init_names = {init.name for init in model.graph.initializer}
+    for i, node in enumerate(model.graph.node):
+        nodes.append({
+            "index":   i,
+            "op_type": node.op_type,
+            "name":    node.name or f"{node.op_type}_{i}",
+            "inputs":  list(node.input),
+            "outputs": list(node.output),
+            "attrs":   {a.name: a.i or a.f or a.s.decode() if a.s else None
+                        for a in node.attribute},
+        })
+    return nodes
+
+
+def count_params(model) -> int:
+    """Count total parameters across all initializers."""
+    total = 0
+    for init in model.graph.initializer:
+        n = 1
+        for d in init.dims:
+            n *= d
+        total += n
+    return total
+
+
+def input_output_shapes(model) -> tuple:
+    """Return (input_shapes, output_shapes) as lists of dicts."""
+    def tensor_shape(t):
+        shape = []
+        for d in t.type.tensor_type.shape.dim:
+            shape.append(d.dim_value if d.dim_value else "?")
+        return {"name": t.name, "shape": shape}
+
+    inputs  = [tensor_shape(t) for t in model.graph.input]
+    outputs = [tensor_shape(t) for t in model.graph.output]
+    return inputs, outputs
+
+
+def sha256_file(path: str) -> str:
+    h = hashlib.sha256()
+    with open(path, "rb") as f:
+        for chunk in iter(lambda: f.read(65536), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+# ── subcommands ────────────────────────────────────────────────────────────────
+
+def cmd_inspect(args):
+    model = load_onnx(args.model)
+    nodes = onnx_node_info(model)
+    inp, out = input_output_shapes(model)
+    n_params = count_params(model)
+
+    # Op-type histogram
+    from collections import Counter
+    op_counts = Counter(n["op_type"] for n in nodes)
+
+    print(f"Model: {args.model}")
+    print(f"  IR version:  {model.ir_version}")
+    print(f"  Opset:       {[o.version for o in model.opset_import]}")
+    print(f"  Nodes:       {len(nodes)}")
+    print(f"  Parameters:  {n_params:,}")
+    print()
+    print("Inputs:")
+    for t in inp:
+        print(f"  {t['name']:<40} {t['shape']}")
+    print("Outputs:")
+    for t in out:
+        print(f"  {t['name']:<40} {t['shape']}")
+    print()
+    print("Op distribution:")
+    for op, count in op_counts.most_common():
+        print(f"  {op:<20} {count}")
+    print()
+    print(f"Layer-pull range format: 0:{len(nodes)}  (all nodes)")
+    print(f"  Example: bonfyre-layer pull-layer {args.model} --range 0:{len(nodes)//2}")
+
+
+def cmd_layers(args):
+    model = load_onnx(args.model)
+    nodes = onnx_node_info(model)
+    inp, out = input_output_shapes(model)
+
+    print(f"{'IDX':<5} {'OP':<18} {'NAME':<35} {'OUTPUTS'}")
+    print("-" * 78)
+    for n in nodes:
+        out_str = ", ".join(n["outputs"][:2])
+        if len(n["outputs"]) > 2:
+            out_str += f" (+{len(n['outputs'])-2})"
+        print(f"{n['index']:<5} {n['op_type']:<18} {n['name'][:34]:<35} {out_str}")
+
+
+def cmd_pull_layer(args):
+    """Extract a contiguous node range as a standalone ONNX subgraph."""
+    try:
+        import onnx
+        from onnx import helper, TensorProto
+        from onnx.utils import extract_model
+    except ImportError:
+        sys.exit("[bonfyre-layer] missing dep: pip install onnx")
+
+    model = load_onnx(args.model)
+    nodes = list(model.graph.node)
+
+    # Parse range
+    try:
+        start_s, end_s = args.range.split(":")
+        start, end = int(start_s), int(end_s)
+    except ValueError:
+        sys.exit(f"[bonfyre-layer] --range must be START:END integers, got: {args.range}")
+
+    if start < 0 or end > len(nodes) or start >= end:
+        sys.exit(f"[bonfyre-layer] range {start}:{end} out of bounds (0:{len(nodes)})")
+
+    selected_nodes = nodes[start:end]
+    # Collect all tensor names produced/consumed in this range
+    internal_outputs = set()
+    for n in selected_nodes:
+        internal_outputs.update(n.output)
+    external_inputs = set()
+    for n in selected_nodes:
+        for inp in n.input:
+            if inp and inp not in internal_outputs:
+                external_inputs.add(inp)
+
+    # Build output names = outputs of last node that aren't consumed internally
+    consumed_internally = set()
+    for n in selected_nodes:
+        consumed_internally.update(n.input)
+    subgraph_outputs = []
+    for n in selected_nodes:
+        for o in n.output:
+            if o not in consumed_internally or n is selected_nodes[-1]:
+                subgraph_outputs.append(o)
+
+    # Use onnx extract_model if available (cleaner)
+    os.makedirs(args.out, exist_ok=True)
+    out_onnx = os.path.join(args.out, "layer_fragment.onnx")
+
+    try:
+        # extract_model API: older onnx takes (model, input_names, output_names)
+        # newer onnx takes (model, input_names, output_names) same signature
+        input_names  = sorted(external_inputs)
+        output_names = sorted(set(subgraph_outputs))
+
+        try:
+            sub = extract_model(model, input_names, output_names)
+        except TypeError:
+            # Some versions require keyword args
+            from onnx.utils import extract_model as em2
+            import inspect
+            sig = inspect.signature(em2)
+            if "check_model" in sig.parameters:
+                sub = em2(model, input_names, output_names, check_model=False)
+            else:
+                raise
+        onnx.save(sub, out_onnx)
+        n_params = count_params(sub)
+        inp_shapes, out_shapes = input_output_shapes(sub)
+    except Exception as e:
+        # Fallback: write a minimal ONNX with just the nodes (may not be runnable
+        # without shape inference — still useful for inspection/packing)
+        print(f"[bonfyre-layer] WARNING: extract_model failed ({e}); writing raw node slice")
+        sub_graph = helper.make_graph(
+            selected_nodes,
+            f"layer_fragment_{start}_{end}",
+            [],   # inputs: unresolved without shape info
+            [],   # outputs: unresolved
+        )
+        sub_model = helper.make_model(sub_graph)
+        onnx.save(sub_model, out_onnx)
+        n_params = 0
+        inp_shapes, out_shapes = [], []
+
+    sha = sha256_file(out_onnx)
+
+    artifact = {
+        "type":          "layer_fragment",
+        "version":       LAYER_ARTIFACT_VERSION,
+        "source_model":  args.model,
+        "layer_spec": {
+            "type":  "layer_range",
+            "range": args.range,
+        },
+        "node_range":    [start, end],
+        "onnx_nodes":    [n["name"] for n in onnx_node_info(load_onnx(out_onnx))],
+        "input_shapes":  inp_shapes,
+        "output_shapes": out_shapes,
+        "n_params":      n_params,
+        "sha256":        sha,
+        "fpq_sha256":    None,
+        "format":        "onnx",
+    }
+
+    artifact_path = os.path.join(args.out, "artifact.json")
+    with open(artifact_path, "w") as f:
+        json.dump(artifact, f, indent=2)
+
+    print(f"[bonfyre-layer] pulled layer range {args.range}")
+    print(f"  nodes:        {end - start}")
+    print(f"  params:       {n_params:,}")
+    print(f"  sha256:       {sha[:16]}…")
+    print(f"  onnx:         {out_onnx}")
+    print(f"  artifact:     {artifact_path}")
+    print()
+    print(f"  Next: python3 scripts/finalize_artifact.py {args.out}")
+    print(f"        bonfyre-model add {artifact_path}")
+
+
+def cmd_pull_head(args):
+    """Extract nodes matching a name prefix as a head subgraph."""
+    try:
+        import onnx
+        from onnx.utils import extract_model
+    except ImportError:
+        sys.exit("[bonfyre-layer] missing dep: pip install onnx")
+
+    model = load_onnx(args.model)
+    nodes = onnx_node_info(model)
+
+    matching = [n for n in nodes if n["name"].startswith(args.name)
+                or n["op_type"].lower().startswith(args.name.lower())]
+    if not matching:
+        print(f"[bonfyre-layer] no nodes matching '{args.name}'. Available names:")
+        for n in nodes[:20]:
+            print(f"  [{n['index']:3}] {n['op_type']:<16} {n['name']}")
+        if len(nodes) > 20:
+            print(f"  ... ({len(nodes)} total — use 'bonfyre-layer layers' for full list)")
+        sys.exit(1)
+
+    indices = [n["index"] for n in matching]
+    range_str = f"{min(indices)}:{max(indices)+1}"
+    print(f"[bonfyre-layer] matched {len(matching)} nodes for '{args.name}' → range {range_str}")
+
+    # Delegate to pull-layer with the computed range
+    pull_args = argparse.Namespace(model=args.model, range=range_str, out=args.out)
+    cmd_pull_layer(pull_args)
+
+
+def cmd_pack_transform(args):
+    """Pack multiple ONNX fragment files into a single transform artifact."""
+    try:
+        import onnx
+        from onnx import helper
+        from onnx.compose import merge_models
+    except ImportError:
+        sys.exit("[bonfyre-layer] missing dep: pip install onnx (>=1.14 for compose)")
+
+    os.makedirs(args.out, exist_ok=True)
+    out_onnx = os.path.join(args.out, "transform.onnx")
+
+    parts = args.parts
+    if not parts:
+        sys.exit("[bonfyre-layer] specify at least one .onnx part")
+
+    # Load first model; merge sequentially
+    print(f"[bonfyre-layer] packing {len(parts)} fragment(s) → {args.name}")
+    merged = onnx.load(parts[0])
+    for part_path in parts[1:]:
+        part = onnx.load(part_path)
+        try:
+            merged = merge_models(merged, part)
+        except Exception as e:
+            print(f"[bonfyre-layer] WARNING: merge failed for {part_path}: {e}")
+            print("  Continuing with partial pack.")
+
+    onnx.save(merged, out_onnx)
+    sha = sha256_file(out_onnx)
+    n_params = count_params(merged)
+    inp_shapes, out_shapes = input_output_shapes(merged)
+
+    artifact = {
+        "type":          "transform_fragment",
+        "version":       LAYER_ARTIFACT_VERSION,
+        "name":          args.name,
+        "source_parts":  parts,
+        "n_parts":       len(parts),
+        "input_shapes":  inp_shapes,
+        "output_shapes": out_shapes,
+        "n_params":      n_params,
+        "sha256":        sha,
+        "fpq_sha256":    None,
+        "format":        "onnx",
+    }
+
+    artifact_path = os.path.join(args.out, "artifact.json")
+    with open(artifact_path, "w") as f:
+        json.dump(artifact, f, indent=2)
+
+    print(f"[bonfyre-layer] packed transform '{args.name}'")
+    print(f"  parts:        {len(parts)}")
+    print(f"  params:       {n_params:,}")
+    print(f"  sha256:       {sha[:16]}…")
+    print(f"  onnx:         {out_onnx}")
+    print(f"  artifact:     {artifact_path}")
+    print()
+    print(f"  Next: python3 scripts/finalize_artifact.py {args.out}")
+    print(f"        bonfyre-model add {artifact_path}")
+
+
+def cmd_schema(_args):
+    print(json.dumps(RECIPE_TARGET_SCHEMA, indent=2))
+
+
+# ── entry point ────────────────────────────────────────────────────────────────
+
+def main():
+    p = argparse.ArgumentParser(
+        prog="bonfyre-layer",
+        description="Layer-aware model inspection and extraction for Bonfyre."
+    )
+    sub = p.add_subparsers(dest="command", metavar="COMMAND")
+
+    # inspect
+    sp = sub.add_parser("inspect", help="Full architecture summary of an ONNX model")
+    sp.add_argument("model", help="Path to .onnx file")
+
+    # layers
+    sp = sub.add_parser("layers", help="List all nodes with index, op type, and output names")
+    sp.add_argument("model", help="Path to .onnx file")
+
+    # pull-layer
+    sp = sub.add_parser("pull-layer", help="Extract a contiguous node range as a subgraph")
+    sp.add_argument("model",   help="Path to .onnx file")
+    sp.add_argument("--range", required=True, metavar="START:END",
+                    help="Node index range, e.g. 0:3")
+    sp.add_argument("--out",   required=True, metavar="DIR",
+                    help="Output directory for layer_fragment.onnx + artifact.json")
+
+    # pull-head
+    sp = sub.add_parser("pull-head", help="Extract nodes matching a name prefix")
+    sp.add_argument("model",   help="Path to .onnx file")
+    sp.add_argument("--name",  required=True, help="Node name prefix to match")
+    sp.add_argument("--out",   required=True, metavar="DIR",
+                    help="Output directory for layer_fragment.onnx + artifact.json")
+
+    # pack-transform
+    sp = sub.add_parser("pack-transform",
+                        help="Pack multiple ONNX fragments into one transform artifact")
+    sp.add_argument("name",   help="Name of the packed transform")
+    sp.add_argument("parts",  nargs="+", metavar="PART.onnx",
+                    help="ONNX fragment files to pack in order")
+    sp.add_argument("--out",  required=True, metavar="DIR",
+                    help="Output directory for transform.onnx + artifact.json")
+
+    # schema
+    sub.add_parser("schema", help="Print recipe target schema for layer-aware transforms")
+
+    args = p.parse_args()
+    if not args.command:
+        p.print_help()
+        sys.exit(0)
+
+    dispatch = {
+        "inspect":       cmd_inspect,
+        "layers":        cmd_layers,
+        "pull-layer":    cmd_pull_layer,
+        "pull-head":     cmd_pull_head,
+        "pack-transform": cmd_pack_transform,
+        "schema":        cmd_schema,
+    }
+    dispatch[args.command](args)
+
+
+if __name__ == "__main__":
+    main()

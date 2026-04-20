@@ -39,16 +39,10 @@
       "depends_on": ["tag", "embed"]
     },
     {
-      "id": "compress",
-      "bin": "bonfyre-quant",
-      "args": ["compress", "{out}/train/model.onnx", "{out}/compress/model.fpq"],
+      "id": "finalize",
+      "bin": "python3",
+      "args": ["scripts/finalize_artifact.py", "{out}/train"],
       "depends_on": ["train"]
-    },
-    {
-      "id": "hash",
-      "bin": "bonfyre-hash",
-      "args": ["merkle", "{out}/compress/artifact.json"],
-      "depends_on": ["compress"]
     }
   ]
 }
