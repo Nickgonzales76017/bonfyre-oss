@@ -53,7 +53,7 @@
 #include <sqlite3.h>
 #include <bonfyre.h>
 
-#define VERSION        "1.0.0"
+#define VERSION        "1.1.0"
 #define MAX_JSON       131072   /* 128 KB max manifest */
 #define HASH_HEX       65
 #define DB_ENV         "BONFYRE_MODEL_DB"
@@ -128,15 +128,20 @@ static sqlite3 *db_open(const char *path) {
 
     const char *schema =
         "CREATE TABLE IF NOT EXISTS models ("
-        "  id          TEXT PRIMARY KEY,"
-        "  name        TEXT NOT NULL,"
-        "  description TEXT,"
-        "  format      TEXT NOT NULL,"       /* gguf | safetensors | onnx | bin */
-        "  sha256      TEXT UNIQUE,"
-        "  size_mb     REAL,"
-        "  fpq_sha256  TEXT,"
-        "  fpq_size_mb REAL,"
-        "  added_at    INTEGER NOT NULL"
+        "  id                  TEXT PRIMARY KEY,"
+        "  name                TEXT NOT NULL,"
+        "  description         TEXT,"
+        "  format              TEXT NOT NULL,"  /* gguf|safetensors|onnx|bin|layer_fragment|transform_fragment */
+        "  sha256              TEXT UNIQUE,"
+        "  size_mb             REAL,"
+        "  fpq_sha256          TEXT,"
+        "  fpq_size_mb         REAL,"
+        "  transform_family    TEXT,"           /* T04 | T15 | T16 | ... */
+        "  geometry            TEXT,"           /* global | long-form | short-form */
+        "  geometry_condition  TEXT,"           /* e.g. 'avg_doc_len > 500' */
+        "  layer_frag_spec     TEXT,"           /* JSON: layer_fragment / transform_fragment metadata */
+        "  mean_f1             REAL,"           /* from calibration run */
+        "  added_at            INTEGER NOT NULL"
         ");"
         "CREATE TABLE IF NOT EXISTS sources ("
         "  model_id TEXT NOT NULL REFERENCES models(id) ON DELETE CASCADE,"
@@ -159,6 +164,12 @@ static sqlite3 *db_open(const char *path) {
         fprintf(stderr, "error: schema: %s\n", err);
         sqlite3_free(err); sqlite3_close(db); return NULL;
     }
+    /* Live migrations — ADD COLUMN is idempotent (fails silently if column exists) */
+    sqlite3_exec(db, "ALTER TABLE models ADD COLUMN transform_family    TEXT;",   NULL, NULL, NULL);
+    sqlite3_exec(db, "ALTER TABLE models ADD COLUMN geometry            TEXT;",   NULL, NULL, NULL);
+    sqlite3_exec(db, "ALTER TABLE models ADD COLUMN geometry_condition  TEXT;",   NULL, NULL, NULL);
+    sqlite3_exec(db, "ALTER TABLE models ADD COLUMN layer_frag_spec     TEXT;",   NULL, NULL, NULL);
+    sqlite3_exec(db, "ALTER TABLE models ADD COLUMN mean_f1             REAL;",   NULL, NULL, NULL);
     return db;
 }
 
@@ -585,6 +596,8 @@ static void cmd_help(void) {
         "  source rm <id> <url>       remove a pull source URL\n"
         "  ls-cache                   list cached files with sizes\n"
         "  status                     registry + cache stats\n"
+        "  family [<family>]          list models by transform family (e.g. T04, T15, T16)\n"
+        "  route <corpus_stats.json>  select best transform family for given corpus stats\n"
         "  push <id> --repo <hf/repo> upload FPQ artifact to HuggingFace\n"
         "  help                       this message\n\n"
         "SOURCE SCHEMES (evaluated in priority order)\n"
@@ -1050,15 +1063,21 @@ static int cmd_add(sqlite3 *db, const char *json_path) {
     } while(0)
 
     char id[128], name[256], desc[512], fmt[32], sha256[65], size_s[32],
-         fpq_sha[65], fpq_sz[32];
-    JFIELD("id",          id,       sizeof(id));
-    JFIELD("name",        name,     sizeof(name));
-    JFIELD("description", desc,     sizeof(desc));
-    JFIELD("format",      fmt,      sizeof(fmt));
-    JFIELD("sha256",      sha256,   sizeof(sha256));
-    JFIELD("size_mb",     size_s,   sizeof(size_s));
-    JFIELD("fpq_sha256",  fpq_sha,  sizeof(fpq_sha));
-    JFIELD("fpq_size_mb", fpq_sz,   sizeof(fpq_sz));
+         fpq_sha[65], fpq_sz[32], tf[32], geom[64], geom_cond[256],
+         lf_spec[1024], mean_f1_s[32];
+    JFIELD("id",                  id,        sizeof(id));
+    JFIELD("name",                name,      sizeof(name));
+    JFIELD("description",         desc,      sizeof(desc));
+    JFIELD("format",              fmt,       sizeof(fmt));
+    JFIELD("sha256",              sha256,    sizeof(sha256));
+    JFIELD("size_mb",             size_s,    sizeof(size_s));
+    JFIELD("fpq_sha256",          fpq_sha,   sizeof(fpq_sha));
+    JFIELD("fpq_size_mb",         fpq_sz,    sizeof(fpq_sz));
+    JFIELD("transform_family",    tf,        sizeof(tf));
+    JFIELD("geometry",            geom,      sizeof(geom));
+    JFIELD("geometry_condition",  geom_cond, sizeof(geom_cond));
+    JFIELD("layer_frag_spec",     lf_spec,   sizeof(lf_spec));
+    JFIELD("mean_f1",             mean_f1_s, sizeof(mean_f1_s));
     #undef JFIELD
 
     if(!id[0] || !name[0] || !fmt[0]) {
@@ -1068,11 +1087,13 @@ static int cmd_add(sqlite3 *db, const char *json_path) {
     if(!sha256[0]) snprintf(sha256, sizeof(sha256), "pending");
     double size_mb  = size_s[0]  ? atof(size_s)  : 0.0;
     double fpq_size = fpq_sz[0]  ? atof(fpq_sz)  : 0.0;
+    double mean_f1  = mean_f1_s[0] ? atof(mean_f1_s) : 0.0;
 
     sqlite3_stmt *st;
     sqlite3_prepare_v2(db,
         "INSERT OR REPLACE INTO models(id,name,description,format,sha256,size_mb,"
-        "fpq_sha256,fpq_size_mb,added_at) VALUES(?,?,?,?,?,?,?,?,?)",
+        "fpq_sha256,fpq_size_mb,transform_family,geometry,geometry_condition,"
+        "layer_frag_spec,mean_f1,added_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
         -1, &st, NULL);
     sqlite3_bind_text(st,1,id,-1,SQLITE_STATIC);
     sqlite3_bind_text(st,2,name,-1,SQLITE_STATIC);
@@ -1086,11 +1107,15 @@ static int cmd_add(sqlite3 *db, const char *json_path) {
     sqlite3_bind_double(st,6,size_mb);
     sqlite3_bind_text(st,7,fpq_sha[0]?fpq_sha:NULL,-1,SQLITE_STATIC);
     fpq_size>0 ? sqlite3_bind_double(st,8,fpq_size) : sqlite3_bind_null(st,8);
-    sqlite3_bind_int64(st,9,(sqlite3_int64)time(NULL));
+    sqlite3_bind_text(st,9,  tf[0]        ? tf        : NULL, -1, SQLITE_STATIC);
+    sqlite3_bind_text(st,10, geom[0]      ? geom      : NULL, -1, SQLITE_STATIC);
+    sqlite3_bind_text(st,11, geom_cond[0] ? geom_cond : NULL, -1, SQLITE_STATIC);
+    sqlite3_bind_text(st,12, lf_spec[0]   ? lf_spec   : NULL, -1, SQLITE_STATIC);
+    mean_f1>0 ? sqlite3_bind_double(st,13,mean_f1) : sqlite3_bind_null(st,13);
+    sqlite3_bind_int64(st,14,(sqlite3_int64)time(NULL));
     int rc = sqlite3_step(st); sqlite3_finalize(st);
-
-    if(rc != SQLITE_DONE) {
-        fprintf(stderr,"error: DB insert failed: %s\n", sqlite3_errmsg(db));
+    if(rc != SQLITE_DONE){
+        fprintf(stderr,"bonfyre-model: db insert failed: %s\n", sqlite3_errmsg(db));
         return 1;
     }
 
@@ -1144,6 +1169,137 @@ static int cmd_ls_cache(void) {
     snprintf(cmd, sizeof(cmd), "ls -lh '%s' 2>/dev/null || echo '(cache empty or not found)'", cache_dir);
     printf("Cache: %s\n\n", cache_dir);
     system(cmd); /* intentionally using system here — read-only ls */
+    return 0;
+}
+
+/* ====================================================================
+ * cmd_family — list all models belonging to a transform family
+ * ==================================================================== */
+static int cmd_family(sqlite3 *db, const char *family) {
+    sqlite3_stmt *st;
+    int rc;
+    if(family) {
+        rc = sqlite3_prepare_v2(db,
+            "SELECT id, name, geometry, geometry_condition, mean_f1, format "
+            "FROM models WHERE transform_family=? ORDER BY mean_f1 DESC",
+            -1, &st, NULL);
+        sqlite3_bind_text(st,1,family,-1,SQLITE_STATIC);
+    } else {
+        rc = sqlite3_prepare_v2(db,
+            "SELECT id, name, geometry, geometry_condition, mean_f1, format "
+            "FROM models WHERE transform_family IS NOT NULL ORDER BY transform_family, mean_f1 DESC",
+            -1, &st, NULL);
+    }
+    if(rc != SQLITE_OK) { fprintf(stderr,"error: %s\n",sqlite3_errmsg(db)); return 1; }
+    int count=0;
+    printf("%-36s  %-10s  %-12s  %-28s  %s\n",
+           "id","family","geometry","condition","mean_f1");
+    printf("%s\n","--------------------------------------------------------------------------------------------------");
+    while(sqlite3_step(st)==SQLITE_ROW) {
+        const char *id   = (const char*)sqlite3_column_text(st,0);
+        const char *geom = (const char*)sqlite3_column_text(st,2);
+        const char *cond = (const char*)sqlite3_column_text(st,3);
+        double f1        = sqlite3_column_double(st,4);
+        printf("%-36s  %-10s  %-12s  %-28s  %.3f\n",
+               id ? id : "",
+               family ? family : "",
+               geom ? geom : "—",
+               cond ? cond : "—",
+               f1);
+        count++;
+    }
+    sqlite3_finalize(st);
+    if(count==0) {
+        if(family) printf("no models found for family '%s'\n", family);
+        else       printf("no transform families registered\n");
+    }
+    return 0;
+}
+
+/* ====================================================================
+ * cmd_route — select best transform family for given corpus stats
+ *
+ * Reads a JSON file with corpus statistics (avg_doc_len, n_docs, etc.)
+ * and returns the model id + family with the highest mean_f1 whose
+ * geometry_condition passes.
+ *
+ * Condition evaluator: supports "avg_doc_len > N", "avg_doc_len < N",
+ * "avg_doc_len >= N", "avg_doc_len <= N", NULL (always passes).
+ * ==================================================================== */
+static double parse_stat(const char *json, const char *key) {
+    if(!json || !key) return -1.0;
+    /* find "key": <value> */
+    char pat[128]; snprintf(pat, sizeof(pat), "\"%s\"", key);
+    const char *p = strstr(json, pat);
+    if(!p) return -1.0;
+    p += strlen(pat);
+    while(*p==' '||*p==':') p++;
+    return atof(p);
+}
+
+static int eval_condition(const char *cond, const char *stats_json) {
+    if(!cond || cond[0]=='\0') return 1; /* no condition → always passes */
+    /* parse: "avg_doc_len > 500" */
+    char field[64]; char op[4]; double threshold;
+    if(sscanf(cond, "%63s %3s %lf", field, op, &threshold) != 3) return 1;
+    double val = parse_stat(stats_json, field);
+    if(val < 0) return 1; /* stat not present → pass (can't disqualify) */
+    if(strcmp(op,">")==0)  return val > threshold;
+    if(strcmp(op,">=")==0) return val >= threshold;
+    if(strcmp(op,"<")==0)  return val < threshold;
+    if(strcmp(op,"<=")==0) return val <= threshold;
+    if(strcmp(op,"==")==0) return val == threshold;
+    return 1;
+}
+
+static int cmd_route(sqlite3 *db, const char *stats_path) {
+    /* read stats JSON */
+    char *stats_json = NULL;
+    if(stats_path) {
+        FILE *f = fopen(stats_path, "r");
+        if(!f) { fprintf(stderr,"error: cannot open %s\n", stats_path); return 1; }
+        fseek(f,0,SEEK_END); long sz=ftell(f); fseek(f,0,SEEK_SET);
+        stats_json = malloc((size_t)sz+1);
+        if(!stats_json) { fclose(f); return 1; }
+        fread(stats_json, 1, (size_t)sz, f); fclose(f);
+        stats_json[sz]='\0';
+    }
+
+    /* query all transform families ordered by mean_f1 desc */
+    sqlite3_stmt *st;
+    sqlite3_prepare_v2(db,
+        "SELECT id, transform_family, geometry, geometry_condition, mean_f1 "
+        "FROM models WHERE transform_family IS NOT NULL "
+        "ORDER BY mean_f1 DESC",
+        -1, &st, NULL);
+
+    const char *best_id = NULL, *best_fam = NULL, *best_geom = NULL;
+    double best_f1 = -1.0;
+    char bid[256]={0}, bfam[64]={0}, bgeom[64]={0};
+
+    while(sqlite3_step(st)==SQLITE_ROW) {
+        const char *id   = (const char*)sqlite3_column_text(st,0);
+        const char *fam  = (const char*)sqlite3_column_text(st,1);
+        const char *geom = (const char*)sqlite3_column_text(st,2);
+        const char *cond = (const char*)sqlite3_column_text(st,3);
+        double f1        = sqlite3_column_double(st,4);
+        if(eval_condition(cond, stats_json)) {
+            snprintf(bid, sizeof(bid), "%s", id ? id : "");
+            snprintf(bfam, sizeof(bfam), "%s", fam ? fam : "");
+            snprintf(bgeom, sizeof(bgeom), "%s", geom ? geom : "");
+            best_f1 = f1;
+            best_id = bid; best_fam = bfam; best_geom = bgeom;
+            break; /* first (highest f1) passing = winner */
+        }
+    }
+    sqlite3_finalize(st);
+    free(stats_json);
+
+    if(!best_id) {
+        fprintf(stderr,"route: no eligible transform family found\n"); return 1;
+    }
+    printf("model_id=%s family=%s geometry=%s mean_f1=%.3f\n",
+           best_id, best_fam, best_geom, best_f1);
     return 0;
 }
 
@@ -1258,6 +1414,13 @@ int main(int argc, char **argv) {
         } else {
             fprintf(stderr,"unknown source subcommand: %s\n", argv[2]); ret=1;
         }
+
+    } else if(strcmp(cmd,"family")==0) {
+        ret = cmd_family(db, argc >= 3 ? argv[2] : NULL);
+
+    } else if(strcmp(cmd,"route")==0) {
+        if(argc < 3) { fprintf(stderr,"usage: bonfyre-model route <corpus_stats.json>\n"); ret=1; }
+        else ret = cmd_route(db, argv[2]);
 
     } else if(strcmp(cmd,"ls-cache")==0) {
         ret = cmd_ls_cache();
