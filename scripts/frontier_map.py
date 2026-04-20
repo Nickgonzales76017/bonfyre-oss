@@ -28,6 +28,25 @@ FAMILIES = {
     "T14": {"f1": 0.823, "geometry": "global",      "task": "topic-map",      "corpus": "cnn_dm",  "params": 99331,  "tier": "secondary"},
 }
 
+# ── Load domain families added by domain_pack.sh ──────────────────────────────
+_domain_meta = os.path.join(MODELS_DIR, "domain_families.json")
+if os.path.exists(_domain_meta):
+    try:
+        _extra = json.load(open(_domain_meta))
+        for _fid, _fm in _extra.items():
+            if _fid not in FAMILIES:
+                FAMILIES[_fid] = {
+                    "f1":       _fm.get("f1") or 0.0,
+                    "geometry": _fm.get("geometry", "domain"),
+                    "task":     _fm.get("task", "topic-map"),
+                    "corpus":   _fm.get("corpus", _fm.get("domain", "?")),
+                    "params":   _fm.get("params", 0),
+                    "tier":     _fm.get("tier", "candidate"),
+                }
+        print(f"[frontier_map] loaded {len(_extra)} domain families from domain_families.json")
+    except Exception as e:
+        print(f"[frontier_map] WARNING: could not load domain_families.json: {e}")
+
 # ── Pair use-case labels ───────────────────────────────────────────────────
 USE_CASES = {
     ("T04", "T15"): "cross-corpus global bridge (same task, different training set)",
@@ -43,6 +62,40 @@ USE_CASES = {
 }
 
 PAIRS = list(USE_CASES.keys())
+
+
+def get_use_case(a, b):
+    """Return use-case label, generating a default for domain pairs."""
+    uc = USE_CASES.get((a, b)) or USE_CASES.get((b, a))
+    if uc:
+        return uc
+    fa = FAMILIES.get(a, {})
+    fb = FAMILIES.get(b, {})
+    dom_a = fa.get("corpus", a)
+    dom_b = fb.get("corpus", b)
+    return f"{dom_a} → {dom_b} domain bridge"
+
+
+def all_pairs():
+    """Return all (a, b) pairs for which an alignment JSON exists."""
+    fixed = list(USE_CASES.keys())
+    seen = set(fixed) | {(b, a) for a, b in fixed}
+    # Scan for any additional align-XX-YY dirs (domain families)
+    extra = []
+    if os.path.isdir(MODELS_DIR):
+        for name in sorted(os.listdir(MODELS_DIR)):
+            if not name.startswith("align-"):
+                continue
+            parts = name[len("align-"):].split("-")
+            if len(parts) >= 2:
+                fa, fb = parts[0], parts[1]
+                if fa in FAMILIES and fb in FAMILIES:
+                    pair = (fa, fb)
+                    rev  = (fb, fa)
+                    if pair not in seen and rev not in seen:
+                        extra.append(pair)
+                        seen.add(pair)
+    return fixed + extra
 
 
 def run_eval(family_a, align_json):
@@ -83,7 +136,7 @@ print(f"{'A':<4}  {'B':<4}  {'geom_A':<11}  {'geom_B':<12}  "
       f"{'anch':<5}  {'cos_mean':<8}  {'proc':<6}  use case")
 print("─" * 100)
 
-for a_orig, b_orig in PAIRS:
+for a_orig, b_orig in all_pairs():
     a, b, align_json = find_align_json(a_orig, b_orig)
 
     if align_json is None:
@@ -99,9 +152,9 @@ for a_orig, b_orig in PAIRS:
     proc = run_eval(a, align_json)
     proc_str = f"{proc:.4f}" if proc is not None else "n/a"
 
-    fa = FAMILIES[a]
-    fb = FAMILIES[b]
-    uc = USE_CASES.get((a_orig, b_orig), USE_CASES.get((b_orig, a_orig), "cross-family"))
+    fa = FAMILIES.get(a, {})
+    fb = FAMILIES.get(b, {})
+    uc = get_use_case(a_orig, b_orig)
 
     print(f"{a:<4}  {b:<4}  {fa['geometry']:<11}  {fb['geometry']:<12}  "
           f"{n_anchors:<5}  {cos_mean:<8.4f}  {proc_str:<6}  {uc}")

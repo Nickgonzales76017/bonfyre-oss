@@ -268,6 +268,8 @@ def main():
                     help="Enable mid-loop family escalation on confidence drop (requires --conf-exit)")
     ap.add_argument("--escalate-drop", type=float, default=0.05,
                     help="Avg-confidence drop threshold that triggers escalation (default: 0.05)")
+    ap.add_argument("--metrics-out",  default=None,
+                    help="Write run metrics JSON to this path (appends if file exists as array)")
     args = ap.parse_args()
 
     texts = list(args.texts)
@@ -288,6 +290,58 @@ def main():
     use_frag   = not args.no_fragment and os.path.exists(frag_bqfp)
     frontier_path = os.path.join(models_dir, "frontier.json")
     onnx_path = args.onnx_model or "/tmp/bonfyre-72/runs/T04-C-ag_news-1000/train/model.onnx"
+
+    # Metrics event accumulator — populated throughout the run
+    _metrics = {
+        "schema":            "bonfyre-metrics-v1",
+        "n_inputs":          0,
+        "routed_family":     None,
+        "fragment_exit":     False,
+        "early_exit_iter":   None,
+        "full_loop":         False,
+        "escalations":       [],
+        "iterations_ran":    0,
+        "avg_confidence":    None,
+        "min_confidence":    None,
+        "avg_latency_ms":    None,
+        "labels":            [],
+        "confidences":       [],
+        "args": {
+            "loop":          args.loop,
+            "chain":         args.chain,
+            "frag_exit":     args.frag_exit,
+            "conf_exit":     args.conf_exit,
+            "escalate":      args.escalate,
+            "escalate_drop": args.escalate_drop,
+        },
+    }
+
+    def _emit_metrics(final_labels=None, final_confs=None):
+        """Write metrics to args.metrics_out (JSON array, append-safe)."""
+        import time
+        if not args.metrics_out:
+            return
+        if final_labels:
+            _metrics["labels"] = final_labels
+        if final_confs:
+            _metrics["confidences"] = [round(c, 4) if c else None for c in final_confs]
+            valids = [c for c in final_confs if c is not None]
+            if valids:
+                _metrics["avg_confidence"] = round(sum(valids)/len(valids), 4)
+                _metrics["min_confidence"] = round(min(valids), 4)
+        _metrics["timestamp"] = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+        path = args.metrics_out
+        # Append-safe: maintain a JSON array of runs
+        try:
+            existing = json.load(open(path))
+            if not isinstance(existing, list):
+                existing = [existing]
+        except Exception:
+            existing = []
+        existing.append(_metrics)
+        with open(path, "w") as f:
+            json.dump(existing, f, indent=2)
+        print(f"  metrics → {path}  ({len(existing)} run(s) recorded)")
 
     print("=" * 72)
     print(" BONFYRE  end-to-end demo")
@@ -324,6 +378,8 @@ def main():
         # fragment origin is T04 (T04-frag preflight) — use as frontier context
         from_fam = "T04" if use_frag else None
         routed_family, cosine_bias = route(stats_path, frontier_path, from_fam)
+        _metrics["n_inputs"]      = len(texts)
+        _metrics["routed_family"] = routed_family
         print(f"     n_docs={stats['n_docs']}  avg_doc_len={stats['avg_doc_len']}"
               f"  vocab={stats['vocab_size']}")
         bias_str = f"  cosine_bias={cosine_bias:.4f}" if cosine_bias else ""
@@ -351,6 +407,11 @@ def main():
                           f"  threshold={args.frag_exit*100:.0f}%", end="")
                     if min_conf >= args.frag_exit:
                         print("  ← FRAGMENT EXIT\n")
+                        _metrics["fragment_exit"] = True
+                        _metrics["iterations_ran"] = 0
+                        lbls = [r[0] for r in frag_onnx]
+                        cfs  = [r[1] for r in frag_onnx]
+                        _emit_metrics(lbls, cfs)
                         print("=" * 72)
                         print(" RESULTS  (fragment-only, 0 loop iterations)")
                         print("=" * 72)
@@ -437,6 +498,8 @@ def main():
                                             f"  → ESCALATE {current_family}→{next_fam}"
                                             f" (conf {prev_conf_avg*100:.1f}%→{avg_c*100:.1f}%)"
                                         )
+                                        _metrics["escalations"].append(
+                                            f"{current_family}→{next_fam}")
                                         current_family = next_fam
                                         cur_chain = "auto"
                             if esc_msg:
@@ -460,11 +523,14 @@ def main():
                     break
             auto_out = step_out
             iters    = all_iters
+            _metrics["iterations_ran"] = exit_iter if exit_iter is not None else args.loop
             if exit_iter is not None:
+                _metrics["early_exit_iter"] = exit_iter
                 saved = args.loop - exit_iter
                 print(f"\n     early exit at iter {exit_iter}  "
                       f"({saved} loop iteration(s) saved)")
             else:
+                _metrics["full_loop"] = True
                 print(f"\n     no early exit — ran all {args.loop} iterations")
         else:
             # ── Standard path (full loop) ─────────────────────────────────────
@@ -473,6 +539,8 @@ def main():
                 models_dir, args.loop, active_chain, args.fpqx, args.thresh
             )
             iters = parse_iter_log(log)
+            _metrics["iterations_ran"] = len(iters)
+            _metrics["full_loop"] = True
             has_preflight = "preflight:" in log
             if has_preflight:
                 fam = routed_family
@@ -512,6 +580,7 @@ def main():
         avg_final_cos  = sum(final_cos_vals) / len(final_cos_vals)
 
         # ── Summary ───────────────────────────────────────────────────
+        _emit_metrics(labels, confs)
         print("=" * 72)
         print(" RESULTS")
         print("=" * 72)
