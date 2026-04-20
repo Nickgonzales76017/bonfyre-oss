@@ -1,0 +1,51 @@
+{
+  "code": "T08-C",
+  "name": "Risk Classifier Collapse (Calibration)",
+  "version": "1.0.0",
+  "description": "Calibration variant. HuggingFace distilbert sentiment pipeline → binary risk labels (high/low) → collapse to ONNX risk-score student. Tests classifier-fusion collapse family.",
+  "stages": [
+    {
+      "id": "embed",
+      "bin": "python3",
+      "args": [
+        "scripts/synth_teacher_embed.py",
+        "{input}",
+        "{out}/embed",
+        "--model", "all-MiniLM-L6-v2"
+      ],
+      "depends_on": []
+    },
+    {
+      "id": "risk",
+      "bin": "python3",
+      "args": [
+        "scripts/synth_teacher_sentiment.py",
+        "{input}",
+        "{out}/risk"
+      ],
+      "depends_on": []
+    },
+    {
+      "id": "train",
+      "bin": "python3",
+      "args": [
+        "scripts/collapse_train.py",
+        "--task",      "risk-score",
+        "--embed-dir", "{out}/embed",
+        "--risk-dir",  "{out}/risk",
+        "--out",       "{out}/train",
+        "--calibration"
+      ],
+      "depends_on": ["embed", "risk"]
+    },
+    {
+      "id": "finalize",
+      "bin": "python3",
+      "args": [
+        "scripts/finalize_artifact.py",
+        "{out}/train"
+      ],
+      "depends_on": ["train"]
+    }
+  ]
+}

@@ -1,0 +1,42 @@
+{
+  "code": "T16-C",
+  "name": "Paragraph Boundary Collapse (Calibration)",
+  "version": "1.0.0",
+  "description": "Calibration wildcard. Uses bonfyre-paragraph (with fallback) to split docs into paragraph chunks, embeds with MiniLM + MPNet, trains chunk-boundary student on paragraph-level cosine similarity drops. Tests whether explicit structural segmentation improves boundary collapse vs document-level T07.",
+  "stages": [
+    {
+      "id": "para-embed",
+      "bin": "python3",
+      "args": [
+        "scripts/synth_teacher_paragraphs.py",
+        "{input}",
+        "{out}/para",
+        "--model-a", "all-MiniLM-L6-v2",
+        "--model-b", "all-mpnet-base-v2"
+      ],
+      "depends_on": []
+    },
+    {
+      "id": "train",
+      "bin": "python3",
+      "args": [
+        "scripts/collapse_train.py",
+        "--task",        "chunk-boundary",
+        "--embed-dir-a", "{out}/para/embed-a",
+        "--embed-dir-b", "{out}/para/embed-b",
+        "--out",         "{out}/train",
+        "--calibration"
+      ],
+      "depends_on": ["para-embed"]
+    },
+    {
+      "id": "finalize",
+      "bin": "python3",
+      "args": [
+        "scripts/finalize_artifact.py",
+        "{out}/train"
+      ],
+      "depends_on": ["train"]
+    }
+  ]
+}

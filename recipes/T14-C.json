@@ -1,0 +1,39 @@
+{
+  "code": "T14-C",
+  "name": "NER Consensus Collapse (Calibration)",
+  "version": "1.0.0",
+  "description": "Calibration variant of T14. HuggingFace dslim/bert-base-NER (with regex fallback) produces per-sentence BIO labels → collapse to ONNX ner-bio student. Tests entity-extraction collapse family.",
+  "stages": [
+    {
+      "id": "ner",
+      "bin": "python3",
+      "args": [
+        "scripts/synth_teacher_ner.py",
+        "{input}",
+        "{out}/ner"
+      ],
+      "depends_on": []
+    },
+    {
+      "id": "train",
+      "bin": "python3",
+      "args": [
+        "scripts/collapse_train.py",
+        "--task",      "ner-bio",
+        "--consensus", "{out}/ner/consensus.jsonl",
+        "--out",       "{out}/train",
+        "--calibration"
+      ],
+      "depends_on": ["ner"]
+    },
+    {
+      "id": "finalize",
+      "bin": "python3",
+      "args": [
+        "scripts/finalize_artifact.py",
+        "{out}/train"
+      ],
+      "depends_on": ["train"]
+    }
+  ]
+}

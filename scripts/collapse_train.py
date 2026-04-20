@@ -115,6 +115,43 @@ class RiskHead(nn.Module):
 
 
 # ── data loaders ───────────────────────────────────────────────────────────────
+def load_risk_embed(embed_dir: str, risk_dir: str):
+    """
+    Load embeddings + per-doc risk labels.
+    risk_dir contains per-doc JSON: {"risk": "high"|"low", "score": float}
+    Returns (embeddings: np.array [N, 384], labels: np.array [N]  {0=low, 1=high})
+    """
+    emb_map  = {}
+    for fname in sorted(os.listdir(embed_dir)):
+        if not fname.endswith(".json"):
+            continue
+        with open(os.path.join(embed_dir, fname)) as f:
+            obj = json.load(f)
+        vec = obj.get("embedding") or obj.get("vector")
+        if vec:
+            emb_map[fname[:-5]] = np.array(vec, dtype=np.float32)
+
+    risk_map = {}
+    for fname in sorted(os.listdir(risk_dir)):
+        if not fname.endswith(".json"):
+            continue
+        with open(os.path.join(risk_dir, fname)) as f:
+            obj = json.load(f)
+        label = obj.get("risk", "low")
+        risk_map[fname[:-5]] = 1 if label == "high" else 0
+
+    stems = sorted(set(emb_map) & set(risk_map))
+    if not stems:
+        sys.exit("[collapse_train] no matching stems between embed-dir and risk-dir")
+
+    n_high = sum(risk_map[s] for s in stems)
+    print(f"[collapse_train] risk-score: {len(stems)} samples, "
+          f"{n_high} high-risk ({100*n_high/len(stems):.1f}%)")
+    embeddings = np.stack([emb_map[s] for s in stems])
+    labels     = np.array([risk_map[s] for s in stems], dtype=np.int64)
+    return embeddings, labels
+
+
 def load_tag_embed(tag_dir: str, embed_dir: str):
     """
     Load bonfyre-tag output (tags.json) and bonfyre-embed output (*.json)
@@ -391,6 +428,7 @@ def main():
     p.add_argument("--embed-dir-a",   default=None)
     p.add_argument("--embed-dir-b",   default=None)
     p.add_argument("--consensus",     default=None)
+    p.add_argument("--risk-dir",      default=None)
     p.add_argument("--epochs",        type=int, default=EPOCHS)
     p.add_argument("--calibration",   action="store_true",
                    help="calibration mode: skip pass/fail gate, emit full profile")
@@ -438,7 +476,14 @@ def main():
         input_dim = EMBED_DIM
 
     elif task == "risk-score":
-        sys.exit("risk-score not yet implemented — contribute via T08 recipe")
+        if not args.embed_dir or not args.risk_dir:
+            sys.exit("--embed-dir and --risk-dir required for risk-score")
+        X_np, y_np = load_risk_embed(args.embed_dir, args.risk_dir)
+        head    = RiskHead().to(DEVICE)
+        loss_fn = nn.CrossEntropyLoss()
+        X       = torch.tensor(X_np)
+        y       = torch.tensor(y_np)
+        input_dim = EMBED_DIM
 
     teacher_elapsed = time.perf_counter() - teacher_t0
 
