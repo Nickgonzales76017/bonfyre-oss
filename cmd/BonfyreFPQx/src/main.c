@@ -38,7 +38,7 @@
 #include <time.h>
 #include <sys/stat.h>
 
-#define VERSION    "1.0.0"
+#define VERSION    "1.1.0"
 #define TILE_DIM   16
 #define MAX_TILES  256
 #define MAX_PATH   4096
@@ -178,7 +178,6 @@ static int find_anchors(const BqfpSummary *sa, const BqfpSummary *sb,
         anchors[n_anchors].cosine = best_cos;
         used_a[best_ia] = used_b[best_ib] = 1;
         n_anchors++;
-        if (best_cos < 0.5f) break; /* stop pairing dissimilar tiles */
     }
     /* Sort by cosine descending */
     qsort(anchors, (size_t)n_anchors, sizeof(Anchor), anchor_cmp);
@@ -186,79 +185,125 @@ static int find_anchors(const BqfpSummary *sa, const BqfpSummary *sb,
 }
 
 /* ═══════════════════════════════════════════════════════════════════
- * Least-squares alignment matrix (16×16)
- * Solves: minimize ||B_anchors - A × A_anchors||_F
- * using simple closed-form: A_align = B^T (A^T A)^{-1} A^T ... or
- * gradient descent for the symmetric 16×16 case.
+ * One-sided Jacobi SVD for TILE_DIM × TILE_DIM matrix.
+ * Decomposes H → U Σ V^T where U,V are orthogonal.
  *
- * For simplicity: compute the "rotation" as the outer-product average
- *   A_align = (1/n) Σ b_i ⊗ a_i  — diagonal scaled Procrustes approx.
+ * Algorithm: apply Jacobi column-pair rotations to H from the right,
+ * accumulating V.  After convergence, columns of H are orthogonal (= U*Σ).
  * ═══════════════════════════════════════════════════════════════════ */
+static void jacobi_svd16(float H[TILE_DIM][TILE_DIM],
+                          float U[TILE_DIM][TILE_DIM],
+                          float V[TILE_DIM][TILE_DIM]) {
+    const int n = TILE_DIM;
+    float A[TILE_DIM][TILE_DIM];
+    memcpy(A, H, sizeof(A));
+    memset(V, 0, sizeof(float) * (size_t)(n * n));
+    for (int i = 0; i < n; i++) V[i][i] = 1.0f;
 
+    for (int sweep = 0; sweep < 30; sweep++) {
+        float total_off = 0.0f;
+        for (int p = 0; p < n-1; p++) {
+            for (int q = p+1; q < n; q++) {
+                float cpp = 0, cqq = 0, cpq = 0;
+                for (int i = 0; i < n; i++) {
+                    cpp += A[i][p] * A[i][p];
+                    cqq += A[i][q] * A[i][q];
+                    cpq += A[i][p] * A[i][q];
+                }
+                total_off += cpq * cpq;
+                float tol = 1e-9f * sqrtf(cpp * cqq + 1e-30f);
+                if (fabsf(cpq) <= tol) continue;
+                float tau = (cqq - cpp) / (2.0f * cpq);
+                float t   = (tau >= 0.0f)
+                            ? 1.0f / (tau + sqrtf(1.0f + tau * tau))
+                            : 1.0f / (tau - sqrtf(1.0f + tau * tau));
+                float c   = 1.0f / sqrtf(1.0f + t * t);
+                float s   = t * c;
+                for (int i = 0; i < n; i++) {
+                    float ap = A[i][p], aq = A[i][q];
+                    A[i][p] =  c * ap - s * aq;
+                    A[i][q] =  s * ap + c * aq;
+                }
+                for (int i = 0; i < n; i++) {
+                    float vp = V[i][p], vq = V[i][q];
+                    V[i][p] =  c * vp - s * vq;
+                    V[i][q] =  s * vp + c * vq;
+                }
+            }
+        }
+        if (total_off < 1e-18f) break;
+    }
+
+    /* Normalise columns of A to get U; column norms are singular values */
+    for (int j = 0; j < n; j++) {
+        float norm = 0.0f;
+        for (int i = 0; i < n; i++) norm += A[i][j] * A[i][j];
+        norm = sqrtf(norm);
+        if (norm > 1e-10f) {
+            for (int i = 0; i < n; i++) U[i][j] = A[i][j] / norm;
+        } else {
+            for (int i = 0; i < n; i++) U[i][j] = (i == j) ? 1.0f : 0.0f;
+        }
+    }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+ * Orthogonal Procrustes alignment matrix (16×16)
+ *
+ * Given anchor pairs (a_i ∈ R^16, b_i ∈ R^16), find the orthogonal
+ * rotation R = argmin_R ||B - A R^T||_F  s.t.  R R^T = I
+ *
+ * Solution (Schönemann 1966):
+ *   H = A^T B   (weighted cross-product)
+ *   H = U Σ V^T  (SVD)
+ *   R = V U^T
+ *
+ * Compared to unconstrained least squares: R preserves angles and
+ * norms between tiles — no shearing or scaling artefacts.
+ * ═══════════════════════════════════════════════════════════════════ */
 static void compute_alignment_matrix(const BqfpSummary *sa, const BqfpSummary *sb,
                                       const Anchor *anchors, int n_anchors,
-                                      float *mat /* TILE_DIM × TILE_DIM */) {
-    /* Zero matrix */
+                                      float *mat /* TILE_DIM × TILE_DIM output */) {
     memset(mat, 0, TILE_DIM * TILE_DIM * sizeof(float));
 
     if (n_anchors == 0) {
-        /* Identity fallback */
         for (int i = 0; i < TILE_DIM; i++) mat[i * TILE_DIM + i] = 1.0f;
         return;
     }
 
-    /* Compute A^T A and A^T B */
-    float AtA[TILE_DIM * TILE_DIM] = {0};
-    float AtB[TILE_DIM * TILE_DIM] = {0};
-
+    /* Weighted cross-product H = A^T B (TILE_DIM × TILE_DIM) */
+    float H[TILE_DIM][TILE_DIM];
+    memset(H, 0, sizeof(H));
+    float w_total = 0.0f;
     for (int k = 0; k < n_anchors; k++) {
-        const float *a_vec = sa->codebook + anchors[k].ia * TILE_DIM;
-        const float *b_vec = sb->codebook + anchors[k].ib * TILE_DIM;
-        float w = anchors[k].cosine; /* weight by quality */
-        for (int i = 0; i < TILE_DIM; i++) {
-            for (int j = 0; j < TILE_DIM; j++) {
-                AtA[i * TILE_DIM + j] += w * a_vec[i] * a_vec[j];
-                AtB[i * TILE_DIM + j] += w * a_vec[i] * b_vec[j];
-            }
-        }
+        const float *av = sa->codebook + anchors[k].ia * TILE_DIM;
+        const float *bv = sb->codebook + anchors[k].ib * TILE_DIM;
+        float w = anchors[k].cosine > 0.0f ? anchors[k].cosine : 0.0f;
+        w_total += w;
+        for (int i = 0; i < TILE_DIM; i++)
+            for (int j = 0; j < TILE_DIM; j++)
+                H[i][j] += w * av[i] * bv[j];
+    }
+    /* Normalise so conditioning doesn't depend on anchor count */
+    if (w_total > 1e-12f) {
+        float inv = 1.0f / w_total;
+        for (int i = 0; i < TILE_DIM; i++)
+            for (int j = 0; j < TILE_DIM; j++)
+                H[i][j] *= inv;
     }
 
-    /* Solve (A^T A) × M = A^T B via Gauss-Jordan on 16×16 */
-    /* Augment [AtA | AtB] → [I | M] */
-    float aug[TILE_DIM][2 * TILE_DIM];
-    for (int i = 0; i < TILE_DIM; i++) {
-        for (int j = 0; j < TILE_DIM; j++) {
-            aug[i][j] = AtA[i * TILE_DIM + j];
-            aug[i][j + TILE_DIM] = AtB[i * TILE_DIM + j];
-        }
-        /* Regularization: prevent singular matrix */
-        aug[i][i] += 1e-6f;
-    }
+    /* SVD: H = U Σ V^T via one-sided Jacobi */
+    float U[TILE_DIM][TILE_DIM], V[TILE_DIM][TILE_DIM];
+    jacobi_svd16(H, U, V);
 
-    for (int col = 0; col < TILE_DIM; col++) {
-        /* Partial pivot */
-        int pivot = col;
-        for (int r = col+1; r < TILE_DIM; r++)
-            if (fabsf(aug[r][col]) > fabsf(aug[pivot][col])) pivot = r;
-        if (pivot != col) {
-            for (int c = 0; c < 2*TILE_DIM; c++) {
-                float tmp = aug[col][c]; aug[col][c] = aug[pivot][c]; aug[pivot][c] = tmp;
-            }
-        }
-        float diag = aug[col][col];
-        if (fabsf(diag) < 1e-12f) continue;
-        for (int c = 0; c < 2*TILE_DIM; c++) aug[col][c] /= diag;
-        for (int r = 0; r < TILE_DIM; r++) {
-            if (r == col) continue;
-            float f = aug[r][col];
-            for (int c = 0; c < 2*TILE_DIM; c++) aug[r][c] -= f * aug[col][c];
-        }
-    }
-
-    /* Extract M from right half */
+    /* Orthogonal Procrustes solution: R = V U^T */
+    /* mat[i][j] = Σ_k V[i][k] * U[j][k] */
     for (int i = 0; i < TILE_DIM; i++)
-        for (int j = 0; j < TILE_DIM; j++)
-            mat[i * TILE_DIM + j] = aug[i][j + TILE_DIM];
+        for (int j = 0; j < TILE_DIM; j++) {
+            float s = 0.0f;
+            for (int k = 0; k < TILE_DIM; k++) s += V[i][k] * U[j][k];
+            mat[i * TILE_DIM + j] = s;
+        }
 }
 
 /* ═══════════════════════════════════════════════════════════════════
