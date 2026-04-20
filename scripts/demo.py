@@ -97,16 +97,18 @@ def embed_texts(texts):
 
 # ── Route via bonfyre-model ───────────────────────────────────────────────
 
-def route(stats_path):
-    result = subprocess.run(
-        [MODEL_BIN, "route", stats_path],
-        capture_output=True, text=True
-    )
+def route(stats_path, frontier_path=None, from_family=None):
+    cmd = [MODEL_BIN, "route", stats_path]
+    if frontier_path and os.path.exists(frontier_path) and from_family:
+        cmd += ["--frontier", frontier_path, "--from", from_family]
+    result = subprocess.run(cmd, capture_output=True, text=True)
     out = result.stdout.strip()
+    family = "T04"
+    cosine_bias = None
     for tok in out.split():
-        if tok.startswith("family="):
-            return tok[7:]
-    return "T04"  # safe default
+        if tok.startswith("family="):      family      = tok[7:]
+        if tok.startswith("cosine_bias="): cosine_bias = float(tok[12:])
+    return family, cosine_bias
 
 
 # ── Run bonfyre-sli run ───────────────────────────────────────────────────
@@ -168,24 +170,31 @@ def parse_iter_log(log):
     return lines
 
 
-# ── Classify from final vectors ───────────────────────────────────────────
+# ── Classify via ONNX head (true logits) ─────────────────────────────────
 
-def classify(vecs, family, n_originals):
+def classify_onnx(embs, onnx_path):
     """
-    Attempt a crude classification: reduce 16-dim SLI output to label.
-    SLI operates on projected-down 16-dim tiles, not raw logits —
-    we use the argmax of the first 4 dims as a proxy label, or
-    chunk-boundary if family is T16.
+    Run true ONNX forward pass on 384-dim embeddings.
+    Returns list of (label, confidence) or None if unavailable.
     """
+    try:
+        import onnxruntime as ort
+        import numpy as np
+    except ImportError:
+        return None
+    if not os.path.exists(onnx_path):
+        return None
+    sess = ort.InferenceSession(onnx_path, providers=["CPUExecutionProvider"])
+    input_name = sess.get_inputs()[0].name
+    data = np.array(embs, dtype=np.float32)
+    logits = sess.run(None, {input_name: data})[0]  # [n, n_classes]
+    # softmax
+    exp_l = np.exp(logits - logits.max(axis=1, keepdims=True))
+    probs  = exp_l / exp_l.sum(axis=1, keepdims=True)
     results = []
-    for i, v in enumerate(vecs[:n_originals]):
-        if family == "T16":
-            label_map = CHUNK_LABELS
-            idx = int(v[0] > 0)
-        else:
-            label_map = TOPIC_LABELS
-            idx = argmax(v[:4])
-        results.append(label_map.get(idx, f"class_{idx}"))
+    for p in probs:
+        idx = int(p.argmax())
+        results.append((TOPIC_LABELS.get(idx, f"class_{idx}"), float(p[idx])))
     return results
 
 
@@ -202,6 +211,8 @@ def main():
     ap.add_argument("--fpqx",       default="auto")
     ap.add_argument("--no-fragment", action="store_true",
                     help="Skip fragment pre-process step")
+    ap.add_argument("--onnx-model",  default=None,
+                    help="Path to ONNX classifier head (default: T04 ag_news-1000)")
     args = ap.parse_args()
 
     texts = list(args.texts)
@@ -220,6 +231,8 @@ def main():
     models_dir = args.models_dir
     frag_bqfp  = os.path.join(models_dir, "T04-frag.bqfp")
     use_frag   = not args.no_fragment and os.path.exists(frag_bqfp)
+    frontier_path = os.path.join(models_dir, "frontier.json")
+    onnx_path = args.onnx_model or "/tmp/bonfyre-72/runs/T04-C-ag_news-1000/train/model.onnx"
 
     print("=" * 72)
     print(" BONFYRE  end-to-end demo")
@@ -247,10 +260,13 @@ def main():
         stats_path = os.path.join(tmpdir, "stats.json")
         with open(stats_path, "w") as f:
             json.dump(stats, f)
-        routed_family = route(stats_path)
+        # fragment origin is T04 (T04-frag preflight) — use as frontier context
+        from_fam = "T04" if use_frag else None
+        routed_family, cosine_bias = route(stats_path, frontier_path, from_fam)
         print(f"     n_docs={stats['n_docs']}  avg_doc_len={stats['avg_doc_len']}"
               f"  vocab={stats['vocab_size']}")
-        print(f"     → routed to family: {routed_family}")
+        bias_str = f"  cosine_bias={cosine_bias:.4f}" if cosine_bias else ""
+        print(f"     → routed to family: {routed_family}{bias_str}")
         print()
 
         # ── 3. Fragment pre-process ─────────────────────────────────
@@ -311,8 +327,17 @@ def main():
         delta_trend = " → ".join(f"{d:.3f}" for d in deltas[:3]) + \
                       (" → … → " + f"{deltas[-1]:.3f}" if len(deltas) > 3 else "")
 
-        # ── 6. Classify ───────────────────────────────────────────────
-        labels = classify(final_vecs, final_family, len(texts))
+        # ── 6. Classify (ONNX head on raw 384-dim embeddings) ────────────────
+        onnx_results = classify_onnx(embs, onnx_path)
+        if onnx_results:
+            labels    = [r[0] for r in onnx_results]
+            confs     = [r[1] for r in onnx_results]
+            cls_source = "ONNX head"
+        else:
+            # proxy fallback: argmax over first 4 tile dims
+            labels = [TOPIC_LABELS.get(argmax(v[:4]), "?") for v in final_vecs[:len(texts)]]
+            confs  = [None] * len(labels)
+            cls_source = "proxy (tile argmax)"
 
         # ── 7. Per-iter cosine from raw input ─────────────────────────
         raw_vecs, _ = read_vecs(raw_path)
@@ -329,12 +354,15 @@ def main():
         print(f"  delta curve        : {delta_trend}")
         print(f"  raw→final cosine   : {avg_final_cos:.4f}"
               f"  (transform displacement from origin)")
+        print(f"  classifier         : {cls_source}")
         print()
-        print(f"  {'#':<4}  {'label':<12}  {'input text'}")
-        print("  " + "─" * 65)
+        conf_hdr = "  conf" if onnx_results else ""
+        print(f"  {'#':<4}  {'label':<12}{conf_hdr}  {'input text'}")
+        print("  " + "─" * 70)
         for i, (text, label) in enumerate(zip(texts, labels)):
-            excerpt = (text[:52] + "…") if len(text) > 55 else text
-            print(f"  {i+1:<4}  {label:<12}  {excerpt}")
+            excerpt = (text[:48] + "…") if len(text) > 51 else text
+            conf_s = f"  {confs[i]*100:5.1f}%" if confs[i] is not None else ""
+            print(f"  {i+1:<4}  {label:<12}{conf_s}  {excerpt}")
         print()
         print("=" * 72)
         print(" fragment  → full-model → aligned chain → looped convergence")

@@ -1258,7 +1258,42 @@ static int eval_condition(const char *cond, const char *stats_json) {
     return 1;
 }
 
-static int cmd_route(sqlite3 *db, const char *stats_path) {
+/* ====================================================================
+ * frontier_cosine — look up cosine_mean for a family pair from
+ * frontier.json.  Tries (fa→fb) first, then (fb→fa).  Returns -1.0
+ * when the pair is not found.
+ * ==================================================================== */
+static double frontier_cosine(const char *json, const char *fa, const char *fb) {
+    if (!json || !fa || !fb) return -1.0;
+    for (int swap = 0; swap < 2; swap++) {
+        const char *a = swap ? fb : fa;
+        const char *b = swap ? fa : fb;
+        char pat_a[128], pat_b[128];
+        snprintf(pat_a, sizeof(pat_a), "\"family_a\": \"%s\"", a);
+        snprintf(pat_b, sizeof(pat_b), "\"family_b\": \"%s\"", b);
+        const char *p = json;
+        while ((p = strstr(p, pat_a)) != NULL) {
+            size_t rem = strlen(p);
+            size_t wlen = rem < 600 ? rem : 600;
+            char window[700];
+            memcpy(window, p, wlen);
+            window[wlen] = '\0';
+            if (strstr(window, pat_b)) {
+                const char *cm = strstr(window, "\"cosine_mean\":");
+                if (cm) {
+                    cm += strlen("\"cosine_mean\":");
+                    while (*cm == ' ') cm++;
+                    return atof(cm);
+                }
+            }
+            p++;
+        }
+    }
+    return -1.0;
+}
+
+static int cmd_route(sqlite3 *db, const char *stats_path,
+                     const char *frontier_path, const char *from_family) {
     /* read stats JSON */
     char *stats_json = NULL;
     if(stats_path) {
@@ -1271,7 +1306,24 @@ static int cmd_route(sqlite3 *db, const char *stats_path) {
         stats_json[sz]='\0';
     }
 
-    /* query all transform families ordered by mean_f1 desc */
+    /* optionally load frontier JSON for cosine-weighted scoring */
+    char *frontier_json = NULL;
+    if (frontier_path) {
+        FILE *ff = fopen(frontier_path, "r");
+        if (ff) {
+            fseek(ff,0,SEEK_END); long fsz=ftell(ff); fseek(ff,0,SEEK_SET);
+            frontier_json = malloc((size_t)fsz+1);
+            if (frontier_json) {
+                fread(frontier_json, 1, (size_t)fsz, ff);
+                frontier_json[fsz] = '\0';
+            }
+            fclose(ff);
+        }
+    }
+    int   use_frontier = (frontier_json && from_family && from_family[0]);
+    const double FRONTIER_W = 0.30; /* 70% f1, 30% cosine_mean */
+
+    /* query all transform families; score each candidate */
     sqlite3_stmt *st;
     sqlite3_prepare_v2(db,
         "SELECT id, transform_family, geometry, geometry_condition, mean_f1 "
@@ -1279,9 +1331,8 @@ static int cmd_route(sqlite3 *db, const char *stats_path) {
         "ORDER BY mean_f1 DESC",
         -1, &st, NULL);
 
-    const char *best_id = NULL, *best_fam = NULL, *best_geom = NULL;
-    double best_f1 = -1.0;
     char bid[256]={0}, bfam[64]={0}, bgeom[64]={0};
+    double best_score = -1.0, best_f1 = -1.0, best_cos = -1.0;
 
     while(sqlite3_step(st)==SQLITE_ROW) {
         const char *id   = (const char*)sqlite3_column_text(st,0);
@@ -1289,23 +1340,38 @@ static int cmd_route(sqlite3 *db, const char *stats_path) {
         const char *geom = (const char*)sqlite3_column_text(st,2);
         const char *cond = (const char*)sqlite3_column_text(st,3);
         double f1        = sqlite3_column_double(st,4);
-        if(eval_condition(cond, stats_json)) {
-            snprintf(bid, sizeof(bid), "%s", id ? id : "");
-            snprintf(bfam, sizeof(bfam), "%s", fam ? fam : "");
+        if (!eval_condition(cond, stats_json)) continue;
+
+        double cos_val = -1.0;
+        double score   = f1;
+        if (use_frontier && fam) {
+            cos_val = frontier_cosine(frontier_json, from_family, fam);
+            if (cos_val >= 0.0)
+                score = (1.0 - FRONTIER_W) * f1 + FRONTIER_W * cos_val;
+        }
+        if (score > best_score) {
+            best_score = score;
+            best_f1    = f1;
+            best_cos   = cos_val;
+            snprintf(bid,   sizeof(bid),   "%s", id   ? id   : "");
+            snprintf(bfam,  sizeof(bfam),  "%s", fam  ? fam  : "");
             snprintf(bgeom, sizeof(bgeom), "%s", geom ? geom : "");
-            best_f1 = f1;
-            best_id = bid; best_fam = bfam; best_geom = bgeom;
-            break; /* first (highest f1) passing = winner */
         }
     }
     sqlite3_finalize(st);
     free(stats_json);
+    free(frontier_json);
 
-    if(!best_id) {
+    if (!bid[0]) {
         fprintf(stderr,"route: no eligible transform family found\n"); return 1;
     }
-    printf("model_id=%s family=%s geometry=%s mean_f1=%.3f\n",
-           best_id, best_fam, best_geom, best_f1);
+    if (use_frontier && best_cos >= 0.0) {
+        printf("model_id=%s family=%s geometry=%s mean_f1=%.3f cosine_bias=%.4f\n",
+               bid, bfam, bgeom, best_f1, best_cos);
+    } else {
+        printf("model_id=%s family=%s geometry=%s mean_f1=%.3f\n",
+               bid, bfam, bgeom, best_f1);
+    }
     return 0;
 }
 
@@ -1425,8 +1491,17 @@ int main(int argc, char **argv) {
         ret = cmd_family(db, argc >= 3 ? argv[2] : NULL);
 
     } else if(strcmp(cmd,"route")==0) {
-        if(argc < 3) { fprintf(stderr,"usage: bonfyre-model route <corpus_stats.json>\n"); ret=1; }
-        else ret = cmd_route(db, argv[2]);
+        if(argc < 3) {
+            fprintf(stderr,"usage: bonfyre-model route <corpus_stats.json> "
+                          "[--frontier <path>] [--from <family>]\n"); ret=1;
+        } else {
+            const char *frontier_path = NULL, *from_family = NULL;
+            for(int i = 3; i < argc; i++) {
+                if(strcmp(argv[i],"--frontier")==0 && i+1<argc) frontier_path = argv[++i];
+                else if(strcmp(argv[i],"--from")==0 && i+1<argc) from_family = argv[++i];
+            }
+            ret = cmd_route(db, argv[2], frontier_path, from_family);
+        }
 
     } else if(strcmp(cmd,"ls-cache")==0) {
         ret = cmd_ls_cache();
