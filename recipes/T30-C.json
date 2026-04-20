@@ -1,0 +1,54 @@
+{
+  "code": "T30-C",
+  "name": "Short-Form ASR Collapse — Clean (Calibration)",
+  "version": "1.0.0",
+  "description": "Calibration recipe for the S01 short-form clean ASR family. Takes a directory of .wav files (+ optional ground-truth .txt transcripts). Stage 1 runs Whisper to transcribe each file and assigns a 3-class confidence label (clear/ambiguous/noisy) from segment-level avg_logprob; it also writes .txt transcript files into the audio-corpus dir so Stage 2 can embed them. Stage 3 trains a MiniLM-MLP student (topic-map task) on the confidence labels, producing an ONNX head that routes audio-derived transcripts through the ASR adaptive ladder (fragment-only → early-exit → escalation). Whisper model defaults to 'base' — override with WHISPER_MODEL env var.",
+  "stages": [
+    {
+      "id": "transcribe",
+      "bin": "python3",
+      "args": [
+        "scripts/synth_teacher_asr.py",
+        "{input}",
+        "{out}/tag",
+        "--model", "${WHISPER_MODEL:-base}",
+        "--device", "${WHISPER_DEVICE:-cpu}",
+        "--lang", "en"
+      ],
+      "depends_on": []
+    },
+    {
+      "id": "embed",
+      "bin": "python3",
+      "args": [
+        "scripts/synth_teacher_embed.py",
+        "{input}",
+        "{out}/embed",
+        "--model", "all-MiniLM-L6-v2"
+      ],
+      "depends_on": ["transcribe"]
+    },
+    {
+      "id": "train",
+      "bin": "python3",
+      "args": [
+        "scripts/collapse_train.py",
+        "--task",      "topic-map",
+        "--tag-dir",   "{out}/tag",
+        "--embed-dir", "{out}/embed",
+        "--out",       "{out}/train",
+        "--calibration"
+      ],
+      "depends_on": ["transcribe", "embed"]
+    },
+    {
+      "id": "finalize",
+      "bin": "python3",
+      "args": [
+        "scripts/finalize_artifact.py",
+        "{out}/train"
+      ],
+      "depends_on": ["train"]
+    }
+  ]
+}

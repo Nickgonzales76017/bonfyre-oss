@@ -55,8 +55,28 @@ FAMILY_HEADS = {
         "n_class": 6,
         "labels": {0: "Politics", 1: "Tech", 2: "Business", 3: "Health", 4: "World", 5: "Sports"},
     },
+    # ── Speech ASR families (populated once speech_pack.sh has run) ──────
+    # S01: short-form clean ASR (T30-C collapse on librispeech_clean)
+    "S01": {
+        "path": "/tmp/bonfyre-speech/librispeech_clean-500/run/train/model.onnx",
+        "n_class": 3,
+        "labels": {0: "ambiguous", 1: "clear", 2: "noisy"},
+    },
+    # S02: noisy/diverse ASR (T31-C collapse on librispeech_other/commonvoice_en)
+    "S02": {
+        "path": "/tmp/bonfyre-speech/librispeech_other-500/run/train/model.onnx",
+        "n_class": 3,
+        "labels": {0: "ambiguous", 1: "clear", 2: "noisy"},
+    },
 }
-ESCALATION_CHAIN = {"T04": "T15", "T15": "T16", "T16": None}
+ESCALATION_CHAIN = {"T04": "T15", "T15": "T16", "T16": None,
+                    "S01": "S02", "S02": None}
+
+# ── Speech escalation: ASR family chain ───────────────────────────────────
+ASR_ESCALATION_CHAIN = {"S01": "S02", "S02": None}
+
+# ── bonfyre-transcribe binary path ───────────────────────────────────────
+TRANSCRIBE_BIN = os.path.join(REPO_ROOT, "cmd", "BonfyreTranscribe", "bonfyre-transcribe")
 
 # ── I/O helpers ───────────────────────────────────────────────────────────
 
@@ -245,6 +265,126 @@ def classify_onnx_family(embs, family):
     return results
 
 
+# ── Speech helpers ────────────────────────────────────────────────────────
+
+def _transcribe_audio(audio_path: str) -> dict:
+    """
+    Transcribe an audio file to text.
+
+    Primary path: bonfyre-transcribe C binary (whisper.h backend).
+    Fallback path: openai-whisper Python package (if binary unavailable).
+
+    Returns dict with keys:
+      transcript       (str)  full transcript text
+      avg_logprob      (float) weighted avg_logprob across segments
+      num_segments     (int)
+      first_segment_ms (int)  end time of first segment in ms
+      whisper_model    (str)
+      source           (str)  "bonfyre-transcribe" | "openai-whisper"
+    """
+    import math, time
+
+    if not os.path.exists(audio_path):
+        print(f"[speech] ERROR: audio file not found: {audio_path}")
+        return {}
+
+    # Primary: bonfyre-transcribe C binary
+    if os.path.exists(TRANSCRIBE_BIN):
+        out_json = audio_path + ".transcription.json"
+        t0 = time.monotonic()
+        result = subprocess.run(
+            [TRANSCRIBE_BIN, audio_path, "--out-json", out_json],
+            capture_output=True, text=True
+        )
+        elapsed_ms = int((time.monotonic() - t0) * 1000)
+        if result.returncode == 0 and os.path.exists(out_json):
+            try:
+                data = json.load(open(out_json))
+                segments = data.get("segments", [])
+                total_tokens = sum(len(s.get("tokens", [])) or 1 for s in segments)
+                w_lp = sum(
+                    s.get("avg_logprob", -1.0) * (len(s.get("tokens", [])) or 1)
+                    for s in segments
+                )
+                avg_lp = w_lp / max(total_tokens, 1) if segments else -1.0
+                first_ms = int(segments[0].get("end", 0.0) * 1000) if segments else 0
+                return {
+                    "transcript":       data.get("text", "").strip(),
+                    "avg_logprob":      round(avg_lp, 4),
+                    "num_segments":     len(segments),
+                    "first_segment_ms": first_ms,
+                    "whisper_model":    data.get("model", "unknown"),
+                    "source":           "bonfyre-transcribe",
+                    "elapsed_ms":       elapsed_ms,
+                }
+            except Exception as exc:
+                print(f"[speech] WARNING: could not parse bonfyre-transcribe JSON: {exc}")
+
+    # Fallback: openai-whisper Python
+    try:
+        import whisper, math as _math
+    except ImportError:
+        print("[speech] ERROR: bonfyre-transcribe not found and openai-whisper not installed")
+        print("  Install: pip install openai-whisper  or  build bonfyre-transcribe")
+        return {}
+
+    model_name = os.environ.get("WHISPER_MODEL", "base")
+    device = os.environ.get("WHISPER_DEVICE", "cpu")
+    print(f"[speech] fallback: loading whisper '{model_name}' on {device} …")
+    t0 = time.monotonic()
+    model = whisper.load_model(model_name, device=device)
+    result = model.transcribe(audio_path, language="en", fp16=False, verbose=False)
+    elapsed_ms = int((time.monotonic() - t0) * 1000)
+
+    segments = result.get("segments", [])
+    total_tokens = sum(len(s.get("tokens", [])) or 1 for s in segments)
+    w_lp = sum(
+        s.get("avg_logprob", -1.0) * (len(s.get("tokens", [])) or 1)
+        for s in segments
+    )
+    avg_lp = w_lp / max(total_tokens, 1) if segments else -1.0
+    first_ms = int(segments[0].get("end", 0.0) * 1000) if segments else 0
+
+    return {
+        "transcript":       result.get("text", "").strip(),
+        "avg_logprob":      round(avg_lp, 4),
+        "num_segments":     len(segments),
+        "first_segment_ms": first_ms,
+        "whisper_model":    model_name,
+        "source":           "openai-whisper",
+        "elapsed_ms":       elapsed_ms,
+    }
+
+
+def _compute_wer(hyp: str, ref: str) -> float:
+    """
+    Compute Word Error Rate (WER) = (S + D + I) / N.
+    Pure-Python Levenshtein on word tokens (no deps required).
+    """
+    def tokenize(s):
+        return s.lower().split()
+
+    h = tokenize(hyp)
+    r = tokenize(ref)
+    if not r:
+        return 0.0 if not h else 1.0
+
+    # Dynamic programming edit distance
+    d = [[0] * (len(r) + 1) for _ in range(len(h) + 1)]
+    for i in range(len(h) + 1):
+        d[i][0] = i
+    for j in range(len(r) + 1):
+        d[0][j] = j
+    for i in range(1, len(h) + 1):
+        for j in range(1, len(r) + 1):
+            if h[i - 1] == r[j - 1]:
+                d[i][j] = d[i - 1][j - 1]
+            else:
+                d[i][j] = 1 + min(d[i - 1][j], d[i][j - 1], d[i - 1][j - 1])
+
+    return round(d[len(h)][len(r)] / len(r), 4)
+
+
 # ── Main ──────────────────────────────────────────────────────────────────
 
 def main():
@@ -270,12 +410,35 @@ def main():
                     help="Avg-confidence drop threshold that triggers escalation (default: 0.05)")
     ap.add_argument("--metrics-out",  default=None,
                     help="Write run metrics JSON to this path (appends if file exists as array)")
+    ap.add_argument("--speech-in",    default=None,
+                    help="Path to audio file (.wav/.mp3/.flac). Transcribes via "
+                         "bonfyre-transcribe (or python whisper fallback), then runs "
+                         "the full text adaptive pipeline on the transcript.")
+    ap.add_argument("--speech-gt",    default=None,
+                    help="Ground-truth transcript text or .txt file for WER computation "
+                         "(only used with --speech-in)")
     args = ap.parse_args()
 
     texts = list(args.texts)
     if args.text_file:
         with open(args.text_file) as f:
             texts += [ln.rstrip() for ln in f if ln.strip()]
+
+    # ── Speech pre-processing: audio → transcript ─────────────────────────
+    _speech_meta = None
+    if args.speech_in:
+        _speech_meta = _transcribe_audio(args.speech_in)
+        if _speech_meta and _speech_meta.get("transcript"):
+            texts = [_speech_meta["transcript"]]
+            print(f"[speech] transcribed {args.speech_in}")
+            print(f"         transcript : {_speech_meta['transcript'][:80]}")
+            print(f"         avg_logprob: {_speech_meta.get('avg_logprob', 'n/a')}")
+            print(f"         first_seg_ms: {_speech_meta.get('first_segment_ms', 'n/a')}ms")
+            print()
+        else:
+            print(f"[speech] ERROR: could not transcribe {args.speech_in}")
+            sys.exit(1)
+
     if not texts:
         texts = [
             "Apple reports record quarterly revenue driven by iPhone sales.",
@@ -306,6 +469,13 @@ def main():
         "avg_latency_ms":    None,
         "labels":            [],
         "confidences":       [],
+        # ── speech-specific metrics (null for text-only runs) ─────────
+        "speech_in":                args.speech_in,
+        "first_transcript_ms":      _speech_meta.get("first_segment_ms") if _speech_meta else None,
+        "asr_avg_logprob":          _speech_meta.get("avg_logprob") if _speech_meta else None,
+        "asr_num_segments":         _speech_meta.get("num_segments") if _speech_meta else None,
+        "wer":                      None,   # filled below if --speech-gt provided
+        "fragment_only_asr_rate":   None,   # filled if frag-exit triggered
         "args": {
             "loop":          args.loop,
             "chain":         args.chain,
@@ -315,6 +485,14 @@ def main():
             "escalate_drop": args.escalate_drop,
         },
     }
+
+    # Compute WER if ground-truth transcript provided alongside --speech-in
+    if _speech_meta and args.speech_gt:
+        gt_text = args.speech_gt
+        if os.path.isfile(gt_text):
+            gt_text = open(gt_text, encoding="utf-8").read()
+        _metrics["wer"] = _compute_wer(
+            _speech_meta.get("transcript", ""), gt_text)
 
     def _emit_metrics(final_labels=None, final_confs=None):
         """Write metrics to args.metrics_out (JSON array, append-safe)."""
@@ -346,6 +524,9 @@ def main():
     print("=" * 72)
     print(" BONFYRE  end-to-end demo")
     print(f"  inputs  : {len(texts)} text(s)")
+    if args.speech_in:
+        print(f"  speech  : {args.speech_in}"
+              f"  (model={os.environ.get('WHISPER_MODEL', 'base')})")
     print(f"  loop    : {args.loop} iterations")
     print(f"  chain   : {args.chain}")
     print(f"  fpqx    : {args.fpqx}")
@@ -409,6 +590,8 @@ def main():
                         print("  ← FRAGMENT EXIT\n")
                         _metrics["fragment_exit"] = True
                         _metrics["iterations_ran"] = 0
+                        if _speech_meta:
+                            _metrics["fragment_only_asr_rate"] = 1.0
                         lbls = [r[0] for r in frag_onnx]
                         cfs  = [r[1] for r in frag_onnx]
                         _emit_metrics(lbls, cfs)

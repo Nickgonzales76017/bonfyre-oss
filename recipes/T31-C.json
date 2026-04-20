@@ -1,0 +1,55 @@
+{
+  "code": "T31-C",
+  "name": "Noisy / Diverse-Speaker ASR Collapse (Calibration)",
+  "version": "1.0.0",
+  "description": "Calibration recipe for the S02 noisy / diverse-speaker ASR family. Identical pipeline to T30-C but expects a noisier audio corpus (e.g. librispeech_other, commonvoice_en) where more segments fall into the 'ambiguous' and 'noisy' confidence bins. The student head trained here learns the harder decision boundary between borderline-clear and escalation-worthy segments. Use with speech_pack.sh --domain librispeech_other --family S02.",
+  "stages": [
+    {
+      "id": "transcribe",
+      "bin": "python3",
+      "args": [
+        "scripts/synth_teacher_asr.py",
+        "{input}",
+        "{out}/tag",
+        "--model", "${WHISPER_MODEL:-base}",
+        "--device", "${WHISPER_DEVICE:-cpu}",
+        "--lang", "en",
+        "--min-dur", "0.3"
+      ],
+      "depends_on": []
+    },
+    {
+      "id": "embed",
+      "bin": "python3",
+      "args": [
+        "scripts/synth_teacher_embed.py",
+        "{input}",
+        "{out}/embed",
+        "--model", "all-MiniLM-L6-v2"
+      ],
+      "depends_on": ["transcribe"]
+    },
+    {
+      "id": "train",
+      "bin": "python3",
+      "args": [
+        "scripts/collapse_train.py",
+        "--task",      "topic-map",
+        "--tag-dir",   "{out}/tag",
+        "--embed-dir", "{out}/embed",
+        "--out",       "{out}/train",
+        "--calibration"
+      ],
+      "depends_on": ["transcribe", "embed"]
+    },
+    {
+      "id": "finalize",
+      "bin": "python3",
+      "args": [
+        "scripts/finalize_artifact.py",
+        "{out}/train"
+      ],
+      "depends_on": ["train"]
+    }
+  ]
+}
