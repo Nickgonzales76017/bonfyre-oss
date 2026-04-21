@@ -143,6 +143,45 @@
               <p style="margin-top:0.75rem;color:var(--text-2);font-size:0.875rem"><strong>Why it matters:</strong> Tooling that needs to compose or inspect FPQ-X alignment tensors can link the algebra library directly rather than parsing binary files. The LoRA example shows that fine-tuning adapters can be applied in the compressed domain — no full-precision weight expansion needed during adapter composition.</p>
             </article>
 
+            <article class="feature-card">
+              <span class="card-meta">BonfyreNarrate v3 — TTS verification engine</span>
+              <h3>Closed-loop fidelity scoring, PSOLA pitch correction, SSML prosody, inline DSP — the HCP for TTS</h3>
+              <p>v1 forked Piper and hoped for the best. v2 added tone-aware prosody and energy envelope transfer. v3 is a full DSP verification pipeline in pure C (2,150 lines, zero Python dependencies):</p>
+              <ol style="margin:0.5rem 0 0 1.25rem;color:var(--text-2);font-size:0.875rem;line-height:1.8">
+                <li><strong>SSML prosody generation</strong> — maps the 6-dimension BonfyreTone profile (pitch, energy, jitter, shimmer, speaking rate, loudness contour) to SSML <code>rate</code>/<code>pitch</code>/<code>volume</code> attributes; plain-text fallback with pause injection for engines without SSML support.</li>
+                <li><strong>PSOLA pitch correction</strong> — pure-C autocorrelation + overlap-add pitch shift preserving duration; detects pitch periods by autocorrelation lag peak.</li>
+                <li><strong>Energy envelope transfer</strong> — per-frame RMS shaping from the reference audio applied to the synthesised output.</li>
+                <li><strong>Inline acoustic feature extraction</strong> — radix-2 Cooley-Tukey FFT, autocorrelation F0 detection, RMS, jitter, shimmer, HNR — 25 features extracted inline, no subprocess, no Python.</li>
+                <li><strong>6-layer fidelity scoring</strong> — pitch, energy, temporal, spectral, stability, and dynamics scores combined as geometric mean composite.</li>
+                <li><strong>Closed-loop verification</strong> — extracts fingerprint from its own WAV output and compares with source reference; inline, no binary calls.</li>
+                <li><strong>Iterative refinement</strong> — converges in ≤ 3 passes; each pass adjusts prosody parameters to close the fidelity gap.</li>
+                <li><strong>Direct WAV quality analysis</strong> — dynamic range, spectral continuity, pitch stability, energy consistency read from output WAV without a separate tool.</li>
+              </ol>
+              <div style="margin-top:0.75rem;font-family:'IBM Plex Mono',monospace;font-size:0.78rem;color:var(--accent,#ff6b35);background:rgba(255,107,53,0.08);border:1px solid rgba(255,107,53,0.2);border-radius:5px;padding:0.6rem 0.9rem">bonfyre-tone profile audio.wav tone_out/<br>bonfyre-narrate brief.md out/ --tone-profile tone_out/profile.json --reference audio.wav --verify --refine</div>
+            </article>
+
+            <article class="feature-card">
+              <span class="card-meta">BonfyreTranscribe — BM25 vocabulary accumulator</span>
+              <h3>Domain-adaptive Whisper initial_prompt from a BM25-ranked corpus vocabulary</h3>
+              <p>Added corpus-adaptive prompting to BonfyreTranscribe. A custom binary vocabulary store (<code>.bfvocab</code>, magic <code>BFVD02</code>) is maintained alongside each corpus: an in-process FNV-1a hash map for O(1) term lookup, BM25 weighting with document-length normalisation (k1&nbsp;=&nbsp;1.2, b&nbsp;=&nbsp;0.75), Shannon entropy H and KL-divergence convergence metrics. Before each call to <code>whisper_full()</code>, the top-N BM25-ranked terms are serialised into Whisper's <code>initial_prompt</code> field — biasing the decoder toward vocabulary that appears in your corpus without retraining. Multi-processor decode via <code>whisper_full_parallel()</code>. Word-level timestamps, speaker turn detection, no-speech probability filtering, repetition penalty (θ&nbsp;=&nbsp;1.15), and WebVTT subtitle output in the same binary.</p>
+              <p style="margin-top:0.75rem;color:var(--text-2);font-size:0.875rem"><strong>Why it matters:</strong> Technical jargon, proper nouns, and domain-specific terminology that Whisper would otherwise misrecognise (or hallucinate) are in the prompt before the first token is decoded. The vocabulary accumulates across every run — each new recording makes the prompt stronger.</p>
+            </article>
+
+            <article class="feature-card">
+              <span class="card-meta">BonfyreSpeechLoop — full speech transformation pipeline</span>
+              <h3>Input speech → structured text → new speech in one command</h3>
+              <p>Orchestrates the complete speech-to-speech transformation loop: <code>BonfyreTranscribe → BonfyreTranscriptClean → BonfyreParagraph → BonfyreBrief → BonfyreNarrate</code>. Two modes: <strong>transform</strong> (audio in, new narrated audio out, optional <code>--compress</code> for brief-only path and <code>--brief</code> to terminate at brief stage) and <strong>narrate-brief</strong> (existing brief-dir in, narrated audio out). Sibling binary resolution based on <code>argv[0]</code> path — no <code>PATH</code> requirements. Writes a <code>speechloop-manifest.json</code> with mode, step chain, and completion status on every run.</p>
+              <p style="margin-top:0.75rem;color:var(--text-2);font-size:0.875rem"><strong>Why it matters:</strong> Converting a recording into a new narrated output — different voice, different prosody matching a target tone profile — previously required coordinating 5 binaries manually. SpeechLoop runs the full chain from a single command. Combined with <code>bonfyre-run A1</code> feeding into it, the complete audio → transform → re-narrate pipeline is two commands.</p>
+              <div style="margin-top:0.75rem;font-family:'IBM Plex Mono',monospace;font-size:0.78rem;color:var(--accent,#ff6b35);background:rgba(255,107,53,0.08);border:1px solid rgba(255,107,53,0.2);border-radius:5px;padding:0.6rem 0.9rem">bonfyre-speechloop transform interview.wav out/ --voice-model narrator.onnx --brief</div>
+            </article>
+
+            <article class="feature-card">
+              <span class="card-meta">BonfyreSegment — idea boundary + segment graph</span>
+              <h3>Typed idea boundaries and flow graph from Whisper word-level timestamps</h3>
+              <p>Takes Whisper JSON output (with word-level timestamps) and produces a segment graph: nodes (ideas) with typed boundaries, edges (flow), and a per-segment rhythm map. Three output modes: <code>graph</code> (segment-graph.json with typed boundary nodes and flow edges), <code>boundaries</code> (boundaries.json with silence-detected idea breaks, configurable <code>--silence-gap</code>), and <code>rhythm</code> (rhythm.json — per-segment speaking rate, pause density, syllable cadence). Configurable silence_gap (default 2.0 s) controls idea boundary sensitivity.</p>
+              <p style="margin-top:0.75rem;color:var(--text-2);font-size:0.875rem"><strong>Why it matters:</strong> BonfyreParagraph does thematic paragraph segmentation over text; BonfyreSegment does it over <em>time</em> — using silence patterns and rhythmic breaks as structural signals. The segment graph becomes the navigable structure for audio archives: you can jump to idea N, not just minute N.</p>
+            </article>
+
           </div>
         </div>
       </section>

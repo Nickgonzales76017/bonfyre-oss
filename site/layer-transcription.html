@@ -89,7 +89,7 @@
         <div class="shell-container">
           <span class="hero-kicker">Binary reference · Layer 2</span>
           <h1 class="hero-title">Transcription &amp; <span class="accent">cleanup.</span></h1>
-          <p class="lede">Six binaries that take a quality-verified audio file from Layer 1 and produce clean, speaker-attributed, paragraph-structured text. No API key. No per-minute charge. No audio leaving your machine. On M2 Pro hardware, BonfyreTranscribe processes at roughly 15× real-time — a 45-minute recording in 3 minutes.</p>
+          <p class="lede">Six binaries that take a quality-verified audio file from Layer 1 and produce clean, speaker-attributed, paragraph-structured text — and, optionally, a new narrated audio output with verified fidelity. No API key. No per-minute charge. No audio leaving your machine. BonfyreTranscribe processes at roughly 15× real-time on M2 Pro. BonfyreNarrate v3 closes the loop with PSOLA pitch correction, 6-layer fidelity scoring, and inline DSP verification. BonfyreSpeechLoop chains all five stages into one command.</p>
           <div class="hero-actions">
             <a class="primary-btn" href="layer-knowledge.html">Next: Layer 3 — Knowledge →</a>
             <a class="secondary-btn" href="layer-ingest.html">← Layer 1: Ingest</a>
@@ -166,8 +166,9 @@
 
             <article class="feature-card">
               <span class="card-meta">BonfyreTranscribe</span>
-              <h3>HCP-enhanced Whisper, local, no API key</h3>
-              <p>Runs a Hallucination-Constrained Prediction (HCP) layer on top of Whisper large-v3. HCP adds a secondary confidence model that suppresses low-confidence token predictions — the primary mechanism for reducing hallucinations beyond what BonfyreTranscriptClean catches. Accepts the speaker segment map from BonfyreSegment and produces a speaker-attributed SRT and plain-text transcript. Supports en, es, fr, de, ja, zh, pt, it, nl, and 80 other Whisper languages. No API key. No audio leaving the machine.</p>
+              <h3>HCP-enhanced Whisper with BM25 corpus-adaptive prompting</h3>
+              <p>Runs a Hallucination-Constrained Prediction (HCP) layer on top of Whisper large-v3. HCP adds a secondary confidence model that suppresses low-confidence token predictions — reducing hallucinations beyond what BonfyreTranscriptClean catches. Accepts the speaker segment map from BonfyreSegment and produces a speaker-attributed SRT, WebVTT subtitles, and plain-text transcript. Supports 80+ Whisper language codes. No API key. No audio leaving the machine.</p>
+              <p style="margin-top:0.75rem"><strong>Corpus-adaptive vocabulary:</strong> A custom binary vocabulary store (<code>.bfvocab</code>, BFVD02 format) accumulates terms across every transcription run using FNV-1a hashing and BM25 weighting (k1&nbsp;=&nbsp;1.2, b&nbsp;=&nbsp;0.75). Shannon entropy H and KL-divergence convergence metrics track how stable the corpus vocabulary is. Before each <code>whisper_full()</code> call, the top BM25-ranked terms are injected as Whisper's <code>initial_prompt</code> — biasing the decoder toward your domain's vocabulary without retraining. Multi-processor decode via <code>whisper_full_parallel()</code>. Word-level timestamps, speaker turn detection, no-speech probability filtering, repetition penalty (θ&nbsp;=&nbsp;1.15).</p>
             </article>
 
             <article class="feature-card">
@@ -195,9 +196,37 @@
             </article>
 
             <article class="feature-card">
-              <span class="card-meta">BonfyreNarrate</span>
-              <h3>TTS-ready transcript formatting and narration prep</h3>
-              <p>Reformats a clean transcript for text-to-speech synthesis: expanding abbreviations, normalising numbers and dates to spoken form ("2024-01-15" → "January fifteenth twenty twenty-four"), removing punctuation that causes TTS pause artifacts, and inserting SSML tags for emphasis and pacing. Produces a narration-ready text file and an SSML document compatible with standard TTS engines. Used when pipeline output includes an audio version alongside the published page.</p>
+              <span class="card-meta">BonfyreNarrate v3</span>
+              <h3>Closed-loop verified TTS with PSOLA, SSML prosody, 6-layer fidelity scoring — the HCP for TTS</h3>
+              <p>v1 forked Piper and hoped for the best. v2 added tone-aware prosody and energy envelope transfer. v3 is a full DSP verification pipeline in 2,150 lines of pure C with zero Python dependencies for verification:</p>
+              <ul style="margin:0.5rem 0 0 1.25rem;color:var(--text-2);font-size:0.875rem;line-height:1.8">
+                <li><strong>SSML prosody generation</strong> — maps the 6-dimension BonfyreTone profile to SSML <code>rate</code>/<code>pitch</code>/<code>volume</code>; falls back to plain text + pause injection for engines without SSML.</li>
+                <li><strong>PSOLA pitch correction</strong> — pure-C autocorrelation + overlap-add shifts pitch while preserving duration.</li>
+                <li><strong>Energy envelope transfer</strong> — per-frame RMS shaping from the reference audio applied to the synthesised output.</li>
+                <li><strong>Inline acoustic feature extraction</strong> — radix-2 Cooley-Tukey FFT, F0 autocorrelation, RMS, jitter, shimmer, HNR — 25 features, no subprocess, no Python.</li>
+                <li><strong>6-layer fidelity scoring</strong> — pitch, energy, temporal, spectral, stability, dynamics — geometric mean composite score.</li>
+                <li><strong>Closed-loop verification</strong> — extracts fingerprint from its own WAV output inline and compares with source reference.</li>
+                <li><strong>Iterative refinement</strong> — converges in ≤ 3 passes, adjusting prosody parameters each cycle to close the fidelity gap.</li>
+              </ul>
+              <div style="margin-top:0.75rem;font-family:'IBM Plex Mono',monospace;font-size:0.78rem;color:var(--accent,#ff6b35);background:rgba(255,107,53,0.08);border:1px solid rgba(255,107,53,0.2);border-radius:5px;padding:0.6rem 0.9rem">bonfyre-narrate text.md out/ --tone-profile tone_out/profile.json --reference audio.wav --verify --refine<br>bonfyre-narrate verify output.wav source.wav</div>
+            </article>
+
+            <article class="feature-card">
+              <span class="card-meta">BonfyreSpeechLoop</span>
+              <h3>Full speech transformation: input speech → structured text → new speech</h3>
+              <p>Orchestrates the complete speech-to-speech transformation pipeline: <strong>Transcribe → Clean → Paragraph → Brief → Narrate</strong>. Two modes:</p>
+              <ul style="margin:0.5rem 0 0 1.25rem;color:var(--text-2);font-size:0.875rem;line-height:1.8">
+                <li><strong>transform</strong> — takes a raw audio file, runs the full chain, and produces a narrated audio output. <code>--compress</code> terminates at brief stage. <code>--brief</code> skips narration.</li>
+                <li><strong>narrate-brief</strong> — takes an existing brief directory and synthesises a narrated audio output from it.</li>
+              </ul>
+              <p style="margin-top:0.5rem">Sibling binary resolution from <code>argv[0]</code> — no PATH setup required. Writes a <code>speechloop-manifest.json</code> on every run with mode, step chain, and completion status.</p>
+              <div style="margin-top:0.75rem;font-family:'IBM Plex Mono',monospace;font-size:0.78rem;color:var(--accent,#ff6b35);background:rgba(255,107,53,0.08);border:1px solid rgba(255,107,53,0.2);border-radius:5px;padding:0.6rem 0.9rem">bonfyre-speechloop transform interview.wav out/ --voice-model narrator.onnx<br>bonfyre-speechloop narrate-brief brief_dir/ out/ --voice-model narrator.onnx</div>
+            </article>
+
+            <article class="feature-card">
+              <span class="card-meta">BonfyreSegment</span>
+              <h3>Idea boundary detection + segment graph from word-level timestamps</h3>
+              <p>Takes Whisper JSON (with word-level timestamps) and produces a structured segment graph. Three modes: <code>graph</code> (segment-graph.json with typed idea-boundary nodes and flow edges between them), <code>boundaries</code> (boundaries.json — silence-gap detected idea breaks, configurable <code>--silence-gap</code> default 2.0 s), <code>rhythm</code> (per-segment speaking rate, pause density, syllable cadence). The segment graph is the temporal navigation structure for audio archives: you can jump to idea N, not just minute N.</p>
             </article>
 
           </div>
@@ -224,7 +253,7 @@
 
     <footer class="footer">
       <div class="shell-container footer-row">
-        <div>Bonfyre — 53 C binaries. Local AI. No cloud bill.</div>
+        <div>Bonfyre — 56 C binaries. Local AI. No cloud bill. BonfyreNarrate v3: PSOLA · SSML · 6-layer fidelity · closed-loop verification.</div>
         <div class="footer-links">
           <a href="index.html">Overview</a>
           <a href="explore.html">Explore</a>
