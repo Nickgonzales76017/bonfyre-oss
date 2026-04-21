@@ -64,20 +64,29 @@ PRAGMA journal_mode=WAL;
 PRAGMA synchronous=NORMAL;
 
 CREATE TABLE IF NOT EXISTS claims (
-    id          INTEGER PRIMARY KEY AUTOINCREMENT,
-    doc_id      TEXT    NOT NULL,
-    span_start  INTEGER DEFAULT 0,
-    span_end    INTEGER DEFAULT 0,
-    span_text   TEXT    DEFAULT '',
-    subject     TEXT    NOT NULL,
-    predicate   TEXT    NOT NULL,
-    object      TEXT    NOT NULL,
-    lens        TEXT    NOT NULL,
-    family      TEXT,
-    confidence  REAL    DEFAULT 0.5,
-    assumptions TEXT    DEFAULT '[]',
-    claimed_at  TEXT    NOT NULL,
-    run_id      INTEGER
+    id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+    doc_id              TEXT    NOT NULL,
+    span_start          INTEGER DEFAULT 0,
+    span_end            INTEGER DEFAULT 0,
+    span_text           TEXT    DEFAULT '',
+    subject             TEXT    NOT NULL,
+    predicate           TEXT    NOT NULL,
+    object              TEXT    NOT NULL,
+    lens                TEXT    NOT NULL,
+    family              TEXT,
+    confidence          REAL    DEFAULT 0.5,
+    assumptions         TEXT    DEFAULT '[]',
+    claimed_at          TEXT    NOT NULL,
+    run_id              INTEGER,
+    -- Phase 13: Structural Convergence scoring fields
+    support_count       INTEGER DEFAULT 0,
+    independent_support INTEGER DEFAULT 0,
+    conflict_count      INTEGER DEFAULT 0,
+    assumption_fragility REAL   DEFAULT 0.0,
+    lens_diversity      INTEGER DEFAULT 1,
+    claim_strength      REAL    DEFAULT 0.0,
+    stability_score     REAL    DEFAULT 0.0,
+    last_scored         TEXT
 );
 
 CREATE TABLE IF NOT EXISTS conflicts (
@@ -116,11 +125,38 @@ CREATE TABLE IF NOT EXISTS support_links (
     PRIMARY KEY (claim_a, claim_b)
 );
 
+CREATE TABLE IF NOT EXISTS independent_support_groups (
+    group_id        INTEGER PRIMARY KEY AUTOINCREMENT,
+    claim_id        INTEGER REFERENCES claims(id),
+    support_claim_id INTEGER REFERENCES claims(id),
+    is_independent  INTEGER DEFAULT 1,
+    lens_diff       INTEGER DEFAULT 0,
+    family_diff     INTEGER DEFAULT 0,
+    assumption_diff INTEGER DEFAULT 0,
+    created_at      TEXT    NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS convergence_history (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    iteration       INTEGER NOT NULL,
+    cluster_id      INTEGER,
+    n_claims_before INTEGER,
+    n_claims_after  INTEGER,
+    stable_edges    INTEGER,
+    fragile_edges   INTEGER,
+    pressure_decay  REAL,
+    converged       INTEGER DEFAULT 0,
+    timestamp       TEXT    NOT NULL
+);
+
 CREATE INDEX IF NOT EXISTS idx_claims_doc        ON claims(doc_id);
 CREATE INDEX IF NOT EXISTS idx_claims_subject    ON claims(subject);
 CREATE INDEX IF NOT EXISTS idx_claims_predicate  ON claims(predicate);
 CREATE INDEX IF NOT EXISTS idx_claims_lens       ON claims(lens);
+CREATE INDEX IF NOT EXISTS idx_claims_strength   ON claims(claim_strength);
+CREATE INDEX IF NOT EXISTS idx_claims_stability  ON claims(stability_score);
 CREATE INDEX IF NOT EXISTS idx_conflicts_type    ON conflicts(conflict_type);
+CREATE INDEX IF NOT EXISTS idx_support_groups    ON independent_support_groups(claim_id);
 """
 
 # ── Conflict predicate pairs (antonyms / contradictions) ─────────────────
@@ -574,6 +610,264 @@ class ClaimGraph:
             "lens_breakdown":   {r["lens"]: r["n"] for r in lenses},
             "top_subjects":     [(r["subject"], r["n"]) for r in top_subjects],
         }
+
+    # ── Phase 13: Structural Convergence — Claim Scoring ─────────────
+
+    def compute_claim_scores(self, claim_ids: list = None):
+        """
+        Compute claim strength for all claims (or subset).
+
+        Formula:
+            claim_strength = (independent_support × lens_diversity)
+                            / (conflict_count + 1)
+                            × (1 - assumption_fragility)
+        """
+        ts = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+
+        # If no claim_ids given, score all claims
+        if claim_ids is None:
+            rows = self._db.execute("SELECT id FROM claims").fetchall()
+            claim_ids = [r["id"] for r in rows]
+
+        for claim_id in claim_ids:
+            # Get claim
+            claim = self._db.execute(
+                "SELECT * FROM claims WHERE id = ?", (claim_id,)
+            ).fetchone()
+            if not claim:
+                continue
+
+            # 1. Count support links
+            support_count = self._db.execute("""
+                SELECT COUNT(*) FROM support_links
+                WHERE claim_a = ? OR claim_b = ?
+            """, (claim_id, claim_id)).fetchone()[0]
+
+            # 2. Count independent support
+            independent_support = self._count_independent_support(claim_id, claim)
+
+            # 3. Count conflicts
+            conflict_count = self._db.execute("""
+                SELECT COUNT(*) FROM conflicts
+                WHERE claim_a = ? OR claim_b = ?
+            """, (claim_id, claim_id)).fetchone()[0]
+
+            # 4. Compute assumption fragility
+            assumptions = json.loads(claim["assumptions"] or "[]")
+            assumption_fragility = min(len(assumptions) / 5.0, 1.0)
+
+            # 5. Compute lens diversity (how many different lenses support this claim)
+            lens_diversity = self._count_lens_diversity(claim_id, claim)
+
+            # 6. Compute claim strength
+            claim_strength = (
+                (independent_support * lens_diversity)
+                / (conflict_count + 1)
+                * (1.0 - assumption_fragility)
+            )
+
+            # 7. Compute stability score (survives repeated runs)
+            stability_score = self._compute_stability(claim_id, claim)
+
+            # 8. Update claim record
+            self._db.execute("""
+                UPDATE claims SET
+                    support_count = ?,
+                    independent_support = ?,
+                    conflict_count = ?,
+                    assumption_fragility = ?,
+                    lens_diversity = ?,
+                    claim_strength = ?,
+                    stability_score = ?,
+                    last_scored = ?
+                WHERE id = ?
+            """, (
+                support_count, independent_support, conflict_count,
+                round(assumption_fragility, 4), lens_diversity,
+                round(claim_strength, 4), round(stability_score, 4),
+                ts, claim_id
+            ))
+
+        self._db.commit()
+
+    def _count_independent_support(self, claim_id: int, claim: sqlite3.Row) -> int:
+        """
+        Count how many support links are truly independent.
+        Independent = different lens OR different family OR different assumptions.
+        """
+        # Get all support links for this claim
+        support_rows = self._db.execute("""
+            SELECT c2.id, c2.lens, c2.family, c2.assumptions
+            FROM support_links sl
+            JOIN claims c2 ON (
+                CASE WHEN sl.claim_a = ? THEN sl.claim_b ELSE sl.claim_a END = c2.id
+            )
+            WHERE sl.claim_a = ? OR sl.claim_b = ?
+        """, (claim_id, claim_id, claim_id)).fetchall()
+
+        independent_count = 0
+        ts = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+
+        for sup in support_rows:
+            lens_diff = 1 if sup["lens"] != claim["lens"] else 0
+            family_diff = 1 if (sup["family"] or "") != (claim["family"] or "") else 0
+
+            # Compare assumptions
+            try:
+                assump_a = set(json.loads(claim["assumptions"] or "[]"))
+                assump_b = set(json.loads(sup["assumptions"] or "[]"))
+                assump_diff = 1 if assump_a != assump_b else 0
+            except Exception:
+                assump_diff = 0
+
+            is_independent = lens_diff or family_diff or assump_diff
+
+            if is_independent:
+                independent_count += 1
+
+                # Record in independent_support_groups table
+                try:
+                    self._db.execute("""
+                        INSERT OR IGNORE INTO independent_support_groups
+                            (claim_id, support_claim_id, is_independent,
+                             lens_diff, family_diff, assumption_diff, created_at)
+                        VALUES (?, ?, ?, ?, ?, ?, ?)
+                    """, (claim_id, sup["id"], 1, lens_diff, family_diff,
+                          assump_diff, ts))
+                except Exception:
+                    pass
+
+        return independent_count
+
+    def _count_lens_diversity(self, claim_id: int, claim: sqlite3.Row) -> int:
+        """
+        Count how many different lenses support similar claims
+        (same subject+predicate+object from different lenses).
+        """
+        # Find all claims with same subject, predicate, object (approx match)
+        similar = self._db.execute("""
+            SELECT DISTINCT lens FROM claims
+            WHERE subject = ? AND predicate = ?
+              AND LOWER(SUBSTR(object, 1, 30)) = LOWER(SUBSTR(?, 1, 30))
+        """, (claim["subject"], claim["predicate"],
+              claim["object"])).fetchall()
+
+        return len(similar)
+
+    def _compute_stability(self, claim_id: int, claim: sqlite3.Row) -> float:
+        """
+        Compute stability score: how consistently this claim appears
+        across multiple runs with same doc_id + subject + predicate.
+        """
+        # Count how many different run_ids produced similar claims
+        similar_runs = self._db.execute("""
+            SELECT COUNT(DISTINCT run_id) FROM claims
+            WHERE doc_id = ? AND subject = ? AND predicate = ?
+              AND LOWER(SUBSTR(object, 1, 30)) = LOWER(SUBSTR(?, 1, 30))
+              AND run_id IS NOT NULL
+        """, (claim["doc_id"], claim["subject"], claim["predicate"],
+              claim["object"])).fetchone()[0]
+
+        # Stability = recurrence count normalized
+        return min(similar_runs / 3.0, 1.0)
+
+    def get_stable_edges(self, min_strength: float = 0.5,
+                          max_conflict_density: float = 0.3) -> list:
+        """
+        Extract stable edges: high claim_strength, low conflict_density.
+
+        Returns list of claim dicts sorted by strength descending.
+        """
+        rows = self._db.execute("""
+            SELECT *, (CAST(conflict_count AS REAL) / (support_count + 1)) as conflict_density
+            FROM claims
+            WHERE claim_strength >= ?
+              AND (CAST(conflict_count AS REAL) / (support_count + 1)) <= ?
+            ORDER BY claim_strength DESC, stability_score DESC
+        """, (min_strength, max_conflict_density)).fetchall()
+
+        return [dict(r) for r in rows]
+
+    def get_fragile_edges(self, min_support: int = 2,
+                           min_conflict_density: float = 0.5) -> list:
+        """
+        Extract fragile edges: high support but high conflict.
+
+        Returns list of claim dicts sorted by conflict_density descending.
+        """
+        rows = self._db.execute("""
+            SELECT *, (CAST(conflict_count AS REAL) / (support_count + 1)) as conflict_density
+            FROM claims
+            WHERE support_count >= ?
+              AND (CAST(conflict_count AS REAL) / (support_count + 1)) >= ?
+            ORDER BY conflict_density DESC
+        """, (min_support, min_conflict_density)).fetchall()
+
+        return [dict(r) for r in rows]
+
+    def get_convergence_metrics(self) -> dict:
+        """
+        Compute convergence metrics across all claims.
+
+        Returns:
+            stable_edge_ratio, fragile_edge_ratio, avg_claim_strength,
+            conflict_resolution_rate, pressure_decay_rate
+        """
+        total_claims = self._db.execute("SELECT COUNT(*) FROM claims").fetchone()[0]
+        if total_claims == 0:
+            return {
+                "stable_edge_ratio": 0.0,
+                "fragile_edge_ratio": 0.0,
+                "avg_claim_strength": 0.0,
+                "conflict_resolution_rate": 0.0,
+                "pressure_decay_rate": 0.0,
+            }
+
+        stable_edges = len(self.get_stable_edges(min_strength=0.5, max_conflict_density=0.3))
+        fragile_edges = len(self.get_fragile_edges(min_support=2, min_conflict_density=0.5))
+
+        avg_strength = self._db.execute(
+            "SELECT AVG(claim_strength) FROM claims WHERE claim_strength > 0"
+        ).fetchone()[0] or 0.0
+
+        # Conflict resolution rate: resolved clusters / total clusters
+        total_clusters = self._db.execute(
+            "SELECT COUNT(*) FROM conflict_clusters"
+        ).fetchone()[0]
+        resolved_clusters = self._db.execute(
+            "SELECT COUNT(*) FROM conflict_clusters WHERE resolved = 1"
+        ).fetchone()[0]
+        resolution_rate = resolved_clusters / max(total_clusters, 1)
+
+        # Pressure decay: compare latest vs historical pressure scores
+        decay = self._compute_pressure_decay()
+
+        return {
+            "stable_edge_ratio": round(stable_edges / total_claims, 4),
+            "fragile_edge_ratio": round(fragile_edges / total_claims, 4),
+            "avg_claim_strength": round(avg_strength, 4),
+            "conflict_resolution_rate": round(resolution_rate, 4),
+            "pressure_decay_rate": round(decay, 4),
+        }
+
+    def _compute_pressure_decay(self) -> float:
+        """
+        Compare pressure score trend over convergence history.
+        Returns decay rate (positive = pressure decreasing).
+        """
+        history = self._db.execute("""
+            SELECT pressure_decay FROM convergence_history
+            ORDER BY iteration DESC LIMIT 5
+        """).fetchall()
+
+        if len(history) < 2:
+            return 0.0
+
+        decays = [h["pressure_decay"] for h in history if h["pressure_decay"] is not None]
+        if not decays:
+            return 0.0
+
+        return sum(decays) / len(decays)
 
     def export_all(self, out_path: str):
         """Export full claim graph as JSON."""

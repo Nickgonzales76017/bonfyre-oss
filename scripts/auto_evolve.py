@@ -459,6 +459,23 @@ def evolve(memory_dir: str, models_dir: str,
         _log(f"Lens generation skipped: {e}")
     report["steps"].append("lens_generation")
 
+    # ── Step 6.75: Lens promotion/demotion based on stability ────────
+    try:
+        from scripts.claim_graph import ClaimGraph
+        cg = ClaimGraph(memory_dir)
+        lens_scores = _score_lenses_by_stability(cg, dry_run=dry_run)
+        if lens_scores:
+            promoted = [l for l in lens_scores if l["promoted"]]
+            demoted = [l for l in lens_scores if l["demoted"]]
+            if promoted:
+                _log(f"Promoted {len(promoted)} lens(es) for high stability")
+            if demoted:
+                _log(f"Demoted {len(demoted)} lens(es) for low stability or noise")
+            report["lens_scores"] = lens_scores
+    except Exception as e:
+        _log(f"Lens scoring skipped: {e}")
+    report["steps"].append("lens_scoring")
+
     # ── Step 7: Write meta-metrics snapshot ───────────────────────────
     graph_dir = os.path.join(memory_dir, "graph")
     os.makedirs(graph_dir, exist_ok=True)
@@ -593,6 +610,90 @@ def _suggest_base_lenses_for_cluster(cluster_type: str) -> list:
         "answer_given":        ["L01_deposition_parser"],
     }
     return CLUSTER_TO_BASE.get(cluster_type, [])
+
+
+def _score_lenses_by_stability(claim_graph, dry_run: bool = False) -> list:
+    """
+    Score each lens by the stability of claims it produces.
+
+    Promotes lenses that produce high-stability claims.
+    Demotes lenses that create noise (low stability, high conflict).
+
+    Returns list of lens score dicts:
+        {
+            "lens_id": "L01_deposition_parser",
+            "n_claims": 247,
+            "avg_claim_strength": 0.75,
+            "avg_stability": 0.82,
+            "promoted": True,
+            "demoted": False,
+            "score": 0.78
+        }
+    """
+    # Get all lenses that have produced claims
+    lens_rows = claim_graph._db.execute("""
+        SELECT lens, COUNT(*) as n_claims
+        FROM claims
+        GROUP BY lens
+        ORDER BY n_claims DESC
+    """).fetchall()
+
+    lens_scores = []
+
+    for row in lens_rows:
+        lens_id = row["lens"]
+        n_claims = row["n_claims"]
+
+        # Get avg claim_strength for this lens
+        avg_strength = claim_graph._db.execute("""
+            SELECT AVG(claim_strength) FROM claims
+            WHERE lens = ? AND claim_strength > 0
+        """, (lens_id,)).fetchone()[0] or 0.0
+
+        # Get avg stability_score
+        avg_stability = claim_graph._db.execute("""
+            SELECT AVG(stability_score) FROM claims
+            WHERE lens = ? AND stability_score > 0
+        """, (lens_id,)).fetchone()[0] or 0.0
+
+        # Get avg conflict_density
+        avg_conflict_density = claim_graph._db.execute("""
+            SELECT AVG(CAST(conflict_count AS REAL) / (support_count + 1))
+            FROM claims
+            WHERE lens = ?
+        """, (lens_id,)).fetchone()[0] or 0.0
+
+        # Compute lens score
+        lens_score = (avg_strength + avg_stability) / 2.0 * (1.0 - avg_conflict_density)
+
+        # Promotion/demotion thresholds
+        PROMOTE_THRESHOLD = 0.6   # high stability + low conflict
+        DEMOTE_THRESHOLD  = 0.2   # low stability + high conflict
+
+        promoted = lens_score >= PROMOTE_THRESHOLD
+        demoted = lens_score < DEMOTE_THRESHOLD
+
+        lens_scores.append({
+            "lens_id": lens_id,
+            "n_claims": n_claims,
+            "avg_claim_strength": round(avg_strength, 4),
+            "avg_stability": round(avg_stability, 4),
+            "avg_conflict_density": round(avg_conflict_density, 4),
+            "score": round(lens_score, 4),
+            "promoted": promoted,
+            "demoted": demoted,
+        })
+
+    # Write lens_scores.json (for monitoring)
+    if not dry_run and lens_scores:
+        lens_scores_path = os.path.join(claim_graph.memory_dir, "lens_scores.json")
+        with open(lens_scores_path, "w") as f:
+            json.dump({
+                "scored_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+                "lens_scores": lens_scores,
+            }, f, indent=2)
+
+    return lens_scores
 
 
 def _log(msg: str):
