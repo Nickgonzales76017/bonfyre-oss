@@ -43,6 +43,16 @@ SRCS := $(SRC_DIR)/fwht.c \
 OBJS := $(patsubst $(SRC_DIR)/%.c,$(BUILD)/%.o,$(SRCS))
 BIN  := bonfyre-fpq
 
+# FPQx Algebra: Basic operators (A+M+Π+D+Λ+H+I)
+FPQX_ALGEBRA_SRCS := $(SRC_DIR)/fpqx_algebra.c \
+                      $(SRC_DIR)/fwht.c \
+                      $(SRC_DIR)/fpq_codec.c \
+                      $(SRC_DIR)/fpq_native.c
+FPQX_ALGEBRA_OBJS := $(patsubst $(SRC_DIR)/%.c,$(BUILD)/%.o,$(FPQX_ALGEBRA_SRCS))
+FPQX_ALGEBRA_LIB  := $(BUILD)/libfpqx_algebra.a
+FPQX_ALGEBRA_TEST := $(BUILD)/test_fpqx_algebra
+LORA_EXAMPLE      := $(BUILD)/lora_compressed_domain
+
 # FPQ-X: Generalized Compression Algebra (A+M+Π+D+Λ+H)
 FPQX_LIB_SRCS := $(SRC_DIR)/fwht.c \
                   $(SRC_DIR)/polar.c \
@@ -139,6 +149,18 @@ $(BUILD)/%.o: $(SRC_DIR)/%.c $(INC_DIR)/fpq.h $(wildcard $(INC_DIR)/weight_algeb
 $(BUILD):
 	mkdir -p $(BUILD)
 
+# FPQx Algebra library
+$(FPQX_ALGEBRA_LIB): $(FPQX_ALGEBRA_OBJS)
+	ar rcs $@ $^
+
+# FPQx Algebra test
+$(FPQX_ALGEBRA_TEST): tests/test_fpqx_algebra.c $(FPQX_ALGEBRA_LIB) $(INC_DIR)/fpqx_algebra.h | $(BUILD)
+	$(CC) $(CFLAGS) -o $@ $< $(FPQX_ALGEBRA_LIB) $(LDFLAGS) -lm
+
+# LoRA example
+$(LORA_EXAMPLE): examples/lora_compressed_domain.c $(FPQX_ALGEBRA_LIB) $(INC_DIR)/fpqx_algebra.h | $(BUILD)
+	$(CC) $(CFLAGS) -o $@ $< $(FPQX_ALGEBRA_LIB) $(LDFLAGS) -lm
+
 clean:
 	rm -rf $(BUILD) $(BIN) $(FPQX_BIN) $(FPQ_BIN) libfpq.dylib libfpq.so
 
@@ -150,3 +172,14 @@ test: $(BIN)
 test-fpqx: $(FPQX_BIN)
 	@echo "=== FPQ-X Roundtrip Test ==="
 	./$(FPQX_BIN) roundtrip models/ggml-base.en.bin --limit 5 --bits 3
+
+test-algebra: $(FPQX_ALGEBRA_TEST)
+	@echo "═══════════════════════════════════════════════════════"
+lora-example: $(LORA_EXAMPLE)
+	@./$(LORA_EXAMPLE)
+
+.PHONY: all clean test test-fpqx test-algebra lora-example
+	@echo "═══════════════════════════════════════════════════════"
+	@./$(FPQX_ALGEBRA_TEST)
+
+.PHONY: all clean test test-fpqx test-algebra
