@@ -16,6 +16,147 @@
 #include <string.h>
 #include <math.h>
 #include <stdio.h>
+#include <stdint.h>
+
+/* ── SIMD ISA detection ──────────────────────────────────────────── */
+#if defined(__ARM_NEON) || defined(__ARM_NEON__)
+#  include <arm_neon.h>
+#  define LT_HAVE_NEON 1
+#elif defined(__AVX2__)
+#  include <immintrin.h>
+#  define LT_HAVE_AVX2 1
+#elif defined(__SSE2__)
+#  include <emmintrin.h>
+#  define LT_HAVE_SSE2 1
+#endif
+
+/* ================================================================
+ * Linear arena allocator — eliminates per-field malloc/realloc
+ * overhead in parse_next_value and encode hot paths.
+ *
+ * Each encode/decode call creates a per-call arena on the stack
+ * (pointer + watermark into a stack buffer, spills to heap only
+ * if the 64KB inline slab is exhausted — rare for JSON < 32KB).
+ *
+ * Usage:
+ *   LtArena ar; lt_arena_init(&ar, inline_buf, sizeof(inline_buf));
+ *   char *p = lt_arena_strdup(&ar, src);    // no malloc for small strings
+ *   lt_arena_reset(&ar);                    // free all at once → O(1)
+ * ================================================================ */
+
+#define LT_ARENA_INLINE  65536  /* 64 KB inline slab — covers most payloads */
+
+typedef struct {
+    char  *base;          /* current allocation base */
+    size_t used;          /* bytes consumed */
+    size_t cap;           /* total capacity */
+    int    heap;          /* base is heap-allocated (needs free) */
+} LtArena;
+
+static void lt_arena_init(LtArena *ar, char *inline_buf, size_t inline_cap) {
+    ar->base = inline_buf;
+    ar->used = 0;
+    ar->cap  = inline_cap;
+    ar->heap = 0;
+}
+
+/* Allocate n bytes aligned to pointer alignment.  Never returns NULL for
+ * n < cap/2.  Returns NULL only on catastrophic heap failure. */
+static char *lt_arena_alloc(LtArena *ar, size_t n) {
+    /* Align to 8 bytes */
+    size_t aligned = (n + 7u) & ~7u;
+    if (ar->used + aligned > ar->cap) {
+        /* Spill: grow heap slab × 2 or fit request */
+        size_t new_cap = ar->cap * 2;
+        if (new_cap < ar->used + aligned) new_cap = ar->used + aligned + 4096;
+        char *nb = malloc(new_cap);
+        if (!nb) return NULL;
+        memcpy(nb, ar->base, ar->used);
+        if (ar->heap) free(ar->base);
+        ar->base = nb;
+        ar->cap  = new_cap;
+        ar->heap = 1;
+    }
+    char *p   = ar->base + ar->used;
+    ar->used += aligned;
+    return p;
+}
+
+static char *lt_arena_strdup(LtArena *ar, const char *s) {
+    size_t n = strlen(s) + 1;
+    char *p = lt_arena_alloc(ar, n);
+    if (p) memcpy(p, s, n);
+    return p;
+}
+
+static char *lt_arena_strndup(LtArena *ar, const char *s, size_t n) {
+    char *p = lt_arena_alloc(ar, n + 1);
+    if (p) { memcpy(p, s, n); p[n] = '\0'; }
+    return p;
+}
+
+static void lt_arena_reset(LtArena *ar) {
+    if (ar->heap) { free(ar->base); ar->base = NULL; ar->heap = 0; }
+    ar->used = 0;
+    ar->cap  = 0;
+}
+
+/* ================================================================
+ * SIMD-accelerated JSON scanning
+ *
+ * lt_json_skip_string: advance past a quoted JSON string (already
+ *   positioned after the opening quote).  Returns pointer past the
+ *   closing quote.  Uses SIMD to find '"' or '\\' 16/32 bytes at a time.
+ *
+ * lt_json_scan_ws: skip whitespace/comma/colon.
+ * ================================================================ */
+
+static const char *lt_json_skip_string(const char *p) {
+    for (;;) {
+#if defined(LT_HAVE_NEON)
+        /* Process 16 bytes per iteration on NEON */
+        while (__builtin_expect((uintptr_t)p % 1 == 0, 1)) {
+            const uint8x16_t chunk = vld1q_u8((const uint8_t *)p);
+            const uint8x16_t dq   = vceqq_u8(chunk, vdupq_n_u8('"'));
+            const uint8x16_t bs   = vceqq_u8(chunk, vdupq_n_u8('\\'));
+            const uint8x16_t hit  = vorrq_u8(dq, bs);
+            const uint64_t lo = vgetq_lane_u64(vreinterpretq_u64_u8(hit), 0);
+            const uint64_t hi = vgetq_lane_u64(vreinterpretq_u64_u8(hit), 1);
+            if (lo | hi) break;
+            p += 16;
+        }
+#elif defined(LT_HAVE_AVX2)
+        while (1) {
+            const __m256i chunk = _mm256_loadu_si256((const __m256i *)p);
+            const __m256i dq    = _mm256_cmpeq_epi8(chunk, _mm256_set1_epi8('"'));
+            const __m256i bs    = _mm256_cmpeq_epi8(chunk, _mm256_set1_epi8('\\'));
+            const int mask = _mm256_movemask_epi8(_mm256_or_si256(dq, bs));
+            if (mask) { p += __builtin_ctz((unsigned)mask); break; }
+            p += 32;
+        }
+#elif defined(LT_HAVE_SSE2)
+        while (1) {
+            const __m128i chunk = _mm_loadu_si128((const __m128i *)p);
+            const __m128i dq    = _mm_cmpeq_epi8(chunk, _mm_set1_epi8('"'));
+            const __m128i bs    = _mm_cmpeq_epi8(chunk, _mm_set1_epi8('\\'));
+            const int mask = _mm_movemask_epi8(_mm_or_si128(dq, bs));
+            if (mask) { p += __builtin_ctz((unsigned)mask); break; }
+            p += 16;
+        }
+#endif
+        /* Scalar finish / SIMD already advanced to hit byte */
+        if (*p == '"') { p++; return p; }
+        if (*p == '\\') { p += (*p ? 2 : 1); continue; }
+        if (!*p) return p; /* unterminated */
+        p++;
+    }
+}
+
+static inline const char *lt_json_scan_ws(const char *p) {
+    while (*p == ' ' || *p == ',' || *p == '\n' || *p == '\t' || *p == ':')
+        p++;
+    return p;
+}
 
 #define DELTA_OP_LITERAL    0
 #define DELTA_OP_WINDOW     1
@@ -95,127 +236,114 @@ static long long zigzag_decode(unsigned long long val) {
  *             LT_DOUBLE(4), LT_STRING(5), LT_NESTED(6)
  */
 
-static int grow_text_buf(char **buf, size_t *cap, size_t need) {
-    if (!buf || !cap) return -1;
-    while (need + 1 > *cap) {
-        size_t next = (*cap == 0) ? 64 : (*cap * 2);
-        char *tmp = realloc(*buf, next);
-        if (!tmp) return -1;
-        *buf = tmp;
-        *cap = next;
-    }
-    return 0;
-}
+/* ================================================================
+ * Arena-aware JSON value parser.
+ *
+ * parse_next_value_ar — replaces the old grow_text_buf/append_text_char
+ * pattern.  Key differences:
+ *  - Strings: one SIMD scan to find length, one lt_arena_strndup.
+ *    No per-character realloc.
+ *  - Nested/numbers: single lt_arena_strndup of the exact span.
+ *  - Leaf keywords (null/true/false): constant "" from arena.
+ *  - No free() calls — arena is bulk-freed by caller.
+ *
+ * Legacy signature (parse_next_value) forwards to this with a
+ * per-call arena so existing internal callers keep working.
+ * ================================================================ */
 
-static int append_text_char(char **buf, size_t *len, size_t *cap, char ch) {
-    if (grow_text_buf(buf, cap, *len + 1) != 0) return -1;
-    (*buf)[(*len)++] = ch;
-    (*buf)[*len] = '\0';
-    return 0;
-}
-
-static int append_text_bytes(char **buf, size_t *len, size_t *cap,
-                             const char *src, size_t src_len) {
-    if (grow_text_buf(buf, cap, *len + src_len) != 0) return -1;
-    memcpy(*buf + *len, src, src_len);
-    *len += src_len;
-    (*buf)[*len] = '\0';
-    return 0;
-}
-
-/* Internal parser: extract next JSON value from position p.
- * Returns type tag and allocates raw value text.
- * Advances *pp past the consumed value. */
-static int parse_next_value(const char **pp, char **out_val) {
+static int parse_next_value_ar(LtArena *ar, const char **pp, char **out_val) {
     const char *p = *pp;
-    char *buf = NULL;
-    size_t len = 0, cap = 0;
 
     if (!out_val) return -1;
     *out_val = NULL;
 
-    /* skip whitespace/commas */
-    while (*p && (*p == ' ' || *p == ',' || *p == '\n' || *p == '\t')) p++;
+    p = lt_json_scan_ws(p);
     if (!*p || *p == ']') { *pp = p; return -1; }
 
     if (*p == 'n' && strncmp(p, "null", 4) == 0) {
         *pp = p + 4;
-        *out_val = strdup("");
+        *out_val = lt_arena_strdup(ar, "");
         return LT_NULL;
     }
     if (*p == 't' && strncmp(p, "true", 4) == 0) {
         *pp = p + 4;
-        *out_val = strdup("");
+        *out_val = lt_arena_strdup(ar, "");
         return LT_BOOL_T;
     }
     if (*p == 'f' && strncmp(p, "false", 5) == 0) {
         *pp = p + 5;
-        *out_val = strdup("");
+        *out_val = lt_arena_strdup(ar, "");
         return LT_BOOL_F;
     }
+
     if (*p == '"') {
-        /* String */
-        p++;
-        while (*p && *p != '"') {
-            if (*p == '\\' && *(p + 1)) {
-                if (append_text_char(&buf, &len, &cap, *p++) != 0) { free(buf); return -1; }
-                if (append_text_char(&buf, &len, &cap, *p++) != 0) { free(buf); return -1; }
-                continue;
-            }
-            if (append_text_char(&buf, &len, &cap, *p++) != 0) { free(buf); return -1; }
-        }
-        if (*p == '"') p++;
-        *pp = p;
-        if (!buf) {
-            buf = strdup("");
-            if (!buf) return -1;
-        }
-        *out_val = buf;
+        /* SIMD scan: find closing quote (handles \\ escapes in scalar fallback) */
+        const char *s = ++p;  /* past opening '"' */
+        /* Escape-free fast path: scan to closing '"' with SIMD */
+        const char *end = lt_json_skip_string(p);  /* returns past closing '"' */
+        /* end[-1] == '"' only if no embedded quote-in-escape trickery.
+         * Use raw bytes from s..end-1 and let the application handle
+         * escape expansion later (consistent with pre-existing behavior). */
+        size_t slen = (size_t)(end - 1 - s);  /* exclude closing '"' */
+        *out_val = lt_arena_strndup(ar, s, slen);
+        if (!*out_val) return -1;
+        *pp = end;
         return LT_STRING;
     }
+
     if (*p == '{' || *p == '[') {
-        /* Nested object or array */
+        /* Nested: find matching brace/bracket by counting depth */
         char open = *p, close = (open == '{') ? '}' : ']';
+        const char *start = p;
         int depth = 1;
-        if (append_text_char(&buf, &len, &cap, *p++) != 0) { free(buf); return -1; }
+        p++;
         while (*p && depth > 0) {
             if (*p == '"') {
-                if (append_text_char(&buf, &len, &cap, *p++) != 0) { free(buf); return -1; }
-                while (*p && *p != '"') {
-                    if (*p == '\\' && *(p + 1)) {
-                        if (append_text_char(&buf, &len, &cap, *p++) != 0) { free(buf); return -1; }
-                    }
-                    if (append_text_char(&buf, &len, &cap, *p++) != 0) { free(buf); return -1; }
-                }
-                if (*p == '"' && append_text_char(&buf, &len, &cap, *p++) != 0) { free(buf); return -1; }
+                p = lt_json_skip_string(p + 1); /* skip string contents */
                 continue;
             }
             if (*p == open) depth++;
             if (*p == close) depth--;
-            if (append_text_char(&buf, &len, &cap, *p++) != 0) { free(buf); return -1; }
+            p++;
         }
+        *out_val = lt_arena_strndup(ar, start, (size_t)(p - start));
+        if (!*out_val) return -1;
         *pp = p;
-        if (!buf) return -1;
-        *out_val = buf;
         return LT_NESTED;
     }
 
-    /* Number: integer or float */
+    /* Number: scan to delimiter */
     {
         const char *start = p;
         int has_dot = 0, has_e = 0;
-        while (*p && *p != ',' && *p != ']' && *p != ' ') {
+        while (*p && *p != ',' && *p != ']' && *p != ' ' && *p != '\n' && *p != '\t') {
             if (*p == '.') has_dot = 1;
             if (*p == 'e' || *p == 'E') has_e = 1;
             p++;
         }
-        if (append_text_bytes(&buf, &len, &cap, start, (size_t)(p - start)) != 0) { free(buf); return -1; }
+        *out_val = lt_arena_strndup(ar, start, (size_t)(p - start));
+        if (!*out_val) return -1;
         *pp = p;
-        *out_val = buf;
-
-        if (has_dot || has_e) return LT_DOUBLE;
-        return LT_INT;
+        return (has_dot || has_e) ? LT_DOUBLE : LT_INT;
     }
+}
+
+/* Legacy thin wrapper — callers that predate the arena API.
+ * Allocates the result string with malloc so callers can free() it. */
+static int parse_next_value(const char **pp, char **out_val) {
+    char inline_slab[4096];
+    LtArena ar;
+    lt_arena_init(&ar, inline_slab, sizeof(inline_slab));
+    char *tmp = NULL;
+    int ty = parse_next_value_ar(&ar, pp, &tmp);
+    if (ty >= 0 && tmp) {
+        *out_val = strdup(tmp);   /* one malloc per call — O(1) not O(n chars) */
+        if (!*out_val) ty = -1;
+    } else {
+        *out_val = NULL;
+    }
+    lt_arena_reset(&ar);
+    return ty;
 }
 
 /* Ensure output buffer has room for `need` more bytes */
@@ -237,21 +365,26 @@ int lt_encode_v1(const char *json_bindings,
     while (*p && *p != '[') p++;
     if (*p == '[') p++;
 
+    /* Arena covers all temporary string allocations in this call */
+    char ar_slab[LT_ARENA_INLINE];
+    LtArena ar;
+    lt_arena_init(&ar, ar_slab, sizeof(ar_slab));
+
     /* First pass: parse values into temp storage */
     typedef struct { int type; char *val; } TmpVal;
     int max_vals = 256;
     TmpVal *vals = calloc((size_t)max_vals, sizeof(TmpVal));
-    if (!vals) return -1;
+    if (!vals) { lt_arena_reset(&ar); return -1; }
     int count = 0;
 
     while (*p && *p != ']') {
         if (count >= max_vals) {
             max_vals *= 2;
             TmpVal *nv = realloc(vals, (size_t)max_vals * sizeof(TmpVal));
-            if (!nv) { free(vals); return -1; }
+            if (!nv) { free(vals); lt_arena_reset(&ar); return -1; }
             vals = nv;
         }
-        int t = parse_next_value(&p, &vals[count].val);
+        int t = parse_next_value_ar(&ar, &p, &vals[count].val);
         if (t < 0) break;
         vals[count].type = t;
         count++;
@@ -261,8 +394,8 @@ int lt_encode_v1(const char *json_bindings,
     size_t cap = 1024;
     unsigned char *buf = malloc(cap);
     if (!buf) {
-        for (int i = 0; i < count; i++) free(vals[i].val);
         free(vals);
+        lt_arena_reset(&ar);
         return -1;
     }
     size_t off = 0;
@@ -271,10 +404,7 @@ int lt_encode_v1(const char *json_bindings,
     unsigned char vbuf[16];
     int vlen = varint_encode((unsigned long long)count, vbuf, sizeof(vbuf));
     if (ensure_cap(&buf, &cap, off, (size_t)vlen) < 0) {
-        free(buf);
-        for (int i = 0; i < count; i++) free(vals[i].val);
-        free(vals);
-        return -1;
+        free(buf); free(vals); lt_arena_reset(&ar); return -1;
     }
     memcpy(buf + off, vbuf, (size_t)vlen);
     off += (size_t)vlen;
@@ -286,12 +416,8 @@ int lt_encode_v1(const char *json_bindings,
         case LT_NULL:
         case LT_BOOL_F:
         case LT_BOOL_T:
-            /* Just the type byte */
             if (ensure_cap(&buf, &cap, off, 1) < 0) {
-                free(buf);
-                for (int j = 0; j < count; j++) free(vals[j].val);
-                free(vals);
-                return -1;
+                free(buf); free(vals); lt_arena_reset(&ar); return -1;
             }
             buf[off++] = (unsigned char)t;
             break;
@@ -301,10 +427,7 @@ int lt_encode_v1(const char *json_bindings,
             unsigned long long zz = zigzag_encode(iv);
             vlen = varint_encode(zz, vbuf, sizeof(vbuf));
             if (ensure_cap(&buf, &cap, off, 1 + (size_t)vlen) < 0) {
-                free(buf);
-                for (int j = 0; j < count; j++) free(vals[j].val);
-                free(vals);
-                return -1;
+                free(buf); free(vals); lt_arena_reset(&ar); return -1;
             }
             buf[off++] = LT_INT;
             memcpy(buf + off, vbuf, (size_t)vlen);
@@ -315,10 +438,7 @@ int lt_encode_v1(const char *json_bindings,
         case LT_DOUBLE: {
             double dv = strtod(vals[i].val, NULL);
             if (ensure_cap(&buf, &cap, off, 9) < 0) {
-                free(buf);
-                for (int j = 0; j < count; j++) free(vals[j].val);
-                free(vals);
-                return -1;
+                free(buf); free(vals); lt_arena_reset(&ar); return -1;
             }
             buf[off++] = LT_DOUBLE;
             memcpy(buf + off, &dv, 8);
@@ -331,10 +451,7 @@ int lt_encode_v1(const char *json_bindings,
             size_t slen = strlen(vals[i].val);
             vlen = varint_encode((unsigned long long)slen, vbuf, sizeof(vbuf));
             if (ensure_cap(&buf, &cap, off, 1 + (size_t)vlen + slen) < 0) {
-                free(buf);
-                for (int j = 0; j < count; j++) free(vals[j].val);
-                free(vals);
-                return -1;
+                free(buf); free(vals); lt_arena_reset(&ar); return -1;
             }
             buf[off++] = (unsigned char)t;
             memcpy(buf + off, vbuf, (size_t)vlen);
@@ -346,8 +463,8 @@ int lt_encode_v1(const char *json_bindings,
         }
     }
 
-    for (int i = 0; i < count; i++) free(vals[i].val);
     free(vals);
+    lt_arena_reset(&ar);   /* bulk-free all string temporaries */
     *out = buf;
     *out_len = off;
     return count;
@@ -1013,6 +1130,11 @@ int lt_encode_v2(const char *json_bindings,
     while (*p && *p != '[') p++;
     if (*p == '[') p++;
 
+    /* Arena for all temporary string allocations */
+    char ar_slab[LT_ARENA_INLINE];
+    LtArena ar;
+    lt_arena_init(&ar, ar_slab, sizeof(ar_slab));
+
     typedef struct { int type; char *val; } TmpVal;
     int max_vals = 256;
     TmpVal *vals = calloc((size_t)max_vals, sizeof(TmpVal));
@@ -1023,17 +1145,17 @@ int lt_encode_v2(const char *json_bindings,
     unsigned char *buf = NULL;
     size_t off = 0;
 
-    if (!vals) return -1;
+    if (!vals) { lt_arena_reset(&ar); return -1; }
 
     while (*p && *p != ']') {
         if (count >= max_vals) {
             max_vals *= 2;
             TmpVal *nv = realloc(vals, (size_t)max_vals * sizeof(TmpVal));
-            if (!nv) { free(vals); return -1; }
+            if (!nv) { free(vals); lt_arena_reset(&ar); return -1; }
             vals = nv;
         }
         {
-            int t = parse_next_value(&p, &vals[count].val);
+            int t = parse_next_value_ar(&ar, &p, &vals[count].val);
             if (t < 0) break;
             vals[count].type = t;
             count++;
@@ -1043,22 +1165,16 @@ int lt_encode_v2(const char *json_bindings,
     seen_strings = calloc((size_t)(count > 0 ? count : 1), sizeof(*seen_strings));
     buf = malloc(cap);
     if (!seen_strings || !buf) {
-        for (int i = 0; i < count; i++) free(vals[i].val);
-        free(vals);
-        free(seen_strings);
-        free(buf);
-        return -1;
+        free(vals); free(seen_strings); free(buf);
+        lt_arena_reset(&ar); return -1;
     }
 
     {
         unsigned char vbuf[16];
         int vlen = varint_encode((unsigned long long)count, vbuf, sizeof(vbuf));
         if (ensure_cap(&buf, &cap, off, (size_t)vlen) < 0) {
-            for (int i = 0; i < count; i++) free(vals[i].val);
-            free(vals);
-            free(seen_strings);
-            free(buf);
-            return -1;
+            free(vals); free(seen_strings); free(buf);
+            lt_arena_reset(&ar); return -1;
         }
         memcpy(buf + off, vbuf, (size_t)vlen);
         off += (size_t)vlen;
@@ -1072,8 +1188,7 @@ int lt_encode_v2(const char *json_bindings,
         case LT_BOOL_F:
         case LT_BOOL_T:
             if (ensure_cap(&buf, &cap, off, 1) < 0) {
-                for (int j = 0; j < count; j++) free(vals[j].val);
-                free(vals); free(seen_strings); free(buf); return -1;
+                free(vals); free(seen_strings); free(buf); lt_arena_reset(&ar); return -1;
             }
             buf[off++] = (unsigned char)t;
             break;
@@ -1082,8 +1197,7 @@ int lt_encode_v2(const char *json_bindings,
             long long iv = strtoll(vals[i].val, NULL, 10);
             if (iv >= -64 && iv <= 63) {
                 if (ensure_cap(&buf, &cap, off, 2) < 0) {
-                    for (int j = 0; j < count; j++) free(vals[j].val);
-                    free(vals); free(seen_strings); free(buf); return -1;
+                    free(vals); free(seen_strings); free(buf); lt_arena_reset(&ar); return -1;
                 }
                 buf[off++] = LT_SMALL_INT;
                 buf[off++] = (unsigned char)(iv + 64);
@@ -1092,8 +1206,7 @@ int lt_encode_v2(const char *json_bindings,
                 unsigned long long zz = zigzag_encode(iv);
                 int vlen = varint_encode(zz, vbuf, sizeof(vbuf));
                 if (ensure_cap(&buf, &cap, off, 1 + (size_t)vlen) < 0) {
-                    for (int j = 0; j < count; j++) free(vals[j].val);
-                    free(vals); free(seen_strings); free(buf); return -1;
+                    free(vals); free(seen_strings); free(buf); lt_arena_reset(&ar); return -1;
                 }
                 buf[off++] = LT_INT;
                 memcpy(buf + off, vbuf, (size_t)vlen);
@@ -1107,16 +1220,14 @@ int lt_encode_v2(const char *json_bindings,
             float fv = (float)dv;
             if ((double)fv == dv) {
                 if (ensure_cap(&buf, &cap, off, 5) < 0) {
-                    for (int j = 0; j < count; j++) free(vals[j].val);
-                    free(vals); free(seen_strings); free(buf); return -1;
+                    free(vals); free(seen_strings); free(buf); lt_arena_reset(&ar); return -1;
                 }
                 buf[off++] = LT_FLOAT32;
                 memcpy(buf + off, &fv, 4);
                 off += 4;
             } else {
                 if (ensure_cap(&buf, &cap, off, 9) < 0) {
-                    for (int j = 0; j < count; j++) free(vals[j].val);
-                    free(vals); free(seen_strings); free(buf); return -1;
+                    free(vals); free(seen_strings); free(buf); lt_arena_reset(&ar); return -1;
                 }
                 buf[off++] = LT_DOUBLE;
                 memcpy(buf + off, &dv, 8);
@@ -1129,8 +1240,7 @@ int lt_encode_v2(const char *json_bindings,
             size_t slen = strlen(vals[i].val);
             if (slen == 0) {
                 if (ensure_cap(&buf, &cap, off, 1) < 0) {
-                    for (int j = 0; j < count; j++) free(vals[j].val);
-                    free(vals); free(seen_strings); free(buf); return -1;
+                    free(vals); free(seen_strings); free(buf); lt_arena_reset(&ar); return -1;
                 }
                 buf[off++] = LT_EMPTY_STR;
                 break;
@@ -1149,8 +1259,7 @@ int lt_encode_v2(const char *json_bindings,
                     unsigned char vbuf[16];
                     int vlen = varint_encode((unsigned long long)seen_idx, vbuf, sizeof(vbuf));
                     if (ensure_cap(&buf, &cap, off, 1 + (size_t)vlen) < 0) {
-                        for (int j = 0; j < count; j++) free(vals[j].val);
-                        free(vals); free(seen_strings); free(buf); return -1;
+                        free(vals); free(seen_strings); free(buf); lt_arena_reset(&ar); return -1;
                     }
                     buf[off++] = LT_STRREF;
                     memcpy(buf + off, vbuf, (size_t)vlen);
@@ -1159,8 +1268,7 @@ int lt_encode_v2(const char *json_bindings,
                     unsigned char vbuf[16];
                     int vlen = varint_encode((unsigned long long)slen, vbuf, sizeof(vbuf));
                     if (ensure_cap(&buf, &cap, off, 1 + (size_t)vlen + slen) < 0) {
-                        for (int j = 0; j < count; j++) free(vals[j].val);
-                        free(vals); free(seen_strings); free(buf); return -1;
+                        free(vals); free(seen_strings); free(buf); lt_arena_reset(&ar); return -1;
                     }
                     buf[off++] = LT_STRING;
                     memcpy(buf + off, vbuf, (size_t)vlen);
@@ -1178,8 +1286,7 @@ int lt_encode_v2(const char *json_bindings,
             unsigned char vbuf[16];
             int vlen = varint_encode((unsigned long long)slen, vbuf, sizeof(vbuf));
             if (ensure_cap(&buf, &cap, off, 1 + (size_t)vlen + slen) < 0) {
-                for (int j = 0; j < count; j++) free(vals[j].val);
-                free(vals); free(seen_strings); free(buf); return -1;
+                free(vals); free(seen_strings); free(buf); lt_arena_reset(&ar); return -1;
             }
             buf[off++] = LT_NESTED;
             memcpy(buf + off, vbuf, (size_t)vlen);
@@ -1191,9 +1298,9 @@ int lt_encode_v2(const char *json_bindings,
         }
     }
 
-    for (int i = 0; i < count; i++) free(vals[i].val);
     free(vals);
     free(seen_strings);
+    lt_arena_reset(&ar);   /* bulk-free all string temporaries */
     *out = buf;
     *out_len = off;
     return count;
@@ -2095,19 +2202,24 @@ int lt_encode_v2_interned(const char *json_bindings,
     while (*p && *p != '[') p++;
     if (*p == '[') p++;
 
+    /* Arena for all temporary string allocations */
+    char ar_slab[LT_ARENA_INLINE];
+    LtArena ar;
+    lt_arena_init(&ar, ar_slab, sizeof(ar_slab));
+
     typedef struct { int type; char *val; } TmpVal;
     int max_vals = 256, count = 0;
     TmpVal *vals = calloc((size_t)max_vals, sizeof(TmpVal));
-    if (!vals) return -1;
+    if (!vals) { lt_arena_reset(&ar); return -1; }
 
     while (*p && *p != ']') {
         if (count >= max_vals) {
             max_vals *= 2;
             TmpVal *nv = realloc(vals, (size_t)max_vals * sizeof(TmpVal));
-            if (!nv) { for (int i = 0; i < count; i++) free(vals[i].val); free(vals); return -1; }
+            if (!nv) { free(vals); lt_arena_reset(&ar); return -1; }
             vals = nv;
         }
-        int t = parse_next_value(&p, &vals[count].val);
+        int t = parse_next_value_ar(&ar, &p, &vals[count].val);
         if (t < 0) break;
         vals[count].type = t;
         count++;
@@ -2120,9 +2232,9 @@ int lt_encode_v2_interned(const char *json_bindings,
 
     size_t cap = 1024;
     unsigned char *buf = malloc(cap);
-    if (!buf) {
-        for (int i = 0; i < count; i++) free(vals[i].val);
-        free(vals); free(seen_strings); return -1;
+    if (!buf || !seen_strings) {
+        free(vals); free(seen_strings); free(buf);
+        lt_arena_reset(&ar); return -1;
     }
     size_t off = 0;
 
@@ -2236,18 +2348,18 @@ int lt_encode_v2_interned(const char *json_bindings,
         }
     }
 
-    for (int i = 0; i < count; i++) free(vals[i].val);
     free(vals);
     free(seen_strings);
+    lt_arena_reset(&ar);   /* bulk-free all string temporaries */
     *out = buf;
     *out_len = off;
     return count;
 
 interned_fail:
-    for (int i = 0; i < count; i++) free(vals[i].val);
     free(vals);
     free(seen_strings);
     free(buf);
+    lt_arena_reset(&ar);
     return -1;
 }
 

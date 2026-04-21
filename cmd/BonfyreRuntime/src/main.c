@@ -1,5 +1,6 @@
 #include <errno.h>
 #include <limits.h>
+#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -80,11 +81,17 @@ static void print_usage(void) {
             "  bonfyre-runtime queue <queue args...>\n"
             "  bonfyre-runtime ledger <ledger args...>\n"
             "  bonfyre-runtime loop <N> <binary> [args...]\n"
+            "  bonfyre-runtime parallel [-- cmd args...]...\n"
             "\n"
-            "  loop: runs <binary> N times; passes previous artifact.json as --in\n"
-            "        to each subsequent iteration.  Uses --out DIR-1, DIR-2, ...\n"
-            "        if --out DIR is present in args, else /tmp/bonfyre-loop-PID-i.\n");
+            "  loop:     runs <binary> N times; passes previous artifact.json as --in\n"
+            "            to each subsequent iteration.\n"
+            "  parallel: forks all '-- cmd args...' groups concurrently; waits for\n"
+            "            all to finish; returns 0 only if every child exited 0.\n"
+            "            Separate independent pipeline stages with '--'.\n");
 }
+
+static void print_usage(void);
+static int  cmd_parallel(int argc, char **argv);
 
 int main(int argc, char **argv) {
     if (argc < 2) {
@@ -263,6 +270,106 @@ int main(int argc, char **argv) {
         return 0;
     }
 
+    if (strcmp(argv[1], "parallel") == 0) {
+        return cmd_parallel(argc - 2, argv + 2);
+    }
+
     print_usage();
     return 1;
+}
+
+/* ================================================================
+ * parallel subcommand
+ *
+ * bonfyre-runtime parallel [-- binary arg...] [-- binary arg...] ...
+ *
+ * Parses the argv into groups delimited by "--".  Forks each group
+ * simultaneously, then collects all exit codes.  Returns 0 only if
+ * every child exited with status 0.  This lets independent pipeline
+ * stages (transcription, hashing, ledger update) overlap their I/O
+ * and CPU work.
+ *
+ * Max groups: 64 (enough for any realistic pipeline fan-out).
+ * ================================================================ */
+#define PAR_MAX_GROUPS 64
+
+static int cmd_parallel(int argc, char **argv) {
+    /* Collect group start indices in remaining argv (after "parallel") */
+    int group_starts[PAR_MAX_GROUPS];
+    int group_count = 0;
+
+    int i = 0;
+    while (i < argc) {
+        if (strcmp(argv[i], "--") == 0) {
+            i++;
+            if (i < argc && group_count < PAR_MAX_GROUPS) {
+                group_starts[group_count++] = i;
+            }
+            continue;
+        }
+        /* First argument without a leading "--" also starts an implicit group */
+        if (group_count == 0 && group_count < PAR_MAX_GROUPS) {
+            group_starts[group_count++] = i;
+        }
+        i++;
+    }
+
+    if (group_count == 0) {
+        fprintf(stderr, "bonfyre-runtime parallel: no commands given\n");
+        return 1;
+    }
+
+    pid_t pids[PAR_MAX_GROUPS];
+
+    /* Compute extent of each group (from its start to the next "--" or end) */
+    for (int g = 0; g < group_count; g++) {
+        int start = group_starts[g];
+        /* Find end: next "--" marker */
+        int end = argc;
+        for (int j = start; j < argc; j++) {
+            if (strcmp(argv[j], "--") == 0) { end = j; break; }
+        }
+        int len = end - start;
+        if (len <= 0) { pids[g] = -1; continue; }
+
+        /* Build null-terminated argv for execv */
+        char **cargv = calloc((size_t)(len + 1), sizeof(char *));
+        if (!cargv) {
+            fprintf(stderr, "bonfyre-runtime parallel: OOM\n");
+            /* Kill already-forked children */
+            for (int k = 0; k < g; k++) if (pids[k] > 0) kill(pids[k], SIGTERM);
+            return 1;
+        }
+        for (int j = 0; j < len; j++) cargv[j] = argv[start + j];
+        cargv[len] = NULL;
+
+        pid_t pid = fork();
+        if (pid < 0) {
+            perror("fork");
+            free(cargv);
+            for (int k = 0; k < g; k++) if (pids[k] > 0) kill(pids[k], SIGTERM);
+            return 1;
+        }
+        if (pid == 0) {
+            execv(cargv[0], cargv);
+            perror(cargv[0]);
+            _exit(127);
+        }
+        free(cargv);
+        pids[g] = pid;
+    }
+
+    /* Collect all children */
+    int overall = 0;
+    for (int g = 0; g < group_count; g++) {
+        if (pids[g] <= 0) continue;
+        int st = 0;
+        waitpid(pids[g], &st, 0);
+        int code = WIFEXITED(st) ? WEXITSTATUS(st) : 1;
+        if (code != 0) {
+            fprintf(stderr, "bonfyre-runtime parallel: group %d exited %d\n", g, code);
+            overall = code;
+        }
+    }
+    return overall;
 }

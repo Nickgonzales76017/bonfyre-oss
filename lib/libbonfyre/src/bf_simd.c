@@ -48,10 +48,25 @@
 static const char *find_char_simd(const char *p, const char *end, char c) {
 #if defined(BF_HAVE_NEON)
     const uint8x16_t target = vdupq_n_u8((uint8_t)c);
+    /* 32-byte-per-iteration fast path: load two 16-byte registers, OR the
+     * match masks.  Only enter the scalar loop if a hit is in this window. */
+    for (; p + 32 <= end; p += 32) {
+        uint8x16_t c0 = vld1q_u8((const uint8_t *)p);
+        uint8x16_t c1 = vld1q_u8((const uint8_t *)p + 16);
+        uint8x16_t m0 = vceqq_u8(c0, target);
+        uint8x16_t m1 = vceqq_u8(c1, target);
+        uint8x16_t any = vorrq_u8(m0, m1);
+        uint64_t lo = vgetq_lane_u64(vreinterpretq_u64_u8(any), 0);
+        uint64_t hi = vgetq_lane_u64(vreinterpretq_u64_u8(any), 1);
+        if (lo | hi) {
+            for (int i = 0; i < 32; i++)
+                if (p[i] == c) return p + i;
+        }
+    }
+    /* Mop up trailing 0–31 bytes */
     for (; p + 16 <= end; p += 16) {
         uint8x16_t chunk = vld1q_u8((const uint8_t *)p);
         uint8x16_t eq    = vceqq_u8(chunk, target);
-        /* Collapse 128-bit mask to two 64-bit lanes */
         uint64_t lo = vgetq_lane_u64(vreinterpretq_u64_u8(eq), 0);
         uint64_t hi = vgetq_lane_u64(vreinterpretq_u64_u8(eq), 1);
         if (lo | hi) {
@@ -85,6 +100,20 @@ static const char *find_char2_simd(const char *p, const char *end, char c0, char
 #if defined(BF_HAVE_NEON)
     const uint8x16_t t0 = vdupq_n_u8((uint8_t)c0);
     const uint8x16_t t1 = vdupq_n_u8((uint8_t)c1);
+    /* 32-byte fast path */
+    for (; p + 32 <= end; p += 32) {
+        uint8x16_t v0 = vld1q_u8((const uint8_t *)p);
+        uint8x16_t v1 = vld1q_u8((const uint8_t *)p + 16);
+        uint8x16_t m0 = vorrq_u8(vceqq_u8(v0, t0), vceqq_u8(v0, t1));
+        uint8x16_t m1 = vorrq_u8(vceqq_u8(v1, t0), vceqq_u8(v1, t1));
+        uint8x16_t any = vorrq_u8(m0, m1);
+        uint64_t lo = vgetq_lane_u64(vreinterpretq_u64_u8(any), 0);
+        uint64_t hi = vgetq_lane_u64(vreinterpretq_u64_u8(any), 1);
+        if (lo | hi) {
+            for (int i = 0; i < 32; i++)
+                if (p[i] == c0 || p[i] == c1) return p + i;
+        }
+    }
     for (; p + 16 <= end; p += 16) {
         uint8x16_t v  = vld1q_u8((const uint8_t *)p);
         uint8x16_t m  = vorrq_u8(vceqq_u8(v, t0), vceqq_u8(v, t1));

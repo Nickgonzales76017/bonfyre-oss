@@ -350,6 +350,11 @@ void bf_mmap_close(BfMmapFile *m);
  * bf_mmap_close(m) when done — pointer is invalid after that.     */
 const BfBinaryRecord *bf_bfrec_mmap(const char *path, BfMmapFile *m);
 
+/* Issue MADV_WILLNEED for each path to prefault pages asynchronously.
+ * Call during pipeline setup before stages that access those files.
+ * Returns number of paths successfully advised.                    */
+int  bf_mmap_prefetch(const char * const *paths, int n);
+
 /* ================================================================
  * Version
  * ================================================================ */
