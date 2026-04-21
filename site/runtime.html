@@ -69,7 +69,7 @@
             <article class="feature-card">
               <span class="card-meta">SIMD everywhere</span>
               <h3>Vectorised parsing across the stack</h3>
-              <p>bf_json uses SIMD to scan tokens. bf_utf8 validates bytes 16 at a time. bf_base64 encodes/decodes 32 bytes per operation. bf_csv SIMD-scans for field delimiters. Throughput on structured data is measured in GB/s, not MB/s.</p>
+              <p>bf_json uses SIMD to scan tokens (arena-allocated AST — one allocation per parse, not per token). bf_utf8 validates bytes 16 at a time. bf_base64 encodes/decodes 32 bytes per operation. bf_csv SIMD-scans for field delimiters. <strong>bf_simd</strong> <code>find_char_simd</code> and <code>find_char2_simd</code> process 32 bytes per iteration on NEON (dual <code>vld1q_u8</code> + <code>vorrq_u8</code>), 2× the throughput of the previous 16-byte path. <code>lt_json_skip_string</code> in liblambda-tensors adds AVX2/NEON/SSE2 dispatch for string-boundary scanning in the JSON compression codec. Throughput on structured data is measured in GB/s, not MB/s.</p>
             </article>
           </div>
         </div>
@@ -126,8 +126,8 @@
             </article>
             <article class="feature-card">
               <span class="card-meta">bf_mmap</span>
-              <h3>Memory-mapped file I/O</h3>
-              <p>Shared access patterns across pipeline stages. Huge page support for workloads where TLB pressure matters (large model weight files, sustained artifact access). Reduces system call overhead for large sequential reads.</p>
+              <h3>Memory-mapped file I/O + stateless prefetch</h3>
+              <p>Shared access patterns across pipeline stages. Huge page support for workloads where TLB pressure matters (large model weight files, sustained artifact access). Reduces system call overhead for large sequential reads. <code>bf_mmap_prefetch(paths, n)</code> issues <code>MADV_WILLNEED</code> for a list of file paths — the kernel page-faults them in asynchronously before the pipeline stage opens them. Non-fatal per-path, stateless, no slot array, no LRU — works with the OS page cache rather than alongside it.</p>
             </article>
             <article class="feature-card">
               <span class="card-meta">bf_hashmap</span>
@@ -235,7 +235,8 @@
                 <tr><td>bf_pipeline</td><td>Stage execution engine</td><td>32 slot registry, hot-load atomic swap</td></tr>
                 <tr><td>bf_queue</td><td>Lock-free work queue</td><td>mpsc/spsc, back-pressure support</td></tr>
                 <tr><td>bf_lmdb</td><td>Zero-copy LMDB bindings</td><td>512 MB map, ACID, zero-copy reads</td></tr>
-                <tr><td>bf_mmap</td><td>Memory-mapped file I/O</td><td>Shared access patterns, huge page support</td></tr>
+                <tr><td>bf_mmap</td><td>Memory-mapped file I/O</td><td>Shared access patterns, huge page support; <code>bf_mmap_prefetch</code> batches MADV_WILLNEED hints</td></tr>
+                <tr><td>bf_simd</td><td>SIMD scan primitives</td><td>32B/iter NEON via dual vld1q_u8+vorrq_u8; AVX2/SSE2 paths; find_char_simd, find_char2_simd</td></tr>
                 <tr><td>bf_hashmap</td><td>Open-addressing hash table</td><td>Robin Hood probing, 75% load factor</td></tr>
                 <tr><td>bf_csv</td><td>CSV parse / emit</td><td>SIMD-assisted field scan, streaming parser</td></tr>
                 <tr><td>bf_flatbuf</td><td>FlatBuffers serialisation</td><td>Zero-copy schema-verified message encoding</td></tr>

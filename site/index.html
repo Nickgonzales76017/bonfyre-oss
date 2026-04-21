@@ -305,9 +305,9 @@
           </div>
           <div class="feature-grid">
             <article class="feature-card">
-              <span class="card-meta">Cycle 5 additions</span>
-              <h3>bonfyre-model v1.1.0 · bonfyre-layer · bonfyre-fpqx · bonfyre-sli · 72-run diversity matrix</h3>
-              <p>New this cycle: geometry-aware transform family registry and automatic corpus routing in bonfyre-model v1.1.0. A 72-run diversity matrix promoted T04 (F1&nbsp;0.914), T15 (F1&nbsp;0.911), and T16 (F1&nbsp;0.931, long-form conditional) to production; T17 dropped. Three new C binaries: bonfyre-layer (ONNX layer extraction, pure C, no Python), bonfyre-fpqx (cross-family codebook alignment, 16×16 least-squares), bonfyre-sli (full BQFP decode + inference pipeline). Plus: ONNX input for bonfyre-quant and <code>loop N</code> command for bonfyre-runtime.</p>
+              <span class="card-meta">Cycle 6 additions</span>
+              <h3>LtArena · 32-byte NEON · bonfyre-runtime parallel · bf_mmap_prefetch · fpqx_algebra</h3>
+              <p>New this cycle: system-wide hot-path optimisations across the entire stack. lt_core.c's JSON codec replaced ~90 malloc/realloc call sites with a 64 KB inline arena allocator and O(1) bulk free. <code>find_char_simd</code> doubled throughput on NEON ARM via 32-byte dual-load batching. bonfyre-runtime gained a <code>parallel</code> subcommand that forks up to 64 arbitrary command groups concurrently and collects all exit codes. <code>bf_mmap_prefetch</code> issues batched <code>MADV_WILLNEED</code> hints ahead of batch artifact reads — stateless, no pool, works with the OS page cache. The FPQ-X algebra library shipped with a LoRA compressed-domain example and tests.</p>
               <div class="cta-row"><a class="secondary-btn" href="changelog.html">Read the full changelog →</a></div>
             </article>
           </div>

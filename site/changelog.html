@@ -38,9 +38,9 @@
           <span class="ticker-item"><span class="dot">•</span></span>
           <span class="ticker-item"><span class="num">26</span><span>runtime modules</span></span>
           <span class="ticker-item"><span class="dot">•</span></span>
-          <span class="ticker-item"><span>Cycle 5: transform families · bonfyre-sli · bonfyre-fpqx · bonfyre-layer</span></span>
+          <span class="ticker-item"><span>Cycle 6: LtArena · 32B NEON · parallel · bf_mmap_prefetch · fpqx_algebra</span></span>
           <span class="ticker-item"><span class="dot">•</span></span>
-          <span class="ticker-item"><span>geometry routing · T04/T15/T16 production · BQFP ONNX · loop N</span></span>
+          <span class="ticker-item"><span>Cycle 5: transform families · bonfyre-sli · bonfyre-fpqx · bonfyre-layer</span></span>
           <span class="ticker-item"><span class="dot">•</span></span>
           <span class="ticker-item"><span>what shipped · what changed</span></span>
           <span class="ticker-item"><span class="dot">•</span></span>
@@ -48,9 +48,9 @@
           <span class="ticker-item"><span class="dot">•</span></span>
           <span class="ticker-item"><span class="num">26</span><span>runtime modules</span></span>
           <span class="ticker-item"><span class="dot">•</span></span>
-          <span class="ticker-item"><span>Cycle 5: transform families · bonfyre-sli · bonfyre-fpqx · bonfyre-layer</span></span>
+          <span class="ticker-item"><span>Cycle 6: LtArena · 32B NEON · parallel · bf_mmap_prefetch · fpqx_algebra</span></span>
           <span class="ticker-item"><span class="dot">•</span></span>
-          <span class="ticker-item"><span>geometry routing · T04/T15/T16 production · BQFP ONNX · loop N</span></span>
+          <span class="ticker-item"><span>Cycle 5: transform families · bonfyre-sli · bonfyre-fpqx · bonfyre-layer</span></span>
           <span class="ticker-item"><span class="dot">•</span></span>
           <span class="ticker-item"><span>what shipped · what changed</span></span>
           <span class="ticker-item"><span class="dot">•</span></span>
@@ -58,9 +58,9 @@
           <span class="ticker-item"><span class="dot">•</span></span>
           <span class="ticker-item"><span class="num">26</span><span>runtime modules</span></span>
           <span class="ticker-item"><span class="dot">•</span></span>
-          <span class="ticker-item"><span>Cycle 5: transform families · bonfyre-sli · bonfyre-fpqx · bonfyre-layer</span></span>
+          <span class="ticker-item"><span>Cycle 6: LtArena · 32B NEON · parallel · bf_mmap_prefetch · fpqx_algebra</span></span>
           <span class="ticker-item"><span class="dot">•</span></span>
-          <span class="ticker-item"><span>geometry routing · T04/T15/T16 production · BQFP ONNX · loop N</span></span>
+          <span class="ticker-item"><span>Cycle 5: transform families · bonfyre-sli · bonfyre-fpqx · bonfyre-layer</span></span>
           <span class="ticker-item"><span class="dot">•</span></span>
           <span class="ticker-item"><span>what shipped · what changed</span></span>
           <span class="ticker-item"><span class="dot">•</span></span>
@@ -68,9 +68,9 @@
           <span class="ticker-item"><span class="dot">•</span></span>
           <span class="ticker-item"><span class="num">26</span><span>runtime modules</span></span>
           <span class="ticker-item"><span class="dot">•</span></span>
-          <span class="ticker-item"><span>Cycle 5: transform families · bonfyre-sli · bonfyre-fpqx · bonfyre-layer</span></span>
+          <span class="ticker-item"><span>Cycle 6: LtArena · 32B NEON · parallel · bf_mmap_prefetch · fpqx_algebra</span></span>
           <span class="ticker-item"><span class="dot">•</span></span>
-          <span class="ticker-item"><span>geometry routing · T04/T15/T16 production · BQFP ONNX · loop N</span></span>
+          <span class="ticker-item"><span>Cycle 5: transform families · bonfyre-sli · bonfyre-fpqx · bonfyre-layer</span></span>
         </div>
       </div>
     </header>
@@ -88,12 +88,71 @@
         </div>
       </section>
 
+      <!-- Cycle 6 -->
+      <section class="section">
+        <div class="shell-container">
+          <div class="section-header">
+            <div>
+              <span class="section-kicker">Current cycle — Cycle 6</span>
+              <h2 class="section-title">System-wide hot-path optimisations: arena allocator, 32-byte NEON, runtime parallel, and FPQ-X algebra.</h2>
+              <p class="section-copy">Six targeted additions this cycle, all in the critical path. lt_core.c's JSON codec eliminated ~90 malloc sites with a 64 KB inline arena and bulk-free on scope exit. SIMD string scanning moved from per-character dispatch to AVX2/NEON 32-byte batches. bonfyre-runtime gained a <code>parallel</code> subcommand that forks arbitrary command groups concurrently and collects exit codes. bf_mmap got a stateless <code>MADV_WILLNEED</code> prefetch API aligning with the OS page cache rather than duplicating it. The FPQ-X algebra layer shipped as a standalone library with a LoRA compressed-domain example and tests.</p>
+            </div>
+          </div>
+          <div class="feature-grid">
+
+            <article class="feature-card">
+              <span class="card-meta">lt_core.c — LtArena allocator</span>
+              <h3>Zero per-character allocation in the JSON codec</h3>
+              <p>Previous JSON encode paths called <code>malloc</code>/<code>realloc</code> for every appended character via <code>grow_text_buf</code> and <code>append_text_char</code>. Replaced entirely with <code>LtArena</code>: a 64 KB inline slab with pointer-bump allocation (8-byte aligned), heap spill for payloads exceeding the slab, and <code>lt_arena_reset</code> that bulk-frees everything in O(1). Functions <code>lt_encode_v1</code>, <code>lt_encode_v2</code>, and <code>lt_encode_v2_interned</code> all allocate through the arena; the old per-object <code>free(vals[i].val)</code> loops are gone. ~90 malloc/realloc call sites eliminated.</p>
+              <p style="margin-top:0.75rem;color:var(--text-2);font-size:0.875rem"><strong>Why it matters:</strong> Repeated JSON encode passes — compress many small documents in a loop — no longer spike the heap allocator. Memory use is bounded by the 64 KB inline slab for typical payloads. Heap fragmentation on long-running pipeline stages is eliminated for this path.</p>
+            </article>
+
+            <article class="feature-card">
+              <span class="card-meta">lt_core.c — SIMD JSON scanner</span>
+              <h3>lt_json_skip_string + lt_json_scan_ws with NEON / AVX2 / SSE2 dispatch</h3>
+              <p><code>lt_json_skip_string</code>: processes 32 bytes per iteration on NEON (dual <code>vld1q_u8</code> + <code>vorrq_u8</code> early exit), 32 bytes via AVX2 movemask, 16 bytes via SSE2, scalar fallback — finds the closing <code>"</code> or backslash without touching the heap. <code>lt_json_scan_ws</code>: inline whitespace and delimiter skip (<code>,</code>, <code>:</code>, <code>\n</code>, <code>\t</code>, space). <code>parse_next_value_ar</code> wires both into arena-aware token extraction: one <code>lt_arena_strndup</code> per value, zero intermediate allocations.</p>
+              <p style="margin-top:0.75rem;color:var(--text-2);font-size:0.875rem"><strong>Why it matters:</strong> JSON parse throughput on the V1/V2/Interned encode paths scales with SIMD width, not character count. Large documents that previously caused significant allocator pressure now scan at memory bandwidth.</p>
+            </article>
+
+            <article class="feature-card">
+              <span class="card-meta">bf_simd.c — 32-byte NEON scan</span>
+              <h3>find_char_simd and find_char2_simd: 2× throughput on ARM</h3>
+              <p>Both functions previously processed 16 bytes per iteration via a single <code>vld1q_u8</code>. Upgraded to 32 bytes per iteration: load two 16-byte vectors, OR their match masks (<code>vorrq_u8</code>), and only enter the scalar hit-resolution branch when either register matches. Mop-up loop handles trailing 0–31 bytes. The change is transparent to all callers — same signature, same semantics, double the throughput on NEON hardware.</p>
+              <p style="margin-top:0.75rem;color:var(--text-2);font-size:0.875rem"><strong>Why it matters:</strong> <code>find_char_simd</code> is in the hot path for JSON field scanning, base64 delimiter search, and CSV parsing across 53 binaries. Doubling iteration bandwidth at zero API cost is an unconditional win on Apple Silicon and ARM servers.</p>
+            </article>
+
+            <article class="feature-card">
+              <span class="card-meta">bf_mmap.c — bf_mmap_prefetch</span>
+              <h3>Stateless MADV_WILLNEED batch hint — no pool, no LRU, no hidden state</h3>
+              <p>New function <code>bf_mmap_prefetch(const char * const *paths, int n)</code>: iterates a list of file paths, <code>mmap</code>s each with <code>MAP_SHARED</code>, issues <code>MADV_WILLNEED</code>, and immediately <code>munmap</code>s. The kernel page-faults the data in asynchronously; by the time the pipeline stage opens the file, it's already warm in the page cache. Non-fatal per-path, returns a count of paths successfully advised. No slot array, no LRU, no shared mutable state — the OS page cache already solves that problem.</p>
+              <p style="margin-top:0.75rem;color:var(--text-2);font-size:0.875rem"><strong>Why it matters:</strong> Pipeline stages that read a batch of artifacts can issue prefetch hints for the entire batch before processing starts. The operation is idempotent and safe to call from any stage without coordination. An earlier pool-based implementation was reverted — it duplicated the OS page cache and accidentally overrode the existing <code>MADV_SEQUENTIAL</code> hint on linear read workloads.</p>
+            </article>
+
+            <article class="feature-card">
+              <span class="card-meta">bonfyre-runtime — parallel subcommand</span>
+              <h3>Fork up to 64 arbitrary command groups concurrently, collect all exit codes</h3>
+              <p>New <code>parallel</code> subcommand added to bonfyre-runtime. Syntax: <code>bonfyre-runtime parallel [-- cmd args...]...</code>. Parses <code>--</code> delimiters from argv, forks each group simultaneously via <code>fork()</code>/<code>execv()</code>, collects with <code>waitpid(pid, &amp;st, 0)</code> per child, returns 0 only if every child exited 0. Maximum 64 groups (<code>PAR_MAX_GROUPS</code>). Sends SIGTERM to already-forked children on fork failure.</p>
+              <p style="margin-top:0.75rem;color:var(--text-2);font-size:0.875rem"><strong>Why it matters:</strong> Stages that are independent but not encoded in a bonfyre-run recipe can now be parallelised with one command instead of a shell background job mess. Verified: 3 × <code>/bin/sleep 0.1</code> completes in 0.111 s total.</p>
+              <div style="margin-top:0.75rem;font-family:'IBM Plex Mono',monospace;font-size:0.78rem;color:var(--accent,#ff6b35);background:rgba(255,107,53,0.08);border:1px solid rgba(255,107,53,0.2);border-radius:5px;padding:0.6rem 0.9rem">bonfyre-runtime parallel -- process-a input.wav -- process-b input.wav -- process-c input.wav</div>
+            </article>
+
+            <article class="feature-card">
+              <span class="card-meta">fpqx_algebra — FPQ-X algebra library</span>
+              <h3>Standalone algebra primitives for compressed-domain operations</h3>
+              <p>New library (<code>fpqx_algebra.h</code> / <code>fpqx_algebra.c</code>) providing low-level algebra over FPQ-X alignment matrices: matrix–vector multiply, matrix–matrix multiply, Frobenius norm, and dot product over the 16×16 float32 alignment tensors produced by bonfyre-fpqx. Includes a LoRA compressed-domain example (<code>examples/lora_compressed_domain.c</code>) demonstrating low-rank adapter application without decompressing weights, and a full test suite (<code>tests/test_fpqx_algebra.c</code>).</p>
+              <p style="margin-top:0.75rem;color:var(--text-2);font-size:0.875rem"><strong>Why it matters:</strong> Tooling that needs to compose or inspect FPQ-X alignment tensors can link the algebra library directly rather than parsing binary files. The LoRA example shows that fine-tuning adapters can be applied in the compressed domain — no full-precision weight expansion needed during adapter composition.</p>
+            </article>
+
+          </div>
+        </div>
+      </section>
+
       <!-- Cycle 5 -->
       <section class="section">
         <div class="shell-container">
           <div class="section-header">
             <div>
-              <span class="section-kicker">Current cycle — Cycle 5</span>
+              <span class="section-kicker">Cycle 5</span>
               <h2 class="section-title">Transform families, geometry routing, ONNX layer surgery, and structured inference.</h2>
               <p class="section-copy">Seven additions this cycle: bonfyre-model v1.1.0 adds a geometry-aware transform family registry and automatic routing. A 72-run diversity matrix across ag_news&nbsp;&times;&nbsp;cnn_dm promoted three families (T04, T15, T16) to production and dropped T17. Four new C binaries — bonfyre-layer, bonfyre-fpqx, bonfyre-sli, plus ONNX input for bonfyre-quant and iterative loop support in bonfyre-runtime — complete the BQFP inference pipeline end to end.</p>
             </div>
