@@ -86,7 +86,14 @@ CREATE TABLE IF NOT EXISTS claims (
     lens_diversity      INTEGER DEFAULT 1,
     claim_strength      REAL    DEFAULT 0.0,
     stability_score     REAL    DEFAULT 0.0,
-    last_scored         TEXT
+    last_scored         TEXT,
+    -- Phase 14: Orthogonal Pressure scoring fields
+    graph_pressure          REAL DEFAULT NULL,
+    temporal_pressure       REAL DEFAULT NULL,
+    frequency_pressure      REAL DEFAULT NULL,
+    perturbation_pressure   REAL DEFAULT NULL,
+    representation_pressure REAL DEFAULT NULL,
+    orthogonal_pressure     REAL DEFAULT NULL
 );
 
 CREATE TABLE IF NOT EXISTS conflicts (
@@ -868,6 +875,83 @@ class ClaimGraph:
             return 0.0
 
         return sum(decays) / len(decays)
+
+    # ── Phase 14: Orthogonal Pressure Integration ────────────────────
+
+    def compute_orthogonal_pressure(self, claim_ids: list = None, corpus: dict = None):
+        """
+        Compute orthogonal pressure scores for claims.
+
+        Args:
+            claim_ids: list of claim IDs to score (default: all)
+            corpus: dict of {doc_id: doc_text} for frequency analysis
+
+        Updates orthogonal pressure fields in claims table:
+          - graph_pressure
+          - temporal_pressure
+          - frequency_pressure
+          - perturbation_pressure
+          - representation_pressure
+          - orthogonal_pressure (combined)
+        """
+        from scripts.orthogonal_pressure import OrthogonalPressure
+
+        # If no claim_ids given, score all claims
+        if claim_ids is None:
+            rows = self._db.execute("SELECT id FROM claims").fetchall()
+            claim_ids = [r["id"] for r in rows]
+
+        engine = OrthogonalPressure(enable_expensive=False)
+
+        for claim_id in claim_ids:
+            # Get claim
+            claim_row = self._db.execute(
+                "SELECT * FROM claims WHERE id = ?", (claim_id,)
+            ).fetchone()
+            if not claim_row:
+                continue
+
+            claim = dict(claim_row)
+
+            # Compute pressure scores
+            scores = engine.compute_pressure_score(claim, self, corpus or {})
+
+            # Update claim record
+            self._db.execute("""
+                UPDATE claims SET
+                    graph_pressure = ?,
+                    temporal_pressure = ?,
+                    frequency_pressure = ?,
+                    perturbation_pressure = ?,
+                    representation_pressure = ?,
+                    orthogonal_pressure = ?
+                WHERE id = ?
+            """, (
+                round(scores["graph_pressure"], 4),
+                round(scores["temporal_pressure"], 4),
+                round(scores["frequency_pressure"], 4),
+                round(scores["perturbation_pressure"], 4),
+                round(scores["representation_pressure"], 4),
+                round(scores["orthogonal_pressure"], 4),
+                claim_id
+            ))
+
+        self._db.commit()
+
+    def recompute_final_strength(self):
+        """
+        Recompute final claim strength as:
+            final_strength = semantic_strength × orthogonal_pressure
+
+        where semantic_strength is the Phase 13 formula.
+        Only updates claims where orthogonal_pressure is not NULL.
+        """
+        self._db.execute("""
+            UPDATE claims
+            SET claim_strength = claim_strength * COALESCE(orthogonal_pressure, 1.0)
+            WHERE orthogonal_pressure IS NOT NULL
+        """)
+        self._db.commit()
 
     def export_all(self, out_path: str):
         """Export full claim graph as JSON."""

@@ -130,6 +130,11 @@ class ConvergenceEngine:
         print("[convergence] Computing initial claim scores...")
         self.claim_graph.compute_claim_scores()
 
+        # Phase 14: Compute orthogonal pressure
+        print("[convergence] Computing orthogonal pressure...")
+        self.claim_graph.compute_orthogonal_pressure(corpus=corpus)
+        self.claim_graph.recompute_final_strength()
+
         # Get convergence metrics before iteration
         metrics_before = self.claim_graph.get_convergence_metrics()
 
@@ -196,6 +201,10 @@ class ConvergenceEngine:
 
             # Recompute claim scores
             self.claim_graph.compute_claim_scores()
+
+            # Phase 14: Recompute orthogonal pressure
+            self.claim_graph.compute_orthogonal_pressure(corpus=corpus)
+            self.claim_graph.recompute_final_strength()
 
             # Re-cluster
             clusters_after = cluster_advanced(

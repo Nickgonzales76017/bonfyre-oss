@@ -321,10 +321,71 @@ def evolve(memory_dir: str, models_dir: str,
         report["routing_adjusted"] = True
     report["steps"].append("routing_adjust")
 
+    # ── Step 3.5: Try structural intervention on unresolved hot zones ──
+    # NEW PHASE 15: Before generating full new families, try cheaper patches
+    intervention_results = []
+    try:
+        from scripts.claim_graph import ClaimGraph
+        from scripts.conflict_cluster import cluster_advanced, flag_hot_zones
+        from scripts.structural_intervention import StructuralInterventionEngine
+        
+        cg = ClaimGraph(memory_dir)
+        clusters = cluster_advanced(cg, min_conflicts=2, min_confidence=0.25)
+        hot_zones = flag_hot_zones(
+            clusters, pressure_threshold=1.5, min_conflicts=2,
+            min_lenses=1, fragility_threshold=0.5)
+        
+        if hot_zones:
+            _log(f"Structural intervention: {len(hot_zones)} unresolved hot zone(s)")
+            intervention_engine = StructuralInterventionEngine(
+                memory_dir=memory_dir,
+                models_dir=models_dir
+            )
+            
+            # Try intervention on top hot zones (limit to 3 for v1)
+            for hz in hot_zones[:3]:
+                _log(f"  Trying intervention on hot zone {hz.get('cluster_id')} "
+                     f"(pressure={hz.get('pressure_score', 0):.2f})...")
+                
+                # Build minimal corpus for this hot zone
+                hz_corpus = {}
+                # Would need actual corpus here - for v1 use placeholder
+                
+                result = intervention_engine.try_intervention(
+                    hz, hz_corpus, strategy="auto")
+                
+                intervention_results.append({
+                    "hot_zone_id": hz.get("cluster_id"),
+                    "success": result.get("success", False),
+                    "strategy": result.get("tried_strategies", []),
+                    "improvement": result.get("improvement", 0.0),
+                })
+                
+                if result.get("success"):
+                    _log(f"    ✓ Intervention successful: {result.get('patch_id')}")
+                else:
+                    _log(f"    ✗ Intervention failed — will fall back to new family")
+        else:
+            _log("Structural intervention: no hot zones detected")
+        
+        report["structural_interventions"] = intervention_results
+    except Exception as e:
+        _log(f"Structural intervention skipped: {e}")
+    report["steps"].append("structural_intervention")
+
     # ── Step 4: Auto-generate new transform (on severe patterns) ──────
+    # Only generate new families if structural intervention failed
     critical_patterns = [p for p in patterns
                          if p.get("severity", 0) >= 2 and
                          p["count"] >= min_count]
+    
+    # Filter out patterns where structural intervention succeeded
+    successful_interventions = {
+        i["hot_zone_id"] for i in intervention_results if i.get("success")
+    }
+    if successful_interventions:
+        _log(f"Skipping family generation for {len(successful_interventions)} "
+             f"hot zone(s) resolved via structural intervention")
 
     generated_families = []
     for pattern in critical_patterns:
