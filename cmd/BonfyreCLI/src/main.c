@@ -2,32 +2,17 @@
  * bonfyre — unified CLI dispatcher.
  *
  * Routes subcommands to their respective binaries:
- *   bonfyre ingest ...     → bonfyre-ingest ...
- *   bonfyre hash ...       → bonfyre-hash ...
- *   bonfyre brief ...      → bonfyre-brief ...
- *   bonfyre proof ...      → bonfyre-proof ...
- *   bonfyre offer ...      → bonfyre-offer ...
- *   bonfyre narrate ...    → bonfyre-narrate ...
- *   bonfyre pack ...       → bonfyre-pack ...
- *   bonfyre distribute ... → bonfyre-distribute ...
- *   bonfyre emit ...       → bonfyre-emit ...
- *   bonfyre compress ...   → bonfyre-compress ...
- *   bonfyre gate ...       → bonfyre-gate ...
- *   bonfyre meter ...      → bonfyre-meter ...
- *   bonfyre index ...      → bonfyre-index ...
- *   bonfyre stitch ...     → bonfyre-stitch ...
- *   bonfyre ledger ...     → bonfyre-ledger ...
- *   bonfyre queue ...      → bonfyre-queue ...
- *   bonfyre sync ...       → bonfyre-sync ...
- *   bonfyre transcribe ... → bonfyre-transcribe ...
- *   bonfyre mediaprep ...  → bonfyre-mediaprep ...
- *   bonfyre transcript-family ... → bonfyre-transcript-family ...
- *   bonfyre render ...     → bonfyre-render ...
- *   bonfyre runtime ...    → bonfyre-runtime ...
- *   bonfyre project ...    → bonfyre-project ...
- *   bonfyre orchestrate ... → bonfyre-orchestrate ...
+ *   bonfyre <cmd> [args...]  →  bonfyre-<cmd> [args...]
  *
- * Searches for binaries in: same dir as this binary → PATH
+ * Binary search order per command:
+ *   1. Same directory as this binary
+ *   2. ../SiblingDir/bonfyre-<cmd>          (top-level Makefile output)
+ *   3. ../SiblingDir/build/bonfyre-<cmd>    (Makefile build/ subdirectory)
+ *   4. PATH
+ *
+ * Commands that route through bonfyre-runtime pass the original
+ * subcommand token as the first argument so runtime can dispatch
+ * internally.
  */
 #include <limits.h>
 #include <stdio.h>
@@ -35,67 +20,103 @@
 #include <string.h>
 #include <unistd.h>
 
+/* ── Section constants ────────────────────────────────────────────── */
+#define SEC_PIPELINE  "Pipeline"
+#define SEC_AI        "AI / Models"
+#define SEC_RECIPES   "Recipes & Runtime"
+#define SEC_INFRA     "Infrastructure"
+#define SEC_VALUE     "Value Capture"
+
 typedef struct {
     const char *cmd;
     const char *binary;
     const char *sibling_dir;
+    const char *section;
     const char *desc;
 } Route;
 
 static const Route routes[] = {
-    /* ── Pipeline core ── */
-    {"ingest",     "bonfyre-ingest",     "BonfyreIngest", "Universal asset intake"},
-    {"mediaprep",  "bonfyre-media-prep", "BonfyreMediaPrep", "Media normalization"},
-    {"transcribe", "bonfyre-transcribe", "BonfyreTranscribe", "Audio → text"},
-    {"clean",      "bonfyre-transcript-clean", "BonfyreTranscriptClean", "Transcript cleaning"},
-    {"paragraph",  "bonfyre-paragraph",  "BonfyreParagraph", "Transcript paragraphizer"},
-    {"brief",      "bonfyre-brief",      "BonfyreBrief", "Extract structured brief"},
-    {"proof",      "bonfyre-proof",      "BonfyreProof", "Generate proof bundle"},
-    {"offer",      "bonfyre-offer",      "BonfyreOffer", "Generate offer document"},
-    {"narrate",    "bonfyre-narrate",    "BonfyreNarrate", "Text-to-speech narration"},
-    {"pack",       "bonfyre-pack",       "BonfyrePack", "Package artifact family"},
-    {"distribute", "bonfyre-distribute", "BonfyreDistribute", "Multi-channel distribution"},
-    {"transcript-family", "bonfyre-transcript-family", "BonfyreTranscriptFamily", "Speech to cleaned transcript family"},
-    {"render",     "bonfyre-render",     "BonfyreRender", "Universal artifact renderer"},
-    /* ── Infrastructure ── */
-    {"hash",       "bonfyre-hash",       "BonfyreHash", "Content-addressing (SHA-256)"},
-    {"index",      "bonfyre-index",      "BonfyreIndex", "Artifact family indexer"},
-    {"compress",   "bonfyre-compress",   "BonfyreCompress", "Family-aware compression"},
-    {"emit",       "bonfyre-emit",       "BonfyreEmit", "Multi-format output engine"},
-    {"stitch",     "bonfyre-runtime",    "BonfyreRuntime", "DAG materializer via runtime gateway"},
-    {"queue",      "bonfyre-runtime",    "BonfyreRuntime", "Job queue management via runtime gateway"},
-    {"runtime",    "bonfyre-runtime",    "BonfyreRuntime", "Replayable pipeline runtime"},
-    {"run",        "bonfyre-runtime",    "BonfyreRuntime", "Run canonical pipeline via runtime gateway"},
-    {"run-ledger", "bonfyre-runtime",    "BonfyreRuntime", "Run pipeline with ledger via runtime gateway"},
-    {"loop",       "bonfyre-runtime",    "BonfyreRuntime", "Repeat execution loop via runtime gateway"},
-    {"parallel",   "bonfyre-runtime",    "BonfyreRuntime", "Concurrent fan-out execution via runtime gateway"},
-    {"pipeline",   "bonfyre-runtime",    "BonfyreRuntime", "Streaming pipeline execution via runtime gateway"},
-    {"run-recipe", "bonfyre-runtime",    "BonfyreRuntime", "Execute recipe via runtime gateway"},
-    {"autowire",   "bonfyre-runtime",    "BonfyreRuntime", "Intent-to-recipe autowire via runtime gateway"},
-    {"gen",        "bonfyre-runtime",    "BonfyreRuntime", "Natural language recipe generation"},
-    {"control",    "bonfyre-runtime",    "BonfyreRuntime", "Control-plane command gateway"},
-    {"swarm",      "bonfyre-runtime",    "BonfyreRuntime", "Distributed swarm command gateway"},
-    {"model",      "bonfyre-runtime",    "BonfyreRuntime", "Model registry command gateway"},
-    {"recipe",     "bonfyre-runtime",    "BonfyreRuntime", "Recipe registry command gateway"},
-    {"proxy",      "bonfyre-runtime",    "BonfyreRuntime", "OpenAI-compatible API gateway"},
-    {"sli",        "bonfyre-runtime",    "BonfyreRuntime", "Structured layer inference gateway"},
-    {"service",    "bonfyre-runtime",    "BonfyreRuntime", "Service launcher (proxy/moq/swarm-worker)"},
-    {"conference", "bonfyre-runtime",    "BonfyreRuntime", "MoQ conference/video relay gateway"},
-    {"capabilities","bonfyre-runtime",   "BonfyreRuntime", "Machine-readable cmd capability index"},
-    {"doctor",     "bonfyre-runtime",    "BonfyreRuntime", "Runtime dependency and preflight diagnostics"},
-    {"flow",       "bonfyre-runtime",    "BonfyreRuntime", "Flow command via runtime gateway"},
-    {"orchestrate", "bonfyre-runtime",   "BonfyreRuntime", "Machine-only orchestration planner"},
-    {"project",    "bonfyre-runtime",    "BonfyreRuntime", "Content graph projection engine gateway"},
-    {"sync",       "bonfyre-sync",       "BonfyreSync", "Artifact synchronization"},
-    /* ── Value capture ── */
-    {"gate",       "bonfyre-gate",       "BonfyreGate", "License enforcement"},
-    {"meter",      "bonfyre-meter",      "BonfyreMeter", "Usage metering & billing"},
-    {"ledger",     "bonfyre-runtime",    "BonfyreRuntime", "Value accounting via runtime gateway"},
-    {NULL, NULL, NULL, NULL}
+    /* ── Pipeline ──────────────────────────────────────────────── */
+    {"ingest",            "bonfyre-ingest",           "BonfyreIngest",          SEC_PIPELINE, "Universal asset intake"},
+    {"mediaprep",         "bonfyre-media-prep",       "BonfyreMediaPrep",       SEC_PIPELINE, "Media normalisation"},
+    {"transcribe",        "bonfyre-transcribe",       "BonfyreTranscribe",      SEC_PIPELINE, "Audio to text"},
+    {"clean",             "bonfyre-transcript-clean", "BonfyreTranscriptClean", SEC_PIPELINE, "Transcript cleaning"},
+    {"paragraph",         "bonfyre-paragraph",        "BonfyreParagraph",       SEC_PIPELINE, "Transcript paragraphizer"},
+    {"brief",             "bonfyre-brief",            "BonfyreBrief",           SEC_PIPELINE, "Extract structured brief"},
+    {"proof",             "bonfyre-proof",            "BonfyreProof",           SEC_PIPELINE, "Generate proof bundle"},
+    {"offer",             "bonfyre-offer",            "BonfyreOffer",           SEC_PIPELINE, "Generate offer document"},
+    {"narrate",           "bonfyre-narrate",          "BonfyreNarrate",         SEC_PIPELINE, "Text-to-speech narration"},
+    {"pack",              "bonfyre-pack",             "BonfyrePack",            SEC_PIPELINE, "Package artifact family"},
+    {"distribute",        "bonfyre-distribute",       "BonfyreDistribute",      SEC_PIPELINE, "Multi-channel distribution"},
+    {"transcript-family", "bonfyre-transcript-family","BonfyreTranscriptFamily",SEC_PIPELINE, "Speech to cleaned transcript family"},
+    {"render",            "bonfyre-render",           "BonfyreRender",          SEC_PIPELINE, "Universal artifact renderer"},
+    {"repurpose",         "bonfyre-repurpose",        "BonfyreRepurpose",       SEC_PIPELINE, "Repurpose transcripts to new formats"},
+    {"clips",             "bonfyre-clips",            "BonfyreClips",           SEC_PIPELINE, "Extract short clips from media"},
+    /* ── AI / Models ────────────────────────────────────────────── */
+    {"model",             "bonfyre-model",            "BonfyreModel",           SEC_AI, "Model registry (list / pull / verify)"},
+    {"embed",             "bonfyre-embed",            "BonfyreEmbed",           SEC_AI, "Generate text embeddings (ONNX)"},
+    {"vec",               "bonfyre-vec",              "BonfyreVec",             SEC_AI, "Local vector search (FAISS)"},
+    {"segment",           "bonfyre-segment",          "BonfyreSegment",         SEC_AI, "Speaker / VAD segmentation"},
+    {"speech-loop",       "bonfyre-speech-loop",      "BonfyreSpeechLoop",      SEC_AI, "Streaming RNNT + Whisper ASR loop"},
+    {"mfa-dict",          "bonfyre-mfa-dict",         "BonfyreMFADict",         SEC_AI, "MFA forced-alignment dictionary"},
+    {"tone",              "bonfyre-tone",             "BonfyreTone",            SEC_AI, "Tone / sentiment analysis"},
+    {"tag",               "bonfyre-tag",              "BonfyreTag",             SEC_AI, "Auto-tagging pipeline"},
+    {"entity",            "bonfyre-entity",           "BonfyreEntity",          SEC_AI, "Named-entity recognition"},
+    {"canon",             "bonfyre-canon",            "BonfyreCanon",           SEC_AI, "Canonical form resolver"},
+    {"gen",               "bonfyre-gen",              "BonfyreGen",             SEC_AI, "Natural language generation"},
+    {"sli",               "bonfyre-sli",              "BonfyreSLI",             SEC_AI, "Structured layer inference (E8 lattice)"},
+    {"quant",             "bonfyre-quant",            "BonfyreQuant",           SEC_AI, "BQFP model quantisation"},
+    {"fpq",               "bonfyre-fpq",              "BonfyreFPQ",             SEC_AI, "Functional precision quantisation"},
+    {"fpqx",              "bonfyre-fpqx",             "BonfyreFPQx",            SEC_AI, "FPQx extended quantisation"},
+    {"layer",             "bonfyre-layer",            "BonfyreLayer",           SEC_AI, "Neural layer operations"},
+    {"learn",             "bonfyre-learn",            "BonfyreLearn",           SEC_AI, "On-device fine-tuning / adapters"},
+    {"weaviate",          "bonfyre-weaviate-index",   "BonfyreWeaviateIndex",   SEC_AI, "Weaviate vector index bridge"},
+    /* ── Recipes & Runtime ──────────────────────────────────────── */
+    {"recipe",            "bonfyre-recipe",           "BonfyreRecipe",          SEC_RECIPES, "Recipe registry (list / show / run / add)"},
+    {"run",               "bonfyre-run",              "BonfyreRun",             SEC_RECIPES, "Execute a recipe by name or path"},
+    {"flow",              "bonfyre-runtime",          "BonfyreRuntime",         SEC_RECIPES, "Flow command via runtime gateway"},
+    {"pipeline",          "bonfyre-pipeline",         "BonfyrePipeline",        SEC_RECIPES, "Streaming pipeline execution"},
+    {"runtime",           "bonfyre-runtime",          "BonfyreRuntime",         SEC_RECIPES, "Replayable pipeline runtime"},
+    {"orchestrate",       "bonfyre-orchestrate",      "BonfyreOrchestrate",     SEC_RECIPES, "Machine-only orchestration planner"},
+    {"control",           "bonfyre-control",          "BonfyreControl",         SEC_RECIPES, "Control-plane command gateway"},
+    {"swarm",             "bonfyre-swarm",            "BonfyreSwarm",           SEC_RECIPES, "Distributed worker swarm"},
+    {"project",           "bonfyre-project",          "BonfyreProject",         SEC_RECIPES, "Content graph projection engine"},
+    {"space",             "bonfyre-space",            "BonfyreSpace",           SEC_RECIPES, "Semantic space management"},
+    {"proxy",             "bonfyre-proxy",            "BonfyreProxy",           SEC_RECIPES, "OpenAI-compatible API proxy"},
+    {"doctor",            "bonfyre-runtime",          "BonfyreRuntime",         SEC_RECIPES, "Runtime dependency diagnostics"},
+    {"capabilities",      "bonfyre-runtime",          "BonfyreRuntime",         SEC_RECIPES, "Machine-readable capability index"},
+    /* ── Infrastructure ─────────────────────────────────────────── */
+    {"hash",              "bonfyre-hash",             "BonfyreHash",            SEC_INFRA, "Content-addressing (SHA-256)"},
+    {"index",             "bonfyre-index",            "BonfyreIndex",           SEC_INFRA, "Artifact family indexer"},
+    {"compress",          "bonfyre-compress",         "BonfyreCompress",        SEC_INFRA, "Family-aware compression"},
+    {"emit",              "bonfyre-emit",             "BonfyreEmit",            SEC_INFRA, "Multi-format output engine"},
+    {"stitch",            "bonfyre-stitch",           "BonfyreStitch",          SEC_INFRA, "DAG materialiser"},
+    {"queue",             "bonfyre-queue",            "BonfyreQueue",           SEC_INFRA, "Job queue management"},
+    {"sync",              "bonfyre-sync",             "BonfyreSync",            SEC_INFRA, "Artifact synchronisation"},
+    {"graph",             "bonfyre-graph",            "BonfyreGraph",           SEC_INFRA, "Merkle-DAG artifact graph (SQLite)"},
+    {"query",             "bonfyre-query",            "BonfyreQuery",           SEC_INFRA, "Structured artifact query"},
+    {"kvcache",           "bonfyre-kvcache",          "BonfyreKVCache",         SEC_INFRA, "KV-cache store"},
+    {"auth",              "bonfyre-auth",             "BonfyreAuth",            SEC_INFRA, "Authentication and token management"},
+    {"tel",               "bonfyre-tel",              "BonfyreTel",             SEC_INFRA, "Telemetry / observability"},
+    {"moq",               "bonfyre-moq",              "BonfyreMoQ",             SEC_INFRA, "MoQ media-over-QUIC transport"},
+    {"cms",               "bonfyre-cms",              "BonfyreCMS",             SEC_INFRA, "Content management store"},
+    {"api",               "bonfyre-api",              "BonfyreAPI",             SEC_INFRA, "REST API server"},
+    {"time",              "bonfyre-time",             "BonfyreTime",            SEC_INFRA, "Temporal metadata and scheduling"},
+    /* ── Value Capture ───────────────────────────────────────────── */
+    {"gate",              "bonfyre-gate",             "BonfyreGate",            SEC_VALUE, "License enforcement"},
+    {"meter",             "bonfyre-meter",            "BonfyreMeter",           SEC_VALUE, "Usage metering and billing"},
+    {"ledger",            "bonfyre-ledger",           "BonfyreLedger",          SEC_VALUE, "Value accounting"},
+    {"economy",           "bonfyre-economy",          "BonfyreEconomy",         SEC_VALUE, "Economy / credits engine"},
+    {"compete",           "bonfyre-compete",          "BonfyreCompete",         SEC_VALUE, "Competitive benchmarking"},
+    {"pay",               "bonfyre-pay",              "BonfyrePay",             SEC_VALUE, "Payment processing"},
+    {"finance",           "bonfyre-finance",          "BonfyreFinance",         SEC_VALUE, "Financial reporting"},
+    {"tier",              "bonfyre-tier",             "BonfyreTier",            SEC_VALUE, "Feature / access tier management"},
+    {"outreach",          "bonfyre-outreach",         "BonfyreOutreach",        SEC_VALUE, "Campaign outreach automation"},
+    {NULL, NULL, NULL, NULL, NULL}
 };
 
+/* ── Binary resolution ────────────────────────────────────────────── */
 static void get_self_dir(char *buf, size_t sz) {
-    /* Try to resolve self path to find sibling binaries */
     char self[PATH_MAX];
     memset(self, 0, sizeof(self));
 #ifdef __APPLE__
@@ -114,139 +135,135 @@ static void get_self_dir(char *buf, size_t sz) {
     buf[0] = '\0';
 }
 
+static void try_one(const char *path, char **argv) {
+    if (access(path, X_OK) == 0) {
+        argv[0] = (char *)path;
+        execv(path, argv);
+    }
+}
+
 static int try_exec(const char *binary, const char *sibling_dir, char **argv) {
-    /* 1. Try in same directory as us */
     char self_dir[PATH_MAX];
     get_self_dir(self_dir, sizeof(self_dir));
+
     if (self_dir[0]) {
         char full[PATH_MAX];
+
+        /* 1. Same directory as this binary */
         snprintf(full, sizeof(full), "%s/%s", self_dir, binary);
-        if (access(full, X_OK) == 0) {
-            argv[0] = full;
-            execv(full, argv);
-            /* execv only returns on error */
-        }
+        try_one(full, argv);
+
         if (sibling_dir && sibling_dir[0]) {
+            /* 2. ../SiblingDir/<binary>  (top-level build output) */
             snprintf(full, sizeof(full), "%s/../%s/%s", self_dir, sibling_dir, binary);
-            if (access(full, X_OK) == 0) {
-                argv[0] = full;
-                execv(full, argv);
-            }
+            try_one(full, argv);
+
+            /* 3. ../SiblingDir/build/<binary>  (build/ subdirectory pattern) */
+            snprintf(full, sizeof(full), "%s/../%s/build/%s", self_dir, sibling_dir, binary);
+            try_one(full, argv);
         }
     }
-    /* 2. Try repo-relative from current working directory */
-    if (sibling_dir && sibling_dir[0]) {
-        char full[PATH_MAX];
-        snprintf(full, sizeof(full), "10-Code/%s/%s", sibling_dir, binary);
-        if (access(full, X_OK) == 0) {
-            argv[0] = full;
-            execv(full, argv);
-        }
-        snprintf(full, sizeof(full), "./10-Code/%s/%s", sibling_dir, binary);
-        if (access(full, X_OK) == 0) {
-            argv[0] = full;
-            execv(full, argv);
-        }
-    }
-    /* 3. Fall back to PATH */
+
+    /* 4. Fall back to PATH */
     execvp(binary, argv);
     return -1;
 }
 
+/* ── Built-in: list ───────────────────────────────────────────────── */
+static void cmd_list(void) {
+    printf("Available commands:\n\n");
+    const char *cur_section = "";
+    for (const Route *r = routes; r->cmd; r++) {
+        if (strcmp(r->section, cur_section) != 0) {
+            printf("  %s:\n", r->section);
+            cur_section = r->section;
+        }
+        printf("    %-20s %s\n", r->cmd, r->desc);
+    }
+    printf("\nRun 'bonfyre <command> --help' for command-specific help.\n");
+}
+
+/* ── Built-in: help ───────────────────────────────────────────────── */
+static void cmd_help(void) {
+    fprintf(stderr,
+        "bonfyre -- artifact pipeline toolkit\n\n"
+        "Usage: bonfyre <command> [args...]\n\n"
+        "Built-ins:\n"
+        "  list          Show every available command with descriptions\n"
+        "  version       Print version\n"
+        "  help          Show this help\n\n"
+        "Key workflows:\n"
+        "  Pipeline:  ingest -> mediaprep -> transcribe -> clean -> paragraph\n"
+        "             -> brief -> proof -> offer -> narrate -> pack -> distribute\n"
+        "  Models:    model list / model pull <id> / model pull --recipe <code>\n"
+        "  Recipes:   recipe list / recipe show <name> / run <recipe-name>\n"
+        "  AI:        embed . vec . segment . sli . quant . fpq . fpqx . layer\n"
+        "  Infra:     hash . index . compress . graph . queue . sync . tel\n"
+        "  Value:     gate . meter . ledger . economy . compete\n\n"
+        "Run 'bonfyre list' for the full command reference.\n"
+    );
+}
+
+/* ── main ─────────────────────────────────────────────────────────── */
 int main(int argc, char *argv[]) {
-    if (argc < 2) goto usage;
+    if (argc < 2) { cmd_help(); return 0; }
     const char *cmd = argv[1];
 
-    /* Special built-in commands */
-    if (strcmp(cmd, "help") == 0 || strcmp(cmd, "--help") == 0 || strcmp(cmd, "-h") == 0)
-        goto usage;
-
+    if (strcmp(cmd, "help") == 0 || strcmp(cmd, "--help") == 0 || strcmp(cmd, "-h") == 0) {
+        cmd_help();
+        return 0;
+    }
     if (strcmp(cmd, "version") == 0 || strcmp(cmd, "--version") == 0) {
-        printf("bonfyre 0.1.0\n");
+        printf("bonfyre 0.2.0\n");
         return 0;
     }
-
     if (strcmp(cmd, "list") == 0) {
-        printf("Available commands:\n\n");
-        const char *section = "";
-        for (const Route *r = routes; r->cmd; r++) {
-            /* Detect section changes */
-            const char *new_section = "";
-            if (r == &routes[0]) new_section = "Pipeline";
-            else if (strcmp(r->binary, "bonfyre-hash") == 0) new_section = "Infrastructure";
-            else if (strcmp(r->binary, "bonfyre-gate") == 0) new_section = "Value Capture";
-            if (strcmp(new_section, section) != 0) {
-                if (new_section[0]) printf("  %s:\n", new_section);
-                section = new_section;
-            }
-            printf("    %-14s %s\n", r->cmd, r->desc);
-        }
-        printf("\nRun 'bonfyre <command> --help' for command-specific help.\n");
+        cmd_list();
         return 0;
     }
 
-    /* Look up the route */
+    /* Route lookup */
     for (const Route *r = routes; r->cmd; r++) {
-        if (strcmp(cmd, r->cmd) == 0) {
-            int via_runtime_gateway =
-                (strcmp(r->binary, "bonfyre-runtime") == 0 && strcmp(r->cmd, "runtime") != 0);
+        if (strcmp(cmd, r->cmd) != 0) continue;
 
-            /* Build argv for the target binary.
-             * For runtime-gateway commands, preserve the selected command token:
-             *   bonfyre <cmd> ... -> bonfyre-runtime <cmd> ...
-             */
-            char **new_argv = malloc(sizeof(char *) * (size_t)(argc + 2));
-            if (!new_argv) { perror("malloc"); return 1; }
-            int j = 0;
-            new_argv[j++] = (char *)r->binary;
-            if (via_runtime_gateway)
-                new_argv[j++] = (char *)r->cmd;
-            for (int i = 2; i < argc; i++)
-                new_argv[j++] = argv[i];
-            new_argv[j] = NULL;
+        /* Runtime-gateway commands: prepend the original subcommand token
+         * so bonfyre-runtime can dispatch internally.
+         */
+        int via_runtime = (strcmp(r->binary, "bonfyre-runtime") == 0
+                           && strcmp(r->cmd, "runtime") != 0);
 
-            try_exec(r->binary, r->sibling_dir, new_argv);
-            fprintf(stderr, "bonfyre: cannot execute '%s': not found\n", r->binary);
-            fprintf(stderr, "  (install %s or add its directory to PATH)\n", r->binary);
-            free(new_argv);
-            return 127;
-        }
+        char **new_argv = malloc(sizeof(char *) * (size_t)(argc + 2));
+        if (!new_argv) { perror("malloc"); return 1; }
+        int j = 0;
+        new_argv[j++] = (char *)r->binary;
+        if (via_runtime)
+            new_argv[j++] = (char *)r->cmd;
+        for (int i = 2; i < argc; i++)
+            new_argv[j++] = argv[i];
+        new_argv[j] = NULL;
+
+        try_exec(r->binary, r->sibling_dir, new_argv);
+        fprintf(stderr, "bonfyre: '%s' is not installed or not in PATH\n", r->binary);
+        fprintf(stderr, "  Build it: make -C cmd/%s\n", r->sibling_dir);
+        free(new_argv);
+        return 127;
     }
 
-    /* Last-chance recovery path: delegate unknown commands to runtime,
-     * which can dynamically pass through to bonfyre-<cmd> modules.
-     */
+    /* Last-chance: delegate unknown commands to runtime for dynamic dispatch */
     {
-        char **fallback_argv = malloc(sizeof(char *) * (size_t)(argc + 2));
-        if (fallback_argv) {
+        char **fb = malloc(sizeof(char *) * (size_t)(argc + 2));
+        if (fb) {
             int j = 0;
-            fallback_argv[j++] = "bonfyre-runtime";
-            fallback_argv[j++] = argv[1];
-            for (int i = 2; i < argc; i++) fallback_argv[j++] = argv[i];
-            fallback_argv[j] = NULL;
-
-            try_exec("bonfyre-runtime", "BonfyreRuntime", fallback_argv);
-            free(fallback_argv);
+            fb[j++] = "bonfyre-runtime";
+            fb[j++] = argv[1];
+            for (int i = 2; i < argc; i++) fb[j++] = argv[i];
+            fb[j] = NULL;
+            try_exec("bonfyre-runtime", "BonfyreRuntime", fb);
+            free(fb);
         }
     }
 
     fprintf(stderr, "bonfyre: unknown command '%s'\n", cmd);
     fprintf(stderr, "Run 'bonfyre list' to see all commands.\n");
     return 1;
-
-usage:
-    fprintf(stderr,
-        "bonfyre — artifact pipeline toolkit\n\n"
-        "Usage: bonfyre <command> [args...]\n\n"
-        "Commands:\n"
-        "  list          Show all available commands\n"
-        "  version       Print version\n"
-        "  help          Show this help\n\n"
-        "Pipeline:       ingest → mediaprep → transcribe → clean → paragraph → brief → proof → offer → narrate → pack → distribute\n"
-        "Fusion:         transcript-family, render, runtime, project\n"
-        "Infrastructure: hash, index, compress, emit, stitch, queue, sync\n"
-        "Value Capture:  gate, meter, ledger\n\n"
-        "Run 'bonfyre list' for full details or 'bonfyre <command> --help' for command help.\n"
-    );
-    return 0;
 }
