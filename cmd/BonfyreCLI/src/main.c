@@ -213,6 +213,23 @@ int main(int argc, char *argv[]) {
         }
     }
 
+    /* Last-chance recovery path: delegate unknown commands to runtime,
+     * which can dynamically pass through to bonfyre-<cmd> modules.
+     */
+    {
+        char **fallback_argv = malloc(sizeof(char *) * (size_t)(argc + 2));
+        if (fallback_argv) {
+            int j = 0;
+            fallback_argv[j++] = "bonfyre-runtime";
+            fallback_argv[j++] = argv[1];
+            for (int i = 2; i < argc; i++) fallback_argv[j++] = argv[i];
+            fallback_argv[j] = NULL;
+
+            try_exec("bonfyre-runtime", "BonfyreRuntime", fallback_argv);
+            free(fallback_argv);
+        }
+    }
+
     fprintf(stderr, "bonfyre: unknown command '%s'\n", cmd);
     fprintf(stderr, "Run 'bonfyre list' to see all commands.\n");
     return 1;

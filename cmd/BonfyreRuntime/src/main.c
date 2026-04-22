@@ -45,7 +45,8 @@ static int run_command(char *const argv[]) {
     pid_t pid = fork();
     if (pid < 0) return 1;
     if (pid == 0) {
-        execv(argv[0], argv);
+        if (strchr(argv[0], '/')) execv(argv[0], argv);
+        else execvp(argv[0], argv);
         perror(argv[0]);
         _exit(127);
     }
@@ -63,7 +64,8 @@ static int run_command_to_file(char *const argv[], const char *output_path) {
         if (!fp) _exit(127);
         if (dup2(fileno(fp), STDOUT_FILENO) < 0) _exit(127);
         fclose(fp);
-        execv(argv[0], argv);
+        if (strchr(argv[0], '/')) execv(argv[0], argv);
+        else execvp(argv[0], argv);
         _exit(127);
     }
     int status = 0;
@@ -185,6 +187,65 @@ static int open_cmd_root(const char *argv0, DIR **dir_out, char *root_out, size_
         }
     }
     return 0;
+}
+
+static int is_safe_cmd_token(const char *s) {
+    if (!s || !s[0]) return 0;
+    for (const char *p = s; *p; p++) {
+        char c = *p;
+        int ok = (c >= 'a' && c <= 'z') ||
+                 (c >= 'A' && c <= 'Z') ||
+                 (c >= '0' && c <= '9') ||
+                 c == '-' || c == '_';
+        if (!ok) return 0;
+    }
+    return 1;
+}
+
+static int find_binary_in_cmd_tree(const char *argv0, const char *binary, char *out, size_t out_sz) {
+    DIR *root = NULL;
+    char cmd_root[PATH_MAX];
+    if (!open_cmd_root(argv0, &root, cmd_root, sizeof(cmd_root))) return 0;
+
+    struct dirent *de;
+    while ((de = readdir(root)) != NULL) {
+        if (de->d_name[0] == '.') continue;
+        char candidate[PATH_MAX];
+        snprintf(candidate, sizeof(candidate), "%s/%s/%s", cmd_root, de->d_name, binary);
+        if (access(candidate, X_OK) == 0) {
+            snprintf(out, out_sz, "%s", candidate);
+            closedir(root);
+            return 1;
+        }
+    }
+    closedir(root);
+    return 0;
+}
+
+static int cmd_dynamic_passthrough(const char *argv0, const char *cmd, int argc, char **argv) {
+    if (!is_safe_cmd_token(cmd)) return -1;
+
+    char binary[256];
+    if (strncmp(cmd, "bonfyre-", 8) == 0) snprintf(binary, sizeof(binary), "%s", cmd);
+    else snprintf(binary, sizeof(binary), "bonfyre-%s", cmd);
+
+    char resolved[PATH_MAX];
+    const char *target = binary;
+    if (find_binary_in_cmd_tree(argv0, binary, resolved, sizeof(resolved))) {
+        target = resolved;
+    }
+
+    char **child = calloc((size_t)argc + 2, sizeof(char *));
+    if (!child) return 1;
+    child[0] = (char *)target;
+    for (int i = 0; i < argc; i++) child[i + 1] = argv[i];
+    child[argc + 1] = NULL;
+
+    int rc = run_command(child);
+    free(child);
+
+    if (rc == 127 && strcmp(target, binary) == 0) return -1;
+    return rc;
 }
 
 typedef struct {
@@ -389,6 +450,8 @@ static void print_usage(void) {
             "      validate runtime dependency binaries and preflight toggles\n"
             "  bonfyre-runtime conference [video-relay args...]\n"
             "  bonfyre-runtime autowire <input> --intent <text> --out <dir> [--mode local|swarm] [--nodes N]\n"
+            "  bonfyre-runtime <cmd> [args...]\n"
+            "      dynamic pass-through to bonfyre-<cmd> for recovered/orphaned modules\n"
             "\n"
             "  loop:     runs <binary> N times; passes previous artifact.json as --in\n"
             "            to each subsequent iteration.\n"
@@ -953,6 +1016,11 @@ int main(int argc, char **argv) {
 
     if (strcmp(argv[1], "pipeline") == 0) {
         return cmd_pipeline(argc - 2, argv + 2);
+    }
+
+    {
+        int dynamic_rc = cmd_dynamic_passthrough(argv[0], argv[1], argc - 2, argv + 2);
+        if (dynamic_rc >= 0) return dynamic_rc;
     }
 
     print_usage();
