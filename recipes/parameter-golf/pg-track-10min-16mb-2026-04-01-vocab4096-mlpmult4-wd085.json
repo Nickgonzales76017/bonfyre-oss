@@ -1,0 +1,68 @@
+{
+  "recipe_id": "pg-track-10min-16mb-2026-04-01-vocab4096-mlpmult4-wd085",
+  "code": "pg-track-10min-16mb-2026-04-01-vocab4096-mlpmult4-wd085",
+  "name": "4096-Vocab + Larger Model + High WD + Simplifications",
+  "version": "1.0.0",
+  "category": "parameter-golf",
+  "description": "Vocab 4096, MLP 4x, WD 0.085, co-prime data loader, GPTQ, brotli, sigmoid-gated UNet skips, simplified architecture",
+  "tags": [
+    "parameter-golf",
+    "tiny-model",
+    "track_10min_16mb"
+  ],
+  "metadata": {
+    "source_repo": "openai/parameter-golf",
+    "source_record": "records/track_10min_16mb/2026-04-01_Vocab4096_MLPMult4_WD085",
+    "author": "Kevin Clark",
+    "github_id": "clarkkev",
+    "date": "2026-04-01",
+    "val_bpb": 1.09785,
+    "val_loss": 2.52618,
+    "bytes_total": 15916170,
+    "bytes_code": 68206
+  },
+  "inputs": [
+    {
+      "name": "record_ref",
+      "type": "string",
+      "description": "Parameter Golf record path under records/"
+    }
+  ],
+  "outputs": [
+    {
+      "name": "summary_json",
+      "path": "{out}/summary.json",
+      "type": "application/json"
+    }
+  ],
+  "stages": [
+    {
+      "id": "fetch_record",
+      "bin": "python3",
+      "args": [
+        "scripts/parameter_golf_tool.py",
+        "fetch",
+        "--record",
+        "records/track_10min_16mb/2026-04-01_Vocab4096_MLPMult4_WD085",
+        "--out",
+        "{out}/record"
+      ],
+      "depends_on": []
+    },
+    {
+      "id": "summarize_record",
+      "bin": "python3",
+      "args": [
+        "scripts/parameter_golf_tool.py",
+        "summarize",
+        "--record-json",
+        "{out}/record/submission.json",
+        "--out",
+        "{out}/summary.json"
+      ],
+      "depends_on": [
+        "fetch_record"
+      ]
+    }
+  ]
+}

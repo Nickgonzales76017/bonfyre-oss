@@ -1,0 +1,68 @@
+{
+  "recipe_id": "pg-track-10min-16mb-2026-03-20-11l-xsa4-ema-int6-mlp3x-wd04-1-1271",
+  "code": "pg-track-10min-16mb-2026-03-20-11l-xsa4-ema-int6-mlp3x-wd04-1-1271",
+  "name": "Record: 11L XSA + EMA + Int6 MLP3x + WD=0.04",
+  "version": "1.0.0",
+  "category": "parameter-golf",
+  "description": "11 layers with Exclusive Self Attention (XSA) on last 4 layers, EMA weight averaging (decay=0.997), int6 per-row on all MLP+attention weights, int8 tok_emb, zstd-22. Weight decay 0.04 (Muon+AdamW). OrthoInit + muP scaling. SmearGate + BigramHash(2048x128). FA3. Sliding window eval stride=64, seq=2048.",
+  "tags": [
+    "parameter-golf",
+    "tiny-model",
+    "track_10min_16mb"
+  ],
+  "metadata": {
+    "source_repo": "openai/parameter-golf",
+    "source_record": "records/track_10min_16mb/2026-03-20_11L_XSA4_EMA_Int6_MLP3x_WD04_1.1271",
+    "author": "Jack Princz",
+    "github_id": "jfprincz",
+    "date": "2026-03-21T00:00:00Z",
+    "val_bpb": 1.12707468,
+    "val_loss": 1.90301335,
+    "bytes_total": 15534645,
+    "bytes_code": 66133
+  },
+  "inputs": [
+    {
+      "name": "record_ref",
+      "type": "string",
+      "description": "Parameter Golf record path under records/"
+    }
+  ],
+  "outputs": [
+    {
+      "name": "summary_json",
+      "path": "{out}/summary.json",
+      "type": "application/json"
+    }
+  ],
+  "stages": [
+    {
+      "id": "fetch_record",
+      "bin": "python3",
+      "args": [
+        "scripts/parameter_golf_tool.py",
+        "fetch",
+        "--record",
+        "records/track_10min_16mb/2026-03-20_11L_XSA4_EMA_Int6_MLP3x_WD04_1.1271",
+        "--out",
+        "{out}/record"
+      ],
+      "depends_on": []
+    },
+    {
+      "id": "summarize_record",
+      "bin": "python3",
+      "args": [
+        "scripts/parameter_golf_tool.py",
+        "summarize",
+        "--record-json",
+        "{out}/record/submission.json",
+        "--out",
+        "{out}/summary.json"
+      ],
+      "depends_on": [
+        "fetch_record"
+      ]
+    }
+  ]
+}

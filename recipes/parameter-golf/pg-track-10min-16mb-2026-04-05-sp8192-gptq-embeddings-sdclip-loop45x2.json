@@ -1,0 +1,68 @@
+{
+  "recipe_id": "pg-track-10min-16mb-2026-04-05-sp8192-gptq-embeddings-sdclip-loop45x2",
+  "code": "pg-track-10min-16mb-2026-04-05-sp8192-gptq-embeddings-sdclip-loop45x2",
+  "name": "SP8192 + GPTQ Embeddings + Depth Recurrence + MuonEq-R + SD-Clip + Simplifications",
+  "version": "1.0.0",
+  "category": "parameter-golf",
+  "description": "8192-token sentencepiece vocab, GPTQ-quantize embeddings, loop layers 4,5 two times, row-normalized muon, standard-deviation based weight clipping",
+  "tags": [
+    "parameter-golf",
+    "tiny-model",
+    "track_10min_16mb"
+  ],
+  "metadata": {
+    "source_repo": "openai/parameter-golf",
+    "source_record": "records/track_10min_16mb/2026-04-05_SP8192_GPTQ-Embeddings_SDClip_Loop45x2",
+    "author": "Kevin Clark",
+    "github_id": "clarkkev",
+    "date": "2026-04-05",
+    "val_bpb": 1.08563,
+    "val_loss": 2.80428,
+    "bytes_total": 15985678,
+    "bytes_code": 15516
+  },
+  "inputs": [
+    {
+      "name": "record_ref",
+      "type": "string",
+      "description": "Parameter Golf record path under records/"
+    }
+  ],
+  "outputs": [
+    {
+      "name": "summary_json",
+      "path": "{out}/summary.json",
+      "type": "application/json"
+    }
+  ],
+  "stages": [
+    {
+      "id": "fetch_record",
+      "bin": "python3",
+      "args": [
+        "scripts/parameter_golf_tool.py",
+        "fetch",
+        "--record",
+        "records/track_10min_16mb/2026-04-05_SP8192_GPTQ-Embeddings_SDClip_Loop45x2",
+        "--out",
+        "{out}/record"
+      ],
+      "depends_on": []
+    },
+    {
+      "id": "summarize_record",
+      "bin": "python3",
+      "args": [
+        "scripts/parameter_golf_tool.py",
+        "summarize",
+        "--record-json",
+        "{out}/record/submission.json",
+        "--out",
+        "{out}/summary.json"
+      ],
+      "depends_on": [
+        "fetch_record"
+      ]
+    }
+  ]
+}

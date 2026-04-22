@@ -1,0 +1,68 @@
+{
+  "recipe_id": "pg-track-10min-16mb-2026-04-06-sp8192-qk5-legalttt-1-0828",
+  "code": "pg-track-10min-16mb-2026-04-06-sp8192-qk5-legalttt-1-0828",
+  "name": "SP8192 + QK-Gain 5 + Legal Score-First TTT",
+  "version": "1.0.0",
+  "category": "parameter-golf",
+  "description": "PR #1394 sp8192 stack + QK_GAIN_INIT=5.0 + legal score-first TTT (TTT_LR=0.005, freeze 0 blocks, 3 epochs). 3-seed mean 1.08279 across seeds 0/42/1234. No SLOT, no ETLB, no pre-quant TTT. Beats PR #1394 by 0.00283 bpb = 0.00731 nats/token.",
+  "tags": [
+    "parameter-golf",
+    "tiny-model",
+    "track_10min_16mb"
+  ],
+  "metadata": {
+    "source_repo": "openai/parameter-golf",
+    "source_record": "records/track_10min_16mb/2026-04-06_SP8192_QK5_LegalTTT_1.0828",
+    "author": "dexhunter",
+    "github_id": "dexhunter",
+    "date": "2026-04-06",
+    "val_bpb": 1.08279384,
+    "val_loss": null,
+    "bytes_total": 15992546,
+    "bytes_code": null
+  },
+  "inputs": [
+    {
+      "name": "record_ref",
+      "type": "string",
+      "description": "Parameter Golf record path under records/"
+    }
+  ],
+  "outputs": [
+    {
+      "name": "summary_json",
+      "path": "{out}/summary.json",
+      "type": "application/json"
+    }
+  ],
+  "stages": [
+    {
+      "id": "fetch_record",
+      "bin": "python3",
+      "args": [
+        "scripts/parameter_golf_tool.py",
+        "fetch",
+        "--record",
+        "records/track_10min_16mb/2026-04-06_SP8192_QK5_LegalTTT_1.0828",
+        "--out",
+        "{out}/record"
+      ],
+      "depends_on": []
+    },
+    {
+      "id": "summarize_record",
+      "bin": "python3",
+      "args": [
+        "scripts/parameter_golf_tool.py",
+        "summarize",
+        "--record-json",
+        "{out}/record/submission.json",
+        "--out",
+        "{out}/summary.json"
+      ],
+      "depends_on": [
+        "fetch_record"
+      ]
+    }
+  ]
+}

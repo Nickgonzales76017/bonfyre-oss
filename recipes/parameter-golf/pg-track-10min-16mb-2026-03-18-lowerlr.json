@@ -1,0 +1,68 @@
+{
+  "recipe_id": "pg-track-10min-16mb-2026-03-18-lowerlr",
+  "code": "pg-track-10min-16mb-2026-03-18-lowerlr",
+  "name": "Lower LR",
+  "version": "1.0.0",
+  "category": "parameter-golf",
+  "description": "Same 9x512 SP-1024 KV4 tied-embedding baseline architecture with lower Muon/Adam learning rates (MATRIX_LR=0.02, SCALAR_LR=0.02, TIED_EMBED_LR=0.03). Systematic LR sweep showed default 0.04 was too high; optimal is ~0.02.",
+  "tags": [
+    "parameter-golf",
+    "tiny-model",
+    "track_10min_16mb"
+  ],
+  "metadata": {
+    "source_repo": "openai/parameter-golf",
+    "source_record": "records/track_10min_16mb/2026-03-18_LowerLR",
+    "author": "Nan Liu",
+    "github_id": "nanlliu",
+    "date": "2026-03-18T22:30:00Z",
+    "val_bpb": 1.22296644,
+    "val_loss": 2.0649276,
+    "bytes_total": 15854246,
+    "bytes_code": 50919
+  },
+  "inputs": [
+    {
+      "name": "record_ref",
+      "type": "string",
+      "description": "Parameter Golf record path under records/"
+    }
+  ],
+  "outputs": [
+    {
+      "name": "summary_json",
+      "path": "{out}/summary.json",
+      "type": "application/json"
+    }
+  ],
+  "stages": [
+    {
+      "id": "fetch_record",
+      "bin": "python3",
+      "args": [
+        "scripts/parameter_golf_tool.py",
+        "fetch",
+        "--record",
+        "records/track_10min_16mb/2026-03-18_LowerLR",
+        "--out",
+        "{out}/record"
+      ],
+      "depends_on": []
+    },
+    {
+      "id": "summarize_record",
+      "bin": "python3",
+      "args": [
+        "scripts/parameter_golf_tool.py",
+        "summarize",
+        "--record-json",
+        "{out}/record/submission.json",
+        "--out",
+        "{out}/summary.json"
+      ],
+      "depends_on": [
+        "fetch_record"
+      ]
+    }
+  ]
+}

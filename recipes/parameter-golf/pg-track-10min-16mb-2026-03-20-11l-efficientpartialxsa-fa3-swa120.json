@@ -1,0 +1,68 @@
+{
+  "recipe_id": "pg-track-10min-16mb-2026-03-20-11l-efficientpartialxsa-fa3-swa120",
+  "code": "pg-track-10min-16mb-2026-03-20-11l-efficientpartialxsa-fa3-swa120",
+  "name": "11L + Efficient Partial XSA + FA3 + SWA/120 (val_bpb: 1.1307)",
+  "version": "1.0.0",
+  "category": "parameter-golf",
+  "description": "11 layers, int6 quant, zstd-22. Novel contribution: Efficient Partial Exclusive Self Attention (XSA, arXiv:2603.09078) applied to deepest 3 layers only. GQA-aware reshape avoids tensor duplication, adding <2ms/step overhead. XSA subtracts self-value projection from attention output, forcing deeper layers to learn from context rather than self-reference. SWA every 120 steps (13 checkpoint avg). OrthoInit + muP scaling. SmearGate + BigramHash(2048x128). FlashAttention 3 + NTK RoPE. Weight decay 0.04 (Muon+AdamW).",
+  "tags": [
+    "parameter-golf",
+    "tiny-model",
+    "track_10min_16mb"
+  ],
+  "metadata": {
+    "source_repo": "openai/parameter-golf",
+    "source_record": "records/track_10min_16mb/2026-03-20_11L_EfficientPartialXSA_FA3_SWA120",
+    "author": "vadim borisov (tabularis.ai)",
+    "github_id": "unnir",
+    "date": "2026-03-20T20:15:00Z",
+    "val_bpb": 1.13071416,
+    "val_loss": 1.90915845,
+    "bytes_total": 15892986,
+    "bytes_code": 65000
+  },
+  "inputs": [
+    {
+      "name": "record_ref",
+      "type": "string",
+      "description": "Parameter Golf record path under records/"
+    }
+  ],
+  "outputs": [
+    {
+      "name": "summary_json",
+      "path": "{out}/summary.json",
+      "type": "application/json"
+    }
+  ],
+  "stages": [
+    {
+      "id": "fetch_record",
+      "bin": "python3",
+      "args": [
+        "scripts/parameter_golf_tool.py",
+        "fetch",
+        "--record",
+        "records/track_10min_16mb/2026-03-20_11L_EfficientPartialXSA_FA3_SWA120",
+        "--out",
+        "{out}/record"
+      ],
+      "depends_on": []
+    },
+    {
+      "id": "summarize_record",
+      "bin": "python3",
+      "args": [
+        "scripts/parameter_golf_tool.py",
+        "summarize",
+        "--record-json",
+        "{out}/record/submission.json",
+        "--out",
+        "{out}/summary.json"
+      ],
+      "depends_on": [
+        "fetch_record"
+      ]
+    }
+  ]
+}

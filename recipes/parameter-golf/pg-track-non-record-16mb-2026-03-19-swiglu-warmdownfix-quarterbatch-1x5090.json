@@ -1,0 +1,69 @@
+{
+  "recipe_id": "pg-track-non-record-16mb-2026-03-19-swiglu-warmdownfix-quarterbatch-1x5090",
+  "code": "pg-track-non-record-16mb-2026-03-19-swiglu-warmdownfix-quarterbatch-1x5090",
+  "name": "SwiGLU + Warmdown Fix + Quarter Batch (1x5090)",
+  "version": "1.0.0",
+  "category": "parameter-golf",
+  "description": "Non-record 1xRTX5090 submission: systematic 10-experiment exploration discovering warmdown schedule bug, SwiGLU activation, quarter batch sizing, and gradient accumulation. Total improvement -0.035 bpb over stock baseline. Post-quant val_bpb 1.3281 under the 16MB artifact cap.",
+  "tags": [
+    "parameter-golf",
+    "tiny-model",
+    "track_non_record_16mb",
+    "non-record"
+  ],
+  "metadata": {
+    "source_repo": "openai/parameter-golf",
+    "source_record": "records/track_non_record_16mb/2026-03-19_SwiGLU_WarmdownFix_QuarterBatch_1x5090",
+    "author": "",
+    "github_id": "",
+    "date": "2026-03-19T00:00:00Z",
+    "val_bpb": 1.32814313,
+    "val_loss": null,
+    "bytes_total": 15327112,
+    "bytes_code": null
+  },
+  "inputs": [
+    {
+      "name": "record_ref",
+      "type": "string",
+      "description": "Parameter Golf record path under records/"
+    }
+  ],
+  "outputs": [
+    {
+      "name": "summary_json",
+      "path": "{out}/summary.json",
+      "type": "application/json"
+    }
+  ],
+  "stages": [
+    {
+      "id": "fetch_record",
+      "bin": "python3",
+      "args": [
+        "scripts/parameter_golf_tool.py",
+        "fetch",
+        "--record",
+        "records/track_non_record_16mb/2026-03-19_SwiGLU_WarmdownFix_QuarterBatch_1x5090",
+        "--out",
+        "{out}/record"
+      ],
+      "depends_on": []
+    },
+    {
+      "id": "summarize_record",
+      "bin": "python3",
+      "args": [
+        "scripts/parameter_golf_tool.py",
+        "summarize",
+        "--record-json",
+        "{out}/record/submission.json",
+        "--out",
+        "{out}/summary.json"
+      ],
+      "depends_on": [
+        "fetch_record"
+      ]
+    }
+  ]
+}

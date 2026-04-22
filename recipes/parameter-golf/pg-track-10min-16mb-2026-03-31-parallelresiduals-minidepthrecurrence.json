@@ -1,0 +1,68 @@
+{
+  "recipe_id": "pg-track-10min-16mb-2026-03-31-parallelresiduals-minidepthrecurrence",
+  "code": "pg-track-10min-16mb-2026-03-31-parallelresiduals-minidepthrecurrence",
+  "name": "Parallel Residuals + Mini Depth Recurrence",
+  "version": "1.0.0",
+  "category": "parameter-golf",
+  "description": "Built from PR #1179 with AR self-generated GPTQ and mixed quantization ported from PR #1105. Adds parallel residual routing from layer 7 plus delayed mini depth recurrence on layers 4,5 with untied repeated MLPs. Exact 3-seed mean: 1.10625353 BPB / 1.86785780 nats, improving on PR #1179 by 0.00722646 nats and on the current merged SOTA by 0.01432073 nats.",
+  "tags": [
+    "parameter-golf",
+    "tiny-model",
+    "track_10min_16mb"
+  ],
+  "metadata": {
+    "source_repo": "openai/parameter-golf",
+    "source_record": "records/track_10min_16mb/2026-03-31_ParallelResiduals_MiniDepthRecurrence",
+    "author": "Marko Sisovic",
+    "github_id": "msisovic",
+    "date": "2026-03-31",
+    "val_bpb": 1.10625353,
+    "val_loss": 1.8678578,
+    "bytes_total": 15946657,
+    "bytes_code": null
+  },
+  "inputs": [
+    {
+      "name": "record_ref",
+      "type": "string",
+      "description": "Parameter Golf record path under records/"
+    }
+  ],
+  "outputs": [
+    {
+      "name": "summary_json",
+      "path": "{out}/summary.json",
+      "type": "application/json"
+    }
+  ],
+  "stages": [
+    {
+      "id": "fetch_record",
+      "bin": "python3",
+      "args": [
+        "scripts/parameter_golf_tool.py",
+        "fetch",
+        "--record",
+        "records/track_10min_16mb/2026-03-31_ParallelResiduals_MiniDepthRecurrence",
+        "--out",
+        "{out}/record"
+      ],
+      "depends_on": []
+    },
+    {
+      "id": "summarize_record",
+      "bin": "python3",
+      "args": [
+        "scripts/parameter_golf_tool.py",
+        "summarize",
+        "--record-json",
+        "{out}/record/submission.json",
+        "--out",
+        "{out}/summary.json"
+      ],
+      "depends_on": [
+        "fetch_record"
+      ]
+    }
+  ]
+}

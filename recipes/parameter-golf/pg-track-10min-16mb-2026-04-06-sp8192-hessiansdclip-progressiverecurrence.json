@@ -1,0 +1,68 @@
+{
+  "recipe_id": "pg-track-10min-16mb-2026-04-06-sp8192-hessiansdclip-progressiverecurrence",
+  "code": "pg-track-10min-16mb-2026-04-06-sp8192-hessiansdclip-progressiverecurrence",
+  "name": "Non-record: Parallel Residuals + Hessian-Aware SDClip",
+  "version": "1.0.0",
+  "category": "parameter-golf",
+  "description": "Three zero-cost modifications on PR #1394: GPT-J parallel residuals (layers 7+), Hessian-diagonal SDClip modulation (lambda=0.175), two-phase progressive recurrence. 3-seed mean 1.08354 BPB.",
+  "tags": [
+    "parameter-golf",
+    "tiny-model",
+    "track_10min_16mb"
+  ],
+  "metadata": {
+    "source_repo": "openai/parameter-golf",
+    "source_record": "records/track_10min_16mb/2026-04-06_SP8192_HessianSDClip_ProgressiveRecurrence",
+    "author": "Robby Sneiderman",
+    "github_id": "Robby955",
+    "date": "2026-04-06T00:00:00Z",
+    "val_bpb": 1.08354,
+    "val_loss": 2.7995,
+    "bytes_total": 15978121,
+    "bytes_code": null
+  },
+  "inputs": [
+    {
+      "name": "record_ref",
+      "type": "string",
+      "description": "Parameter Golf record path under records/"
+    }
+  ],
+  "outputs": [
+    {
+      "name": "summary_json",
+      "path": "{out}/summary.json",
+      "type": "application/json"
+    }
+  ],
+  "stages": [
+    {
+      "id": "fetch_record",
+      "bin": "python3",
+      "args": [
+        "scripts/parameter_golf_tool.py",
+        "fetch",
+        "--record",
+        "records/track_10min_16mb/2026-04-06_SP8192_HessianSDClip_ProgressiveRecurrence",
+        "--out",
+        "{out}/record"
+      ],
+      "depends_on": []
+    },
+    {
+      "id": "summarize_record",
+      "bin": "python3",
+      "args": [
+        "scripts/parameter_golf_tool.py",
+        "summarize",
+        "--record-json",
+        "{out}/record/submission.json",
+        "--out",
+        "{out}/summary.json"
+      ],
+      "depends_on": [
+        "fetch_record"
+      ]
+    }
+  ]
+}

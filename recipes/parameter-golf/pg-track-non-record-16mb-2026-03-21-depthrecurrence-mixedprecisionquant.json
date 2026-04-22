@@ -1,0 +1,69 @@
+{
+  "recipe_id": "pg-track-non-record-16mb-2026-03-21-depthrecurrence-mixedprecisionquant",
+  "code": "pg-track-non-record-16mb-2026-03-21-depthrecurrence-mixedprecisionquant",
+  "name": "Depth Recurrence + Mixed-Precision Quantization",
+  "version": "1.0.0",
+  "category": "parameter-golf",
+  "description": "Imported from OpenAI Parameter Golf records",
+  "tags": [
+    "parameter-golf",
+    "tiny-model",
+    "track_non_record_16mb",
+    "non-record"
+  ],
+  "metadata": {
+    "source_repo": "openai/parameter-golf",
+    "source_record": "records/track_non_record_16mb/2026-03-21_DepthRecurrence_MixedPrecisionQuant",
+    "author": "Evangeline Kamin",
+    "github_id": "evangelinehelsinki",
+    "date": "2026-03-21",
+    "val_bpb": 2.3876,
+    "val_loss": 4.0314,
+    "bytes_total": 1461542,
+    "bytes_code": null
+  },
+  "inputs": [
+    {
+      "name": "record_ref",
+      "type": "string",
+      "description": "Parameter Golf record path under records/"
+    }
+  ],
+  "outputs": [
+    {
+      "name": "summary_json",
+      "path": "{out}/summary.json",
+      "type": "application/json"
+    }
+  ],
+  "stages": [
+    {
+      "id": "fetch_record",
+      "bin": "python3",
+      "args": [
+        "scripts/parameter_golf_tool.py",
+        "fetch",
+        "--record",
+        "records/track_non_record_16mb/2026-03-21_DepthRecurrence_MixedPrecisionQuant",
+        "--out",
+        "{out}/record"
+      ],
+      "depends_on": []
+    },
+    {
+      "id": "summarize_record",
+      "bin": "python3",
+      "args": [
+        "scripts/parameter_golf_tool.py",
+        "summarize",
+        "--record-json",
+        "{out}/record/submission.json",
+        "--out",
+        "{out}/summary.json"
+      ],
+      "depends_on": [
+        "fetch_record"
+      ]
+    }
+  ]
+}

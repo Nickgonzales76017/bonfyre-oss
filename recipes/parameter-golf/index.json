@@ -1,0 +1,302 @@
+{
+  "source_repo": "openai/parameter-golf",
+  "recipe_count": 37,
+  "recipes": [
+    {
+      "recipe_id": "pg-track-10min-16mb-2026-03-17-lora-ttt",
+      "name": "LoRA TTT",
+      "track": "track_10min_16mb",
+      "source_record": "records/track_10min_16mb/2026-03-17_LoRA_TTT",
+      "val_bpb": 1.1929,
+      "bytes_total": 15882446
+    },
+    {
+      "recipe_id": "pg-track-10min-16mb-2026-03-17-naivebaseline",
+      "name": "Naive Baseline",
+      "track": "track_10min_16mb",
+      "source_record": "records/track_10min_16mb/2026-03-17_NaiveBaseline",
+      "val_bpb": 1.2243657,
+      "bytes_total": 15863489
+    },
+    {
+      "recipe_id": "pg-track-10min-16mb-2026-03-18-fp16embed-wd3600",
+      "name": "FP16 Tied Embedding + LR/Warmdown Tuning",
+      "track": "track_10min_16mb",
+      "source_record": "records/track_10min_16mb/2026-03-18_FP16Embed_WD3600",
+      "val_bpb": 1.21972502,
+      "bytes_total": 15896222
+    },
+    {
+      "recipe_id": "pg-track-10min-16mb-2026-03-18-longcontextseq2048",
+      "name": "Long Context Seq2048 v2",
+      "track": "track_10min_16mb",
+      "source_record": "records/track_10min_16mb/2026-03-18_LongContextSeq2048",
+      "val_bpb": 1.20576485,
+      "bytes_total": 15867270
+    },
+    {
+      "recipe_id": "pg-track-10min-16mb-2026-03-18-lowerlr",
+      "name": "Lower LR",
+      "track": "track_10min_16mb",
+      "source_record": "records/track_10min_16mb/2026-03-18_LowerLR",
+      "val_bpb": 1.22296644,
+      "bytes_total": 15854246
+    },
+    {
+      "recipe_id": "pg-track-10min-16mb-2026-03-19-10l-mixedprecision",
+      "name": "10L Mixed Precision",
+      "track": "track_10min_16mb",
+      "source_record": "records/track_10min_16mb/2026-03-19_10L_MixedPrecision",
+      "val_bpb": 1.214745,
+      "bytes_total": 15928974
+    },
+    {
+      "recipe_id": "pg-track-10min-16mb-2026-03-19-mlp3x-qat-int6-slidingwindow",
+      "name": "2026-03-19 MLP3x QAT Int6 SlidingWindow",
+      "track": "track_10min_16mb",
+      "source_record": "records/track_10min_16mb/2026-03-19_MLP3x_QAT_Int6_SlidingWindow",
+      "val_bpb": 1.15015359,
+      "bytes_total": null
+    },
+    {
+      "recipe_id": "pg-track-10min-16mb-2026-03-19-mixedquant-int6int8-slidingwindow",
+      "name": "Mixed Quant (int6 blocks + int8 embeddings) + Sliding Window Eval, val_bpb=1.1630",
+      "track": "track_10min_16mb",
+      "source_record": "records/track_10min_16mb/2026-03-19_MixedQuant_Int6Int8_SlidingWindow",
+      "val_bpb": 1.16301431,
+      "bytes_total": 15353490
+    },
+    {
+      "recipe_id": "pg-track-10min-16mb-2026-03-19-seq2048-fp16emb-tunedlr",
+      "name": "10L Int6 QAT + Zstd MLP2.6x Muon0.99 Sliding Window",
+      "track": "track_10min_16mb",
+      "source_record": "records/track_10min_16mb/2026-03-19_Seq2048_FP16Emb_TunedLR",
+      "val_bpb": 1.15861696,
+      "bytes_total": 15558319
+    },
+    {
+      "recipe_id": "pg-track-10min-16mb-2026-03-19-slidingwindoweval",
+      "name": "Sliding Window Eval (stride=64)",
+      "track": "track_10min_16mb",
+      "source_record": "records/track_10min_16mb/2026-03-19_SlidingWindowEval",
+      "val_bpb": 1.19250007,
+      "bytes_total": 15874829
+    },
+    {
+      "recipe_id": "pg-track-10min-16mb-2026-03-19-slidingwindow-fp16emb-10l-muonwd-overtoneinit",
+      "name": "Sliding Window + FP16 Embed + 10L + Muon WD + Overtone Init",
+      "track": "track_10min_16mb",
+      "source_record": "records/track_10min_16mb/2026-03-19_SlidingWindow_FP16Emb_10L_MuonWD_OvertoneInit",
+      "val_bpb": null,
+      "bytes_total": null
+    },
+    {
+      "recipe_id": "pg-track-10min-16mb-2026-03-19-trainingoptseq4096",
+      "name": "Training Opt Seq4096 v1",
+      "track": "track_10min_16mb",
+      "source_record": "records/track_10min_16mb/2026-03-19_TrainingOptSeq4096",
+      "val_bpb": 1.20143417,
+      "bytes_total": 15868326
+    },
+    {
+      "recipe_id": "pg-track-10min-16mb-2026-03-19-warmdownquantization",
+      "name": "Int6 MLP3x Sliding Window",
+      "track": "track_10min_16mb",
+      "source_record": "records/track_10min_16mb/2026-03-19_WarmdownQuantization",
+      "val_bpb": 1.1574404,
+      "bytes_total": 15977717
+    },
+    {
+      "recipe_id": "pg-track-10min-16mb-2026-03-19-int6-ste-qat-mlp-bigram-u-net",
+      "name": "2026-03-19 int6 STE QAT  MLP bigram  U Net",
+      "track": "track_10min_16mb",
+      "source_record": "records/track_10min_16mb/2026-03-19_int6_STE QAT_ MLP_bigram _U_Net",
+      "val_bpb": null,
+      "bytes_total": null
+    },
+    {
+      "recipe_id": "pg-track-10min-16mb-2026-03-19-smeargate-orthoinit-muonwd",
+      "name": "2026-03-19 smeargate orthoinit muonwd",
+      "track": "track_10min_16mb",
+      "source_record": "records/track_10min_16mb/2026-03-19_smeargate_orthoinit_muonwd",
+      "val_bpb": 1.1556,
+      "bytes_total": null
+    },
+    {
+      "recipe_id": "pg-track-10min-16mb-2026-03-20-10l-int5mlp-muonwd04-swa50",
+      "name": "10L Int5-MLP + BigramHash(10240) + SWA(frac=0.4) + WD=0.04",
+      "track": "track_10min_16mb",
+      "source_record": "records/track_10min_16mb/2026-03-20_10L_Int5MLP_MuonWD04_SWA50",
+      "val_bpb": null,
+      "bytes_total": 15900000
+    },
+    {
+      "recipe_id": "pg-track-10min-16mb-2026-03-20-11l-efficientpartialxsa-fa3-swa120",
+      "name": "11L + Efficient Partial XSA + FA3 + SWA/120 (val_bpb: 1.1307)",
+      "track": "track_10min_16mb",
+      "source_record": "records/track_10min_16mb/2026-03-20_11L_EfficientPartialXSA_FA3_SWA120",
+      "val_bpb": 1.13071416,
+      "bytes_total": 15892986
+    },
+    {
+      "recipe_id": "pg-track-10min-16mb-2026-03-20-11l-xsa4-ema-int6-mlp3x-wd04-1-1271",
+      "name": "Record: 11L XSA + EMA + Int6 MLP3x + WD=0.04",
+      "track": "track_10min_16mb",
+      "source_record": "records/track_10min_16mb/2026-03-20_11L_XSA4_EMA_Int6_MLP3x_WD04_1.1271",
+      "val_bpb": 1.12707468,
+      "bytes_total": 15534645
+    },
+    {
+      "recipe_id": "pg-track-10min-16mb-2026-03-20-int6-mlp3x-smeargate-bigramhash-muonwd-swa",
+      "name": "Int6 MLP3x + SmearGate + BigramHash + OrthoInit + Muon WD + SWA",
+      "track": "track_10min_16mb",
+      "source_record": "records/track_10min_16mb/2026-03-20_Int6_MLP3x_SmearGate_BigramHash_MuonWD_SWA",
+      "val_bpb": 1.14581692,
+      "bytes_total": 15862650
+    },
+    {
+      "recipe_id": "pg-track-10min-16mb-2026-03-21-11l-xsa4-ema-partialrope-lateqat-1-1248",
+      "name": "Record: 11L Partial RoPE + LN Scale + EMA + XSA4",
+      "track": "track_10min_16mb",
+      "source_record": "records/track_10min_16mb/2026-03-21_11L_XSA4_EMA_PartialRoPE_LateQAT_1.1248",
+      "val_bpb": 1.12484502,
+      "bytes_total": 15612308
+    },
+    {
+      "recipe_id": "pg-track-10min-16mb-2026-03-22-11l-ema-gptq-lite-warmdown3500-qat015-1-1233",
+      "name": "Record: 11L EMA + GPTQ-lite + warmdown3500 + QAT@0.15",
+      "track": "track_10min_16mb",
+      "source_record": "records/track_10min_16mb/2026-03-22_11L_EMA_GPTQ-lite_warmdown3500_QAT015_1.1233",
+      "val_bpb": 1.12278022,
+      "bytes_total": 15555017
+    },
+    {
+      "recipe_id": "pg-track-10min-16mb-2026-03-23-leakyrelu-legalttt-parallelmuon",
+      "name": "LeakyReLU\u00b2 + Legal Score-First TTT + Parallel Muon",
+      "track": "track_10min_16mb",
+      "source_record": "records/track_10min_16mb/2026-03-23_LeakyReLU_LegalTTT_ParallelMuon",
+      "val_bpb": 1.1194,
+      "bytes_total": 15990006
+    },
+    {
+      "recipe_id": "pg-track-10min-16mb-2026-03-24-74m-ternary-unet-fp8-10l-8192bpe-yarn-neomuon",
+      "name": "2026-03-24 74M Ternary UNet FP8 10L 8192BPE YaRN NeoMuon",
+      "track": "track_10min_16mb",
+      "source_record": "records/track_10min_16mb/2026-03-24_74M_Ternary_UNet_FP8_10L_8192BPE_YaRN_NeoMuon",
+      "val_bpb": null,
+      "bytes_total": null
+    },
+    {
+      "recipe_id": "pg-track-10min-16mb-2026-03-25-valcalib-gptq-xsa-bigramhash3072",
+      "name": "AR Self-Gen GPTQ + XSA-all + BigramHash 3072x112",
+      "track": "track_10min_16mb",
+      "source_record": "records/track_10min_16mb/2026-03-25_ValCalib_GPTQ_XSA_BigramHash3072",
+      "val_bpb": 1.11473509,
+      "bytes_total": 15984850
+    },
+    {
+      "recipe_id": "pg-track-10min-16mb-2026-03-31-parallelresiduals-minidepthrecurrence",
+      "name": "Parallel Residuals + Mini Depth Recurrence",
+      "track": "track_10min_16mb",
+      "source_record": "records/track_10min_16mb/2026-03-31_ParallelResiduals_MiniDepthRecurrence",
+      "val_bpb": 1.10625353,
+      "bytes_total": 15946657
+    },
+    {
+      "recipe_id": "pg-track-10min-16mb-2026-04-01-vocab4096-mlpmult4-wd085",
+      "name": "4096-Vocab + Larger Model + High WD + Simplifications",
+      "track": "track_10min_16mb",
+      "source_record": "records/track_10min_16mb/2026-04-01_Vocab4096_MLPMult4_WD085",
+      "val_bpb": 1.09785,
+      "bytes_total": 15916170
+    },
+    {
+      "recipe_id": "pg-track-10min-16mb-2026-04-03-muoneqr-depthrecurrence-wd090-allint6",
+      "name": "Record: MuonEq-R + Depth Recurrence + WD=0.090 + All-Int6 GPTQ",
+      "track": "track_10min_16mb",
+      "source_record": "records/track_10min_16mb/2026-04-03_MuonEqR_DepthRecurrence_WD090_AllInt6",
+      "val_bpb": 1.0912,
+      "bytes_total": 15967483
+    },
+    {
+      "recipe_id": "pg-track-10min-16mb-2026-04-04-sp4096-depthrecurrence-parallelresid-muoneqr",
+      "name": "SP4096 + Depth Recurrence + Parallel Residuals + MuonEq-R + QK-Gain 5.0",
+      "track": "track_10min_16mb",
+      "source_record": "records/track_10min_16mb/2026-04-04_SP4096_DepthRecurrence_ParallelResid_MuonEqR",
+      "val_bpb": 1.08971631,
+      "bytes_total": null
+    },
+    {
+      "recipe_id": "pg-track-10min-16mb-2026-04-05-sp8192-gptq-embeddings-sdclip-loop45x2",
+      "name": "SP8192 + GPTQ Embeddings + Depth Recurrence + MuonEq-R + SD-Clip + Simplifications",
+      "track": "track_10min_16mb",
+      "source_record": "records/track_10min_16mb/2026-04-05_SP8192_GPTQ-Embeddings_SDClip_Loop45x2",
+      "val_bpb": 1.08563,
+      "bytes_total": 15985678
+    },
+    {
+      "recipe_id": "pg-track-10min-16mb-2026-04-06-sp8192-hessiansdclip-progressiverecurrence",
+      "name": "Non-record: Parallel Residuals + Hessian-Aware SDClip",
+      "track": "track_10min_16mb",
+      "source_record": "records/track_10min_16mb/2026-04-06_SP8192_HessianSDClip_ProgressiveRecurrence",
+      "val_bpb": 1.08354,
+      "bytes_total": 15978121
+    },
+    {
+      "recipe_id": "pg-track-10min-16mb-2026-04-06-sp8192-qk5-legalttt-1-0828",
+      "name": "SP8192 + QK-Gain 5 + Legal Score-First TTT",
+      "track": "track_10min_16mb",
+      "source_record": "records/track_10min_16mb/2026-04-06_SP8192_QK5_LegalTTT_1.0828",
+      "val_bpb": 1.08279384,
+      "bytes_total": 15992546
+    },
+    {
+      "recipe_id": "pg-track-10min-16mb-2026-04-08-sp8192-parallelresid-scorefirstttt",
+      "name": "SP8192 + Parallel Residuals + Score-First TTT",
+      "track": "track_10min_16mb",
+      "source_record": "records/track_10min_16mb/2026-04-08_SP8192_ParallelResid_ScoreFirstTTT",
+      "val_bpb": 1.08217956,
+      "bytes_total": null
+    },
+    {
+      "recipe_id": "pg-track-10min-16mb-2026-04-09-sp8192-3layerrecur-parresid-qk525-legalttt",
+      "name": "SP8192 + 3-Layer Recurrence + Parallel Residuals + QK-Gain 5.25 + Legal Score-First TTT",
+      "track": "track_10min_16mb",
+      "source_record": "records/track_10min_16mb/2026-04-09_SP8192_3LayerRecur_ParResid_QK525_LegalTTT",
+      "val_bpb": 1.081,
+      "bytes_total": null
+    },
+    {
+      "recipe_id": "pg-track-non-record-16mb-2026-03-18-quasi10bfrom50b-sp1024-9x512-kv4-4h-pgut3",
+      "name": "4-Hour Quasi-10B SP1024",
+      "track": "track_non_record_16mb",
+      "source_record": "records/track_non_record_16mb/2026-03-18_Quasi10Bfrom50B_SP1024_9x512_KV4_4h_pgut3",
+      "val_bpb": 1.20737944,
+      "bytes_total": 15810161
+    },
+    {
+      "recipe_id": "pg-track-non-record-16mb-2026-03-19-swiglu-warmdownfix-quarterbatch-1x5090",
+      "name": "SwiGLU + Warmdown Fix + Quarter Batch (1x5090)",
+      "track": "track_non_record_16mb",
+      "source_record": "records/track_non_record_16mb/2026-03-19_SwiGLU_WarmdownFix_QuarterBatch_1x5090",
+      "val_bpb": 1.32814313,
+      "bytes_total": 15327112
+    },
+    {
+      "recipe_id": "pg-track-non-record-16mb-2026-03-21-depthrecurrence-mixedprecisionquant",
+      "name": "Depth Recurrence + Mixed-Precision Quantization",
+      "track": "track_non_record_16mb",
+      "source_record": "records/track_non_record_16mb/2026-03-21_DepthRecurrence_MixedPrecisionQuant",
+      "val_bpb": 2.3876,
+      "bytes_total": 1461542
+    },
+    {
+      "recipe_id": "pg-track-non-record-16mb-2026-03-24-106m-binary-asymmetric-unet-fp8-15l-8192bpe-yarn-neomuon-smear",
+      "name": "2026-03-24 106M Binary Asymmetric UNet FP8 15L 8192BPE YaRN NeoMuon Smear",
+      "track": "track_non_record_16mb",
+      "source_record": "records/track_non_record_16mb/2026-03-24_106M_Binary_Asymmetric_UNet_FP8_15L_8192BPE_YaRN_NeoMuon_Smear",
+      "val_bpb": null,
+      "bytes_total": null
+    }
+  ]
+}

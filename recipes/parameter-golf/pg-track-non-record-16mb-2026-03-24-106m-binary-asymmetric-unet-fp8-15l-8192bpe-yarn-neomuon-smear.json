@@ -1,0 +1,69 @@
+{
+  "recipe_id": "pg-track-non-record-16mb-2026-03-24-106m-binary-asymmetric-unet-fp8-15l-8192bpe-yarn-neomuon-smear",
+  "code": "pg-track-non-record-16mb-2026-03-24-106m-binary-asymmetric-unet-fp8-15l-8192bpe-yarn-neomuon-smear",
+  "name": "2026-03-24 106M Binary Asymmetric UNet FP8 15L 8192BPE YaRN NeoMuon Smear",
+  "version": "1.0.0",
+  "category": "parameter-golf",
+  "description": "Imported from OpenAI Parameter Golf records",
+  "tags": [
+    "parameter-golf",
+    "tiny-model",
+    "track_non_record_16mb",
+    "non-record"
+  ],
+  "metadata": {
+    "source_repo": "openai/parameter-golf",
+    "source_record": "records/track_non_record_16mb/2026-03-24_106M_Binary_Asymmetric_UNet_FP8_15L_8192BPE_YaRN_NeoMuon_Smear",
+    "author": null,
+    "github_id": null,
+    "date": null,
+    "val_bpb": null,
+    "val_loss": null,
+    "bytes_total": null,
+    "bytes_code": null
+  },
+  "inputs": [
+    {
+      "name": "record_ref",
+      "type": "string",
+      "description": "Parameter Golf record path under records/"
+    }
+  ],
+  "outputs": [
+    {
+      "name": "summary_json",
+      "path": "{out}/summary.json",
+      "type": "application/json"
+    }
+  ],
+  "stages": [
+    {
+      "id": "fetch_record",
+      "bin": "python3",
+      "args": [
+        "scripts/parameter_golf_tool.py",
+        "fetch",
+        "--record",
+        "records/track_non_record_16mb/2026-03-24_106M_Binary_Asymmetric_UNet_FP8_15L_8192BPE_YaRN_NeoMuon_Smear",
+        "--out",
+        "{out}/record"
+      ],
+      "depends_on": []
+    },
+    {
+      "id": "summarize_record",
+      "bin": "python3",
+      "args": [
+        "scripts/parameter_golf_tool.py",
+        "summarize",
+        "--record-json",
+        "{out}/record/submission.json",
+        "--out",
+        "{out}/summary.json"
+      ],
+      "depends_on": [
+        "fetch_record"
+      ]
+    }
+  ]
+}
