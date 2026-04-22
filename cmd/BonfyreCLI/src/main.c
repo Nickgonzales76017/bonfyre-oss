@@ -68,7 +68,7 @@ static const Route routes[] = {
     {"embed",             "bonfyre-embed",            "BonfyreEmbed",           SEC_AI, "Generate text embeddings (ONNX)"},
     {"vec",               "bonfyre-vec",              "BonfyreVec",             SEC_AI, "Local vector search (FAISS)"},
     {"segment",           "bonfyre-segment",          "BonfyreSegment",         SEC_AI, "Speaker / VAD segmentation"},
-    {"speech-loop",       "bonfyre-speech-loop",      "BonfyreSpeechLoop",      SEC_AI, "Streaming RNNT + Whisper ASR loop"},
+    {"speech-loop",       "bonfyre-speechloop",       "BonfyreSpeechLoop",      SEC_AI, "Streaming RNNT + Whisper ASR loop"},
     {"mfa-dict",          "bonfyre-mfa-dict",         "BonfyreMFADict",         SEC_AI, "MFA forced-alignment dictionary"},
     {"tone",              "bonfyre-tone",             "BonfyreTone",            SEC_AI, "Tone / sentiment analysis"},
     {"tag",               "bonfyre-tag",              "BonfyreTag",             SEC_AI, "Auto-tagging pipeline"},
