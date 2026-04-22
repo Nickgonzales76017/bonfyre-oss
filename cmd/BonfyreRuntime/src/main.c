@@ -1,3 +1,4 @@
+#include <dirent.h>
 #include <errno.h>
 #include <limits.h>
 #include <signal.h>
@@ -71,6 +72,162 @@ static int run_command_to_file(char *const argv[], const char *output_path) {
     return WEXITSTATUS(status);
 }
 
+static int env_truthy(const char *name, int default_value) {
+    const char *v = getenv(name);
+    if (!v || !v[0]) return default_value;
+    if (strcmp(v, "0") == 0 || strcmp(v, "false") == 0 || strcmp(v, "FALSE") == 0 ||
+        strcmp(v, "no") == 0 || strcmp(v, "NO") == 0)
+        return 0;
+    return 1;
+}
+
+static int preflight_enabled(void) {
+    return env_truthy("BONFYRE_RUNTIME_PREFLIGHT", 1);
+}
+
+static int preflight_strict(void) {
+    return env_truthy("BONFYRE_RUNTIME_PREFLIGHT_STRICT", 0);
+}
+
+static int preflight_entropy(const char *control_bin, const char *input) {
+    if (!preflight_enabled()) return 0;
+    if (!input || access(input, R_OK) != 0) return 0;
+
+    const char *thr = getenv("BONFYRE_RUNTIME_ENTROPY_THRESHOLD");
+    int rc = 0;
+    if (thr && thr[0]) {
+        char *argv[] = { (char *)control_bin, "entropy-check", (char *)input, (char *)thr, NULL };
+        rc = run_command(argv);
+    } else {
+        char *argv[] = { (char *)control_bin, "entropy-check", (char *)input, NULL };
+        rc = run_command(argv);
+    }
+
+    if (rc == 0) return 0;
+    if (rc == 2) {
+        fprintf(stderr, "preflight: entropy gate failed for %s (rc=2)\n", input);
+        return 2;
+    }
+    if (preflight_strict()) return rc;
+    fprintf(stderr, "preflight: entropy probe unavailable (rc=%d), continuing\n", rc);
+    return 0;
+}
+
+static int preflight_route(const char *control_bin, const char *recipe, const char *input) {
+    if (!preflight_enabled()) return 0;
+    if (!recipe || !recipe[0] || !input || !input[0]) return 0;
+
+    char *argv[] = { (char *)control_bin, "route", (char *)recipe, (char *)input, NULL };
+    int rc = run_command(argv);
+    if (rc == 0) return 0;
+    if (preflight_strict()) return rc;
+    fprintf(stderr, "preflight: control route unavailable (rc=%d), continuing\n", rc);
+    return 0;
+}
+
+static const char *find_flag_value(int argc, char **argv, const char *flag) {
+    for (int i = 0; i < argc - 1; i++) {
+        if (strcmp(argv[i], flag) == 0) return argv[i + 1];
+    }
+    return NULL;
+}
+
+static int parse_target_from_makefile(const char *path, char *out, size_t out_sz) {
+    FILE *fp = fopen(path, "r");
+    if (!fp) return 0;
+    char line[1024];
+    while (fgets(line, sizeof(line), fp)) {
+        if (strncmp(line, "TARGET", 6) != 0) continue;
+        char *eq = strchr(line, '=');
+        if (!eq) continue;
+        eq++;
+        while (*eq == ' ' || *eq == '\t') eq++;
+        size_t n = 0;
+        while (eq[n] && eq[n] != '\n' && eq[n] != '\r' && eq[n] != ' ' && eq[n] != '\t') n++;
+        if (n > 0 && n < out_sz) {
+            memcpy(out, eq, n);
+            out[n] = '\0';
+            fclose(fp);
+            return 1;
+        }
+    }
+    fclose(fp);
+    return 0;
+}
+
+static int open_cmd_root(const char *argv0, DIR **dir_out, char *root_out, size_t root_sz) {
+    const char *candidates[] = { "cmd", "../cmd", "../../cmd", NULL };
+    for (int i = 0; candidates[i]; i++) {
+        DIR *d = opendir(candidates[i]);
+        if (d) {
+            snprintf(root_out, root_sz, "%s", candidates[i]);
+            *dir_out = d;
+            return 1;
+        }
+    }
+
+    if (argv0 && strchr(argv0, '/')) {
+        char abs[PATH_MAX];
+        if (argv0[0] == '/') snprintf(abs, sizeof(abs), "%s", argv0);
+        else {
+            char cwd[PATH_MAX];
+            if (!getcwd(cwd, sizeof(cwd))) return 0;
+            snprintf(abs, sizeof(abs), "%s/%s", cwd, argv0);
+        }
+        char *last = strrchr(abs, '/');
+        if (!last) return 0;
+        *last = '\0';
+        snprintf(root_out, root_sz, "%s/../../cmd", abs);
+        DIR *d = opendir(root_out);
+        if (d) {
+            *dir_out = d;
+            return 1;
+        }
+    }
+    return 0;
+}
+
+static int cmd_capabilities(const char *argv0) {
+    DIR *root = NULL;
+    char cmd_root[PATH_MAX];
+    if (!open_cmd_root(argv0, &root, cmd_root, sizeof(cmd_root))) {
+        fprintf(stderr, "capabilities: unable to locate cmd/ tree\n");
+        return 1;
+    }
+
+    printf("{\n  \"generator\":\"bonfyre-runtime capabilities\",\n");
+    printf("  \"cmd_root\":\"%s\",\n", cmd_root);
+    printf("  \"commands\":[\n");
+
+    struct dirent *de;
+    int first = 1;
+    int total = 0;
+    while ((de = readdir(root)) != NULL) {
+        if (de->d_name[0] == '.') continue;
+
+        char makefile[PATH_MAX], main_c[PATH_MAX];
+        snprintf(makefile, sizeof(makefile), "%s/%s/Makefile", cmd_root, de->d_name);
+        snprintf(main_c, sizeof(main_c), "%s/%s/src/main.c", cmd_root, de->d_name);
+        if (access(makefile, F_OK) != 0) continue;
+
+        char target[256] = "";
+        int has_target = parse_target_from_makefile(makefile, target, sizeof(target));
+        int has_main = access(main_c, F_OK) == 0;
+
+        if (!first) printf(",\n");
+        first = 0;
+        total++;
+        printf("    {\"dir\":\"%s\",\"target\":\"%s\",\"has_main\":%s}",
+               de->d_name,
+               has_target ? target : "",
+               has_main ? "true" : "false");
+    }
+    closedir(root);
+
+    printf("\n  ],\n  \"total\":%d\n}\n", total);
+    return 0;
+}
+
 static void mkdir_p(const char *path) {
     char tmp[PATH_MAX];
     snprintf(tmp, sizeof(tmp), "%s", path);
@@ -105,6 +262,8 @@ static void print_usage(void) {
             "  bonfyre-runtime sli <sli args...>\n"
             "  bonfyre-runtime run-recipe <code> <input> [bonfyre-run args...]\n"
             "  bonfyre-runtime service <proxy|moq|swarm-worker> [args...]\n"
+            "  bonfyre-runtime capabilities\n"
+            "      print machine-readable cmd capability index (JSON)\n"
             "  bonfyre-runtime conference [video-relay args...]\n"
             "  bonfyre-runtime autowire <input> --intent <text> --out <dir> [--mode local|swarm] [--nodes N]\n"
             "\n"
@@ -147,6 +306,9 @@ int main(int argc, char **argv) {
     char stitch_resolved[PATH_MAX];
     char proxy_resolved[PATH_MAX];
     char sli_resolved[PATH_MAX];
+    char orchestrate_resolved[PATH_MAX];
+    char project_resolved[PATH_MAX];
+    char flow_resolved[PATH_MAX];
     const char *queue_bin = default_binary("BONFYRE_QUEUE_BINARY", argv[0], queue_resolved, sizeof(queue_resolved), "BonfyreQueue", "bonfyre-queue", "../BonfyreQueue/bonfyre-queue");
     const char *pipeline_bin = default_binary("BONFYRE_PIPELINE_BINARY", argv[0], pipeline_resolved, sizeof(pipeline_resolved), "BonfyrePipeline", "bonfyre-pipeline", "../BonfyrePipeline/bonfyre-pipeline");
     const char *ledger_bin = default_binary("BONFYRE_LEDGER_BINARY", argv[0], ledger_resolved, sizeof(ledger_resolved), "BonfyreLedger", "bonfyre-ledger", "../BonfyreLedger/bonfyre-ledger");
@@ -160,6 +322,13 @@ int main(int argc, char **argv) {
     const char *stitch_bin = default_binary("BONFYRE_STITCH_BINARY", argv[0], stitch_resolved, sizeof(stitch_resolved), "BonfyreStitch", "bonfyre-stitch", "../BonfyreStitch/bonfyre-stitch");
     const char *proxy_bin = default_binary("BONFYRE_PROXY_BINARY", argv[0], proxy_resolved, sizeof(proxy_resolved), "BonfyreProxy", "bonfyre-proxy", "../BonfyreProxy/bonfyre-proxy");
     const char *sli_bin = default_binary("BONFYRE_SLI_BINARY", argv[0], sli_resolved, sizeof(sli_resolved), "BonfyreSLI", "bonfyre-sli", "../BonfyreSLI/bonfyre-sli");
+    const char *orchestrate_bin = default_binary("BONFYRE_ORCHESTRATE_BINARY", argv[0], orchestrate_resolved, sizeof(orchestrate_resolved), "BonfyreOrchestrate", "bonfyre-orchestrate", "../BonfyreOrchestrate/bonfyre-orchestrate");
+    const char *project_bin = default_binary("BONFYRE_PROJECT_BINARY", argv[0], project_resolved, sizeof(project_resolved), "BonfyreProject", "bonfyre-project", "../BonfyreProject/bonfyre-project");
+    const char *flow_bin = default_binary("BONFYRE_FLOW_BINARY", argv[0], flow_resolved, sizeof(flow_resolved), "BonfyreFlow", "bonfyre-flow", "../BonfyreFlow/bonfyre-flow");
+
+    if (strcmp(argv[1], "capabilities") == 0) {
+        return cmd_capabilities(argv[0]);
+    }
 
     if (strcmp(argv[1], "gen") == 0) {
         if (argc < 3) return 1;
@@ -255,11 +424,52 @@ int main(int argc, char **argv) {
         return rc;
     }
 
+    if (strcmp(argv[1], "orchestrate") == 0) {
+        if (argc < 3) return 1;
+        char **child = calloc((size_t)argc, sizeof(char *));
+        if (!child) return 1;
+        child[0] = (char *)orchestrate_bin;
+        for (int i = 2; i < argc; i++) child[i - 1] = argv[i];
+        int rc = run_command(child);
+        free(child);
+        return rc;
+    }
+
+    if (strcmp(argv[1], "project") == 0) {
+        if (argc < 3) return 1;
+        char **child = calloc((size_t)argc, sizeof(char *));
+        if (!child) return 1;
+        child[0] = (char *)project_bin;
+        for (int i = 2; i < argc; i++) child[i - 1] = argv[i];
+        int rc = run_command(child);
+        free(child);
+        return rc;
+    }
+
+    if (strcmp(argv[1], "flow") == 0) {
+        if (argc < 3) return 1;
+        char **child = calloc((size_t)argc, sizeof(char *));
+        if (!child) return 1;
+        child[0] = (char *)flow_bin;
+        for (int i = 2; i < argc; i++) child[i - 1] = argv[i];
+        int rc = run_command(child);
+        free(child);
+        return rc;
+    }
+
     if (strcmp(argv[1], "run-recipe") == 0) {
         if (argc < 4) {
             fprintf(stderr, "usage: bonfyre-runtime run-recipe <code> <input> [bonfyre-run args...]\n");
             return 1;
         }
+
+        {
+            int prc = preflight_entropy(control_bin, argv[3]);
+            if (prc != 0) return prc;
+            prc = preflight_route(control_bin, argv[2], argv[3]);
+            if (prc != 0) return prc;
+        }
+
         char **child = calloc((size_t)argc + 1, sizeof(char *));
         if (!child) return 1;
         int c = 0;
@@ -357,6 +567,13 @@ int main(int argc, char **argv) {
             return 1;
         }
 
+        {
+            int prc = preflight_entropy(control_bin, input);
+            if (prc != 0) return prc;
+            prc = preflight_route(control_bin, intent, input);
+            if (prc != 0) return prc;
+        }
+
         mkdir_p(out_dir);
 
         char recipe_path[PATH_MAX];
@@ -437,6 +654,7 @@ int main(int argc, char **argv) {
         }
         const int with_ledger = (strcmp(argv[1], "run-ledger") == 0);
         const char *input = argv[2];
+        const char *recipe_hint = find_flag_value(argc - 3, argv + 3, "--recipe");
         const char *out_dir = NULL;
         for (int i = 3; i < argc - 1; i++) {
             if (strcmp(argv[i], "--out") == 0) out_dir = argv[i + 1];
@@ -444,6 +662,13 @@ int main(int argc, char **argv) {
         if (!out_dir) {
             fprintf(stderr, "run and run-ledger require --out DIR\n");
             return 1;
+        }
+
+        {
+            int prc = preflight_entropy(control_bin, input);
+            if (prc != 0) return prc;
+            prc = preflight_route(control_bin, recipe_hint, input);
+            if (prc != 0) return prc;
         }
 
         char **pipeline_argv = calloc((size_t)argc + 2, sizeof(char *));
