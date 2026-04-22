@@ -717,9 +717,10 @@
               <tr><td>factuality</td><td>Does it contradict verifiable facts?</td><td>0.0–1.0</td><td>control, learn</td></tr>
               <tr><td>latency</td><td>Did the stage meet its tier SLA?</td><td>0.0–1.0</td><td>tier, economy</td></tr>
               <tr><td>cost</td><td>Did the run stay within budget?</td><td>0.0–1.0</td><td>economy, control</td></tr>
+              <tr><td>entropy</td><td>Was the input artifact information-dense enough to process? (Shannon entropy pre-flight)</td><td>0.0–1.0</td><td>entropy-check, control</td></tr>
             </tbody>
           </table>
-          <p style="color:var(--swiss-muted);font-size:0.8rem;">composite = mean(relevance, completeness, coherence, factuality)</p>
+          <p style="color:var(--swiss-muted);font-size:0.8rem;">composite = mean(relevance, completeness, coherence, factuality) &nbsp;&mdash;&nbsp; entropy is pre-flight gate only (exit 2 = quarantine before scoring)</p>
 
           <div class="code-block" style="max-width:700px;margin-top:1.5rem;">
 <span class="comment"># score an artifact via bonfyre-control</span>
@@ -754,7 +755,7 @@
             <div class="deep-card">
               <h3>bonfyre-control</h3>
               <p>Stores every policy, routing decision, and HE-SLI score. FTS5 index on policies for fast keyword lookup.</p>
-              <div class="schema-list">policies(id, name, kind, recipe, rule, active)<br>decisions(run_id, recipe, stage, decision, score, latency_ms)<br>scores(artifact, relevance, completeness, coherence, factuality, latency_ms, cost_usd, composite)<br>policies_fts VIRTUAL TABLE fts5</div>
+              <div class="schema-list">policies(id, name, kind, recipe, rule, active)<br>decisions(run_id, recipe, stage, decision, score, latency_ms)<br>scores(artifact, relevance, completeness, coherence, factuality, latency_ms, cost_usd, composite, <strong>entropy REAL</strong>)<br>policies_fts VIRTUAL TABLE fts5</div>
             </div>
             <div class="deep-card">
               <h3>bonfyre-compete</h3>
@@ -968,6 +969,74 @@
       </section>
 
       <!-- ─── CTA ──────────────────────────────────────────────────────── -->
+
+      <!-- ─── CYCLE 7/8: entropy-check + AGP export ──────────────────── -->
+      <section class="section-pad" style="padding:3.5rem 0;">
+        <div class="shell-container">
+          <h2 style="font-size:1.6rem;margin:0 0 0.5rem;">Cycle 7–8 additions: entropy-check and AGP governance export.</h2>
+          <p style="color:var(--swiss-muted);margin:0 0 1.5rem;font-size:0.875rem;max-width:680px;">
+            Two new subcommands added to <code style="font-family:var(--font-mono)">bonfyre-control</code> that extend the control layer with pre-flight quality gating and tamper-evident audit logging.
+          </p>
+
+          <div class="deep-grid" style="margin-bottom:2rem;">
+            <div class="deep-card">
+              <h3>entropy-check &mdash; Shannon entropy pre-flight</h3>
+              <p style="color:var(--swiss-muted);font-size:0.875rem;">
+                <code style="font-family:var(--font-mono)">bonfyre-control entropy-check &lt;artifact&gt; [threshold]</code><br><br>
+                Reads up to 64 KB of the artifact, computes Shannon entropy over a 256-bucket byte histogram in a single pass, and exits with a result code:
+              </p>
+              <ul style="color:var(--swiss-muted);font-size:0.875rem;margin:0.5rem 0 0 1.25rem;line-height:1.8;">
+                <li><strong>Exit 0</strong> &mdash; PASS: entropy &ge; threshold. Pipeline continues.</li>
+                <li><strong>Exit 1</strong> &mdash; Error: file not readable.</li>
+                <li><strong>Exit 2</strong> &mdash; FAIL: entropy &lt; threshold &rarr; P1 escalation. Artifact quarantined before any downstream stage executes.</li>
+              </ul>
+              <p style="color:var(--swiss-muted);font-size:0.875rem;margin-top:0.75rem;">
+                Default threshold: 3.5 bits per byte. Latency: &lt;10 ms. The 64 KB read cap makes it safe on streaming inputs and very large files. Zero-byte files, all-silence WAV, and malformed compressed payloads all produce near-zero entropy and are caught immediately.
+              </p>
+              <div style="font-family:var(--font-mono);font-size:0.78rem;color:var(--swiss-orange);background:rgba(255,107,53,0.07);border:1px solid rgba(255,107,53,0.2);border-radius:5px;padding:0.6rem 0.9rem;margin-top:0.75rem;">
+                bonfyre-control entropy-check recording.wav 4.0<br>
+                <span style="color:var(--swiss-muted)"># exits 2 and prints FAIL if H(recording.wav) &lt; 4.0 bits</span>
+              </div>
+            </div>
+            <div class="deep-card">
+              <h3>agp export &mdash; signed JSON governance audit log</h3>
+              <p style="color:var(--swiss-muted);font-size:0.875rem;">
+                <code style="font-family:var(--font-mono)">bonfyre-control agp export [--since N]</code><br><br>
+                Reads the decisions table, serialises the last N entries (default: all) to a deterministic JSON array, and signs the payload with a djb2 checksum embedded in the root <code>"sig"</code> field. Output is pipe-friendly &mdash; redirect to a file or POST to an audit endpoint.
+              </p>
+              <p style="color:var(--swiss-muted);font-size:0.875rem;margin-top:0.75rem;">
+                The scores table includes an <code>entropy REAL</code> column populated by entropy-check. AGP export includes this column so governance reviewers can correlate decision quality with input entropy at the time of scoring &mdash; identifying systematic biases where models score high on low-entropy (repetitive) inputs.
+              </p>
+              <div style="font-family:var(--font-mono);font-size:0.78rem;color:var(--swiss-orange);background:rgba(255,107,53,0.07);border:1px solid rgba(255,107,53,0.2);border-radius:5px;padding:0.6rem 0.9rem;margin-top:0.75rem;">
+                bonfyre-control agp export --since 100 &gt; audit.json<br>
+                <span style="color:var(--swiss-muted)"># last 100 scored decisions, djb2-signed JSON</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ─── CYCLE 7: LibSQL WAL replication ─────────────────────────── -->
+      <section class="section-pad" style="padding:3.5rem 0;background:var(--swiss-panel-soft);border-top:1px solid var(--swiss-line);border-bottom:1px solid var(--swiss-line);">
+        <div class="shell-container">
+          <h2 style="font-size:1.6rem;margin:0 0 0.5rem;">Cycle 7: LibSQL WAL replication for the control database.</h2>
+          <p style="color:var(--swiss-muted);margin:0 0 1.5rem;font-size:0.875rem;max-width:680px;">
+            BonfyreSync gained a byte-compatible SQLite WAL frame replication protocol in Cycle 7. The control layer’s decision database can now be replicated to a read replica without external tooling.
+          </p>
+          <div class="deep-grid">
+            <div class="deep-card">
+              <h3>lswal_serve / lswal_replicate</h3>
+              <p style="color:var(--swiss-muted);font-size:0.875rem;">
+                <code style="font-family:var(--font-mono)">lswal_serve(db_path, port)</code> reads the WAL file in 32 KB chunks and streams frames to connected replicas over TCP. <code style="font-family:var(--font-mono)">lswal_replicate(host, port, dest_db)</code> connects, receives frames, and applies them via <code>sqlite3_exec</code> WAL-mode writes. Checkpointing on the primary signals replicas via a one-byte <code>C</code> sentinel on the wire.
+              </p>
+              <p style="color:var(--swiss-muted);font-size:0.875rem;margin-top:0.5rem;">
+                Default port: <strong>7832</strong> (configurable via <code>BF_WAL_PORT</code>). Protocol is byte-compatible with the LibSQL wire format &mdash; any LibSQL client can replicate from a Bonfyre sync server. Audit logs, entropy scores, and AGP decision history survive a primary restart.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <section style="padding:4rem 0;text-align:center;border-top:1px solid var(--swiss-line);">
         <div class="shell-container">
           <h2 style="font-size:1.9rem;margin:0 0 1rem;">The full system is open source.</h2>

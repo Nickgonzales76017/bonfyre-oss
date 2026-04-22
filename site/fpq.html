@@ -116,6 +116,37 @@
         </div>
       </section>
 
+
+      <!-- Relaxed E8 and SIMD lattice (Cycle 7) -->
+      <section class="section" style="background:var(--surface-1,#111);border-top:1px solid var(--border,#222);border-bottom:1px solid var(--border,#222)">
+        <div class="shell-container">
+          <div class="section-header">
+            <div>
+              <span class="section-kicker">Cycle 7 additions — E8 quantizer and SIMD lattice</span>
+              <h2 class="section-title">Relaxed E8 variants and SIMD lattice acceleration.</h2>
+              <p class="section-copy">Two additions in Cycle 7 extend the E8 quantization pipeline: a relaxed-snap variant that trades a small bitrate increase for better rate–distortion on speech and music embeddings, and a SIMD batch engine that drops 7B-model quantization time from 4 minutes to ~55 seconds on Apple Silicon.</p>
+            </div>
+          </div>
+          <div class="feature-grid">
+            <article class="feature-card">
+              <span class="card-meta">e8_relax — Relaxed E8 quantizer</span>
+              <h3>Three variants: strict snap, relaxed snap, Hadamard-rotated relax</h3>
+              <p>The original E8 lattice quantizer snapped vectors to the nearest lattice point deterministically. <code>e8_relax_snap()</code> adds a configurable relaxation radius — the output may fall slightly off-lattice when a nearby point yields better rate–distortion for the surrounding block. <code>e8_relax_snap_h()</code> applies an H8 Hadamard rotation before snapping and inverts it after; rotating coordinate axes makes the error distribution more isotropic and eliminates tonal artifacts in model weight blocks with strong axis-aligned structure. The batch API (<code>e8_relax_snap_batch</code>) processes N vectors in a loop with running RMSE accumulation.</p>
+              <div style="margin-top:0.75rem;font-family:'IBM Plex Mono',monospace;font-size:0.78rem;color:var(--accent,#ff6b35);background:rgba(255,107,53,0.08);border:1px solid rgba(255,107,53,0.2);border-radius:5px;padding:0.6rem 0.9rem">BFQ_E8_VARIANT=relax-h bonfyre-quant compress model.onnx out.bqfp</div>
+              <p style="margin-top:0.75rem;color:var(--text-2);font-size:0.875rem"><strong>Variants:</strong> <code>strict</code> — original nearest-lattice-point deterministic snap (default). <code>relax</code> — allows off-lattice if rate–distortion improves within radius. <code>relax-h</code> — H8 Hadamard pre-rotation + relax snap; best for speech and embedding weight blocks.</p>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">bf_lattice_accel — SIMD batch lattice quantization</span>
+              <h3>NEON 4-group/iteration, AVX2 8-group/iteration, frustrated-boundary heuristic</h3>
+              <p>Provides SIMD-accelerated batch processing of the E8 lattice quantization inner loop. <strong>NEON</strong>: 4 E8 groups per iteration using <code>vld1q_f32</code>×4 / <code>vst1q_s32</code>×4 with a fused error accumulation lane. <strong>AVX2</strong>: 8 groups per iteration via 256-bit loads, horizontal add reduction for the checksum test, masked store on boundary. Backend selected at build time via <code>-DBFLATTICE_BACKEND=NEON|AVX2|SCALAR</code>.</p>
+              <p style="margin-top:0.75rem;color:var(--text-2);font-size:0.875rem"><strong>Frustrated-boundary heuristic:</strong> when a group lies within ε of a lattice face, the heuristic prefers the interior point to avoid oscillation across iterations. This eliminates a class of non-convergent quantization runs that previously required manual re-seeding.</p>
+              <p style="margin-top:0.75rem;color:var(--text-2);font-size:0.875rem"><strong>Benchmarks (7B model):</strong> Scalar: ~4 min. NEON (M2 Apple Silicon): ~55 s. AVX2 (Graviton 3): ~40 s.</p>
+              <div style="margin-top:0.75rem;font-family:'IBM Plex Mono',monospace;font-size:0.78rem;color:var(--accent,#ff6b35);background:rgba(255,107,53,0.08);border:1px solid rgba(255,107,53,0.2);border-radius:5px;padding:0.6rem 0.9rem">cmake -DBFLATTICE_BACKEND=NEON ..  # or AVX2 on x86</div>
+            </article>
+          </div>
+        </div>
+      </section>
+
       <!-- BQFP format -->
       <section class="section">
         <div class="shell-container">

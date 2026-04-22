@@ -233,6 +233,79 @@
         </div>
       </section>
 
+
+      <!-- ASR recipes and speech families (Phases 9-10) -->
+      <section class="section">
+        <div class="shell-container">
+          <div class="section-header">
+            <div>
+              <span class="section-kicker">Phases 9–10 — ASR recipe families and intent tagging</span>
+              <h2 class="section-title">T30-C / T31-C ASR families, speech_pack.sh, T32-C / T40-C / T41-C intent + TTS.</h2>
+            </div>
+          </div>
+          <div class="feature-grid">
+            <article class="feature-card">
+              <span class="card-meta">T30-C / T31-C — ASR recipe families (Phase 9)</span>
+              <h3>Corpus-adapted automatic speech recognition with teacher synthesis</h3>
+              <p>Two new transform recipe families targeting ASR tasks: <strong>T30-C</strong> optimises for long-form lecture/podcast audio with domain-adaptive BM25 prompting. <strong>T31-C</strong> targets short-form conversational audio with speaker segmentation pre-pass. Both families use <code>synth_teacher_asr.py</code> to generate teacher audio from transcripts — synthetic reference utterances that calibrate the BM25 vocabulary accumulator before the main corpus is processed.</p>
+              <p style="margin-top:0.75rem;color:var(--text-2);font-size:0.875rem"><code>prep_corpus_audio.py</code> handles normalization and sample-rate unification for raw corpus files before T30-C/T31-C run. Both scripts are in <code>scripts/</code> and pipeline-composable.</p>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">speech_pack.sh — full speech corpus pipeline (Phase 9)</span>
+              <h3>411-line orchestrator for end-to-end speech corpus preparation</h3>
+              <p><code>scripts/speech_pack.sh</code> orchestrates the complete speech corpus preparation pipeline: audio normalization via <code>prep_corpus_audio.py</code>, teacher synthesis via <code>synth_teacher_asr.py</code>, vocabulary accumulation, T30-C/T31-C recipe application, and output packaging. Takes a directory of raw audio as input and produces a structured corpus pack with BM25 vocabulary, teacher reference utterances, and transform recipe assignments.</p>
+              <div style="margin-top:0.75rem;font-family:'IBM Plex Mono',monospace;font-size:0.78rem;color:var(--accent,#ff6b35);background:rgba(255,107,53,0.08);border:1px solid rgba(255,107,53,0.2);border-radius:5px;padding:0.6rem 0.9rem">bash scripts/speech_pack.sh /path/to/raw_audio/ corpus_pack/</div>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">T32-C — Segment routing (Phase 10)</span>
+              <h3>Intent-conditioned segment routing from Whisper word-level timestamps</h3>
+              <p><strong>T32-C</strong> extends segment graph construction (BonfyreSegment) with intent tagging. Each idea boundary node in the graph is labelled with a detected intent class (question, claim, narrative, transition). Routing decisions for downstream stages — which brief-extraction pass or TTS voice to apply — are conditioned on the intent of the segment.</p>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">T40-C / T41-C — TTS families and live speech demo (Phase 10)</span>
+              <h3>Intent-tagged TTS synthesis with live speech demonstration loop</h3>
+              <p><strong>T40-C</strong> maps segment intents to TTS prosody profiles: question segments receive rising intonation, narrative segments receive the reference speaker’s measured energy envelope. <strong>T41-C</strong> handles multi-speaker output where different intent classes are synthesised with different voice models. <code>scripts/demo_speech_loop.py</code> and <code>scripts/synth_teacher_intent.py</code> provide a live demonstration loop and intent-conditioned teacher synthesis, respectively.</p>
+              <div style="margin-top:0.75rem;font-family:'IBM Plex Mono',monospace;font-size:0.78rem;color:var(--accent,#ff6b35);background:rgba(255,107,53,0.08);border:1px solid rgba(255,107,53,0.2);border-radius:5px;padding:0.6rem 0.9rem">python3 scripts/demo_speech_loop.py --corpus corpus_pack/ --family T41-C</div>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <!-- Self-evolving transform graph (Phases 11-15) -->
+      <section class="section" style="background:var(--surface-1,#111);border-top:1px solid var(--border,#222);border-bottom:1px solid var(--border,#222)">
+        <div class="shell-container">
+          <div class="section-header">
+            <div>
+              <span class="section-kicker">Phases 11–15 — Intelligence and autonomy layer</span>
+              <h2 class="section-title">Self-evolving transform graph, Hypothesis Swarm, Truth Pressure Engine, Structural Convergence.</h2>
+            </div>
+          </div>
+          <div class="feature-grid">
+            <article class="feature-card">
+              <span class="card-meta">Phase 11 — Self-evolving transform graph</span>
+              <h3>bonfyre_memory.py · failure_detect.py · temporal_memory.py · rebuild_families.sh</h3>
+              <p>The transform family graph can now observe its own failure modes and restructure itself. <code>bonfyre_memory.py</code> maintains a persistent memory of which transform routes succeeded or failed for which corpus types. <code>failure_detect.py</code> classifies failure modes (low composite score, entropy gate rejection, timeout). <code>temporal_memory.py</code> tracks success rate over time with decay weighting — recent failures count more than old ones. <code>rebuild_families.sh</code> triggers a family rebuild cycle when failure rate exceeds a threshold.</p>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">Phase 12 — Hypothesis Swarm + Truth Pressure Engine</span>
+              <h3>hypothesis_swarm.py · conflict_cluster.py · lens_registry.py</h3>
+              <p>Multiple competing hypotheses about corpus structure are evaluated in parallel by a swarm of lightweight agents. <code>hypothesis_swarm.py</code> spawns one agent per active hypothesis; each agent scores its hypothesis against incoming corpus evidence and reports a confidence delta. <code>conflict_cluster.py</code> identifies clusters of conflicting hypotheses and resolves them via majority vote weighted by evidence strength. <code>lens_registry.py</code> manages the registry of analytical lenses — each lens is a perspective (topic-first, speaker-first, temporal-first) applied to the same evidence.</p>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">Phase 13 — Structural Convergence Engine</span>
+              <h3>convergence_engine.py · stable_graph.py</h3>
+              <p><code>convergence_engine.py</code> monitors the transform graph for convergence: each iteration refines family boundaries until the graph stabilises (no node changes family assignment). <code>stable_graph.py</code> provides the stable-state snapshot that downstream stages receive — if the graph is still converging, stages receive the last stable snapshot rather than a partially-converged intermediate.</p>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">Phases 14–15 — Orthogonal Pressure + Structural Intervention</span>
+              <h3>orthogonal_pressure.py · structural_intervention.py · auto_evolve.py</h3>
+              <p><code>orthogonal_pressure.py</code> applies lateral pressure to the transform graph — introducing evidence from orthogonal corpus dimensions (e.g., temporal patterns influencing topic-based family boundaries). <code>structural_intervention.py</code> can surgically modify graph structure when pressure signals indicate a family is misconfigured. <code>auto_evolve.py</code> ties these together into a fully autonomous evolution loop: observe &rarr; pressure &rarr; intervene &rarr; verify &rarr; commit or rollback.</p>
+              <div style="margin-top:0.75rem;font-family:'IBM Plex Mono',monospace;font-size:0.78rem;color:var(--accent,#ff6b35);background:rgba(255,107,53,0.08);border:1px solid rgba(255,107,53,0.2);border-radius:5px;padding:0.6rem 0.9rem">python3 scripts/auto_evolve.py --corpus corpus_pack/ --max-iterations 10</div>
+            </article>
+          </div>
+        </div>
+      </section>
+
       <section class="section">
         <div class="shell-container">
           <div class="section-header">
@@ -253,7 +326,7 @@
 
     <footer class="footer">
       <div class="shell-container footer-row">
-        <div>Bonfyre — 56 C binaries. Local AI. No cloud bill. BonfyreNarrate v3: PSOLA · SSML · 6-layer fidelity · closed-loop verification.</div>
+        <div>Bonfyre — 63 C binaries. Local AI. No cloud bill. BonfyreNarrate v3: PSOLA · SSML · 6-layer fidelity · closed-loop verification.</div>
         <div class="footer-links">
           <a href="index.html">Overview</a>
           <a href="explore.html">Explore</a>
