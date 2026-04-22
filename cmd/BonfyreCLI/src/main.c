@@ -15,6 +15,7 @@
  * internally.
  */
 #include <limits.h>
+#include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -34,6 +35,11 @@ typedef struct {
     const char *section;
     const char *desc;
 } Route;
+
+typedef struct {
+    int total;
+    int available;
+} RouteStats;
 
 static const Route routes[] = {
     /* ── Pipeline ──────────────────────────────────────────────── */
@@ -147,6 +153,93 @@ static void try_one(const char *path, char **argv) {
     }
 }
 
+static int resolve_binary_path(const char *binary, const char *sibling_dir, char *resolved, size_t resolved_size) {
+    char self_dir[PATH_MAX];
+    get_self_dir(self_dir, sizeof(self_dir));
+
+    if (self_dir[0]) {
+        char full[PATH_MAX];
+
+        snprintf(full, sizeof(full), "%s/%s", self_dir, binary);
+        if (access(full, X_OK) == 0) {
+            snprintf(resolved, resolved_size, "%s", full);
+            return 1;
+        }
+
+        if (sibling_dir && sibling_dir[0]) {
+            snprintf(full, sizeof(full), "%s/../%s/%s", self_dir, sibling_dir, binary);
+            if (access(full, X_OK) == 0) {
+                snprintf(resolved, resolved_size, "%s", full);
+                return 1;
+            }
+
+            snprintf(full, sizeof(full), "%s/../%s/build/%s", self_dir, sibling_dir, binary);
+            if (access(full, X_OK) == 0) {
+                snprintf(resolved, resolved_size, "%s", full);
+                return 1;
+            }
+        }
+    }
+
+    const char *path_env = getenv("PATH");
+    if (!path_env || !path_env[0]) return 0;
+
+    char *path_copy = strdup(path_env);
+    if (!path_copy) return 0;
+
+    int found = 0;
+    char *save = NULL;
+    for (char *dir = strtok_r(path_copy, ":", &save); dir; dir = strtok_r(NULL, ":", &save)) {
+        char full[PATH_MAX];
+        snprintf(full, sizeof(full), "%s/%s", dir, binary);
+        if (access(full, X_OK) == 0) {
+            snprintf(resolved, resolved_size, "%s", full);
+            found = 1;
+            break;
+        }
+    }
+
+    free(path_copy);
+    return found;
+}
+
+static int contains_ci(const char *haystack, const char *needle) {
+    if (!needle || !needle[0]) return 1;
+    size_t needle_len = strlen(needle);
+    if (needle_len == 0) return 1;
+
+    for (size_t i = 0; haystack[i]; i++) {
+        size_t j = 0;
+        while (needle[j] && haystack[i + j] &&
+               tolower((unsigned char)haystack[i + j]) == tolower((unsigned char)needle[j])) {
+            j++;
+        }
+        if (j == needle_len) return 1;
+    }
+    return 0;
+}
+
+static int route_matches(const Route *r, const char *query) {
+    return contains_ci(r->cmd, query)
+        || contains_ci(r->desc, query)
+        || contains_ci(r->section, query)
+        || contains_ci(r->sibling_dir, query);
+}
+
+static RouteStats route_stats(const char *section, const char *query) {
+    RouteStats stats = {0, 0};
+    char resolved[PATH_MAX];
+
+    for (const Route *r = routes; r->cmd; r++) {
+        if (strcmp(r->section, section) != 0) continue;
+        if (!route_matches(r, query)) continue;
+        stats.total++;
+        if (resolve_binary_path(r->binary, r->sibling_dir, resolved, sizeof(resolved)))
+            stats.available++;
+    }
+    return stats;
+}
+
 static int try_exec(const char *binary, const char *sibling_dir, char **argv) {
     char self_dir[PATH_MAX];
     get_self_dir(self_dir, sizeof(self_dir));
@@ -175,28 +268,90 @@ static int try_exec(const char *binary, const char *sibling_dir, char **argv) {
 }
 
 /* ── Built-in: list ───────────────────────────────────────────────── */
-static void cmd_list(void) {
-    printf("Available commands:\n\n");
-    const char *cur_section = "";
+static void cmd_list(const char *query) {
+    static const char *sections[] = {
+        SEC_PIPELINE,
+        SEC_AI,
+        SEC_RECIPES,
+        SEC_INFRA,
+        SEC_VALUE,
+        NULL
+    };
+    int is_tty = isatty(STDOUT_FILENO);
+    const char *bold = is_tty ? "\033[1m" : "";
+    const char *dim = is_tty ? "\033[2m" : "";
+    const char *green = is_tty ? "\033[32m" : "";
+    const char *yellow = is_tty ? "\033[33m" : "";
+    const char *reset = is_tty ? "\033[0m" : "";
+    int total = 0;
+    int available = 0;
+
     for (const Route *r = routes; r->cmd; r++) {
-        if (strcmp(r->section, cur_section) != 0) {
-            printf("  %s:\n", r->section);
-            cur_section = r->section;
-        }
-        printf("    %-20s %s\n", r->cmd, r->desc);
+        char resolved[PATH_MAX];
+        if (!route_matches(r, query)) continue;
+        total++;
+        if (resolve_binary_path(r->binary, r->sibling_dir, resolved, sizeof(resolved)))
+            available++;
     }
-    printf("\nRun 'bonfyre <command> --help' for command-specific help.\n");
+
+    printf("%sbonfyre%s  command surface\n", bold, reset);
+    if (query && query[0])
+        printf("%sfilter%s    %s\n", dim, reset, query);
+    printf("%ssummary%s   %d commands  %s%d ready%s  %s%d missing%s\n",
+           dim, reset,
+           total,
+           green, available, reset,
+           yellow, total - available, reset);
+    printf("%snext%s      bonfyre doctor   bonfyre model list   bonfyre recipe list\n\n",
+           dim, reset);
+
+    for (int i = 0; sections[i]; i++) {
+        RouteStats stats = route_stats(sections[i], query);
+        if (stats.total == 0) continue;
+
+        printf("%s%s%s  %s%d/%d ready%s\n",
+               bold, sections[i], reset,
+               dim, stats.available, stats.total, reset);
+
+        for (const Route *r = routes; r->cmd; r++) {
+            char resolved[PATH_MAX];
+            int ready;
+
+            if (strcmp(r->section, sections[i]) != 0) continue;
+            if (!route_matches(r, query)) continue;
+
+            ready = resolve_binary_path(r->binary, r->sibling_dir, resolved, sizeof(resolved));
+            printf("  %s%-16s%s  %-20s %s\n",
+                   ready ? green : yellow,
+                   ready ? "ready" : "missing",
+                   reset,
+                   r->cmd,
+                   r->desc);
+        }
+        printf("\n");
+    }
+
+    if (total == 0) {
+        printf("No commands matched that filter. Try: bonfyre list model\n\n");
+    }
+
+    printf("Run 'bonfyre <command> --help' for command help, or 'bonfyre list <term>' to filter.\n");
 }
 
 /* ── Built-in: help ───────────────────────────────────────────────── */
 static void cmd_help(void) {
     fprintf(stderr,
-        "bonfyre -- artifact pipeline toolkit\n\n"
+        "bonfyre -- adaptive artifact pipeline toolkit\n\n"
         "Usage: bonfyre <command> [args...]\n\n"
         "Built-ins:\n"
-        "  list          Show every available command with descriptions\n"
+        "  list [term]   Show command surface, live readiness, and optional filtered search\n"
         "  version       Print version\n"
         "  help          Show this help\n\n"
+        "Start here:\n"
+        "  bonfyre doctor                 verify the installed surface\n"
+        "  bonfyre list model            filter command surface by topic\n"
+        "  bonfyre model list            inspect local model registry\n"
+        "  bonfyre recipe list           inspect recipe registry\n\n"
         "Key workflows:\n"
         "  Pipeline:  ingest -> mediaprep -> transcribe -> clean -> paragraph\n"
         "             -> brief -> proof -> offer -> narrate -> pack -> distribute\n"
@@ -205,7 +360,7 @@ static void cmd_help(void) {
         "  AI:        embed . vec . segment . sli . quant . fpq . fpqx . layer\n"
         "  Infra:     hash . index . compress . graph . queue . sync . tel\n"
         "  Value:     gate . meter . ledger . economy . compete\n\n"
-        "Run 'bonfyre list' for the full command reference.\n"
+        "Run 'bonfyre list' for the full command surface.\n"
     );
 }
 
@@ -223,7 +378,7 @@ int main(int argc, char *argv[]) {
         return 0;
     }
     if (strcmp(cmd, "list") == 0) {
-        cmd_list();
+        cmd_list(argc >= 3 ? argv[2] : NULL);
         return 0;
     }
 
