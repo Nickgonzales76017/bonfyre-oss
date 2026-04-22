@@ -47,6 +47,9 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
+/* environ is in unistd.h on Linux but needs an explicit extern on some targets */
+extern char **environ;
+
 /* ── Attempt to detect liburing 2.6+ SPAWN support ──────────────────── */
 
 #if defined(__linux__)

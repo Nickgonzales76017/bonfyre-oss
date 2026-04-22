@@ -16,7 +16,16 @@ SRCS    = $(SRCDIR)/bf_artifact.c \
           $(SRCDIR)/bf_operators.c \
           $(SRCDIR)/bf_simd.c \
           $(SRCDIR)/bf_mmap.c \
-          $(SRCDIR)/bf_sqlite.c
+          $(SRCDIR)/bf_sqlite.c \
+          $(SRCDIR)/bf_cas.c \
+          $(SRCDIR)/bf_lattice_accel.c \
+          $(SRCDIR)/bf_bpf_flux.c \
+          $(SRCDIR)/bf_uring_spawn.c \
+          $(SRCDIR)/bf_stream_asr.c \
+          $(SRCDIR)/bf_swarm_delta.c \
+          $(SRCDIR)/bf_lora_compressed.c \
+          $(SRCDIR)/bf_he_ckks.c \
+          $(SRCDIR)/bf_wasm_shim.c
 
 OBJS    = $(patsubst $(SRCDIR)/%.c,$(OBJDIR)/%.o,$(SRCS))
 TARGET  = libbonfyre.a

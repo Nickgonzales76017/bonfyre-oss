@@ -322,6 +322,7 @@ static void cmd_policy_add(sqlite3 *db, const char *file) {
  */
 #define BF_ENTROPY_LOW_DEFAULT   3.5  /* bits; below this → P1 escalation */
 #define BF_ENTROPY_FAST_CAP      65536 /* bytes read for fast-path check    */
+#define WMAP_SIZE                2048u /* open-addressing hash slots for entropy word map */
 
 static void cmd_entropy_check(sqlite3 *db, const char *artifact, double threshold) {
     if (threshold <= 0.0) threshold = BF_ENTROPY_LOW_DEFAULT;
@@ -397,7 +398,6 @@ static void cmd_entropy_check(sqlite3 *db, const char *artifact, double threshol
  * Hash collisions cause over-counting but are negligible for typical
  * vocabulary sizes.  Returns 0.0 if the file cannot be opened.
  */
-#define WMAP_SIZE 2048u
 static double compute_entropy(const char *path) {
     uint32_t hashes[WMAP_SIZE]; uint32_t counts[WMAP_SIZE];
     memset(hashes, 0, sizeof(hashes)); memset(counts, 0, sizeof(counts));
@@ -827,6 +827,202 @@ static void cmd_watch(sqlite3 *db, const char *recipe) {
     }
 }
 
+/* ── cmd_ops — operational intelligence plane dashboard ──────────────────── */
+
+static void cmd_ops(sqlite3 *db) {
+    const char *home = getenv("HOME");
+    if (!home) home = "/tmp";
+
+    printf("=================================================================\n");
+    printf("  bonfyre-control ops -- operational intelligence dashboard\n");
+    printf("=================================================================\n\n");
+
+    /* ── 1. PSI (Pressure Stall Information, Linux >= 4.20) ──────────── */
+    printf("-- SYSTEM PRESSURE (PSI) ----------------------------------------\n");
+    const char *psi_res[] = {"cpu", "memory", "io"};
+    double cpu_avg10 = -1.0;
+    int psi_ok = 0;
+    for (int i = 0; i < 3; i++) {
+        char psi_path[128];
+        snprintf(psi_path, sizeof(psi_path), "/proc/pressure/%s", psi_res[i]);
+        FILE *fp = fopen(psi_path, "r");
+        if (!fp) continue;
+        psi_ok = 1;
+        char line[256];
+        while (fgets(line, sizeof(line), fp)) {
+            if (strncmp(line, "some", 4) != 0) continue;
+            double a10 = 0, a60 = 0, a300 = 0;
+            sscanf(line + 5, "avg10=%lf avg60=%lf avg300=%lf", &a10, &a60, &a300);
+            if (i == 0) cpu_avg10 = a10;
+            const char *flag = (a10 > 40.0) ? " [!! HIGH]"
+                             : (a10 > 20.0) ? " [~  MED ]"
+                             :                " [OK     ]";
+            printf("  %-8s  avg10=%5.2f%%  avg60=%5.2f%%  avg300=%5.2f%%%s\n",
+                   psi_res[i], a10, a60, a300, flag);
+        }
+        fclose(fp);
+    }
+    if (!psi_ok)
+        printf("  PSI unavailable (Linux >= 4.20 with CONFIG_PSI=y required)\n");
+    printf("\n");
+
+    /* ── 2. CAS store ───────────────────────────────────────────────────── */
+    printf("-- CAS STORE ----------------------------------------------------\n");
+    char cas_root[4096];
+    const char *cas_env = getenv("BONFYRE_CAS_DIR");
+    if (cas_env)
+        snprintf(cas_root, sizeof(cas_root), "%s", cas_env);
+    else
+        snprintf(cas_root, sizeof(cas_root), "%s/.local/share/bonfyre/cas", home);
+
+    int cas_entries = 0;
+    DIR *cdir = opendir(cas_root);
+    if (cdir) {
+        struct dirent *de;
+        while ((de = readdir(cdir)) != NULL) {
+            if (de->d_name[0] == '.') continue;
+            cas_entries++;
+        }
+        closedir(cdir);
+        printf("  root:     %s\n", cas_root);
+        printf("  entries:  %d\n", cas_entries);
+    } else {
+        printf("  root:     %s  (not initialised yet)\n", cas_root);
+    }
+
+    /* Optional sidecar written by BonfyreRun: {"hits":N,"misses":N} */
+    char stats_path[4096 + 32];
+    snprintf(stats_path, sizeof(stats_path), "%s/cas-stats.json", cas_root);
+    FILE *sf = fopen(stats_path, "r");
+    if (sf) {
+        char buf[512] = {0};
+        fread(buf, 1, sizeof(buf) - 1, sf);
+        fclose(sf);
+        long hits = 0, misses = 0;
+        char *hp = strstr(buf, "\"hits\"");
+        char *mp = strstr(buf, "\"misses\"");
+        if (hp) sscanf(hp + 6, " : %ld", &hits);
+        if (mp) sscanf(mp + 8, " : %ld", &misses);
+        long total = hits + misses;
+        double hr = total > 0 ? 100.0 * hits / total : 0.0;
+        printf("  hit rate: %.1f%%  (%ld hits / %ld total)%s\n", hr, hits, total,
+               hr > 70.0 ? "  [OK     ]" : hr > 40.0 ? "  [~ WARM ]" : "  [!! COLD]");
+    } else {
+        printf("  hit/miss stats: no sidecar yet\n");
+    }
+    printf("\n");
+
+    /* ── 3. BPF-Flux cgroup-v2 tier occupancy ────────────────────────── */
+    printf("-- BPF-FLUX TIER OCCUPANCY (cgroup-v2) --------------------------\n");
+    const char *cg_base = "/sys/fs/cgroup/bonfyre";
+    struct stat cg_st;
+    if (stat(cg_base, &cg_st) == 0) {
+        const char *tiers[] = {"realtime", "batch", "background"};
+        for (int t = 0; t < 3; t++) {
+            char mp[512];
+            snprintf(mp, sizeof(mp), "%s/%s/memory.current", cg_base, tiers[t]);
+            FILE *mf = fopen(mp, "r");
+            if (!mf) { printf("  %-12s  n/a\n", tiers[t]); continue; }
+            long long bytes = 0;
+            fscanf(mf, "%lld", &bytes);
+            fclose(mf);
+            printf("  %-12s  %.1f MB\n", tiers[t], bytes / (1024.0 * 1024.0));
+        }
+    } else {
+        printf("  cgroup v2 slice not mounted at %s\n", cg_base);
+        printf("  (provision with: systemd-run --scope --slice=bonfyre.slice)\n");
+    }
+    printf("\n");
+
+    /* ── 4. Entropy gate pass/fail (last 100 decisions) ─────────────── */
+    printf("-- ENTROPY GATE (last 100 checks) --------------------------------\n");
+    int ent_pass = 0, ent_total = 0;
+    {
+        sqlite3_stmt *est = NULL;
+        const char *EQ =
+            "SELECT result FROM control_decisions "
+            "WHERE decision_type='entropy-check' ORDER BY id DESC LIMIT 100;";
+        if (sqlite3_prepare_v2(db, EQ, -1, &est, NULL) == SQLITE_OK) {
+            while (sqlite3_step(est) == SQLITE_ROW) {
+                const char *res = (const char *)sqlite3_column_text(est, 0);
+                ent_total++;
+                if (res && (strstr(res, "pass") || strstr(res, "PASS") ||
+                            strstr(res, "ok")   || strstr(res, "OK")))
+                    ent_pass++;
+            }
+            sqlite3_finalize(est);
+        }
+    }
+    if (ent_total > 0) {
+        double pr = 100.0 * ent_pass / ent_total;
+        printf("  pass: %d / %d  (%.1f%%)%s\n", ent_pass, ent_total, pr,
+               pr >= 80.0 ? "  [OK     ]" : pr >= 60.0 ? "  [~ WATCH]" : "  [!! LOW ]");
+    } else {
+        printf("  no entropy-check records yet\n");
+    }
+    printf("\n");
+
+    /* ── 5. HE-SLI composite rolling avg (last 100 scored runs) ─────── */
+    printf("-- HE-SLI COMPOSITE (last 100 scores) ---------------------------\n");
+    double score_sum = 0.0;
+    int    score_n   = 0;
+    double score_min = 1.0, score_max = 0.0;
+    {
+        sqlite3_stmt *sst = NULL;
+        const char *SQ =
+            "SELECT composite_score FROM control_decisions "
+            "WHERE composite_score IS NOT NULL ORDER BY id DESC LIMIT 100;";
+        if (sqlite3_prepare_v2(db, SQ, -1, &sst, NULL) == SQLITE_OK) {
+            while (sqlite3_step(sst) == SQLITE_ROW) {
+                double v = sqlite3_column_double(sst, 0);
+                score_sum += v; score_n++;
+                if (v < score_min) score_min = v;
+                if (v > score_max) score_max = v;
+            }
+            sqlite3_finalize(sst);
+        }
+    }
+    if (score_n > 0) {
+        double avg = score_sum / score_n;
+        printf("  avg=%.3f  min=%.3f  max=%.3f  n=%d%s\n",
+               avg, score_min, score_max, score_n,
+               avg >= 0.75 ? "  [EXCELLENT ]"
+             : avg >= 0.55 ? "  [ACCEPTABLE]"
+             :               "  [DEGRADED  ]");
+    } else {
+        printf("  no scored runs yet\n");
+    }
+    printf("\n");
+
+    /* ── 6. Auto-tune recommendations ────────────────────────────────── */
+    printf("-- AUTO-TUNE RECOMMENDATIONS ------------------------------------\n");
+    int recs = 0;
+    if (cpu_avg10 > 40.0) {
+        printf("  RECOMMEND: CPU pressure avg10=%.1f%% -- lower --parallel or\n"
+               "             set BONFYRE_MAX_WORKERS to reduce concurrency\n", cpu_avg10);
+        recs++;
+    }
+    if (cas_entries > 10000) {
+        printf("  RECOMMEND: CAS has %d entries -- run: bonfyre-control evict <hash>\n",
+               cas_entries);
+        recs++;
+    }
+    if (score_n > 20 && score_sum / score_n < 0.55) {
+        printf("  RECOMMEND: composite avg %.3f -- add a high-coherence policy:\n"
+               "             bonfyre-control policy add coherence-boost.json\n",
+               score_sum / score_n);
+        recs++;
+    }
+    if (ent_total > 20 && (double)ent_pass / ent_total < 0.60) {
+        printf("  RECOMMEND: entropy pass rate %.0f%% -- lower entropy threshold or\n"
+               "             inspect input audio quality\n",
+               100.0 * ent_pass / ent_total);
+        recs++;
+    }
+    if (!recs) printf("  system nominal -- no recommendations\n");
+    printf("\n");
+}
+
 static void cmd_help(void) {
     printf(
 "bonfyre-control %s — Bonfyre control plane\n\n"
@@ -848,6 +1044,9 @@ static void cmd_help(void) {
 "  policy show <id>            show policy rule JSON\n"
 "  policy add <file.json>      register a new policy\n"
 "  policy rm <id>              delete a policy\n"
+"  ops                         operational dashboard: PSI pressure, CAS stats,\n"
+"                              BPF-Flux tier occupancy, HE-SLI rolling avg,\n"
+"                              entropy gate pass rate, auto-tune recommendations\n"
 "  help                        this message\n\n"
 "ENVIRONMENT\n"
 "  BONFYRE_CONTROL_DB          override DB path\n"
@@ -919,6 +1118,8 @@ int main(int argc, char **argv) {
         } else {
             fprintf(stderr,"unknown policy subcommand: %s\n", argv[2]); rc=1;
         }
+    } else if (strcmp(cmd,"ops")==0) {
+        cmd_ops(db);
     } else {
         fprintf(stderr,"bonfyre-control: unknown command: %s\n", cmd);
         fprintf(stderr,"Run 'bonfyre-control help' for usage.\n"); rc=1;

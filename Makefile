@@ -117,6 +117,97 @@ pgo-use:
 pgo-clean:
 	rm -rf $(PGO_DIR)
 
+# ── Static binary build (musl or -static) ───────────────────
+# Produces fully statically linked binaries (~400 KB each, zero runtime deps).
+# Requires musl-gcc (install: apt install musl-tools) or will fall back to
+# system cc with -static (works on Linux; partially on macOS with static libc).
+#
+# Usage:
+#   make static                        # use musl-gcc if available
+#   make static STATIC_CC=musl-gcc     # explicit musl path
+#   make static STATIC_CC="cc -static" # force -static with system libc
+#
+STATIC_CC    ?= $(shell command -v musl-gcc 2>/dev/null || echo "$(CC)")
+STATIC_FLAGS ?= -O2 -std=c11 -static -static-libgcc -lpthread
+
+.PHONY: static
+static:
+	@echo "=== Static build (CC=$(STATIC_CC)) ==="
+	$(MAKE) -C lib/liblambda-tensors clean
+	$(MAKE) -C lib/liblambda-tensors CC="$(STATIC_CC)" OPTFLAGS="$(STATIC_FLAGS)"
+	$(MAKE) -C lib/libbonfyre clean
+	$(MAKE) -C lib/libbonfyre CC="$(STATIC_CC)" OPTFLAGS="$(STATIC_FLAGS)"
+	@for dir in $(BINARIES); do \
+		$(MAKE) -C $$dir \
+			CC="$(STATIC_CC)" \
+			CFLAGS="$(STATIC_FLAGS)" \
+			LDFLAGS="-static" \
+			2>/dev/null && echo "  [static] $$dir" || echo "  [skip]   $$dir"; \
+	done
+	@echo "=== Static build done ==="
+	@echo "Strip with: find . -name 'bonfyre-*' -not -name '*.c' -exec strip {} +"
+
+# ── WASM build via Emscripten ───────────────────────────────
+# Requires Emscripten SDK: https://emscripten.org/docs/getting_started/
+# Source: source /path/to/emsdk/emsdk_env.sh
+#
+# Usage:
+#   make wasm                           # build bonfyre-runtime.{wasm,js}
+#   make wasm WASM_OUT=site/assets/     # emit into site/assets/
+#
+WASM_CC  ?= emcc
+WASM_OUT ?= site/assets
+WASM_FLAGS = -O2 -std=c11 \
+  -s WASM=1 \
+  -s EXPORTED_FUNCTIONS='["_bonfyre_wasm_run","_bonfyre_wasm_init","_bonfyre_wasm_version","_bonfyre_wasm_capabilities","_bonfyre_wasm_alloc","_bonfyre_wasm_free"]' \
+  -s EXPORTED_RUNTIME_METHODS='["ccall","cwrap","UTF8ToString","stringToUTF8","lengthBytesUTF8"]' \
+  -s ALLOW_MEMORY_GROWTH=1 \
+  -s MODULARIZE=1 \
+  -s EXPORT_NAME=BonfyreModule \
+  -s NO_EXIT_RUNTIME=1 \
+  -s ENVIRONMENT=web,worker \
+  -DBF_WASM_BUILD=1 \
+  -I lib/libbonfyre/include
+
+WASM_SRCS = \
+  lib/libbonfyre/src/bf_wasm_shim.c \
+  lib/libbonfyre/src/bf_artifact.c \
+  lib/libbonfyre/src/bf_common.c \
+  lib/libbonfyre/src/bf_sha256.c \
+  lib/libbonfyre/src/bf_operators.c
+
+.PHONY: wasm wasm-check wasm-all
+wasm-check:
+	@command -v $(WASM_CC) >/dev/null 2>&1 || \
+		(echo "ERROR: Emscripten not found.  Install: https://emscripten.org/docs/getting_started/" && exit 1)
+
+wasm: wasm-check
+	@echo "=== WASM build (emcc) ==="
+	@mkdir -p $(WASM_OUT)
+	$(WASM_CC) $(WASM_FLAGS) \
+		$(WASM_SRCS) \
+		-o $(WASM_OUT)/bonfyre-runtime.js
+	@echo "  WASM output: $(WASM_OUT)/bonfyre-runtime.{wasm,js}"
+	@echo "=== WASM build done ==="
+
+wasm-all: wasm
+	@echo "=== Generating browser wrappers for all Bonfyre binaries ==="
+	@for dir in $(BINARIES); do \
+		name=$$(basename $$dir | tr '[:upper:]' '[:lower:]' | sed 's/^bonfyre//'); \
+		bin="bonfyre-$$name"; \
+		out="$(WASM_OUT)/$$bin.js"; \
+		printf "%s\n" "import BonfyreModuleFactory from './bonfyre-runtime.js';" > $$out; \
+		printf "%s\n" "" >> $$out; \
+		printf "%s\n" "export default async function runBonfyreBinary(recipeYaml, inputBase64, mime='application/octet-stream') {" >> $$out; \
+		printf "%s\n" "  const Module = await BonfyreModuleFactory();" >> $$out; \
+		printf "%s\n" "  const run = Module.cwrap('bonfyre_wasm_run', 'string', ['string','string','string']);" >> $$out; \
+		printf "%s\n" "  const result = run(recipeYaml, inputBase64, mime);" >> $$out; \
+		printf "%s\n" "  return JSON.parse(result);" >> $$out; \
+		printf "%s\n" "}" >> $$out; \
+		echo "  [wasm] $$out"; \
+	done
+	@echo "=== WASM wrappers ready in $(WASM_OUT) ==="
+
 # ── Docker ────────────────────────────────────────────────────
 .PHONY: docker docker-up docker-down
 docker:
