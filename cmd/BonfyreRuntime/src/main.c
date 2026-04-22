@@ -98,6 +98,13 @@ static void print_usage(void) {
             "  bonfyre-runtime gen <gen args...>\n"
             "  bonfyre-runtime swarm <swarm args...>\n"
             "  bonfyre-runtime control <control args...>\n"
+            "  bonfyre-runtime recipe <recipe args...>\n"
+            "  bonfyre-runtime model <model args...>\n"
+            "  bonfyre-runtime stitch <stitch args...>\n"
+            "  bonfyre-runtime proxy <proxy args...>\n"
+            "  bonfyre-runtime sli <sli args...>\n"
+            "  bonfyre-runtime run-recipe <code> <input> [bonfyre-run args...]\n"
+            "  bonfyre-runtime service <proxy|moq|swarm-worker> [args...]\n"
             "  bonfyre-runtime conference [video-relay args...]\n"
             "  bonfyre-runtime autowire <input> --intent <text> --out <dir> [--mode local|swarm] [--nodes N]\n"
             "\n"
@@ -110,8 +117,10 @@ static void print_usage(void) {
             "            stage N is streamed directly into stdin of stage N+1.\n"
             "            Eliminates bonfyre-space round-trip I/O for intermediate data.\n"
             "            All stages run concurrently; waits for the final stage.\n"
-            "  gen/swarm/control/conference: pass-through wrappers so runtime can orchestrate\n"
-            "            new Cycle 9 binaries from one entry point.\n"
+            "  gen/swarm/control/recipe/model/stitch/proxy/sli: pass-through wrappers so\n"
+            "            runtime can orchestrate broad cmd-tree capabilities from one entry point.\n"
+            "  run-recipe: canonical bridge to bonfyre-run recipe execution semantics.\n"
+            "  service: standard launcher for long-running infra (proxy, moq relay, swarm worker).\n"
             "  autowire: generates a recipe from natural language (bonfyre-gen), then runs\n"
             "            it locally or dispatches to swarm, and finally runs control ops.\n");}
 
@@ -132,6 +141,12 @@ int main(int argc, char **argv) {
     char swarm_resolved[PATH_MAX];
     char control_resolved[PATH_MAX];
     char moq_resolved[PATH_MAX];
+    char run_resolved[PATH_MAX];
+    char recipe_resolved[PATH_MAX];
+    char model_resolved[PATH_MAX];
+    char stitch_resolved[PATH_MAX];
+    char proxy_resolved[PATH_MAX];
+    char sli_resolved[PATH_MAX];
     const char *queue_bin = default_binary("BONFYRE_QUEUE_BINARY", argv[0], queue_resolved, sizeof(queue_resolved), "BonfyreQueue", "bonfyre-queue", "../BonfyreQueue/bonfyre-queue");
     const char *pipeline_bin = default_binary("BONFYRE_PIPELINE_BINARY", argv[0], pipeline_resolved, sizeof(pipeline_resolved), "BonfyrePipeline", "bonfyre-pipeline", "../BonfyrePipeline/bonfyre-pipeline");
     const char *ledger_bin = default_binary("BONFYRE_LEDGER_BINARY", argv[0], ledger_resolved, sizeof(ledger_resolved), "BonfyreLedger", "bonfyre-ledger", "../BonfyreLedger/bonfyre-ledger");
@@ -139,6 +154,12 @@ int main(int argc, char **argv) {
     const char *swarm_bin = default_binary("BONFYRE_SWARM_BINARY", argv[0], swarm_resolved, sizeof(swarm_resolved), "BonfyreSwarm", "bonfyre-swarm", "../BonfyreSwarm/bonfyre-swarm");
     const char *control_bin = default_binary("BONFYRE_CONTROL_BINARY", argv[0], control_resolved, sizeof(control_resolved), "BonfyreControl", "bonfyre-control", "../BonfyreControl/bonfyre-control");
     const char *moq_bin = default_binary("BONFYRE_MOQ_BINARY", argv[0], moq_resolved, sizeof(moq_resolved), "BonfyreMoQ", "bonfyre-moq", "../BonfyreMoQ/bonfyre-moq");
+    const char *run_bin = default_binary("BONFYRE_RUN_BINARY", argv[0], run_resolved, sizeof(run_resolved), "BonfyreRun", "bonfyre-run", "../BonfyreRun/bonfyre-run");
+    const char *recipe_bin = default_binary("BONFYRE_RECIPE_BINARY", argv[0], recipe_resolved, sizeof(recipe_resolved), "BonfyreRecipe", "bonfyre-recipe", "../BonfyreRecipe/bonfyre-recipe");
+    const char *model_bin = default_binary("BONFYRE_MODEL_BINARY", argv[0], model_resolved, sizeof(model_resolved), "BonfyreModel", "bonfyre-model", "../BonfyreModel/bonfyre-model");
+    const char *stitch_bin = default_binary("BONFYRE_STITCH_BINARY", argv[0], stitch_resolved, sizeof(stitch_resolved), "BonfyreStitch", "bonfyre-stitch", "../BonfyreStitch/bonfyre-stitch");
+    const char *proxy_bin = default_binary("BONFYRE_PROXY_BINARY", argv[0], proxy_resolved, sizeof(proxy_resolved), "BonfyreProxy", "bonfyre-proxy", "../BonfyreProxy/bonfyre-proxy");
+    const char *sli_bin = default_binary("BONFYRE_SLI_BINARY", argv[0], sli_resolved, sizeof(sli_resolved), "BonfyreSLI", "bonfyre-sli", "../BonfyreSLI/bonfyre-sli");
 
     if (strcmp(argv[1], "gen") == 0) {
         if (argc < 3) return 1;
@@ -171,6 +192,130 @@ int main(int argc, char **argv) {
         int rc = run_command(child);
         free(child);
         return rc;
+    }
+
+    if (strcmp(argv[1], "recipe") == 0) {
+        if (argc < 3) return 1;
+        char **child = calloc((size_t)argc, sizeof(char *));
+        if (!child) return 1;
+        child[0] = (char *)recipe_bin;
+        for (int i = 2; i < argc; i++) child[i - 1] = argv[i];
+        int rc = run_command(child);
+        free(child);
+        return rc;
+    }
+
+    if (strcmp(argv[1], "model") == 0) {
+        if (argc < 3) return 1;
+        char **child = calloc((size_t)argc, sizeof(char *));
+        if (!child) return 1;
+        child[0] = (char *)model_bin;
+        for (int i = 2; i < argc; i++) child[i - 1] = argv[i];
+        int rc = run_command(child);
+        free(child);
+        return rc;
+    }
+
+    if (strcmp(argv[1], "stitch") == 0) {
+        if (argc < 3) return 1;
+        char **child = calloc((size_t)argc, sizeof(char *));
+        if (!child) return 1;
+        child[0] = (char *)stitch_bin;
+        for (int i = 2; i < argc; i++) child[i - 1] = argv[i];
+        int rc = run_command(child);
+        free(child);
+        return rc;
+    }
+
+    if (strcmp(argv[1], "proxy") == 0) {
+        char **child = calloc((size_t)argc + 1, sizeof(char *));
+        if (!child) return 1;
+        int c = 0;
+        child[c++] = (char *)proxy_bin;
+        if (argc >= 3 &&
+            (strcmp(argv[2], "--help") == 0 || strcmp(argv[2], "help") == 0 || strcmp(argv[2], "-h") == 0)) {
+            /* bonfyre-proxy prints usage when run without a subcommand */
+        } else {
+            for (int i = 2; i < argc; i++) child[c++] = argv[i];
+        }
+        child[c] = NULL;
+        int rc = run_command(child);
+        free(child);
+        return rc;
+    }
+
+    if (strcmp(argv[1], "sli") == 0) {
+        if (argc < 3) return 1;
+        char **child = calloc((size_t)argc, sizeof(char *));
+        if (!child) return 1;
+        child[0] = (char *)sli_bin;
+        for (int i = 2; i < argc; i++) child[i - 1] = argv[i];
+        int rc = run_command(child);
+        free(child);
+        return rc;
+    }
+
+    if (strcmp(argv[1], "run-recipe") == 0) {
+        if (argc < 4) {
+            fprintf(stderr, "usage: bonfyre-runtime run-recipe <code> <input> [bonfyre-run args...]\n");
+            return 1;
+        }
+        char **child = calloc((size_t)argc + 1, sizeof(char *));
+        if (!child) return 1;
+        int c = 0;
+        child[c++] = (char *)run_bin;
+        child[c++] = argv[2];
+        child[c++] = argv[3];
+        for (int i = 4; i < argc; i++) child[c++] = argv[i];
+        child[c] = NULL;
+        int rc = run_command(child);
+        free(child);
+        return rc;
+    }
+
+    if (strcmp(argv[1], "service") == 0) {
+        if (argc < 3) {
+            fprintf(stderr, "usage: bonfyre-runtime service <proxy|moq|swarm-worker> [args...]\n");
+            return 1;
+        }
+        if (strcmp(argv[2], "proxy") == 0) {
+            char **child = calloc((size_t)argc + 2, sizeof(char *));
+            if (!child) return 1;
+            int c = 0;
+            child[c++] = (char *)proxy_bin;
+            child[c++] = "serve";
+            for (int i = 3; i < argc; i++) child[c++] = argv[i];
+            child[c] = NULL;
+            int rc = run_command(child);
+            free(child);
+            return rc;
+        }
+        if (strcmp(argv[2], "moq") == 0) {
+            char **child = calloc((size_t)argc + 2, sizeof(char *));
+            if (!child) return 1;
+            int c = 0;
+            child[c++] = (char *)moq_bin;
+            child[c++] = "video-relay";
+            for (int i = 3; i < argc; i++) child[c++] = argv[i];
+            child[c] = NULL;
+            int rc = run_command(child);
+            free(child);
+            return rc;
+        }
+        if (strcmp(argv[2], "swarm-worker") == 0) {
+            char **child = calloc((size_t)argc + 2, sizeof(char *));
+            if (!child) return 1;
+            int c = 0;
+            child[c++] = (char *)swarm_bin;
+            child[c++] = "worker";
+            for (int i = 3; i < argc; i++) child[c++] = argv[i];
+            child[c] = NULL;
+            int rc = run_command(child);
+            free(child);
+            return rc;
+        }
+        fprintf(stderr, "unknown service type: %s\n", argv[2]);
+        return 1;
     }
 
     if (strcmp(argv[1], "conference") == 0) {

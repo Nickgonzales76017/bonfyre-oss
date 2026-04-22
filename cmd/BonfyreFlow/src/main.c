@@ -224,12 +224,13 @@ static void cmd_run_flow(sqlite3 *db,const char *fid,const char *input){
         sqlite3_bind_int64(rs,3,(sqlite3_int64)time(NULL));
         sqlite3_step(rs);sqlite3_finalize(rs);
 
-        /* dispatch via bonfyre-run; output dir becomes next stage input */
+        /* dispatch via bonfyre-runtime run-recipe (single orchestration gateway);
+         * output dir becomes next stage input */
         char outdir[256];
         snprintf(outdir,sizeof(outdir),"/tmp/bf-flow-%s-%d",eid,step);
         char bfcmd[4096];
         snprintf(bfcmd,sizeof(bfcmd),
-            "bonfyre-run '%s' '%s' --out '%s' --quiet >/dev/null 2>&1",
+            "bonfyre-runtime run-recipe '%s' '%s' --out '%s' --quiet >/dev/null 2>&1",
             cur_stage,cur_input,outdir);
         int rc=system(bfcmd);
 
