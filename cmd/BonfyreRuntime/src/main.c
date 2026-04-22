@@ -36,8 +36,25 @@ static void resolve_executable_sibling(char *buffer, size_t size, const char *ar
 static const char *default_binary(const char *env_name, const char *argv0, char *resolved, size_t resolved_size, const char *dir, const char *name, const char *fallback) {
     const char *env = getenv(env_name);
     if (env && env[0] != '\0') return env;
+    /* Try top-level sibling path: ../SiblingDir/binary */
     resolve_executable_sibling(resolved, resolved_size, argv0, dir, name);
     if (resolved[0] != '\0' && access(resolved, X_OK) == 0) return resolved;
+    /* Try build/ subdirectory: ../SiblingDir/build/binary */
+    char build_path[PATH_MAX];
+    resolve_executable_sibling(build_path, sizeof(build_path), argv0, dir, name);
+    if (build_path[0] != '\0') {
+        /* Replace trailing /binary with /build/binary */
+        char *last_slash = strrchr(build_path, '/');
+        if (last_slash) {
+            *last_slash = '\0';
+            char candidate[PATH_MAX];
+            snprintf(candidate, sizeof(candidate), "%s/build/%s", build_path, name);
+            if (access(candidate, X_OK) == 0) {
+                snprintf(resolved, resolved_size, "%s", candidate);
+                return resolved;
+            }
+        }
+    }
     return fallback;
 }
 
