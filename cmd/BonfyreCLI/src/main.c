@@ -43,6 +43,7 @@ typedef struct {
 
 typedef struct {
     int json;
+    int compact;
     char query[256];
 } ListOptions;
 
@@ -265,6 +266,10 @@ static ListOptions parse_list_options(int argc, char *argv[]) {
             opts.json = 1;
             continue;
         }
+        if (strcmp(argv[i], "--compact") == 0 || strcmp(argv[i], "-c") == 0) {
+            opts.compact = 1;
+            continue;
+        }
         append_query_token(opts.query, sizeof(opts.query), argv[i]);
     }
     return opts;
@@ -363,6 +368,55 @@ static void cmd_list_json(const char *query) {
     fputs("\n  ]\n}\n", stdout);
 }
 
+static void cmd_list_compact(const char *query) {
+    static const char *sections[] = {
+        SEC_PIPELINE,
+        SEC_AI,
+        SEC_RECIPES,
+        SEC_INFRA,
+        SEC_VALUE,
+        NULL
+    };
+    int total = 0;
+    int available = 0;
+
+    for (const Route *r = routes; r->cmd; r++) {
+        char resolved[PATH_MAX];
+        if (!route_matches(r, query)) continue;
+        total++;
+        if (resolve_binary_path(r->binary, r->sibling_dir, resolved, sizeof(resolved)))
+            available++;
+    }
+
+    printf("bonfyre  compact surface\n");
+    if (query && query[0])
+        printf("filter   %s\n", query);
+    printf("summary  %d commands  %d ready  %d missing\n\n", total, available, total - available);
+
+    for (int i = 0; sections[i]; i++) {
+        RouteStats stats = route_stats(sections[i], query);
+        if (stats.total == 0) continue;
+
+        printf("%s  %d/%d\n  ", sections[i], stats.available, stats.total);
+        for (const Route *r = routes; r->cmd; r++) {
+            char resolved[PATH_MAX];
+            int ready;
+
+            if (strcmp(r->section, sections[i]) != 0) continue;
+            if (!route_matches(r, query)) continue;
+
+            ready = resolve_binary_path(r->binary, r->sibling_dir, resolved, sizeof(resolved));
+            printf("%s%s ", r->cmd, ready ? "" : "!");
+        }
+        printf("\n\n");
+    }
+
+    if (total == 0)
+        printf("No commands matched that filter. Try: bonfyre list --compact model\n\n");
+
+    printf("Tip: commands with '!' are not installed in the current environment.\n");
+}
+
 static void emit_completion_zsh(void) {
     puts("#compdef bonfyre");
     puts("local -a commands");
@@ -387,7 +441,7 @@ static void emit_completion_zsh(void) {
     puts("        _values 'shell' bash zsh fish");
     puts("        ;;");
     puts("      list)");
-    puts("        _values 'list options' '--json[Emit machine-readable JSON]' \\");
+    puts("        _values 'list options' '--json[Emit machine-readable JSON]' '--compact[Dense one-line view]' \\");
     puts("          'filter:topic filter:_message filter'");
     puts("        ;;");
     puts("    esac");
@@ -415,7 +469,7 @@ static void emit_completion_bash(void) {
     puts("      return 0");
     puts("      ;;");
     puts("    list)");
-    puts("      COMPREPLY=( $(compgen -W '--json' -- \"${cur}\") )");
+    puts("      COMPREPLY=( $(compgen -W '--json --compact -c' -- \"${cur}\") )");
     puts("      return 0");
     puts("      ;;");
     puts("  esac");
@@ -435,6 +489,7 @@ static void emit_completion_fish(void) {
     puts("complete -c bonfyre -n '__fish_seen_subcommand_from completion' -a zsh -d 'Zsh completion'");
     puts("complete -c bonfyre -n '__fish_seen_subcommand_from completion' -a fish -d 'Fish completion'");
     puts("complete -c bonfyre -n '__fish_seen_subcommand_from list' -l json -d 'Emit machine-readable JSON'");
+    puts("complete -c bonfyre -n '__fish_seen_subcommand_from list' -l compact -d 'Dense one-line view'");
 }
 
 static int cmd_completion(const char *shell) {
@@ -560,13 +615,14 @@ static void cmd_help(void) {
         "bonfyre -- adaptive artifact pipeline toolkit\n\n"
         "Usage: bonfyre <command> [args...]\n\n"
         "Built-ins:\n"
-        "  list [term] [--json]  Show command surface, live readiness, filtered search, or JSON\n"
+        "  list [term] [--json] [--compact]  Show command surface, filtered search, JSON, or compact mode\n"
         "  completion [shell]    Emit shell completion for zsh, bash, or fish\n"
         "  version       Print version\n"
         "  help          Show this help\n\n"
         "Start here:\n"
         "  bonfyre doctor                 verify the installed surface\n"
         "  bonfyre list model            filter command surface by topic\n"
+        "  bonfyre list --compact        compact one-line surface for fast scanning\n"
         "  bonfyre list --json           inspect the command surface programmatically\n"
         "  bonfyre completion zsh        generate shell completion\n"
         "  bonfyre model list            inspect local model registry\n"
@@ -586,7 +642,7 @@ static void cmd_help(void) {
 /* ── main ─────────────────────────────────────────────────────────── */
 int main(int argc, char *argv[]) {
     ListOptions list_opts;
-    if (argc < 2) { cmd_help(); return 0; }
+    if (argc < 2) { cmd_list(NULL); return 0; }
     const char *cmd = argv[1];
 
     if (strcmp(cmd, "help") == 0 || strcmp(cmd, "--help") == 0 || strcmp(cmd, "-h") == 0) {
@@ -600,12 +656,12 @@ int main(int argc, char *argv[]) {
     if (strcmp(cmd, "list") == 0) {
         list_opts = parse_list_options(argc, argv);
         if (list_opts.json) cmd_list_json(list_opts.query[0] ? list_opts.query : NULL);
+        else if (list_opts.compact) cmd_list_compact(list_opts.query[0] ? list_opts.query : NULL);
         else cmd_list(list_opts.query[0] ? list_opts.query : NULL);
         return 0;
     }
     if (strcmp(cmd, "completion") == 0) {
         return cmd_completion(argc >= 3 ? argv[2] : "zsh");
-        return 0;
     }
 
     /* Route lookup */
