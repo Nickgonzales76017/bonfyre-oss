@@ -71,6 +71,19 @@ static int run_command_to_file(char *const argv[], const char *output_path) {
     return WEXITSTATUS(status);
 }
 
+static void mkdir_p(const char *path) {
+    char tmp[PATH_MAX];
+    snprintf(tmp, sizeof(tmp), "%s", path);
+    for (char *p = tmp + 1; *p; p++) {
+        if (*p == '/') {
+            *p = '\0';
+            mkdir(tmp, 0755);
+            *p = '/';
+        }
+    }
+    mkdir(tmp, 0755);
+}
+
 static void print_usage(void) {
     fprintf(stderr,
             "bonfyre-runtime\n\n"
@@ -82,6 +95,11 @@ static void print_usage(void) {
             "  bonfyre-runtime loop <N> <binary> [args...]\n"
             "  bonfyre-runtime parallel [-- cmd args...]...\n"
             "  bonfyre-runtime pipeline [-- cmd args...]...\n"
+            "  bonfyre-runtime gen <gen args...>\n"
+            "  bonfyre-runtime swarm <swarm args...>\n"
+            "  bonfyre-runtime control <control args...>\n"
+            "  bonfyre-runtime conference [video-relay args...]\n"
+            "  bonfyre-runtime autowire <input> --intent <text> --out <dir> [--mode local|swarm] [--nodes N]\n"
             "\n"
             "  loop:     runs <binary> N times; passes previous artifact.json as --in\n"
             "            to each subsequent iteration.\n"
@@ -91,7 +109,11 @@ static void print_usage(void) {
             "  pipeline: chains '-- cmd args...' groups via OS pipes: stdout of\n"
             "            stage N is streamed directly into stdin of stage N+1.\n"
             "            Eliminates bonfyre-space round-trip I/O for intermediate data.\n"
-            "            All stages run concurrently; waits for the final stage.\n");}
+            "            All stages run concurrently; waits for the final stage.\n"
+            "  gen/swarm/control/conference: pass-through wrappers so runtime can orchestrate\n"
+            "            new Cycle 9 binaries from one entry point.\n"
+            "  autowire: generates a recipe from natural language (bonfyre-gen), then runs\n"
+            "            it locally or dispatches to swarm, and finally runs control ops.\n");}
 
 static void print_usage(void);
 static int  cmd_parallel(int argc, char **argv);
@@ -106,9 +128,140 @@ int main(int argc, char **argv) {
     char queue_resolved[PATH_MAX];
     char pipeline_resolved[PATH_MAX];
     char ledger_resolved[PATH_MAX];
+    char gen_resolved[PATH_MAX];
+    char swarm_resolved[PATH_MAX];
+    char control_resolved[PATH_MAX];
+    char moq_resolved[PATH_MAX];
     const char *queue_bin = default_binary("BONFYRE_QUEUE_BINARY", argv[0], queue_resolved, sizeof(queue_resolved), "BonfyreQueue", "bonfyre-queue", "../BonfyreQueue/bonfyre-queue");
     const char *pipeline_bin = default_binary("BONFYRE_PIPELINE_BINARY", argv[0], pipeline_resolved, sizeof(pipeline_resolved), "BonfyrePipeline", "bonfyre-pipeline", "../BonfyrePipeline/bonfyre-pipeline");
     const char *ledger_bin = default_binary("BONFYRE_LEDGER_BINARY", argv[0], ledger_resolved, sizeof(ledger_resolved), "BonfyreLedger", "bonfyre-ledger", "../BonfyreLedger/bonfyre-ledger");
+    const char *gen_bin = default_binary("BONFYRE_GEN_BINARY", argv[0], gen_resolved, sizeof(gen_resolved), "BonfyreGen", "bonfyre-gen", "../BonfyreGen/bonfyre-gen");
+    const char *swarm_bin = default_binary("BONFYRE_SWARM_BINARY", argv[0], swarm_resolved, sizeof(swarm_resolved), "BonfyreSwarm", "bonfyre-swarm", "../BonfyreSwarm/bonfyre-swarm");
+    const char *control_bin = default_binary("BONFYRE_CONTROL_BINARY", argv[0], control_resolved, sizeof(control_resolved), "BonfyreControl", "bonfyre-control", "../BonfyreControl/bonfyre-control");
+    const char *moq_bin = default_binary("BONFYRE_MOQ_BINARY", argv[0], moq_resolved, sizeof(moq_resolved), "BonfyreMoQ", "bonfyre-moq", "../BonfyreMoQ/bonfyre-moq");
+
+    if (strcmp(argv[1], "gen") == 0) {
+        if (argc < 3) return 1;
+        char **child = calloc((size_t)argc, sizeof(char *));
+        if (!child) return 1;
+        child[0] = (char *)gen_bin;
+        for (int i = 2; i < argc; i++) child[i - 1] = argv[i];
+        int rc = run_command(child);
+        free(child);
+        return rc;
+    }
+
+    if (strcmp(argv[1], "swarm") == 0) {
+        if (argc < 3) return 1;
+        char **child = calloc((size_t)argc, sizeof(char *));
+        if (!child) return 1;
+        child[0] = (char *)swarm_bin;
+        for (int i = 2; i < argc; i++) child[i - 1] = argv[i];
+        int rc = run_command(child);
+        free(child);
+        return rc;
+    }
+
+    if (strcmp(argv[1], "control") == 0) {
+        if (argc < 3) return 1;
+        char **child = calloc((size_t)argc, sizeof(char *));
+        if (!child) return 1;
+        child[0] = (char *)control_bin;
+        for (int i = 2; i < argc; i++) child[i - 1] = argv[i];
+        int rc = run_command(child);
+        free(child);
+        return rc;
+    }
+
+    if (strcmp(argv[1], "conference") == 0) {
+        char **child = calloc((size_t)argc + 2, sizeof(char *));
+        if (!child) return 1;
+        int c = 0;
+        child[c++] = (char *)moq_bin;
+        if (argc >= 3 &&
+            (strcmp(argv[2], "help") == 0 || strcmp(argv[2], "--help") == 0)) {
+            child[c++] = "help";
+        } else {
+            child[c++] = "video-relay";
+            for (int i = 2; i < argc; i++) child[c++] = argv[i];
+        }
+        child[c] = NULL;
+        int rc = run_command(child);
+        free(child);
+        return rc;
+    }
+
+    if (strcmp(argv[1], "autowire") == 0) {
+        if (argc < 3) {
+            fprintf(stderr, "usage: bonfyre-runtime autowire <input> --intent <text> --out <dir> [--mode local|swarm] [--nodes N]\n");
+            return 1;
+        }
+        const char *input = argv[2];
+        const char *intent = NULL;
+        const char *out_dir = NULL;
+        const char *mode = "local";
+        const char *nodes = NULL;
+        for (int i = 3; i < argc; i++) {
+            if (strcmp(argv[i], "--intent") == 0 && i + 1 < argc) intent = argv[++i];
+            else if (strcmp(argv[i], "--out") == 0 && i + 1 < argc) out_dir = argv[++i];
+            else if (strcmp(argv[i], "--mode") == 0 && i + 1 < argc) mode = argv[++i];
+            else if (strcmp(argv[i], "--nodes") == 0 && i + 1 < argc) nodes = argv[++i];
+        }
+        if (!intent || !out_dir) {
+            fprintf(stderr, "autowire requires --intent and --out\n");
+            return 1;
+        }
+
+        mkdir_p(out_dir);
+
+        char recipe_path[PATH_MAX];
+        char artifact_path[PATH_MAX];
+        path_join(recipe_path, sizeof(recipe_path), out_dir, "recipe.generated.yaml");
+        path_join(artifact_path, sizeof(artifact_path), out_dir, "artifact.json");
+
+        char *gen_argv[] = { (char *)gen_bin, (char *)intent, NULL };
+        int rc = run_command_to_file(gen_argv, recipe_path);
+        if (rc != 0) {
+            fprintf(stderr, "autowire: bonfyre-gen failed (rc=%d)\n", rc);
+            return rc;
+        }
+
+        if (strcmp(mode, "swarm") == 0) {
+            char *swarm_argv_nodes[] = {
+                (char *)swarm_bin, "dispatch", recipe_path, (char *)input,
+                "--nodes", (char *)(nodes ? nodes : "8"), NULL
+            };
+            rc = run_command(swarm_argv_nodes);
+            if (rc != 0) {
+                fprintf(stderr, "autowire: bonfyre-swarm dispatch failed (rc=%d)\n", rc);
+                return rc;
+            }
+        } else {
+            char *pipe_argv[] = {
+                (char *)pipeline_bin, "run", (char *)input,
+                "--recipe", recipe_path,
+                "--out", (char *)out_dir,
+                NULL
+            };
+            rc = run_command(pipe_argv);
+            if (rc != 0) {
+                fprintf(stderr, "autowire: bonfyre-pipeline run failed (rc=%d)\n", rc);
+                return rc;
+            }
+        }
+
+        if (access(artifact_path, F_OK) == 0) {
+            char *score_argv[] = { (char *)control_bin, "score", artifact_path, NULL };
+            run_command(score_argv);
+        }
+        {
+            char *ops_argv[] = { (char *)control_bin, "ops", NULL };
+            run_command(ops_argv);
+        }
+
+        fprintf(stderr, "autowire: complete\n  input:  %s\n  recipe: %s\n  mode:   %s\n", input, recipe_path, mode);
+        return 0;
+    }
 
     if (strcmp(argv[1], "queue") == 0) {
         if (argc < 3) return 1;
