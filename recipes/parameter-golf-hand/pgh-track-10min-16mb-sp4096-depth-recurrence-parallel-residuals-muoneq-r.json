@@ -1,0 +1,48 @@
+{
+  "recipe_id": "pgh-track-10min-16mb-sp4096-depth-recurrence-parallel-residuals-muoneq-r",
+  "code": "pgh-track-10min-16mb-sp4096-depth-recurrence-parallel-residuals-muoneq-r",
+  "name": "SP4096 + Depth Recurrence + Parallel Residuals + MuonEq-R",
+  "version": "1.0.0",
+  "category": "parameter-golf-hand",
+  "description": "SP4096 + Depth Recurrence + Parallel Residuals + MuonEq-R (score=1.0897, author=aryanbhosale, date=2026-04-04). On PR #1334: SP4096 + depth recurrence + parallel residuals + MuonEq-R + QK-Gain 5.0",
+  "tags": [
+    "parameter-golf",
+    "leaderboard",
+    "tiny-model",
+    "track_10min_16mb"
+  ],
+  "inputs": [
+    {
+      "name": "run_name",
+      "type": "string",
+      "description": "Leaderboard run name"
+    }
+  ],
+  "outputs": [
+    {
+      "name": "run_card",
+      "path": "{out}/card.json",
+      "type": "application/json"
+    }
+  ],
+  "metadata": {
+    "source": "parameter-golf-hand",
+    "track": "track_10min_16mb",
+    "rank": 6,
+    "score": 1.0897,
+    "author": "aryanbhosale",
+    "summary": "On PR #1334: SP4096 + depth recurrence + parallel residuals + MuonEq-R + QK-Gain 5.0",
+    "date": "2026-04-04"
+  },
+  "stages": [
+    {
+      "id": "emit_card",
+      "bin": "python3",
+      "args": [
+        "-c",
+        "import json, pathlib; p=pathlib.Path('{out}/card.json'); p.parent.mkdir(parents=True, exist_ok=True); data={\"rank\": 6, \"run\": \"SP4096 + Depth Recurrence + Parallel Residuals + MuonEq-R\", \"score\": 1.0897, \"author\": \"aryanbhosale\", \"summary\": \"On PR #1334: SP4096 + depth recurrence + parallel residuals + MuonEq-R + QK-Gain 5.0\", \"date\": \"2026-04-04\"}; p.write_text(json.dumps(data, indent=2)+'\\n', encoding='utf-8'); print(json.dumps(data, indent=2))"
+      ],
+      "depends_on": []
+    }
+  ]
+}

@@ -1,0 +1,48 @@
+{
+  "recipe_id": "pgh-track-10min-16mb-sliding-window-eval",
+  "code": "pgh-track-10min-16mb-sliding-window-eval",
+  "name": "Sliding Window Eval",
+  "version": "1.0.0",
+  "category": "parameter-golf-hand",
+  "description": "Sliding Window Eval (score=1.1925, author=Matthew Li, date=2026-03-19). Sliding window evaluation at stride=64, increasing context for eval",
+  "tags": [
+    "parameter-golf",
+    "leaderboard",
+    "tiny-model",
+    "track_10min_16mb"
+  ],
+  "inputs": [
+    {
+      "name": "run_name",
+      "type": "string",
+      "description": "Leaderboard run name"
+    }
+  ],
+  "outputs": [
+    {
+      "name": "run_card",
+      "path": "{out}/card.json",
+      "type": "application/json"
+    }
+  ],
+  "metadata": {
+    "source": "parameter-golf-hand",
+    "track": "track_10min_16mb",
+    "rank": 24,
+    "score": 1.1925,
+    "author": "Matthew Li",
+    "summary": "Sliding window evaluation at stride=64, increasing context for eval",
+    "date": "2026-03-19"
+  },
+  "stages": [
+    {
+      "id": "emit_card",
+      "bin": "python3",
+      "args": [
+        "-c",
+        "import json, pathlib; p=pathlib.Path('{out}/card.json'); p.parent.mkdir(parents=True, exist_ok=True); data={\"rank\": 24, \"run\": \"Sliding Window Eval\", \"score\": 1.1925, \"author\": \"Matthew Li\", \"summary\": \"Sliding window evaluation at stride=64, increasing context for eval\", \"date\": \"2026-03-19\"}; p.write_text(json.dumps(data, indent=2)+'\\n', encoding='utf-8'); print(json.dumps(data, indent=2))"
+      ],
+      "depends_on": []
+    }
+  ]
+}

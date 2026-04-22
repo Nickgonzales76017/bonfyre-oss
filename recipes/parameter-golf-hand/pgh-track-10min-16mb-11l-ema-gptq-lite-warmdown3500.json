@@ -1,0 +1,48 @@
+{
+  "recipe_id": "pgh-track-10min-16mb-11l-ema-gptq-lite-warmdown3500",
+  "code": "pgh-track-10min-16mb-11l-ema-gptq-lite-warmdown3500",
+  "name": "11L EMA + GPTQ-lite + warmdown3500",
+  "version": "1.0.0",
+  "category": "parameter-golf-hand",
+  "description": "11L EMA + GPTQ-lite + warmdown3500 (score=1.1228, author=signalrush, date=2026-03-22). On PR #374: GPTQ-lite clip search + EMA, plus warmdown3500 and QAT@0.15",
+  "tags": [
+    "parameter-golf",
+    "leaderboard",
+    "tiny-model",
+    "track_10min_16mb"
+  ],
+  "inputs": [
+    {
+      "name": "run_name",
+      "type": "string",
+      "description": "Leaderboard run name"
+    }
+  ],
+  "outputs": [
+    {
+      "name": "run_card",
+      "path": "{out}/card.json",
+      "type": "application/json"
+    }
+  ],
+  "metadata": {
+    "source": "parameter-golf-hand",
+    "track": "track_10min_16mb",
+    "rank": 12,
+    "score": 1.1228,
+    "author": "signalrush",
+    "summary": "On PR #374: GPTQ-lite clip search + EMA, plus warmdown3500 and QAT@0.15",
+    "date": "2026-03-22"
+  },
+  "stages": [
+    {
+      "id": "emit_card",
+      "bin": "python3",
+      "args": [
+        "-c",
+        "import json, pathlib; p=pathlib.Path('{out}/card.json'); p.parent.mkdir(parents=True, exist_ok=True); data={\"rank\": 12, \"run\": \"11L EMA + GPTQ-lite + warmdown3500\", \"score\": 1.1228, \"author\": \"signalrush\", \"summary\": \"On PR #374: GPTQ-lite clip search + EMA, plus warmdown3500 and QAT@0.15\", \"date\": \"2026-03-22\"}; p.write_text(json.dumps(data, indent=2)+'\\n', encoding='utf-8'); print(json.dumps(data, indent=2))"
+      ],
+      "depends_on": []
+    }
+  ]
+}

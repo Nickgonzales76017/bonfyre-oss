@@ -1,0 +1,48 @@
+{
+  "recipe_id": "pgh-track-10min-16mb-int6-mixed-precision",
+  "code": "pgh-track-10min-16mb-int6-mixed-precision",
+  "name": "int6 mixed precision",
+  "version": "1.0.0",
+  "category": "parameter-golf-hand",
+  "description": "int6 mixed precision (score=1.2147, author=Nan Liu, date=2026-03-18). 10 layers, mixed int8/int6",
+  "tags": [
+    "parameter-golf",
+    "leaderboard",
+    "tiny-model",
+    "track_10min_16mb"
+  ],
+  "inputs": [
+    {
+      "name": "run_name",
+      "type": "string",
+      "description": "Leaderboard run name"
+    }
+  ],
+  "outputs": [
+    {
+      "name": "run_card",
+      "path": "{out}/card.json",
+      "type": "application/json"
+    }
+  ],
+  "metadata": {
+    "source": "parameter-golf-hand",
+    "track": "track_10min_16mb",
+    "rank": 28,
+    "score": 1.2147,
+    "author": "Nan Liu",
+    "summary": "10 layers, mixed int8/int6",
+    "date": "2026-03-18"
+  },
+  "stages": [
+    {
+      "id": "emit_card",
+      "bin": "python3",
+      "args": [
+        "-c",
+        "import json, pathlib; p=pathlib.Path('{out}/card.json'); p.parent.mkdir(parents=True, exist_ok=True); data={\"rank\": 28, \"run\": \"int6 mixed precision\", \"score\": 1.2147, \"author\": \"Nan Liu\", \"summary\": \"10 layers, mixed int8/int6\", \"date\": \"2026-03-18\"}; p.write_text(json.dumps(data, indent=2)+'\\n', encoding='utf-8'); print(json.dumps(data, indent=2))"
+      ],
+      "depends_on": []
+    }
+  ]
+}

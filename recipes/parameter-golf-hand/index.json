@@ -1,0 +1,231 @@
+{
+  "source": "openai/parameter-golf leaderboard (hand curated)",
+  "updated": "2026-04-22",
+  "recipe_count": 32,
+  "recipes": [
+    {
+      "recipe_id": "pgh-track-10min-16mb-sp8192-3-layer-recurrence-parallel-residuals-legal-ttt",
+      "name": "SP8192 + 3-Layer Recurrence + Parallel Residuals + Legal TTT",
+      "track": "track_10min_16mb",
+      "rank": 1,
+      "score": 1.081
+    },
+    {
+      "recipe_id": "pgh-track-10min-16mb-sp8192-parallel-residuals-score-first-ttt",
+      "name": "SP8192 + Parallel Residuals + Score-First TTT",
+      "track": "track_10min_16mb",
+      "rank": 2,
+      "score": 1.0822
+    },
+    {
+      "recipe_id": "pgh-track-10min-16mb-sp8192-qk-gain-5-legal-score-first-ttt",
+      "name": "SP8192 + QK-Gain 5 + Legal Score-First TTT",
+      "track": "track_10min_16mb",
+      "rank": 3,
+      "score": 1.0828
+    },
+    {
+      "recipe_id": "pgh-track-10min-16mb-sp8192-parallel-residuals-hessian-aware-sdclip",
+      "name": "SP8192 + Parallel Residuals + Hessian-Aware SDClip",
+      "track": "track_10min_16mb",
+      "rank": 4,
+      "score": 1.0835
+    },
+    {
+      "recipe_id": "pgh-track-10min-16mb-sp8192-gptq-embeddings-depth-recurrence-sdclip",
+      "name": "SP8192 + GPTQ Embeddings + Depth Recurrence + SDClip",
+      "track": "track_10min_16mb",
+      "rank": 5,
+      "score": 1.0856
+    },
+    {
+      "recipe_id": "pgh-track-10min-16mb-sp4096-depth-recurrence-parallel-residuals-muoneq-r",
+      "name": "SP4096 + Depth Recurrence + Parallel Residuals + MuonEq-R",
+      "track": "track_10min_16mb",
+      "rank": 6,
+      "score": 1.0897
+    },
+    {
+      "recipe_id": "pgh-track-10min-16mb-muoneq-r-depth-recurrence-wd-0-090-all-int6-gptq",
+      "name": "MuonEq-R + Depth Recurrence + WD=0.090 + All-Int6 GPTQ",
+      "track": "track_10min_16mb",
+      "rank": 7,
+      "score": 1.0912
+    },
+    {
+      "recipe_id": "pgh-track-10min-16mb-4096-vocab-larger-model-high-wd-simplifications",
+      "name": "4096-Vocab + Larger Model + High WD + Simplifications",
+      "track": "track_10min_16mb",
+      "rank": 8,
+      "score": 1.0979
+    },
+    {
+      "recipe_id": "pgh-track-10min-16mb-parallel-residuals-mini-depth-recurrence",
+      "name": "Parallel Residuals + Mini Depth Recurrence",
+      "track": "track_10min_16mb",
+      "rank": 9,
+      "score": 1.1063
+    },
+    {
+      "recipe_id": "pgh-track-10min-16mb-11l-ar-self-gen-gptq-xsa",
+      "name": "11L AR Self-Gen GPTQ + XSA",
+      "track": "track_10min_16mb",
+      "rank": 10,
+      "score": 1.1147
+    },
+    {
+      "recipe_id": "pgh-track-10min-16mb-leakyrelu-2-legal-score-first-ttt-parallel-muon",
+      "name": "LeakyReLU^2 + Legal Score-First TTT + Parallel Muon",
+      "track": "track_10min_16mb",
+      "rank": 11,
+      "score": 1.1194
+    },
+    {
+      "recipe_id": "pgh-track-10min-16mb-11l-ema-gptq-lite-warmdown3500",
+      "name": "11L EMA + GPTQ-lite + warmdown3500",
+      "track": "track_10min_16mb",
+      "rank": 12,
+      "score": 1.1228
+    },
+    {
+      "recipe_id": "pgh-track-10min-16mb-11l-partial-rope-ln-scale-ema-xsa4",
+      "name": "11L Partial RoPE + LN Scale + EMA + XSA4",
+      "track": "track_10min_16mb",
+      "rank": 13,
+      "score": 1.1248
+    },
+    {
+      "recipe_id": "pgh-track-10min-16mb-11l-xsa4-ema-int6-mlp3x",
+      "name": "11L XSA4 + EMA + Int6 MLP3x",
+      "track": "track_10min_16mb",
+      "rank": 14,
+      "score": 1.1271
+    },
+    {
+      "recipe_id": "pgh-track-10min-16mb-11l-efficient-partial-xsa",
+      "name": "11L Efficient Partial XSA",
+      "track": "track_10min_16mb",
+      "rank": 15,
+      "score": 1.1307
+    },
+    {
+      "recipe_id": "pgh-track-10min-16mb-10l-int5-mlp-bigramhash-10240",
+      "name": "10L Int5-MLP + BigramHash(10240)",
+      "track": "track_10min_16mb",
+      "rank": 16,
+      "score": 1.1428
+    },
+    {
+      "recipe_id": "pgh-track-10min-16mb-int6-mlp3x-smeargate-bigramhash",
+      "name": "Int6 MLP3x + SmearGate + BigramHash",
+      "track": "track_10min_16mb",
+      "rank": 17,
+      "score": 1.1458
+    },
+    {
+      "recipe_id": "pgh-track-10min-16mb-11l-mlp3x-int6-qat",
+      "name": "11L MLP3x + Int6 QAT",
+      "track": "track_10min_16mb",
+      "rank": 18,
+      "score": 1.1502
+    },
+    {
+      "recipe_id": "pgh-track-10min-16mb-smeargate-orthoinit-muon-wd",
+      "name": "SmearGate + OrthoInit + Muon WD",
+      "track": "track_10min_16mb",
+      "rank": 19,
+      "score": 1.1556
+    },
+    {
+      "recipe_id": "pgh-track-10min-16mb-ternary-quantization",
+      "name": "Ternary Quantization",
+      "track": "track_10min_16mb",
+      "rank": 20,
+      "score": 1.157
+    },
+    {
+      "recipe_id": "pgh-track-10min-16mb-10l-int6-qat-zstd-mlp2-6x",
+      "name": "10L Int6 QAT + Zstd MLP2.6x",
+      "track": "track_10min_16mb",
+      "rank": 21,
+      "score": 1.1586
+    },
+    {
+      "recipe_id": "pgh-track-10min-16mb-mixed-quant-sliding-window-eval",
+      "name": "Mixed Quant + Sliding Window Eval",
+      "track": "track_10min_16mb",
+      "rank": 22,
+      "score": 1.163
+    },
+    {
+      "recipe_id": "pgh-track-10min-16mb-muon-wd-10-layer",
+      "name": "Muon WD + 10 layer",
+      "track": "track_10min_16mb",
+      "rank": 23,
+      "score": 1.1748
+    },
+    {
+      "recipe_id": "pgh-track-10min-16mb-sliding-window-eval",
+      "name": "Sliding Window Eval",
+      "track": "track_10min_16mb",
+      "rank": 24,
+      "score": 1.1925
+    },
+    {
+      "recipe_id": "pgh-track-10min-16mb-lora-ttt",
+      "name": "Lora TTT",
+      "track": "track_10min_16mb",
+      "rank": 25,
+      "score": 1.1928
+    },
+    {
+      "recipe_id": "pgh-track-10min-16mb-4k-seq-length",
+      "name": "4k seq length",
+      "track": "track_10min_16mb",
+      "rank": 26,
+      "score": 1.2014
+    },
+    {
+      "recipe_id": "pgh-track-10min-16mb-2048-seq-length",
+      "name": "2048 seq length",
+      "track": "track_10min_16mb",
+      "rank": 27,
+      "score": 1.206
+    },
+    {
+      "recipe_id": "pgh-track-10min-16mb-int6-mixed-precision",
+      "name": "int6 mixed precision",
+      "track": "track_10min_16mb",
+      "rank": 28,
+      "score": 1.2147
+    },
+    {
+      "recipe_id": "pgh-track-10min-16mb-fp16-embed",
+      "name": "fp16 Embed",
+      "track": "track_10min_16mb",
+      "rank": 29,
+      "score": 1.2197
+    },
+    {
+      "recipe_id": "pgh-track-10min-16mb-naive-baseline",
+      "name": "Naive Baseline",
+      "track": "track_10min_16mb",
+      "rank": 30,
+      "score": 1.2244
+    },
+    {
+      "recipe_id": "pgh-track-non-record-16mb-1-bit-quantization",
+      "name": "1 Bit Quantization",
+      "track": "track_non_record_16mb",
+      "rank": 1,
+      "score": 1.1239
+    },
+    {
+      "recipe_id": "pgh-track-non-record-16mb-4-hour-baseline",
+      "name": "4-Hour Baseline",
+      "track": "track_non_record_16mb",
+      "rank": 2,
+      "score": 1.2074
+    }
+  ]
+}

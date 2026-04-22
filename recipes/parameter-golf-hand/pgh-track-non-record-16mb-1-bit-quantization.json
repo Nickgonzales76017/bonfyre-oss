@@ -1,0 +1,48 @@
+{
+  "recipe_id": "pgh-track-non-record-16mb-1-bit-quantization",
+  "code": "pgh-track-non-record-16mb-1-bit-quantization",
+  "name": "1 Bit Quantization",
+  "version": "1.0.0",
+  "category": "parameter-golf-hand",
+  "description": "1 Bit Quantization (score=1.1239, author=Ciprian-Florin Ifrim, date=2026-03-24). 106M params quantized to 1 bit + misc arch changes + 2hr training",
+  "tags": [
+    "parameter-golf",
+    "leaderboard",
+    "tiny-model",
+    "track_non_record_16mb"
+  ],
+  "inputs": [
+    {
+      "name": "run_name",
+      "type": "string",
+      "description": "Leaderboard run name"
+    }
+  ],
+  "outputs": [
+    {
+      "name": "run_card",
+      "path": "{out}/card.json",
+      "type": "application/json"
+    }
+  ],
+  "metadata": {
+    "source": "parameter-golf-hand",
+    "track": "track_non_record_16mb",
+    "rank": 1,
+    "score": 1.1239,
+    "author": "Ciprian-Florin Ifrim",
+    "summary": "106M params quantized to 1 bit + misc arch changes + 2hr training",
+    "date": "2026-03-24"
+  },
+  "stages": [
+    {
+      "id": "emit_card",
+      "bin": "python3",
+      "args": [
+        "-c",
+        "import json, pathlib; p=pathlib.Path('{out}/card.json'); p.parent.mkdir(parents=True, exist_ok=True); data={\"rank\": 1, \"run\": \"1 Bit Quantization\", \"score\": 1.1239, \"author\": \"Ciprian-Florin Ifrim\", \"summary\": \"106M params quantized to 1 bit + misc arch changes + 2hr training\", \"date\": \"2026-03-24\"}; p.write_text(json.dumps(data, indent=2)+'\\n', encoding='utf-8'); print(json.dumps(data, indent=2))"
+      ],
+      "depends_on": []
+    }
+  ]
+}

@@ -1,0 +1,48 @@
+{
+  "recipe_id": "pgh-track-non-record-16mb-4-hour-baseline",
+  "code": "pgh-track-non-record-16mb-4-hour-baseline",
+  "name": "4-Hour Baseline",
+  "version": "1.0.0",
+  "category": "parameter-golf-hand",
+  "description": "4-Hour Baseline (score=1.2074, author=Will DePue, date=2026-03-18). Testing unlimited compute, 4 hours on 8xH100",
+  "tags": [
+    "parameter-golf",
+    "leaderboard",
+    "tiny-model",
+    "track_non_record_16mb"
+  ],
+  "inputs": [
+    {
+      "name": "run_name",
+      "type": "string",
+      "description": "Leaderboard run name"
+    }
+  ],
+  "outputs": [
+    {
+      "name": "run_card",
+      "path": "{out}/card.json",
+      "type": "application/json"
+    }
+  ],
+  "metadata": {
+    "source": "parameter-golf-hand",
+    "track": "track_non_record_16mb",
+    "rank": 2,
+    "score": 1.2074,
+    "author": "Will DePue",
+    "summary": "Testing unlimited compute, 4 hours on 8xH100",
+    "date": "2026-03-18"
+  },
+  "stages": [
+    {
+      "id": "emit_card",
+      "bin": "python3",
+      "args": [
+        "-c",
+        "import json, pathlib; p=pathlib.Path('{out}/card.json'); p.parent.mkdir(parents=True, exist_ok=True); data={\"rank\": 2, \"run\": \"4-Hour Baseline\", \"score\": 1.2074, \"author\": \"Will DePue\", \"summary\": \"Testing unlimited compute, 4 hours on 8xH100\", \"date\": \"2026-03-18\"}; p.write_text(json.dumps(data, indent=2)+'\\n', encoding='utf-8'); print(json.dumps(data, indent=2))"
+      ],
+      "depends_on": []
+    }
+  ]
+}

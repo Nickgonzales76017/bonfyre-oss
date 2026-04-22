@@ -1,0 +1,48 @@
+{
+  "recipe_id": "pgh-track-10min-16mb-10l-int5-mlp-bigramhash-10240",
+  "code": "pgh-track-10min-16mb-10l-int5-mlp-bigramhash-10240",
+  "name": "10L Int5-MLP + BigramHash(10240)",
+  "version": "1.0.0",
+  "category": "parameter-golf-hand",
+  "description": "10L Int5-MLP + BigramHash(10240) (score=1.1428, author=thwu1, date=2026-03-20). 10 layers, mixed int5/int6 quantization, BigramHash(10240), SWA(0.4), WD=0.04",
+  "tags": [
+    "parameter-golf",
+    "leaderboard",
+    "tiny-model",
+    "track_10min_16mb"
+  ],
+  "inputs": [
+    {
+      "name": "run_name",
+      "type": "string",
+      "description": "Leaderboard run name"
+    }
+  ],
+  "outputs": [
+    {
+      "name": "run_card",
+      "path": "{out}/card.json",
+      "type": "application/json"
+    }
+  ],
+  "metadata": {
+    "source": "parameter-golf-hand",
+    "track": "track_10min_16mb",
+    "rank": 16,
+    "score": 1.1428,
+    "author": "thwu1",
+    "summary": "10 layers, mixed int5/int6 quantization, BigramHash(10240), SWA(0.4), WD=0.04",
+    "date": "2026-03-20"
+  },
+  "stages": [
+    {
+      "id": "emit_card",
+      "bin": "python3",
+      "args": [
+        "-c",
+        "import json, pathlib; p=pathlib.Path('{out}/card.json'); p.parent.mkdir(parents=True, exist_ok=True); data={\"rank\": 16, \"run\": \"10L Int5-MLP + BigramHash(10240)\", \"score\": 1.1428, \"author\": \"thwu1\", \"summary\": \"10 layers, mixed int5/int6 quantization, BigramHash(10240), SWA(0.4), WD=0.04\", \"date\": \"2026-03-20\"}; p.write_text(json.dumps(data, indent=2)+'\\n', encoding='utf-8'); print(json.dumps(data, indent=2))"
+      ],
+      "depends_on": []
+    }
+  ]
+}

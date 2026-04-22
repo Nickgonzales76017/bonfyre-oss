@@ -1,0 +1,266 @@
+{
+  "source": "openai/parameter-golf leaderboard (hand curated)",
+  "updated": "2026-04-22",
+  "tracks": {
+    "track_10min_16mb": [
+      {
+        "rank": 1,
+        "run": "SP8192 + 3-Layer Recurrence + Parallel Residuals + Legal TTT",
+        "score": 1.0810,
+        "author": "bigbag",
+        "summary": "On PR #1493: 3-layer recurrence, parallel residuals, QK-Gain 5.25, and legal score-first TTT on the PR #1394 stack",
+        "date": "2026-04-09"
+      },
+      {
+        "rank": 2,
+        "run": "SP8192 + Parallel Residuals + Score-First TTT",
+        "score": 1.0822,
+        "author": "aryanbhosale",
+        "summary": "On PR #1477: parallel residuals on the PR #1413 SP8192 + legal score-first TTT stack",
+        "date": "2026-04-08"
+      },
+      {
+        "rank": 3,
+        "run": "SP8192 + QK-Gain 5 + Legal Score-First TTT",
+        "score": 1.0828,
+        "author": "dexhunter",
+        "summary": "On PR #1413: QK-Gain 5.0 + legal score-first TTT on the PR #1394 SP8192 stack",
+        "date": "2026-04-06"
+      },
+      {
+        "rank": 4,
+        "run": "SP8192 + Parallel Residuals + Hessian-Aware SDClip",
+        "score": 1.0835,
+        "author": "Robby Sneiderman",
+        "summary": "On PR #1412: parallel residuals, Hessian-aware SDClip, and progressive recurrence on the PR #1394 stack",
+        "date": "2026-04-06"
+      },
+      {
+        "rank": 5,
+        "run": "SP8192 + GPTQ Embeddings + Depth Recurrence + SDClip",
+        "score": 1.0856,
+        "author": "Kevin Clark",
+        "summary": "On PR #1394: SP8192, GPTQ embeddings, looped layers 4-5, MuonEq-R, and std-based GPTQ clipping",
+        "date": "2026-04-05"
+      },
+      {
+        "rank": 6,
+        "run": "SP4096 + Depth Recurrence + Parallel Residuals + MuonEq-R",
+        "score": 1.0897,
+        "author": "aryanbhosale",
+        "summary": "On PR #1334: SP4096 + depth recurrence + parallel residuals + MuonEq-R + QK-Gain 5.0",
+        "date": "2026-04-04"
+      },
+      {
+        "rank": 7,
+        "run": "MuonEq-R + Depth Recurrence + WD=0.090 + All-Int6 GPTQ",
+        "score": 1.0912,
+        "author": "dexhunter",
+        "summary": "On PR #1285: MuonEq-R + layers 4-5 recurrence + higher weight decay + all-int6 GPTQ",
+        "date": "2026-04-03"
+      },
+      {
+        "rank": 8,
+        "run": "4096-Vocab + Larger Model + High WD + Simplifications",
+        "score": 1.0979,
+        "author": "Kevin Clark",
+        "summary": "On PR #1218: SP4096 + 4x MLP + high weight decay, with TTT, hash embeddings, SmearGate, and value residuals removed",
+        "date": "2026-04-01"
+      },
+      {
+        "rank": 9,
+        "run": "Parallel Residuals + Mini Depth Recurrence",
+        "score": 1.1063,
+        "author": "Marko Sisovic",
+        "summary": "On PR #1204: mini recurrence on layers 4-5 + parallel attention/MLP residual lanes + AR self-generated GPTQ calibration",
+        "date": "2026-03-31"
+      },
+      {
+        "rank": 10,
+        "run": "11L AR Self-Gen GPTQ + XSA",
+        "score": 1.1147,
+        "author": "abaybektursun",
+        "summary": "On PR #1019: Self-Generated GPTQ Calibration Data + all-layer XSA on the PR #549 stack",
+        "date": "2026-03-25"
+      },
+      {
+        "rank": 11,
+        "run": "LeakyReLU^2 + Legal Score-First TTT + Parallel Muon",
+        "score": 1.1194,
+        "author": "abaybektursun",
+        "summary": "On PR #549: LeakyReLU(0.5)^2 + TTT + Parallel Muon on the PR #414 stack",
+        "date": "2026-03-23"
+      },
+      {
+        "rank": 12,
+        "run": "11L EMA + GPTQ-lite + warmdown3500",
+        "score": 1.1228,
+        "author": "signalrush",
+        "summary": "On PR #374: GPTQ-lite clip search + EMA, plus warmdown3500 and QAT@0.15",
+        "date": "2026-03-22"
+      },
+      {
+        "rank": 13,
+        "run": "11L Partial RoPE + LN Scale + EMA + XSA4",
+        "score": 1.1248,
+        "author": "jfprincz",
+        "summary": "On PR #287: Partial RoPE (16/64) + layerwise LN scale",
+        "date": "2026-03-21"
+      },
+      {
+        "rank": 14,
+        "run": "11L XSA4 + EMA + Int6 MLP3x",
+        "score": 1.1271,
+        "author": "jfprincz",
+        "summary": "On PR #198: XSA on the last 4 layers + EMA replacing SWA",
+        "date": "2026-03-20"
+      },
+      {
+        "rank": 15,
+        "run": "11L Efficient Partial XSA",
+        "score": 1.1307,
+        "author": "unnir",
+        "summary": "On PR #198: Efficient Partial XSA on the deepest 3 layers",
+        "date": "2026-03-20"
+      },
+      {
+        "rank": 16,
+        "run": "10L Int5-MLP + BigramHash(10240)",
+        "score": 1.1428,
+        "author": "thwu1",
+        "summary": "10 layers, mixed int5/int6 quantization, BigramHash(10240), SWA(0.4), WD=0.04",
+        "date": "2026-03-20"
+      },
+      {
+        "rank": 17,
+        "run": "Int6 MLP3x + SmearGate + BigramHash",
+        "score": 1.1458,
+        "author": "Raahil Shah",
+        "summary": "3x MLP + SmearGate + BigramHash + OrthoInit + Muon WD + SWA",
+        "date": "2026-03-20"
+      },
+      {
+        "rank": 18,
+        "run": "11L MLP3x + Int6 QAT",
+        "score": 1.1502,
+        "author": "aruniyer",
+        "summary": "11 layers, 3x MLP, int6 QAT, zstd-22, WD=0.04, sliding eval",
+        "date": "2026-03-20"
+      },
+      {
+        "rank": 19,
+        "run": "SmearGate + OrthoInit + Muon WD",
+        "score": 1.1556,
+        "author": "aquariouseworkman",
+        "summary": "SmearGate + BigramHash + 3x MLP + int6 STE QAT + sliding eval",
+        "date": "2026-03-19"
+      },
+      {
+        "rank": 20,
+        "run": "Ternary Quantization",
+        "score": 1.1570,
+        "author": "Ciprian-Florin Ifrim",
+        "summary": "73.7M params quantized to 1 0 -1 + misc arch changes",
+        "date": "2026-03-24"
+      },
+      {
+        "rank": 21,
+        "run": "10L Int6 QAT + Zstd MLP2.6x",
+        "score": 1.1586,
+        "author": "yahya010",
+        "summary": "10 layers, int6 QAT + zstd-22, MLP 1344, Muon 0.99, sliding eval",
+        "date": "2026-03-19"
+      },
+      {
+        "rank": 22,
+        "run": "Mixed Quant + Sliding Window Eval",
+        "score": 1.1630,
+        "author": "aquariouseworkman",
+        "summary": "Int6 block weights + int8 embeddings + 3x MLP + sliding eval",
+        "date": "2026-03-19"
+      },
+      {
+        "rank": 23,
+        "run": "Muon WD + 10 layer",
+        "score": 1.1748,
+        "author": "notapplica",
+        "summary": "Includes prev. wins + Spectral embed init + resid mix",
+        "date": "2026-03-19"
+      },
+      {
+        "rank": 24,
+        "run": "Sliding Window Eval",
+        "score": 1.1925,
+        "author": "Matthew Li",
+        "summary": "Sliding window evaluation at stride=64, increasing context for eval",
+        "date": "2026-03-19"
+      },
+      {
+        "rank": 25,
+        "run": "Lora TTT",
+        "score": 1.1928,
+        "author": "samacqua",
+        "summary": "Test-time training with LORAs",
+        "date": "2026-03-19"
+      },
+      {
+        "rank": 26,
+        "run": "4k seq length",
+        "score": 1.2014,
+        "author": "Spokane Way",
+        "summary": "4k seq length + better hypers",
+        "date": "2026-03-19"
+      },
+      {
+        "rank": 27,
+        "run": "2048 seq length",
+        "score": 1.2060,
+        "author": "Spokane Way",
+        "summary": "2048 seq length (train + val)",
+        "date": "2026-03-18"
+      },
+      {
+        "rank": 28,
+        "run": "int6 mixed precision",
+        "score": 1.2147,
+        "author": "Nan Liu",
+        "summary": "10 layers, mixed int8/int6",
+        "date": "2026-03-18"
+      },
+      {
+        "rank": 29,
+        "run": "fp16 Embed",
+        "score": 1.2197,
+        "author": "Renier Velazco",
+        "summary": "FP16 Tied Embedding + LR/Warmdown Tuning",
+        "date": "2026-03-18"
+      },
+      {
+        "rank": 30,
+        "run": "Naive Baseline",
+        "score": 1.2244,
+        "author": "Baseline",
+        "summary": "9layer 512dim 1024vocab TiedEmbeddings 4 KV heads",
+        "date": "2026-03-18"
+      }
+    ],
+    "track_non_record_16mb": [
+      {
+        "rank": 1,
+        "run": "1 Bit Quantization",
+        "score": 1.1239,
+        "author": "Ciprian-Florin Ifrim",
+        "summary": "106M params quantized to 1 bit + misc arch changes + 2hr training",
+        "date": "2026-03-24"
+      },
+      {
+        "rank": 2,
+        "run": "4-Hour Baseline",
+        "score": 1.2074,
+        "author": "Will DePue",
+        "summary": "Testing unlimited compute, 4 hours on 8xH100",
+        "date": "2026-03-18"
+      }
+    ]
+  }
+}

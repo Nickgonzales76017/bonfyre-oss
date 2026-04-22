@@ -1,0 +1,48 @@
+{
+  "recipe_id": "pgh-track-10min-16mb-sp8192-gptq-embeddings-depth-recurrence-sdclip",
+  "code": "pgh-track-10min-16mb-sp8192-gptq-embeddings-depth-recurrence-sdclip",
+  "name": "SP8192 + GPTQ Embeddings + Depth Recurrence + SDClip",
+  "version": "1.0.0",
+  "category": "parameter-golf-hand",
+  "description": "SP8192 + GPTQ Embeddings + Depth Recurrence + SDClip (score=1.0856, author=Kevin Clark, date=2026-04-05). On PR #1394: SP8192, GPTQ embeddings, looped layers 4-5, MuonEq-R, and std-based GPTQ clipping",
+  "tags": [
+    "parameter-golf",
+    "leaderboard",
+    "tiny-model",
+    "track_10min_16mb"
+  ],
+  "inputs": [
+    {
+      "name": "run_name",
+      "type": "string",
+      "description": "Leaderboard run name"
+    }
+  ],
+  "outputs": [
+    {
+      "name": "run_card",
+      "path": "{out}/card.json",
+      "type": "application/json"
+    }
+  ],
+  "metadata": {
+    "source": "parameter-golf-hand",
+    "track": "track_10min_16mb",
+    "rank": 5,
+    "score": 1.0856,
+    "author": "Kevin Clark",
+    "summary": "On PR #1394: SP8192, GPTQ embeddings, looped layers 4-5, MuonEq-R, and std-based GPTQ clipping",
+    "date": "2026-04-05"
+  },
+  "stages": [
+    {
+      "id": "emit_card",
+      "bin": "python3",
+      "args": [
+        "-c",
+        "import json, pathlib; p=pathlib.Path('{out}/card.json'); p.parent.mkdir(parents=True, exist_ok=True); data={\"rank\": 5, \"run\": \"SP8192 + GPTQ Embeddings + Depth Recurrence + SDClip\", \"score\": 1.0856, \"author\": \"Kevin Clark\", \"summary\": \"On PR #1394: SP8192, GPTQ embeddings, looped layers 4-5, MuonEq-R, and std-based GPTQ clipping\", \"date\": \"2026-04-05\"}; p.write_text(json.dumps(data, indent=2)+'\\n', encoding='utf-8'); print(json.dumps(data, indent=2))"
+      ],
+      "depends_on": []
+    }
+  ]
+}

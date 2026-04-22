@@ -1,0 +1,48 @@
+{
+  "recipe_id": "pgh-track-10min-16mb-sp8192-parallel-residuals-hessian-aware-sdclip",
+  "code": "pgh-track-10min-16mb-sp8192-parallel-residuals-hessian-aware-sdclip",
+  "name": "SP8192 + Parallel Residuals + Hessian-Aware SDClip",
+  "version": "1.0.0",
+  "category": "parameter-golf-hand",
+  "description": "SP8192 + Parallel Residuals + Hessian-Aware SDClip (score=1.0835, author=Robby Sneiderman, date=2026-04-06). On PR #1412: parallel residuals, Hessian-aware SDClip, and progressive recurrence on the PR #1394 stack",
+  "tags": [
+    "parameter-golf",
+    "leaderboard",
+    "tiny-model",
+    "track_10min_16mb"
+  ],
+  "inputs": [
+    {
+      "name": "run_name",
+      "type": "string",
+      "description": "Leaderboard run name"
+    }
+  ],
+  "outputs": [
+    {
+      "name": "run_card",
+      "path": "{out}/card.json",
+      "type": "application/json"
+    }
+  ],
+  "metadata": {
+    "source": "parameter-golf-hand",
+    "track": "track_10min_16mb",
+    "rank": 4,
+    "score": 1.0835,
+    "author": "Robby Sneiderman",
+    "summary": "On PR #1412: parallel residuals, Hessian-aware SDClip, and progressive recurrence on the PR #1394 stack",
+    "date": "2026-04-06"
+  },
+  "stages": [
+    {
+      "id": "emit_card",
+      "bin": "python3",
+      "args": [
+        "-c",
+        "import json, pathlib; p=pathlib.Path('{out}/card.json'); p.parent.mkdir(parents=True, exist_ok=True); data={\"rank\": 4, \"run\": \"SP8192 + Parallel Residuals + Hessian-Aware SDClip\", \"score\": 1.0835, \"author\": \"Robby Sneiderman\", \"summary\": \"On PR #1412: parallel residuals, Hessian-aware SDClip, and progressive recurrence on the PR #1394 stack\", \"date\": \"2026-04-06\"}; p.write_text(json.dumps(data, indent=2)+'\\n', encoding='utf-8'); print(json.dumps(data, indent=2))"
+      ],
+      "depends_on": []
+    }
+  ]
+}

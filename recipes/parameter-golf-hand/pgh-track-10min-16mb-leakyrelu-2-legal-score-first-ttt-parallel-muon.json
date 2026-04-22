@@ -1,0 +1,48 @@
+{
+  "recipe_id": "pgh-track-10min-16mb-leakyrelu-2-legal-score-first-ttt-parallel-muon",
+  "code": "pgh-track-10min-16mb-leakyrelu-2-legal-score-first-ttt-parallel-muon",
+  "name": "LeakyReLU^2 + Legal Score-First TTT + Parallel Muon",
+  "version": "1.0.0",
+  "category": "parameter-golf-hand",
+  "description": "LeakyReLU^2 + Legal Score-First TTT + Parallel Muon (score=1.1194, author=abaybektursun, date=2026-03-23). On PR #549: LeakyReLU(0.5)^2 + TTT + Parallel Muon on the PR #414 stack",
+  "tags": [
+    "parameter-golf",
+    "leaderboard",
+    "tiny-model",
+    "track_10min_16mb"
+  ],
+  "inputs": [
+    {
+      "name": "run_name",
+      "type": "string",
+      "description": "Leaderboard run name"
+    }
+  ],
+  "outputs": [
+    {
+      "name": "run_card",
+      "path": "{out}/card.json",
+      "type": "application/json"
+    }
+  ],
+  "metadata": {
+    "source": "parameter-golf-hand",
+    "track": "track_10min_16mb",
+    "rank": 11,
+    "score": 1.1194,
+    "author": "abaybektursun",
+    "summary": "On PR #549: LeakyReLU(0.5)^2 + TTT + Parallel Muon on the PR #414 stack",
+    "date": "2026-03-23"
+  },
+  "stages": [
+    {
+      "id": "emit_card",
+      "bin": "python3",
+      "args": [
+        "-c",
+        "import json, pathlib; p=pathlib.Path('{out}/card.json'); p.parent.mkdir(parents=True, exist_ok=True); data={\"rank\": 11, \"run\": \"LeakyReLU^2 + Legal Score-First TTT + Parallel Muon\", \"score\": 1.1194, \"author\": \"abaybektursun\", \"summary\": \"On PR #549: LeakyReLU(0.5)^2 + TTT + Parallel Muon on the PR #414 stack\", \"date\": \"2026-03-23\"}; p.write_text(json.dumps(data, indent=2)+'\\n', encoding='utf-8'); print(json.dumps(data, indent=2))"
+      ],
+      "depends_on": []
+    }
+  ]
+}

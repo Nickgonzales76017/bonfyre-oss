@@ -1,0 +1,48 @@
+{
+  "recipe_id": "pgh-track-10min-16mb-4096-vocab-larger-model-high-wd-simplifications",
+  "code": "pgh-track-10min-16mb-4096-vocab-larger-model-high-wd-simplifications",
+  "name": "4096-Vocab + Larger Model + High WD + Simplifications",
+  "version": "1.0.0",
+  "category": "parameter-golf-hand",
+  "description": "4096-Vocab + Larger Model + High WD + Simplifications (score=1.0979, author=Kevin Clark, date=2026-04-01). On PR #1218: SP4096 + 4x MLP + high weight decay, with TTT, hash embeddings, SmearGate, and value residuals removed",
+  "tags": [
+    "parameter-golf",
+    "leaderboard",
+    "tiny-model",
+    "track_10min_16mb"
+  ],
+  "inputs": [
+    {
+      "name": "run_name",
+      "type": "string",
+      "description": "Leaderboard run name"
+    }
+  ],
+  "outputs": [
+    {
+      "name": "run_card",
+      "path": "{out}/card.json",
+      "type": "application/json"
+    }
+  ],
+  "metadata": {
+    "source": "parameter-golf-hand",
+    "track": "track_10min_16mb",
+    "rank": 8,
+    "score": 1.0979,
+    "author": "Kevin Clark",
+    "summary": "On PR #1218: SP4096 + 4x MLP + high weight decay, with TTT, hash embeddings, SmearGate, and value residuals removed",
+    "date": "2026-04-01"
+  },
+  "stages": [
+    {
+      "id": "emit_card",
+      "bin": "python3",
+      "args": [
+        "-c",
+        "import json, pathlib; p=pathlib.Path('{out}/card.json'); p.parent.mkdir(parents=True, exist_ok=True); data={\"rank\": 8, \"run\": \"4096-Vocab + Larger Model + High WD + Simplifications\", \"score\": 1.0979, \"author\": \"Kevin Clark\", \"summary\": \"On PR #1218: SP4096 + 4x MLP + high weight decay, with TTT, hash embeddings, SmearGate, and value residuals removed\", \"date\": \"2026-04-01\"}; p.write_text(json.dumps(data, indent=2)+'\\n', encoding='utf-8'); print(json.dumps(data, indent=2))"
+      ],
+      "depends_on": []
+    }
+  ]
+}

@@ -1,0 +1,48 @@
+{
+  "recipe_id": "pgh-track-10min-16mb-parallel-residuals-mini-depth-recurrence",
+  "code": "pgh-track-10min-16mb-parallel-residuals-mini-depth-recurrence",
+  "name": "Parallel Residuals + Mini Depth Recurrence",
+  "version": "1.0.0",
+  "category": "parameter-golf-hand",
+  "description": "Parallel Residuals + Mini Depth Recurrence (score=1.1063, author=Marko Sisovic, date=2026-03-31). On PR #1204: mini recurrence on layers 4-5 + parallel attention/MLP residual lanes + AR self-generated GPTQ calibration",
+  "tags": [
+    "parameter-golf",
+    "leaderboard",
+    "tiny-model",
+    "track_10min_16mb"
+  ],
+  "inputs": [
+    {
+      "name": "run_name",
+      "type": "string",
+      "description": "Leaderboard run name"
+    }
+  ],
+  "outputs": [
+    {
+      "name": "run_card",
+      "path": "{out}/card.json",
+      "type": "application/json"
+    }
+  ],
+  "metadata": {
+    "source": "parameter-golf-hand",
+    "track": "track_10min_16mb",
+    "rank": 9,
+    "score": 1.1063,
+    "author": "Marko Sisovic",
+    "summary": "On PR #1204: mini recurrence on layers 4-5 + parallel attention/MLP residual lanes + AR self-generated GPTQ calibration",
+    "date": "2026-03-31"
+  },
+  "stages": [
+    {
+      "id": "emit_card",
+      "bin": "python3",
+      "args": [
+        "-c",
+        "import json, pathlib; p=pathlib.Path('{out}/card.json'); p.parent.mkdir(parents=True, exist_ok=True); data={\"rank\": 9, \"run\": \"Parallel Residuals + Mini Depth Recurrence\", \"score\": 1.1063, \"author\": \"Marko Sisovic\", \"summary\": \"On PR #1204: mini recurrence on layers 4-5 + parallel attention/MLP residual lanes + AR self-generated GPTQ calibration\", \"date\": \"2026-03-31\"}; p.write_text(json.dumps(data, indent=2)+'\\n', encoding='utf-8'); print(json.dumps(data, indent=2))"
+      ],
+      "depends_on": []
+    }
+  ]
+}

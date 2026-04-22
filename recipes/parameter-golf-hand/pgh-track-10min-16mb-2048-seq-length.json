@@ -1,0 +1,48 @@
+{
+  "recipe_id": "pgh-track-10min-16mb-2048-seq-length",
+  "code": "pgh-track-10min-16mb-2048-seq-length",
+  "name": "2048 seq length",
+  "version": "1.0.0",
+  "category": "parameter-golf-hand",
+  "description": "2048 seq length (score=1.206, author=Spokane Way, date=2026-03-18). 2048 seq length (train + val)",
+  "tags": [
+    "parameter-golf",
+    "leaderboard",
+    "tiny-model",
+    "track_10min_16mb"
+  ],
+  "inputs": [
+    {
+      "name": "run_name",
+      "type": "string",
+      "description": "Leaderboard run name"
+    }
+  ],
+  "outputs": [
+    {
+      "name": "run_card",
+      "path": "{out}/card.json",
+      "type": "application/json"
+    }
+  ],
+  "metadata": {
+    "source": "parameter-golf-hand",
+    "track": "track_10min_16mb",
+    "rank": 27,
+    "score": 1.206,
+    "author": "Spokane Way",
+    "summary": "2048 seq length (train + val)",
+    "date": "2026-03-18"
+  },
+  "stages": [
+    {
+      "id": "emit_card",
+      "bin": "python3",
+      "args": [
+        "-c",
+        "import json, pathlib; p=pathlib.Path('{out}/card.json'); p.parent.mkdir(parents=True, exist_ok=True); data={\"rank\": 27, \"run\": \"2048 seq length\", \"score\": 1.206, \"author\": \"Spokane Way\", \"summary\": \"2048 seq length (train + val)\", \"date\": \"2026-03-18\"}; p.write_text(json.dumps(data, indent=2)+'\\n', encoding='utf-8'); print(json.dumps(data, indent=2))"
+      ],
+      "depends_on": []
+    }
+  ]
+}
