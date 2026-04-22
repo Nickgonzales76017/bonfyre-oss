@@ -41,6 +41,11 @@ typedef struct {
     int available;
 } RouteStats;
 
+typedef struct {
+    int json;
+    char query[256];
+} ListOptions;
+
 static const Route routes[] = {
     /* ── Pipeline ──────────────────────────────────────────────── */
     {"ingest",            "bonfyre-ingest",           "BonfyreIngest",          SEC_PIPELINE, "Universal asset intake"},
@@ -219,6 +224,52 @@ static int contains_ci(const char *haystack, const char *needle) {
     return 0;
 }
 
+static void json_escape(FILE *out, const char *s) {
+    fputc('"', out);
+    for (; *s; s++) {
+        unsigned char ch = (unsigned char)*s;
+        switch (ch) {
+            case '"': fputs("\\\"", out); break;
+            case '\\': fputs("\\\\", out); break;
+            case '\b': fputs("\\b", out); break;
+            case '\f': fputs("\\f", out); break;
+            case '\n': fputs("\\n", out); break;
+            case '\r': fputs("\\r", out); break;
+            case '\t': fputs("\\t", out); break;
+            default:
+                if (ch < 0x20) fprintf(out, "\\u%04x", ch);
+                else fputc((int)ch, out);
+        }
+    }
+    fputc('"', out);
+}
+
+static void append_query_token(char *dst, size_t size, const char *token) {
+    size_t len;
+    if (!token || !token[0] || size == 0) return;
+    len = strlen(dst);
+    if (len > 0 && len + 1 < size) {
+        dst[len++] = ' ';
+        dst[len] = '\0';
+    }
+    if (len + 1 < size)
+        snprintf(dst + len, size - len, "%s", token);
+}
+
+static ListOptions parse_list_options(int argc, char *argv[]) {
+    ListOptions opts;
+    memset(&opts, 0, sizeof(opts));
+
+    for (int i = 2; i < argc; i++) {
+        if (strcmp(argv[i], "--json") == 0) {
+            opts.json = 1;
+            continue;
+        }
+        append_query_token(opts.query, sizeof(opts.query), argv[i]);
+    }
+    return opts;
+}
+
 static int route_matches(const Route *r, const char *query) {
     return contains_ci(r->cmd, query)
         || contains_ci(r->desc, query)
@@ -238,6 +289,171 @@ static RouteStats route_stats(const char *section, const char *query) {
             stats.available++;
     }
     return stats;
+}
+
+static void cmd_list_json(const char *query) {
+    static const char *sections[] = {
+        SEC_PIPELINE,
+        SEC_AI,
+        SEC_RECIPES,
+        SEC_INFRA,
+        SEC_VALUE,
+        NULL
+    };
+    int total = 0;
+    int available = 0;
+    int first_section = 1;
+
+    for (const Route *r = routes; r->cmd; r++) {
+        char resolved[PATH_MAX];
+        if (!route_matches(r, query)) continue;
+        total++;
+        if (resolve_binary_path(r->binary, r->sibling_dir, resolved, sizeof(resolved)))
+            available++;
+    }
+
+    fputs("{\n  \"query\": ", stdout);
+    if (query && query[0]) json_escape(stdout, query);
+    else fputs("null", stdout);
+    fprintf(stdout,
+            ",\n  \"summary\": {\"total\": %d, \"ready\": %d, \"missing\": %d},\n  \"sections\": [\n",
+            total, available, total - available);
+
+    for (int i = 0; sections[i]; i++) {
+        RouteStats stats = route_stats(sections[i], query);
+        int first_command = 1;
+        if (stats.total == 0) continue;
+
+        if (!first_section) fputs(",\n", stdout);
+        first_section = 0;
+
+        fputs("    {\n      \"name\": ", stdout);
+        json_escape(stdout, sections[i]);
+        fprintf(stdout,
+                ",\n      \"total\": %d,\n      \"ready\": %d,\n      \"missing\": %d,\n      \"commands\": [\n",
+                stats.total, stats.available, stats.total - stats.available);
+
+        for (const Route *r = routes; r->cmd; r++) {
+            char resolved[PATH_MAX];
+            int ready;
+            if (strcmp(r->section, sections[i]) != 0) continue;
+            if (!route_matches(r, query)) continue;
+
+            ready = resolve_binary_path(r->binary, r->sibling_dir, resolved, sizeof(resolved));
+            if (!first_command) fputs(",\n", stdout);
+            first_command = 0;
+
+            fputs("        {\"command\": ", stdout);
+            json_escape(stdout, r->cmd);
+            fputs(", \"binary\": ", stdout);
+            json_escape(stdout, r->binary);
+            fputs(", \"module\": ", stdout);
+            json_escape(stdout, r->sibling_dir);
+            fputs(", \"description\": ", stdout);
+            json_escape(stdout, r->desc);
+            fprintf(stdout, ", \"ready\": %s, \"path\": ", ready ? "true" : "false");
+            if (ready) json_escape(stdout, resolved);
+            else fputs("null", stdout);
+            fputs("}", stdout);
+        }
+
+        fputs("\n      ]\n    }", stdout);
+    }
+
+    fputs("\n  ]\n}\n", stdout);
+}
+
+static void emit_completion_zsh(void) {
+    puts("#compdef bonfyre");
+    puts("local -a commands");
+    puts("commands=(");
+    puts("  'help:Show CLI help'");
+    puts("  'version:Print version'");
+    puts("  'list:Show command surface'");
+    puts("  'completion:Emit shell completion script'");
+    for (const Route *r = routes; r->cmd; r++)
+        printf("  '%s:%s'\n", r->cmd, r->desc);
+    puts(")");
+    puts("_arguments \\");
+    puts("  '1:command:->command' \\");
+    puts("  '*::arg:->args'");
+    puts("case $state in");
+    puts("  command)");
+    puts("    _describe -t commands 'bonfyre commands' commands");
+    puts("    ;;");
+    puts("  args)");
+    puts("    case $words[2] in");
+    puts("      completion)");
+    puts("        _values 'shell' bash zsh fish");
+    puts("        ;;");
+    puts("      list)");
+    puts("        _values 'list options' '--json[Emit machine-readable JSON]' \\");
+    puts("          'filter:topic filter:_message filter'");
+    puts("        ;;");
+    puts("    esac");
+    puts("    ;;");
+    puts("esac");
+}
+
+static void emit_completion_bash(void) {
+    puts("_bonfyre_completion() {");
+    puts("  local cur prev commands");
+    puts("  COMPREPLY=()");
+    puts("  cur=\"${COMP_WORDS[COMP_CWORD]}\"");
+    puts("  prev=\"${COMP_WORDS[COMP_CWORD-1]}\"");
+    puts("  commands=\"help version list completion");
+    for (const Route *r = routes; r->cmd; r++)
+        printf(" %s", r->cmd);
+    puts("\"");
+    puts("  if [[ ${COMP_CWORD} -eq 1 ]]; then");
+    puts("    COMPREPLY=( $(compgen -W \"${commands}\" -- \"${cur}\") )");
+    puts("    return 0");
+    puts("  fi");
+    puts("  case \"${prev}\" in");
+    puts("    completion)");
+    puts("      COMPREPLY=( $(compgen -W 'bash zsh fish' -- \"${cur}\") )");
+    puts("      return 0");
+    puts("      ;;");
+    puts("    list)");
+    puts("      COMPREPLY=( $(compgen -W '--json' -- \"${cur}\") )");
+    puts("      return 0");
+    puts("      ;;");
+    puts("  esac");
+    puts("}");
+    puts("complete -F _bonfyre_completion bonfyre");
+}
+
+static void emit_completion_fish(void) {
+    puts("complete -c bonfyre -f");
+    puts("complete -c bonfyre -n '__fish_use_subcommand' -a help -d 'Show CLI help'");
+    puts("complete -c bonfyre -n '__fish_use_subcommand' -a version -d 'Print version'");
+    puts("complete -c bonfyre -n '__fish_use_subcommand' -a list -d 'Show command surface'");
+    puts("complete -c bonfyre -n '__fish_use_subcommand' -a completion -d 'Emit shell completion script'");
+    for (const Route *r = routes; r->cmd; r++)
+        printf("complete -c bonfyre -n '__fish_use_subcommand' -a %s -d ", r->cmd), json_escape(stdout, r->desc), putchar('\n');
+    puts("complete -c bonfyre -n '__fish_seen_subcommand_from completion' -a bash -d 'Bash completion'");
+    puts("complete -c bonfyre -n '__fish_seen_subcommand_from completion' -a zsh -d 'Zsh completion'");
+    puts("complete -c bonfyre -n '__fish_seen_subcommand_from completion' -a fish -d 'Fish completion'");
+    puts("complete -c bonfyre -n '__fish_seen_subcommand_from list' -l json -d 'Emit machine-readable JSON'");
+}
+
+static int cmd_completion(const char *shell) {
+    if (!shell || !shell[0] || strcmp(shell, "zsh") == 0) {
+        emit_completion_zsh();
+        return 0;
+    }
+    if (strcmp(shell, "bash") == 0) {
+        emit_completion_bash();
+        return 0;
+    }
+    if (strcmp(shell, "fish") == 0) {
+        emit_completion_fish();
+        return 0;
+    }
+
+    fprintf(stderr, "bonfyre: unsupported shell '%s'\n", shell);
+    fprintf(stderr, "Supported shells: bash, zsh, fish\n");
+    return 1;
 }
 
 static int try_exec(const char *binary, const char *sibling_dir, char **argv) {
@@ -344,12 +560,15 @@ static void cmd_help(void) {
         "bonfyre -- adaptive artifact pipeline toolkit\n\n"
         "Usage: bonfyre <command> [args...]\n\n"
         "Built-ins:\n"
-        "  list [term]   Show command surface, live readiness, and optional filtered search\n"
+        "  list [term] [--json]  Show command surface, live readiness, filtered search, or JSON\n"
+        "  completion [shell]    Emit shell completion for zsh, bash, or fish\n"
         "  version       Print version\n"
         "  help          Show this help\n\n"
         "Start here:\n"
         "  bonfyre doctor                 verify the installed surface\n"
         "  bonfyre list model            filter command surface by topic\n"
+        "  bonfyre list --json           inspect the command surface programmatically\n"
+        "  bonfyre completion zsh        generate shell completion\n"
         "  bonfyre model list            inspect local model registry\n"
         "  bonfyre recipe list           inspect recipe registry\n\n"
         "Key workflows:\n"
@@ -366,6 +585,7 @@ static void cmd_help(void) {
 
 /* ── main ─────────────────────────────────────────────────────────── */
 int main(int argc, char *argv[]) {
+    ListOptions list_opts;
     if (argc < 2) { cmd_help(); return 0; }
     const char *cmd = argv[1];
 
@@ -378,7 +598,13 @@ int main(int argc, char *argv[]) {
         return 0;
     }
     if (strcmp(cmd, "list") == 0) {
-        cmd_list(argc >= 3 ? argv[2] : NULL);
+        list_opts = parse_list_options(argc, argv);
+        if (list_opts.json) cmd_list_json(list_opts.query[0] ? list_opts.query : NULL);
+        else cmd_list(list_opts.query[0] ? list_opts.query : NULL);
+        return 0;
+    }
+    if (strcmp(cmd, "completion") == 0) {
+        return cmd_completion(argc >= 3 ? argv[2] : "zsh");
         return 0;
     }
 
