@@ -11,6 +11,9 @@
 #include <sys/wait.h>
 #include <time.h>
 #include <unistd.h>
+#include <signal.h>
+#include <sys/socket.h>
+#include <sys/un.h>
 #include <bonfyre.h>
 #include <whisper.h>
 #include <ggml-backend.h>
@@ -541,8 +544,14 @@ static int write_chunk_progress(const char *path, int total_chunks, int complete
 static void iso_timestamp(char *buf, size_t sz) { bf_iso_timestamp(buf, sz); }
 
 /* Resolve a model name (e.g. "base") to a ggml model file path.
- * Prefers quantized (Q5_0) models over float16 — 62% smaller, 39% faster. */
+ * Priority: BONFYRE_WHISPER_MODEL env > FPQ v12 GGUF > Q5_0 > fp16 */
 static int resolve_whisper_model(const char *model_name, char *out, size_t out_size) {
+    /* Explicit env override */
+    const char *env_model = getenv("BONFYRE_WHISPER_MODEL");
+    if (env_model && access(env_model, F_OK) == 0) {
+        snprintf(out, out_size, "%s", env_model);
+        return 0;
+    }
     /* If already a path, use directly */
     if (strchr(model_name, '/') || strchr(model_name, '.')) {
         if (access(model_name, F_OK) == 0) {
@@ -551,16 +560,20 @@ static int resolve_whisper_model(const char *model_name, char *out, size_t out_s
         }
         return -1;
     }
-    /* Try common locations — prefer quantized, then .en, then multilingual */
+    /* Try common locations — FPQ v12 first (~4x smaller, same quality), then Q5_0, then fp16 */
     const char *home = getenv("HOME");
     const char *variants[] = {
-        "%s/.local/share/whisper/ggml-%s.en-q5_0.bin",  /* quantized English-only */
-        "%s/.local/share/whisper/ggml-%s-q5_0.bin",      /* quantized multilingual */
-        "%s/.local/share/whisper/ggml-%s.en.bin",         /* float16 English-only */
-        "%s/.local/share/whisper/ggml-%s.bin",            /* float16 multilingual */
+        "%s/.local/share/whisper/ggml-%s.en-fpq-v12.gguf",  /* FPQ v12 English-only */
+        "%s/.local/share/whisper/ggml-%s-fpq-v12.gguf",     /* FPQ v12 multilingual */
+        "%s/.local/share/whisper/ggml-%s.en-q5_0.bin",      /* quantized English-only */
+        "%s/.local/share/whisper/ggml-%s-q5_0.bin",         /* quantized multilingual */
+        "%s/.local/share/whisper/ggml-%s.en.bin",            /* float16 English-only */
+        "%s/.local/share/whisper/ggml-%s.bin",               /* float16 multilingual */
         NULL
     };
     const char *tmp_variants[] = {
+        "/tmp/ggml-%s.en-fpq-v12.gguf",
+        "/tmp/ggml-%s-fpq-v12.gguf",
         "/tmp/ggml-%s.en-q5_0.bin",
         "/tmp/ggml-%s-q5_0.bin",
         "/tmp/ggml-%s.en.bin",
@@ -1295,82 +1308,68 @@ static int detect_cpu_cores(void) {
     return (n > 0) ? (int)n : 4;
 }
 
-int main(int argc, char **argv) {
-    if (argc < 3) {
-        print_usage();
-        return 1;
-    }
 
-    const char *input_audio = argv[1];
-    const char *output_dir = argv[2];
-    const char *model = "base";
-    const char *language = NULL;
-    int split_speech = 0;
-    const char *noise_threshold = "-35dB";
-    const char *min_silence = "0.35";
-    const char *min_speech = "0.75";
-    const char *padding = "0.15";
-    int silero_vad = 0;
-    int greedy = 1;
-    int beam_size = 1;
-    int best_of = 1;
-    int no_vocab = 0;
-    int n_processors = 1;            /* Round 4: multi-processor decode */
-    float no_speech_thold = 0.6f;    /* Round 7: configurable filtering */
-    const char *vocab_db_override = NULL;
-    char resolved_media_prep[PATH_MAX];
-    char resolved_silero_script[PATH_MAX];
-    const char *media_prep_binary = default_media_prep_binary(argv[0], resolved_media_prep, sizeof(resolved_media_prep));
-    const char *silero_script = default_silero_vad_script(argv[0], resolved_silero_script, sizeof(resolved_silero_script));
-    int threads = detect_cpu_cores();
+/* ================================================================
+ * TranscribeOpts — all configurable parameters for one transcription job.
+ * Used by main() and cmd_serve() to call transcribe_one(). */
+typedef struct {
+    const char *model;
+    const char *language;
+    const char *media_prep_binary;
+    const char *silero_script;
+    int         split_speech;
+    int         silero_vad;
+    const char *noise_threshold;
+    const char *min_silence;
+    const char *min_speech;
+    const char *padding;
+    int         greedy;
+    int         beam_size;
+    int         best_of;
+    int         no_vocab;
+    int         n_processors;
+    float       no_speech_thold;
+    const char *vocab_db_override;
+    int         threads;
+} TranscribeOpts;
 
-    for (int i = 3; i < argc; i++) {
-        if (strcmp(argv[i], "--model") == 0 && i + 1 < argc) {
-            model = argv[++i];
-        } else if (strcmp(argv[i], "--language") == 0 && i + 1 < argc) {
-            language = argv[++i];
-        } else if (strcmp(argv[i], "--media-prep-binary") == 0 && i + 1 < argc) {
-            media_prep_binary = argv[++i];
-        } else if (strcmp(argv[i], "--silero-vad") == 0) {
-            silero_vad = 1;
-        } else if (strcmp(argv[i], "--silero-script") == 0 && i + 1 < argc) {
-            silero_script = argv[++i];
-        } else if (strcmp(argv[i], "--split-speech") == 0) {
-            split_speech = 1;
-        } else if (strcmp(argv[i], "--noise-threshold") == 0 && i + 1 < argc) {
-            noise_threshold = argv[++i];
-        } else if (strcmp(argv[i], "--min-silence") == 0 && i + 1 < argc) {
-            min_silence = argv[++i];
-        } else if (strcmp(argv[i], "--min-speech") == 0 && i + 1 < argc) {
-            min_speech = argv[++i];
-        } else if (strcmp(argv[i], "--padding") == 0 && i + 1 < argc) {
-            padding = argv[++i];
-        } else if (strcmp(argv[i], "--greedy") == 0) {
-            greedy = 1; beam_size = 1; best_of = 1;
-        } else if (strcmp(argv[i], "--beam-size") == 0 && i + 1 < argc) {
-            beam_size = atoi(argv[++i]); greedy = (beam_size <= 1);
-        } else if (strcmp(argv[i], "--best-of") == 0 && i + 1 < argc) {
-            best_of = atoi(argv[++i]);
-        } else if (strcmp(argv[i], "--vocab-db") == 0 && i + 1 < argc) {
-            vocab_db_override = argv[++i];
-        } else if (strcmp(argv[i], "--no-vocab") == 0) {
-            no_vocab = 1;
-        } else if (strcmp(argv[i], "--threads") == 0 && i + 1 < argc) {
-            threads = atoi(argv[++i]);
-        } else if (strcmp(argv[i], "--processors") == 0 && i + 1 < argc) {
-            n_processors = atoi(argv[++i]);
-        } else if (strcmp(argv[i], "--no-speech-thold") == 0 && i + 1 < argc) {
-            no_speech_thold = (float)atof(argv[++i]);
-        } else {
-            fprintf(stderr, "Unknown option: %s\n", argv[i]);
-            return 1;
-        }
-    }
+/* ================================================================
+ * transcribe_one — run a full transcription job with an already-loaded wctx.
+ *
+ * Caller owns the whisper context lifetime (no whisper_free inside).
+ * This enables serve mode to load the model once and reuse it per job.
+ *
+ * model_path   — path that was used to load wctx (for meta.json reporting)
+ * model_load_ms — load time in ms (0.0 when called from serve mode)
+ */
+static int transcribe_one(struct whisper_context *wctx,
+                          const char *input_audio,
+                          const char *output_dir,
+                          const char *model_path,
+                          double model_load_ms,
+                          const TranscribeOpts *opts)
+{
+    /* Unpack opts into named locals so the rest of the body is unchanged */
+    const char *model             = opts->model;
+    const char *language          = opts->language;
+    const char *media_prep_binary = opts->media_prep_binary;
+    const char *silero_script     = opts->silero_script;
+    int         split_speech      = opts->split_speech;
+    int         silero_vad        = opts->silero_vad;
+    const char *noise_threshold   = opts->noise_threshold;
+    const char *min_silence       = opts->min_silence;
+    const char *min_speech        = opts->min_speech;
+    const char *padding           = opts->padding;
+    int         greedy            = opts->greedy;
+    int         beam_size         = opts->beam_size;
+    int         best_of           = opts->best_of;
+    int         no_vocab          = opts->no_vocab;
+    int         n_processors      = opts->n_processors;
+    float       no_speech_thold   = opts->no_speech_thold;
+    const char *vocab_db_override = opts->vocab_db_override;
+    int         threads           = opts->threads;
 
-    if (ensure_dir(output_dir) != 0) {
-        fprintf(stderr, "Failed to create output dir: %s\n", output_dir);
-        return 1;
-    }
+    (void)model;  /* used in meta.json via opts->model */
 
     double t_start = wall_clock_ms();
 
@@ -1440,58 +1439,6 @@ int main(int argc, char **argv) {
         vocab_store_load(&vocab_store, vocab_path);
         vocab_prompt = vocab_build_prompt(&vocab_store);
     }
-
-    /* ================================================================
-     * libwhisper transcription — model loads ONCE, zero fork+exec.
-     *
-     * Round 2 panel: This is the architectural change that separates
-     * a toy CLI wrapper from a world-class transcription engine.
-     *
-     * Before: fork+exec whisper-cli per chunk. 800ms model load per chunk.
-     *         20 chunks = 16s wasted. Results via file I/O.
-     * After:  whisper_init_from_file() once. whisper_full() per chunk.
-     *         Direct memory access to segments, timestamps, confidence.
-     * ================================================================ */
-
-    /* Suppress noisy ggml/Metal init logging */
-    whisper_log_set(whisper_log_suppress, NULL);
-
-    char model_path[PATH_MAX];
-    if (resolve_whisper_model(model, model_path, sizeof(model_path)) != 0) {
-        fprintf(stderr, "Cannot find whisper model for '%s'\n", model);
-        return 1;
-    }
-
-    double t_model_start = wall_clock_ms();
-
-    /* ggml 0.9.11+ uses dynamic backend plugins (Metal, CPU, BLAS).
-     * Must load them before any whisper context init. */
-    ggml_backend_load_all();
-
-    /* Round 3, item 1: DTW token-level timestamps.
-     * Dynamic Time Warping on cross-attention alignment heads gives
-     * sub-word timing precision — state-of-the-art forced alignment.
-     * Auto-select the correct attention head preset for this model.
-     *
-     * DTW requires the full cross-attention matrix, so flash_attn
-     * is disabled when DTW is active (whisper silently disables DTW
-     * if flash_attn is on — we want DTW, not flash). */
-    struct whisper_context_params cparams = whisper_context_default_params();
-    cparams.use_gpu = true;
-    cparams.flash_attn = false;  /* incompatible with DTW */
-    cparams.dtw_token_timestamps = true;
-    cparams.dtw_aheads_preset = resolve_dtw_preset(model_path);
-
-    struct whisper_context *wctx = whisper_init_from_file_with_params(model_path, cparams);
-    if (!wctx) {
-        fprintf(stderr, "Failed to load whisper model: %s\n", model_path);
-        return 1;
-    }
-
-    double t_model_loaded = wall_clock_ms();
-    fprintf(stderr, "[whisper] model loaded: %s (%.0f ms, DTW=%s)\n",
-            model_path, t_model_loaded - t_model_start,
-            cparams.dtw_token_timestamps ? "on" : "off");
 
     /* Round 3, item 10: Token-aware prompt truncation.
      * Whisper's decoder context is n_max_text_ctx tokens (224).
@@ -1589,7 +1536,7 @@ int main(int argc, char **argv) {
 
         if (ensure_dir(chunk_dir) != 0) {
             fprintf(stderr, "Failed to create chunk dir: %s\n", chunk_dir);
-            whisper_free(wctx);
+            /* caller owns wctx */
             return 1;
         }
 
@@ -1604,7 +1551,7 @@ int main(int argc, char **argv) {
             };
             if (run_process(silero_argv) != 0) {
                 fprintf(stderr, "Silero VAD split failed.\n");
-                whisper_free(wctx);
+                /* caller owns wctx */
                 return 1;
             }
         } else {
@@ -1619,7 +1566,7 @@ int main(int argc, char **argv) {
             };
             if (run_process(split_argv) != 0) {
                 fprintf(stderr, "Speech split failed.\n");
-                whisper_free(wctx);
+                /* caller owns wctx */
                 return 1;
             }
         }
@@ -1678,7 +1625,7 @@ int main(int argc, char **argv) {
         if (!samples || n_samples == 0) {
             fprintf(stderr, "Failed to read audio: %s\n", normalized_path);
             free(samples);
-            whisper_free(wctx);
+            /* caller owns wctx */
             return 1;
         }
         total_audio_samples = n_samples;
@@ -1696,7 +1643,7 @@ int main(int argc, char **argv) {
         if (ret != 0) {
             fprintf(stderr, "Whisper transcription failed.\n");
             free(samples);
-            whisper_free(wctx);
+            /* caller owns wctx */
             return 1;
         }
 
@@ -1725,7 +1672,7 @@ int main(int argc, char **argv) {
         result.prompt_ms = wtimings->prompt_ms;
     }
 
-    whisper_free(wctx);
+    /* caller owns wctx */
 
     /* ── Write ALL output formats ──────────────────────────────── */
     char transcript_srt_path[PATH_MAX];
@@ -1777,7 +1724,6 @@ int main(int argc, char **argv) {
 
     /* ── Timing metrics ──────────────────────────────────────────── */
     double preprocess_ms = t_preprocess - t_start;
-    double model_load_ms = t_model_loaded - t_model_start;
     double transcribe_ms = t_transcribe_done - t_transcribe_start;
     double total_ms       = t_end - t_start;
 
@@ -1952,4 +1898,325 @@ int main(int argc, char **argv) {
     printf("Quality:    %.4f (conf=%.4f logprob=%.3f)\n", avg_quality, avg_conf, avg_logprob);
     printf("RTF:        %.4f (%.1fx realtime)\n", rtf, rtf > 0 ? 1.0 / rtf : 0);
     return 0;
+}
+
+/* ================================================================
+ * Unix-socket helpers for the persistent transcribe daemon.
+ * Protocol: client sends "<audio_path>\t<out_dir>\n"
+ *           server replies "ok\t<transcript_path>\n" or "error\t<msg>\n"
+ */
+
+#define TRANSCRIBE_SOCK_DEFAULT "/tmp/bonfyre-transcribe.sock"
+
+static const char *transcribe_socket_path(void) {
+    const char *e = getenv("BONFYRE_TRANSCRIBE_SOCKET");
+    return e ? e : TRANSCRIBE_SOCK_DEFAULT;
+}
+
+/* Try to hand a transcription job to the running daemon.
+ * Returns 0 on success, -1 if the daemon is not available. */
+static int try_transcribe_daemon(const char *audio_path, const char *out_dir) {
+    const char *sock_path = transcribe_socket_path();
+
+    int fd = socket(AF_UNIX, SOCK_STREAM, 0);
+    if (fd < 0) return -1;
+
+    struct sockaddr_un addr;
+    memset(&addr, 0, sizeof(addr));
+    addr.sun_family = AF_UNIX;
+    snprintf(addr.sun_path, sizeof(addr.sun_path), "%s", sock_path);
+
+    if (connect(fd, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
+        close(fd);
+        return -1;  /* daemon not running */
+    }
+
+    char msg[PATH_MAX * 2 + 4];
+    int  len = snprintf(msg, sizeof(msg), "%s\t%s\n", audio_path, out_dir);
+    if (send(fd, msg, len, 0) < len) { close(fd); return -1; }
+
+    char reply[PATH_MAX + 32];
+    ssize_t n = recv(fd, reply, sizeof(reply) - 1, 0);
+    close(fd);
+    if (n <= 0) return -1;
+    reply[n] = '\0';
+
+    return (strncmp(reply, "ok\t", 3) == 0) ? 0 : -1;
+}
+
+static volatile sig_atomic_t g_serve_running = 1;
+static void serve_handle_signal(int s) { (void)s; g_serve_running = 0; }
+
+/* ================================================================
+ * cmd_serve — persistent transcription daemon.
+ *
+ * Loads the Whisper model ONCE, then accepts jobs over a Unix socket.
+ * Whisper's context is NOT thread-safe for concurrent whisper_full calls,
+ * so jobs are processed serially (one at a time).
+ *
+ * Usage: bonfyre-transcribe serve [--model NAME]
+ */
+static int cmd_serve(int argc, char **argv) {
+    const char *model_name = "base";
+    for (int i = 2; i < argc; i++) {
+        if (strcmp(argv[i], "--model") == 0 && i + 1 < argc)
+            model_name = argv[++i];
+    }
+
+    whisper_log_set(whisper_log_suppress, NULL);
+
+    char model_path[PATH_MAX];
+    if (resolve_whisper_model(model_name, model_path, sizeof(model_path)) != 0) {
+        fprintf(stderr, "[serve] Cannot find whisper model for '%s'\n", model_name);
+        return 1;
+    }
+
+    double t0 = wall_clock_ms();
+    ggml_backend_load_all();
+
+    struct whisper_context_params cparams = whisper_context_default_params();
+    cparams.use_gpu              = true;
+    cparams.flash_attn           = false;
+    cparams.dtw_token_timestamps = true;
+    cparams.dtw_aheads_preset    = resolve_dtw_preset(model_path);
+
+    struct whisper_context *wctx = whisper_init_from_file_with_params(model_path, cparams);
+    if (!wctx) {
+        fprintf(stderr, "[serve] Failed to load model: %s\n", model_path);
+        return 1;
+    }
+    double load_ms = wall_clock_ms() - t0;
+    fprintf(stderr, "[serve] model loaded: %s (%.0f ms)\n", model_path, load_ms);
+
+    /* ── Socket setup ─────────────────────────────────────────────── */
+    const char *sock_path = transcribe_socket_path();
+    unlink(sock_path);  /* remove stale socket */
+
+    int srv_fd = socket(AF_UNIX, SOCK_STREAM, 0);
+    if (srv_fd < 0) { perror("socket"); whisper_free(wctx); return 1; }
+
+    struct sockaddr_un addr;
+    memset(&addr, 0, sizeof(addr));
+    addr.sun_family = AF_UNIX;
+    snprintf(addr.sun_path, sizeof(addr.sun_path), "%s", sock_path);
+
+    if (bind(srv_fd, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
+        perror("bind"); close(srv_fd); whisper_free(wctx); return 1;
+    }
+    if (listen(srv_fd, 8) < 0) {
+        perror("listen"); close(srv_fd); unlink(sock_path); whisper_free(wctx); return 1;
+    }
+
+    signal(SIGINT,  serve_handle_signal);
+    signal(SIGTERM, serve_handle_signal);
+    fprintf(stderr, "[serve] listening on %s (model=%s)\n", sock_path, model_name);
+
+    /* ── Resolve default binary paths once ─────────────────────────── */
+    char default_media_prep_path[PATH_MAX];
+    char default_silero_path[PATH_MAX];
+    const char *dflt_media_prep = default_media_prep_binary(argv[0], default_media_prep_path, sizeof(default_media_prep_path));
+    const char *dflt_silero     = default_silero_vad_script(argv[0], default_silero_path, sizeof(default_silero_path));
+
+    while (g_serve_running) {
+        /* Use select with 1-second timeout to check g_serve_running */
+        fd_set rfds;
+        FD_ZERO(&rfds);
+        FD_SET(srv_fd, &rfds);
+        struct timeval tv = { .tv_sec = 1, .tv_usec = 0 };
+        int r = select(srv_fd + 1, &rfds, NULL, NULL, &tv);
+        if (r < 0) { if (errno == EINTR) continue; perror("select"); break; }
+        if (r == 0) continue;
+
+        int cli_fd = accept(srv_fd, NULL, NULL);
+        if (cli_fd < 0) { if (errno == EINTR) continue; perror("accept"); break; }
+
+        /* Read: "<audio_path>\t<out_dir>\n" */
+        char buf[PATH_MAX * 2 + 4];
+        ssize_t n = recv(cli_fd, buf, sizeof(buf) - 1, 0);
+        if (n <= 0) { close(cli_fd); continue; }
+        buf[n] = '\0';
+        /* Strip trailing newline */
+        while (n > 0 && (buf[n-1] == '\n' || buf[n-1] == '\r')) buf[--n] = '\0';
+
+        char *tab = strchr(buf, '\t');
+        if (!tab) {
+            send(cli_fd, "error\tbad request\n", 18, 0);
+            close(cli_fd);
+            continue;
+        }
+        *tab = '\0';
+        const char *audio_path = buf;
+        const char *out_dir    = tab + 1;
+
+        if (ensure_dir(out_dir) != 0) {
+            const char *msg = "error\tbad output dir\n";
+            send(cli_fd, msg, strlen(msg), 0);
+            close(cli_fd);
+            continue;
+        }
+
+        TranscribeOpts opts;
+        memset(&opts, 0, sizeof(opts));
+        opts.model             = model_name;
+        opts.noise_threshold   = "-35dB";
+        opts.min_silence       = "0.35";
+        opts.min_speech        = "0.75";
+        opts.padding           = "0.15";
+        opts.greedy            = 1;
+        opts.beam_size         = 1;
+        opts.best_of           = 1;
+        opts.no_speech_thold   = 0.6f;
+        opts.n_processors      = 1;
+        opts.threads           = detect_cpu_cores();
+        opts.media_prep_binary = dflt_media_prep;
+        opts.silero_script     = dflt_silero;
+
+        int rc = transcribe_one(wctx, audio_path, out_dir, model_path, 0.0, &opts);
+
+        char reply[PATH_MAX + 32];
+        size_t rlen;
+        if (rc == 0) {
+            char transcript[PATH_MAX];
+            snprintf(transcript, sizeof(transcript), "%s/transcript.txt", out_dir);
+            rlen = (size_t)snprintf(reply, sizeof(reply), "ok\t%s\n", transcript);
+        } else {
+            rlen = (size_t)snprintf(reply, sizeof(reply),
+                                    "error\ttranscribe_one failed (%d)\n", rc);
+        }
+        send(cli_fd, reply, rlen, 0);
+        close(cli_fd);
+    }
+
+    close(srv_fd);
+    unlink(sock_path);
+    whisper_free(wctx);
+    fprintf(stderr, "[serve] shutdown\n");
+    return 0;
+}
+
+int main(int argc, char **argv) {
+    /* Dispatch 'serve' subcommand: bonfyre-transcribe serve [--model NAME] */
+    if (argc >= 2 && strcmp(argv[1], "serve") == 0)
+        return cmd_serve(argc, argv);
+
+    if (argc < 3) {
+        print_usage();
+        return 1;
+    }
+
+    const char *input_audio = argv[1];
+    const char *output_dir  = argv[2];
+
+    TranscribeOpts opts;
+    memset(&opts, 0, sizeof(opts));
+    opts.model           = "base";
+    opts.noise_threshold = "-35dB";
+    opts.min_silence     = "0.35";
+    opts.min_speech      = "0.75";
+    opts.padding         = "0.15";
+    opts.greedy          = 1;
+    opts.beam_size       = 1;
+    opts.best_of         = 1;
+    opts.no_speech_thold = 0.6f;
+    opts.n_processors    = 1;
+    opts.threads         = detect_cpu_cores();
+
+    char resolved_media_prep[PATH_MAX];
+    char resolved_silero_script[PATH_MAX];
+    opts.media_prep_binary = default_media_prep_binary(argv[0], resolved_media_prep, sizeof(resolved_media_prep));
+    opts.silero_script     = default_silero_vad_script(argv[0], resolved_silero_script, sizeof(resolved_silero_script));
+
+    for (int i = 3; i < argc; i++) {
+        if (strcmp(argv[i], "--model") == 0 && i + 1 < argc) {
+            opts.model = argv[++i];
+        } else if (strcmp(argv[i], "--language") == 0 && i + 1 < argc) {
+            opts.language = argv[++i];
+        } else if (strcmp(argv[i], "--media-prep-binary") == 0 && i + 1 < argc) {
+            opts.media_prep_binary = argv[++i];
+        } else if (strcmp(argv[i], "--silero-vad") == 0) {
+            opts.silero_vad = 1;
+        } else if (strcmp(argv[i], "--silero-script") == 0 && i + 1 < argc) {
+            opts.silero_script = argv[++i];
+        } else if (strcmp(argv[i], "--split-speech") == 0) {
+            opts.split_speech = 1;
+        } else if (strcmp(argv[i], "--noise-threshold") == 0 && i + 1 < argc) {
+            opts.noise_threshold = argv[++i];
+        } else if (strcmp(argv[i], "--min-silence") == 0 && i + 1 < argc) {
+            opts.min_silence = argv[++i];
+        } else if (strcmp(argv[i], "--min-speech") == 0 && i + 1 < argc) {
+            opts.min_speech = argv[++i];
+        } else if (strcmp(argv[i], "--padding") == 0 && i + 1 < argc) {
+            opts.padding = argv[++i];
+        } else if (strcmp(argv[i], "--greedy") == 0) {
+            opts.greedy = 1; opts.beam_size = 1; opts.best_of = 1;
+        } else if (strcmp(argv[i], "--beam-size") == 0 && i + 1 < argc) {
+            opts.beam_size = atoi(argv[++i]); opts.greedy = (opts.beam_size <= 1);
+        } else if (strcmp(argv[i], "--best-of") == 0 && i + 1 < argc) {
+            opts.best_of = atoi(argv[++i]);
+        } else if (strcmp(argv[i], "--vocab-db") == 0 && i + 1 < argc) {
+            opts.vocab_db_override = argv[++i];
+        } else if (strcmp(argv[i], "--no-vocab") == 0) {
+            opts.no_vocab = 1;
+        } else if (strcmp(argv[i], "--threads") == 0 && i + 1 < argc) {
+            opts.threads = atoi(argv[++i]);
+        } else if (strcmp(argv[i], "--processors") == 0 && i + 1 < argc) {
+            opts.n_processors = atoi(argv[++i]);
+        } else if (strcmp(argv[i], "--no-speech-thold") == 0 && i + 1 < argc) {
+            opts.no_speech_thold = (float)atof(argv[++i]);
+        } else if (strcmp(argv[i], "--rep-penalty") == 0 && i + 1 < argc) {
+            rep_penalty_theta = (float)atof(argv[++i]);
+        } else {
+            fprintf(stderr, "Unknown option: %s\n", argv[i]);
+            return 1;
+        }
+    }
+
+    if (ensure_dir(output_dir) != 0) {
+        fprintf(stderr, "Failed to create output dir: %s\n", output_dir);
+        return 1;
+    }
+
+    whisper_log_set(whisper_log_suppress, NULL);
+
+    char model_path[PATH_MAX];
+    if (resolve_whisper_model(opts.model, model_path, sizeof(model_path)) != 0) {
+        fprintf(stderr, "Cannot find whisper model for '%s'\n", opts.model);
+        return 1;
+    }
+
+    double t_model_start = wall_clock_ms();
+
+    /* ggml 0.9.11+ uses dynamic backend plugins (Metal, CPU, BLAS).
+     * Must load them before any whisper context init. */
+    ggml_backend_load_all();
+
+    /* Round 3, item 1: DTW token-level timestamps.
+     * Dynamic Time Warping on cross-attention alignment heads gives
+     * sub-word timing precision — state-of-the-art forced alignment.
+     * Auto-select the correct attention head preset for this model.
+     *
+     * DTW requires the full cross-attention matrix, so flash_attn
+     * is disabled when DTW is active (whisper silently disables DTW
+     * if flash_attn is on — we want DTW, not flash). */
+    struct whisper_context_params cparams = whisper_context_default_params();
+    cparams.use_gpu              = true;
+    cparams.flash_attn           = false;  /* incompatible with DTW */
+    cparams.dtw_token_timestamps = true;
+    cparams.dtw_aheads_preset    = resolve_dtw_preset(model_path);
+
+    struct whisper_context *wctx = whisper_init_from_file_with_params(model_path, cparams);
+    if (!wctx) {
+        fprintf(stderr, "Failed to load whisper model: %s\n", model_path);
+        return 1;
+    }
+
+    double t_model_loaded = wall_clock_ms();
+    fprintf(stderr, "[whisper] model loaded: %s (%.0f ms, DTW=%s)\n",
+            model_path, t_model_loaded - t_model_start,
+            cparams.dtw_token_timestamps ? "on" : "off");
+
+    int rc = transcribe_one(wctx, input_audio, output_dir, model_path,
+                            t_model_loaded - t_model_start, &opts);
+    whisper_free(wctx);
+    return rc;
 }

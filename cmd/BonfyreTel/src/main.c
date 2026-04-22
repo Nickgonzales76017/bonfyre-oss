@@ -492,9 +492,33 @@ static int esl_subscribe(EslConn *c) {
 
 /* ── Commands ──────────────────────────────────────────────────────── */
 
+/* Start bonfyre-transcribe serve in the background if the socket isn't already present.
+ * The daemon loads the Whisper model once; all pipeline calls reuse it instead of
+ * paying the ~800 ms model-load cost per recording. */
+static void start_transcribe_daemon_bg(const char *model) {
+    const char *sock_path = getenv("BONFYRE_TRANSCRIBE_SOCKET");
+    if (!sock_path) sock_path = "/tmp/bonfyre-transcribe.sock";
+
+    if (access(sock_path, F_OK) == 0) {
+        fprintf(stderr, "tel: transcribe daemon already running at %s\n", sock_path);
+        return;
+    }
+
+    fprintf(stderr, "tel: starting bonfyre-transcribe serve --model %s\n", model);
+    char *const argv[] = {
+        "bonfyre-transcribe", "serve", "--model", (char *)model, NULL
+    };
+    run_process_async(argv);
+    /* Daemon starts in background; the model loads asynchronously.
+     * First bonfyre-pipeline call will retry connect until the socket appears. */
+}
+
 static int cmd_listen(const char *host, int port, const char *password,
                       sqlite3 *db) {
     EslConn conn;
+
+    /* Start the transcribe daemon eagerly so the model is warm before first call */
+    start_transcribe_daemon_bg("base");
 
     fprintf(stderr, "tel: connecting to FreeSWITCH at %s:%d...\n", host, port);
 

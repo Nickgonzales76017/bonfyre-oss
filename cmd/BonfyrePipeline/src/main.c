@@ -21,6 +21,8 @@
 #include <time.h>
 #include <unistd.h>
 #include <spawn.h>
+#include <sys/socket.h>
+#include <sys/un.h>
 #include <sqlite3.h>
 #include <bonfyre.h>
 
@@ -934,6 +936,46 @@ static int resolve_bin(char *out, size_t sz, const char *name) {
     return 0;
 }
 
+static const char *transcribe_socket_path(void) {
+    const char *e = getenv("BONFYRE_TRANSCRIBE_SOCKET");
+    return e ? e : "/tmp/bonfyre-transcribe.sock";
+}
+
+/* Try to hand a transcription job to the running bonfyre-transcribe daemon.
+ * Returns 0 on success, -1 if the daemon is not available (caller falls back
+ * to spawning bonfyre-transcribe directly). */
+static int try_transcribe_daemon(const char *audio_path, const char *out_dir,
+                                  long long *elapsed_ns) {
+    long long t0 = monotonic_ns();
+    const char *sock_path = transcribe_socket_path();
+
+    int fd = socket(AF_UNIX, SOCK_STREAM, 0);
+    if (fd < 0) { if (elapsed_ns) *elapsed_ns = 0; return -1; }
+
+    struct sockaddr_un addr;
+    memset(&addr, 0, sizeof(addr));
+    addr.sun_family = AF_UNIX;
+    snprintf(addr.sun_path, sizeof(addr.sun_path), "%s", sock_path);
+
+    if (connect(fd, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
+        close(fd);
+        if (elapsed_ns) *elapsed_ns = 0;
+        return -1;  /* daemon not running */
+    }
+
+    char msg[PATH_MAX * 2 + 4];
+    int  len = snprintf(msg, sizeof(msg), "%s\t%s\n", audio_path, out_dir);
+    if (send(fd, msg, len, 0) < len) { close(fd); return -1; }
+
+    char reply[PATH_MAX + 32];
+    ssize_t n = recv(fd, reply, sizeof(reply) - 1, 0);
+    close(fd);
+    if (elapsed_ns) *elapsed_ns = monotonic_ns() - t0;
+    if (n <= 0) return -1;
+    reply[n] = '\0';
+    return (strncmp(reply, "ok\t", 3) == 0) ? 0 : -1;
+}
+
 static int run_bin(const char *bin, char *const argv[], long long *elapsed_ns) {
     long long t0 = monotonic_ns();
     pid_t pid = 0;
@@ -986,16 +1028,19 @@ static int pipeline_transcript(const char *audio_input, const char *outdir) {
 
     fprintf(stderr, "[pipeline:transcript] Audio → transcript → summary → score → pricing → pack\n");
 
-    /* 1. Transcribe */
+    /* 1. Transcribe — try persistent daemon first, fall back to spawn */
     fprintf(stderr, "[1/8] bonfyre-transcribe...\n");
-    resolve_bin(bin, sizeof(bin), "bonfyre-transcribe");
-    {
-        char *argv[] = {"bonfyre-transcribe", (char *)audio_input, transcribe_dir,
-                        "--media-prep-binary", media_prep_bin, NULL};
-        rc = run_bin(bin, argv, &stage_ns);
-        fprintf(stderr, "  transcribe: %.1f ms%s\n", stage_ns / 1e6, rc ? " (FAILED)" : "");
-        if (rc) return rc;
+    ensure_dir(transcribe_dir);
+    rc = try_transcribe_daemon(audio_input, transcribe_dir, &stage_ns);
+    if (rc != 0) {
+        /* Daemon not available — spawn bonfyre-transcribe directly */
+        resolve_bin(bin, sizeof(bin), "bonfyre-transcribe");
+        char *targs[] = {"bonfyre-transcribe", (char *)audio_input, transcribe_dir,
+                         "--media-prep-binary", media_prep_bin, NULL};
+        rc = run_bin(bin, targs, &stage_ns);
     }
+    fprintf(stderr, "  transcribe: %.1f ms%s\n", stage_ns / 1e6, rc ? " (FAILED)" : "");
+    if (rc) return rc;
 
     /* 2. Clean */
     fprintf(stderr, "[2/8] bonfyre-transcript-clean...\n");
