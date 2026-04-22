@@ -52,6 +52,11 @@ static const Route routes[] = {
     {"render",            "bonfyre-render",           "BonfyreRender",          SEC_PIPELINE, "Universal artifact renderer"},
     {"repurpose",         "bonfyre-repurpose",        "BonfyreRepurpose",       SEC_PIPELINE, "Repurpose transcripts to new formats"},
     {"clips",             "bonfyre-clips",            "BonfyreClips",           SEC_PIPELINE, "Extract short clips from media"},
+    {"frame-extract",     "bonfyre-frame-extract",    "BonfyreFrameExtract",    SEC_PIPELINE, "Extract frames from video"},
+    {"scene-detect",      "bonfyre-scene-detect",     "BonfyreSceneDetect",     SEC_PIPELINE, "Scene boundary detection"},
+    {"video-demux",       "bonfyre-video-demux",      "BonfyreVideoDemux",      SEC_PIPELINE, "Demux video streams to tracks"},
+    {"detect-objects",    "bonfyre-detect-objects",   "BonfyreDetectObjects",   SEC_PIPELINE, "Object detection (vision pipeline stage)"},
+    {"fragment",          "bonfyre-fragment",         "BonfyreFragment",        SEC_PIPELINE, "Fragment store — create / query / merge"},
     /* ── AI / Models ────────────────────────────────────────────── */
     {"model",             "bonfyre-model",            "BonfyreModel",           SEC_AI, "Model registry (list / pull / verify)"},
     {"embed",             "bonfyre-embed",            "BonfyreEmbed",           SEC_AI, "Generate text embeddings (ONNX)"},
@@ -84,7 +89,7 @@ static const Route routes[] = {
     {"space",             "bonfyre-space",            "BonfyreSpace",           SEC_RECIPES, "Semantic space management"},
     {"proxy",             "bonfyre-proxy",            "BonfyreProxy",           SEC_RECIPES, "OpenAI-compatible API proxy"},
     {"doctor",            "bonfyre-runtime",          "BonfyreRuntime",         SEC_RECIPES, "Runtime dependency diagnostics"},
-    {"capabilities",      "bonfyre-runtime",          "BonfyreRuntime",         SEC_RECIPES, "Machine-readable capability index"},
+    {"capabilities",      "bonfyre-capability",       "BonfyreCapability",      SEC_RECIPES, "Capability discovery and matching registry"},
     /* ── Infrastructure ─────────────────────────────────────────── */
     {"hash",              "bonfyre-hash",             "BonfyreHash",            SEC_INFRA, "Content-addressing (SHA-256)"},
     {"index",             "bonfyre-index",            "BonfyreIndex",           SEC_INFRA, "Artifact family indexer"},
