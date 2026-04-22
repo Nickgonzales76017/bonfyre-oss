@@ -79,7 +79,7 @@ static const Route routes[] = {
     /* ── Recipes & Runtime ──────────────────────────────────────── */
     {"recipe",            "bonfyre-recipe",           "BonfyreRecipe",          SEC_RECIPES, "Recipe registry (list / show / run / add)"},
     {"run",               "bonfyre-run",              "BonfyreRun",             SEC_RECIPES, "Execute a recipe by name or path"},
-    {"flow",              "bonfyre-runtime",          "BonfyreRuntime",         SEC_RECIPES, "Flow command via runtime gateway"},
+    {"flow",              "bonfyre-flow",             "BonfyreFlow",            SEC_RECIPES, "Coroutine-native pipeline flow graphs"},
     {"pipeline",          "bonfyre-pipeline",         "BonfyrePipeline",        SEC_RECIPES, "Streaming pipeline execution"},
     {"runtime",           "bonfyre-runtime",          "BonfyreRuntime",         SEC_RECIPES, "Replayable pipeline runtime"},
     {"orchestrate",       "bonfyre-orchestrate",      "BonfyreOrchestrate",     SEC_RECIPES, "Machine-only orchestration planner"},
