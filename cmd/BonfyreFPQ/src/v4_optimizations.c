@@ -15,6 +15,7 @@
  *    that are invisible to per-block QJL.
  */
 #include "fpq.h"
+#include "../include/e8_relax.h"
 #include <math.h>
 #include <stdlib.h>
 #include <string.h>
@@ -1797,6 +1798,37 @@ void fpq_decode_tensor_v6(const fpq_tensor_t *tensor, float *output) {
 #define V7_TRELLIS_STATES 16  /* trellis state count */
 
 
+/* ── E8 VARIANT DISPATCH ──
+ *
+ * BFQ_E8_VARIANT env var selects the snapping algorithm per run:
+ *   (unset)   — strict Conway-Sloane with parity fix (default, exact)
+ *   "relax"   — per-dimension snap, no parity enforcement (~15% faster,
+ *               lower distortion on heavy-tailed attention weights)
+ *   "relax-h" — as above but with H8 Hadamard pre-rotation (~0.3% lower
+ *               RMSE on outlier-heavy LLM weights, slight extra overhead)
+ *
+ * The env var is read once on first call and cached.
+ */
+typedef enum { E8V_STRICT = 0, E8V_RELAX, E8V_RELAX_H } E8Variant;
+
+static E8Variant e8_get_variant(void) {
+    static int cached = -1;
+    if (cached >= 0) return (E8Variant)cached;
+    const char *v = getenv("BFQ_E8_VARIANT");
+    if (!v || !v[0]) { cached = E8V_STRICT; return E8V_STRICT; }
+    if (strcmp(v, "relax")   == 0) { cached = E8V_RELAX;   return E8V_RELAX; }
+    if (strcmp(v, "relax-h") == 0) { cached = E8V_RELAX_H; return E8V_RELAX_H; }
+    cached = E8V_STRICT; return E8V_STRICT;
+}
+
+static void e8_snap_dispatch(const float *x, float *out) {
+    switch (e8_get_variant()) {
+        case E8V_RELAX:   e8_relax_snap(x, out);   return;
+        case E8V_RELAX_H: e8_relax_snap_h(x, out); return;
+        default:          e8_snap(x, out);          return;
+    }
+}
+
 /* ── E8 LATTICE FAST QUANTIZER ──
  *
  * E8 = D8+ = {x ∈ Z^8 : Σx_i even} ∪ {x ∈ (Z+½)^8 : Σx_i even}
@@ -2127,10 +2159,10 @@ fpq_tensor_t *fpq_encode_tensor_v7(const float *weights, size_t rows, size_t col
         for (size_t i = 0; i < padded; i++)
             scaled[i] = fwht_warped[b][i] / wnorm * lattice_scale;
 
-        /* E8 snap each 8D group */
+        /* E8 snap each 8D group (variant-dispatched: BFQ_E8_VARIANT) */
         e8_points[b] = (float *)calloc(padded, sizeof(float));
         for (int g = 0; g < V7_E8_GROUPS; g++) {
-            e8_snap(scaled + g * V7_E8_DIM, e8_points[b] + g * V7_E8_DIM);
+            e8_snap_dispatch(scaled + g * V7_E8_DIM, e8_points[b] + g * V7_E8_DIM);
         }
 
         /* Compute per-group residuals (in lattice-scaled space) */

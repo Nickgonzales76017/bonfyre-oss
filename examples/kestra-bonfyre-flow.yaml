@@ -1,0 +1,179 @@
+# kestra-bonfyre-flow.yaml — Bonfyre pipeline as a Kestra 2.0 workflow
+#
+# Prerequisites:
+#   • Kestra 2.0+ with io.kestra.plugin.scripts.shell.Commands available
+#   • Bonfyre binaries installed (bonfyre-run, bonfyre-pack, bonfyre-model,
+#     bonfyre-compete) in $PATH or at /usr/local/bin
+#   • BONFYRE_DB, BONFYRE_ARTIFACT_STORE set in Kestra's environment or
+#     passed as inputs at trigger time.
+#
+# Flow summary (A1 pipeline):
+#   1. pull-model     — ensure the local model is current (bonfyre-model pull)
+#   2. intake-check   — validate intake manifest (bonfyre-run A1 --check)
+#   3. transcribe     — run transcription stage (bonfyre-run A1)
+#   4. pack-output    — compress and archive deliverable (bonfyre-pack)
+#   5. score          — record HE-SLI score in control.db (bonfyre-compete score)
+#   6. notify         — print summary, non-blocking
+#
+# This file demonstrates how Bonfyre's binary-per-concern design maps cleanly
+# to Kestra task-per-step design: each binary becomes one Commands task with
+# its own retry / timeout policy.
+
+id: bonfyre-a1-pipeline
+namespace: ai.bonfyre
+
+description: |
+  Full A1 (audio → transcript) pipeline orchestrated by Kestra 2.0.
+  Wraps the Bonfyre binary suite; each task corresponds to one binary.
+
+inputs:
+  - id: artifact_id
+    type: STRING
+    required: true
+    description: "Unique artifact identifier (e.g. job-2025-07-a1-001)"
+
+  - id: model_tag
+    type: STRING
+    defaults: "latest"
+    description: "Model tag to pull before the pipeline runs"
+
+  - id: e8_variant
+    type: STRING
+    defaults: "strict"
+    description: "E8 quantization variant: strict | relax | relax-h"
+
+  - id: dry_run
+    type: BOOLEAN
+    defaults: false
+    description: "If true, run --check only; do not produce output files"
+
+variables:
+  bonfyre_db:     "{{ env.BONFYRE_DB | default('/var/bonfyre/control.db') }}"
+  artifact_store: "{{ env.BONFYRE_ARTIFACT_STORE | default('/var/bonfyre/artifacts') }}"
+
+tasks:
+
+  # ── 1. Pull model ──────────────────────────────────────────────────────
+  - id: pull-model
+    type: io.kestra.plugin.scripts.shell.Commands
+    description: "Ensure the local Bonfyre model is at {{ inputs.model_tag }}"
+    commands:
+      - >
+        bonfyre-model pull
+        --tag "{{ inputs.model_tag }}"
+        --db  "{{ vars.bonfyre_db }}"
+    timeout: PT10M
+    retry:
+      type: constant
+      interval: PT30S
+      maxAttempt: 3
+
+  # ── 2. Intake check ────────────────────────────────────────────────────
+  - id: intake-check
+    type: io.kestra.plugin.scripts.shell.Commands
+    description: "Validate intake manifest for artifact {{ inputs.artifact_id }}"
+    commands:
+      - >
+        bonfyre-run A1
+        --artifact "{{ inputs.artifact_id }}"
+        --db       "{{ vars.bonfyre_db }}"
+        --check
+    timeout: PT2M
+    dependsOn:
+      - pull-model
+
+  # ── 3. Transcription ───────────────────────────────────────────────────
+  - id: transcribe
+    type: io.kestra.plugin.scripts.shell.Commands
+    description: "Run A1 transcription pipeline (E8 variant: {{ inputs.e8_variant }})"
+    commands:
+      - >
+        bonfyre-run A1
+        --artifact   "{{ inputs.artifact_id }}"
+        --db         "{{ vars.bonfyre_db }}"
+        --store      "{{ vars.artifact_store }}"
+        --e8-variant "{{ inputs.e8_variant }}"
+        {% if inputs.dry_run %}--dry-run{% endif %}
+    env:
+      BFQ_E8_VARIANT: "{{ inputs.e8_variant }}"
+    timeout: PT30M
+    retry:
+      type: constant
+      interval: PT1M
+      maxAttempt: 2
+    dependsOn:
+      - intake-check
+
+  # ── 4. Pack output ─────────────────────────────────────────────────────
+  - id: pack-output
+    type: io.kestra.plugin.scripts.shell.Commands
+    description: "Compress + archive deliverables for {{ inputs.artifact_id }}"
+    commands:
+      - >
+        bonfyre-pack
+        --artifact "{{ inputs.artifact_id }}"
+        --store    "{{ vars.artifact_store }}"
+        --format   tar.zst
+    timeout: PT5M
+    dependsOn:
+      - transcribe
+    runIf: "{{ inputs.dry_run == false }}"
+
+  # ── 5. Score (HE-SLI)──────────────────────────────────────────────────
+  - id: score-hesli
+    type: io.kestra.plugin.scripts.shell.Commands
+    description: "Record HE-SLI quality score in control.db"
+    commands:
+      - >
+        bonfyre-compete score
+        --artifact "{{ inputs.artifact_id }}"
+        --db       "{{ vars.bonfyre_db }}"
+        --source   "kestra/{{ flow.id }}/{{ execution.id }}"
+    timeout: PT1M
+    dependsOn:
+      - pack-output
+    runIf: "{{ inputs.dry_run == false }}"
+
+  # ── 6. AGP export ─────────────────────────────────────────────────────
+  - id: agp-export
+    type: io.kestra.plugin.scripts.shell.Commands
+    description: "Export AGP-signed decision log for audit"
+    commands:
+      - >
+        bonfyre-control agp export
+        --artifact "{{ inputs.artifact_id }}"
+        --db       "{{ vars.bonfyre_db }}"
+        --out      "{{ vars.artifact_store }}/{{ inputs.artifact_id }}/agp-decision.json"
+    timeout: PT30S
+    dependsOn:
+      - score-hesli
+    runIf: "{{ inputs.dry_run == false }}"
+
+  # ── 7. Summary ────────────────────────────────────────────────────────
+  - id: notify-summary
+    type: io.kestra.plugin.scripts.shell.Commands
+    description: "Print pipeline summary"
+    commands:
+      - |
+        echo "=== Bonfyre A1 pipeline complete ==="
+        echo "  artifact : {{ inputs.artifact_id }}"
+        echo "  model    : {{ inputs.model_tag }}"
+        echo "  e8       : {{ inputs.e8_variant }}"
+        echo "  dry_run  : {{ inputs.dry_run }}"
+        echo "  execution: {{ execution.id }}"
+    dependsOn:
+      - agp-export
+
+triggers:
+  # Webhook trigger — call from CI or intake portal
+  - id: webhook
+    type: io.kestra.plugin.core.trigger.Webhook
+    key: "{{ secret('BONFYRE_WEBHOOK_KEY') }}"
+
+  # Nightly sweep — re-score all pending artifacts at 02:00 UTC
+  - id: nightly
+    type: io.kestra.plugin.core.trigger.Schedule
+    cron: "0 2 * * *"
+    inputs:
+      artifact_id: "nightly-sweep"
+      dry_run: true

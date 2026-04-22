@@ -36,6 +36,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
 #include <sys/stat.h>
 #include <time.h>
 #include <unistd.h>
@@ -94,6 +95,7 @@ static const char *SCHEMA =
     "  latency_ms    INTEGER,"
     "  cost_usd      REAL,"
     "  composite     REAL,"
+    "  entropy       REAL,"
     "  ts            INTEGER NOT NULL"
     ");"
     "CREATE VIRTUAL TABLE IF NOT EXISTS policies_fts USING fts5("
@@ -162,6 +164,8 @@ static sqlite3 *open_db(void) {
     char *err = NULL;
     sqlite3_exec(db, SCHEMA, NULL, NULL, &err);
     if (err) { fprintf(stderr, "schema: %s\n", err); sqlite3_free(err); exit(1); }
+    /* idempotent migration: add entropy column to existing DBs */
+    sqlite3_exec(db, "ALTER TABLE scores ADD COLUMN entropy REAL", NULL, NULL, NULL);
     seed_builtin_policies(db);
     return db;
 }
@@ -298,6 +302,48 @@ static void cmd_policy_add(sqlite3 *db, const char *file) {
     free(buf);
 }
 
+/*
+ * Shannon entropy of the word-frequency distribution in a text file.
+ * H = -sum_i p_i * log2(p_i)  over unique word types.
+ * Uses a 2048-slot open-addressing hash table keyed by djb2 hash.
+ * Hash collisions cause over-counting but are negligible for typical
+ * vocabulary sizes.  Returns 0.0 if the file cannot be opened.
+ */
+#define WMAP_SIZE 2048u
+static double compute_entropy(const char *path) {
+    uint32_t hashes[WMAP_SIZE]; uint32_t counts[WMAP_SIZE];
+    memset(hashes, 0, sizeof(hashes)); memset(counts, 0, sizeof(counts));
+    long total = 0;
+    FILE *f = fopen(path, "r"); if (!f) return 0.0;
+    char word[64]; int wi = 0; int c;
+    while ((c = fgetc(f)) != EOF) {
+        if ((c >= 'a' && c <= 'z') || (c >= '0' && c <= '9')) {
+            if (wi < 63) word[wi++] = (char)c;
+        } else if (c >= 'A' && c <= 'Z') {
+            if (wi < 63) word[wi++] = (char)(c + 32);
+        } else if (wi > 0) {
+            word[wi] = '\0';
+            uint32_t h = 5381;
+            for (int i = 0; word[i]; i++) h = h * 33u + (uint8_t)word[i];
+            if (!h) h = 1;
+            uint32_t slot = h & (WMAP_SIZE - 1u);
+            while (hashes[slot] && hashes[slot] != h)
+                slot = (slot + 1u) & (WMAP_SIZE - 1u);
+            hashes[slot] = h; counts[slot]++; total++; wi = 0;
+        }
+    }
+    fclose(f);
+    if (total == 0) return 0.0;
+    double H = 0.0;
+    for (unsigned s = 0; s < WMAP_SIZE; s++) {
+        if (counts[s] > 0) {
+            double p = (double)counts[s] / (double)total;
+            H -= p * log2(p);
+        }
+    }
+    return H;
+}
+
 static void cmd_score(sqlite3 *db, const char *artifact) {
     /* HE-SLI scoring: lexical text analysis of artifact content.
      * relevance/completeness/coherence are derived from word and sentence
@@ -345,9 +391,10 @@ static void cmd_score(sqlite3 *db, const char *artifact) {
     double composite    = (relevance + completeness + coherence + factuality) / 4.0;
     time_t now = time(NULL);
     sqlite3_stmt *st = NULL;
+    double entropy = compute_entropy(artifact);
     sqlite3_prepare_v2(db,
         "INSERT INTO scores(artifact,relevance,completeness,coherence,factuality,"
-        "latency_ms,cost_usd,composite,ts) VALUES(?,?,?,?,?,?,?,?,?)",
+        "latency_ms,cost_usd,composite,entropy,ts) VALUES(?,?,?,?,?,?,?,?,?,?)",
         -1, &st, NULL);
     sqlite3_bind_text(st,1,artifact,-1,SQLITE_STATIC);
     sqlite3_bind_double(st,2,relevance);
@@ -357,7 +404,8 @@ static void cmd_score(sqlite3 *db, const char *artifact) {
     sqlite3_bind_int(st,6,latency_ms);
     sqlite3_bind_double(st,7,cost_usd);
     sqlite3_bind_double(st,8,composite);
-    sqlite3_bind_int64(st,9,(sqlite3_int64)now);
+    sqlite3_bind_double(st,9,entropy);
+    sqlite3_bind_int64(st,10,(sqlite3_int64)now);
     sqlite3_step(st); sqlite3_finalize(st);
     printf("HE-SLI score for: %s\n", artifact);
     printf("  relevance    : %.3f\n", relevance);
@@ -367,6 +415,7 @@ static void cmd_score(sqlite3 *db, const char *artifact) {
     printf("  latency      : %d ms\n", latency_ms);
     printf("  cost         : $%.6f\n", cost_usd);
     printf("  composite    : %.3f\n", composite);
+    printf("  entropy      : %.3f bits\n", entropy);
 }
 
 static void cmd_route(sqlite3 *db, const char *recipe, const char *input) {
@@ -498,6 +547,117 @@ static void cmd_evict(sqlite3 *db, const char *model_id) {
     sqlite3_step(st); sqlite3_finalize(st);
 }
 
+/*
+ * cmd_agp_export — AGP (Agentic Governance Protocol) signed decision log
+ *
+ * Emits a JSON document containing all decisions and latest HE-SLI scores
+ * for the specified artifact.  A djb2 checksum of the JSON body is included
+ * as a tamper-evident tag.  Production deployments should replace the djb2
+ * tag with an Ed25519 signature using libsodium:
+ *   crypto_sign_detached(sig, NULL, (uint8_t*)json, len, privkey);
+ *
+ * Output format:
+ *   {
+ *     "agp_version": "1.0",
+ *     "agent_id": "bonfyre-control",
+ *     "artifact": "<id>",
+ *     "generated_at": "<ISO8601>",
+ *     "decisions": [ { "id", "recipe", "decision", "reason", "score", "ts" } ],
+ *     "scores": { HE-SLI dimensions + entropy },
+ *     "signature": "djb2:0x<hex>"
+ *   }
+ */
+static void cmd_agp_export(sqlite3 *db, const char *artifact, const char *out_path) {
+    /* collect decisions for this artifact (run_id or recipe match) */
+    char body[65536]; int bpos = 0;
+    time_t now = time(NULL);
+    struct tm *tm = gmtime(&now);
+    char tsbuf[32];
+    strftime(tsbuf, sizeof(tsbuf), "%Y-%m-%dT%H:%M:%SZ", tm);
+
+    bpos += snprintf(body + bpos, sizeof(body) - (size_t)bpos,
+        "{\n"
+        "  \"agp_version\": \"1.0\",\n"
+        "  \"agent_id\": \"bonfyre-control\",\n"
+        "  \"agent_version\": \"%s\",\n"
+        "  \"artifact\": \"%s\",\n"
+        "  \"generated_at\": \"%s\",\n"
+        "  \"decisions\": [\n",
+        VERSION, artifact, tsbuf);
+
+    sqlite3_stmt *st = NULL;
+    sqlite3_prepare_v2(db,
+        "SELECT id,recipe,COALESCE(stage,''),decision,COALESCE(reason,''),"
+        "COALESCE(score,0.0),ts FROM decisions"
+        " WHERE run_id=? OR recipe=? ORDER BY ts LIMIT 100",
+        -1, &st, NULL);
+    sqlite3_bind_text(st, 1, artifact, -1, SQLITE_STATIC);
+    sqlite3_bind_text(st, 2, artifact, -1, SQLITE_STATIC);
+    int first = 1;
+    while (sqlite3_step(st) == SQLITE_ROW && bpos < 60000) {
+        bpos += snprintf(body + bpos, sizeof(body) - (size_t)bpos,
+            "%s    {\"id\":%lld,\"recipe\":\"%s\",\"stage\":\"%s\","
+            "\"decision\":\"%s\",\"reason\":\"%s\",\"score\":%.4f,\"ts\":%lld}",
+            first ? "" : ",\n",
+            (long long)sqlite3_column_int64(st, 0),
+            (const char *)sqlite3_column_text(st, 1),
+            (const char *)sqlite3_column_text(st, 2),
+            (const char *)sqlite3_column_text(st, 3),
+            (const char *)sqlite3_column_text(st, 4),
+            sqlite3_column_double(st, 5),
+            (long long)sqlite3_column_int64(st, 6));
+        first = 0;
+    }
+    sqlite3_finalize(st);
+    bpos += snprintf(body + bpos, sizeof(body) - (size_t)bpos, "\n  ],\n");
+
+    /* latest scores row for this artifact */
+    sqlite3_prepare_v2(db,
+        "SELECT relevance,completeness,coherence,factuality,latency_ms,cost_usd,"
+        "composite,COALESCE(entropy,0) FROM scores WHERE artifact=? ORDER BY ts DESC LIMIT 1",
+        -1, &st, NULL);
+    sqlite3_bind_text(st, 1, artifact, -1, SQLITE_STATIC);
+    if (sqlite3_step(st) == SQLITE_ROW) {
+        bpos += snprintf(body + bpos, sizeof(body) - (size_t)bpos,
+            "  \"scores\": {\n"
+            "    \"relevance\": %.4f,\n"
+            "    \"completeness\": %.4f,\n"
+            "    \"coherence\": %.4f,\n"
+            "    \"factuality\": %.4f,\n"
+            "    \"latency_ms\": %d,\n"
+            "    \"cost_usd\": %.8f,\n"
+            "    \"composite\": %.4f,\n"
+            "    \"entropy_bits\": %.4f\n"
+            "  },\n",
+            sqlite3_column_double(st, 0), sqlite3_column_double(st, 1),
+            sqlite3_column_double(st, 2), sqlite3_column_double(st, 3),
+            sqlite3_column_int(st, 4),    sqlite3_column_double(st, 5),
+            sqlite3_column_double(st, 6), sqlite3_column_double(st, 7));
+    } else {
+        bpos += snprintf(body + bpos, sizeof(body) - (size_t)bpos,
+            "  \"scores\": null,\n");
+    }
+    sqlite3_finalize(st);
+
+    /* djb2 checksum over body so far — stands in for ed25519 sig */
+    uint32_t h = 5381;
+    for (int i = 0; i < bpos; i++) h = h * 33u + (uint8_t)body[i];
+    bpos += snprintf(body + bpos, sizeof(body) - (size_t)bpos,
+        "  \"signature\": \"djb2:0x%08x\"\n}\n", h);
+
+    /* write output */
+    FILE *out = stdout;
+    if (out_path && out_path[0]) {
+        out = fopen(out_path, "w");
+        if (!out) { perror(out_path); return; }
+    }
+    fputs(body, out);
+    if (out != stdout) {
+        fclose(out);
+        printf("AGP decision log written to: %s\n", out_path);
+    }
+}
+
 static void cmd_history(sqlite3 *db) {
     sqlite3_stmt *st = NULL;
     sqlite3_prepare_v2(db,
@@ -591,6 +751,7 @@ static void cmd_help(void) {
 "  route <recipe> <input>      resolve winning execution path under active policies\n"
 "  compete <recipe> <input>    run A/B competition, score both, promote winner\n"
 "  evict <model-id>            FIFO-evict model from cache (calls bonfyre-model rm --purge)\n"
+"  agp export <artifact> [out] export AGP-formatted signed decision log\n"
 "  inspect <run-id>            show full control trace for a pipeline run\n"
 "  history                     last 20 control decisions\n"
 "  watch <recipe>              stream live control events (poll)\n"
@@ -641,6 +802,13 @@ int main(int argc, char **argv) {
     } else if (strcmp(cmd,"watch")==0) {
         if (argc < 3) { fprintf(stderr,"usage: bonfyre-control watch <recipe>\n"); rc=1; }
         else cmd_watch(db, argv[2]);
+    } else if (strcmp(cmd,"agp")==0) {
+        if (argc < 3 || strcmp(argv[2],"export")!=0) {
+            fprintf(stderr,"usage: bonfyre-control agp export <artifact> [out-path]\n"); rc=1;
+        } else {
+            if (argc < 4) { fprintf(stderr,"usage: bonfyre-control agp export <artifact> [out]\n"); rc=1; }
+            else cmd_agp_export(db, argv[3], argc >= 5 ? argv[4] : NULL);
+        }
     } else if (strcmp(cmd,"policy")==0) {
         if (argc < 3) { fprintf(stderr,"usage: bonfyre-control policy <list|show|add|rm>\n"); rc=1; }
         else if (strcmp(argv[2],"list")==0) cmd_policy_list(db);
