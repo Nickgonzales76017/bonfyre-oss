@@ -187,6 +187,54 @@ static int open_cmd_root(const char *argv0, DIR **dir_out, char *root_out, size_
     return 0;
 }
 
+typedef struct {
+    char dir[256];
+    char target[256];
+    int has_target;
+    int has_main;
+} CapabilityEntry;
+
+typedef struct {
+    const char *name;
+    const char *path;
+} BinarySpec;
+
+static int cmp_capability_entry(const void *a, const void *b) {
+    const CapabilityEntry *ea = (const CapabilityEntry *)a;
+    const CapabilityEntry *eb = (const CapabilityEntry *)b;
+    return strcmp(ea->dir, eb->dir);
+}
+
+static int resolve_in_path(const char *name, char *out, size_t out_sz) {
+    if (!name || !name[0]) return 0;
+    if (strchr(name, '/')) {
+        if (access(name, X_OK) == 0) {
+            snprintf(out, out_sz, "%s", name);
+            return 1;
+        }
+        return 0;
+    }
+
+    const char *path = getenv("PATH");
+    if (!path || !path[0]) return 0;
+
+    char *copy = strdup(path);
+    if (!copy) return 0;
+
+    int found = 0;
+    for (char *tok = strtok(copy, ":"); tok; tok = strtok(NULL, ":")) {
+        char cand[PATH_MAX];
+        snprintf(cand, sizeof(cand), "%s/%s", tok, name);
+        if (access(cand, X_OK) == 0) {
+            snprintf(out, out_sz, "%s", cand);
+            found = 1;
+            break;
+        }
+    }
+    free(copy);
+    return found;
+}
+
 static int cmd_capabilities(const char *argv0) {
     DIR *root = NULL;
     char cmd_root[PATH_MAX];
@@ -195,13 +243,16 @@ static int cmd_capabilities(const char *argv0) {
         return 1;
     }
 
-    printf("{\n  \"generator\":\"bonfyre-runtime capabilities\",\n");
-    printf("  \"cmd_root\":\"%s\",\n", cmd_root);
-    printf("  \"commands\":[\n");
+    size_t cap = 64;
+    size_t len = 0;
+    CapabilityEntry *entries = calloc(cap, sizeof(CapabilityEntry));
+    if (!entries) {
+        closedir(root);
+        fprintf(stderr, "capabilities: out of memory\n");
+        return 1;
+    }
 
     struct dirent *de;
-    int first = 1;
-    int total = 0;
     while ((de = readdir(root)) != NULL) {
         if (de->d_name[0] == '.') continue;
 
@@ -210,21 +261,91 @@ static int cmd_capabilities(const char *argv0) {
         snprintf(main_c, sizeof(main_c), "%s/%s/src/main.c", cmd_root, de->d_name);
         if (access(makefile, F_OK) != 0) continue;
 
-        char target[256] = "";
-        int has_target = parse_target_from_makefile(makefile, target, sizeof(target));
-        int has_main = access(main_c, F_OK) == 0;
+        if (len == cap) {
+            cap *= 2;
+            CapabilityEntry *next = realloc(entries, cap * sizeof(CapabilityEntry));
+            if (!next) {
+                free(entries);
+                closedir(root);
+                fprintf(stderr, "capabilities: out of memory\n");
+                return 1;
+            }
+            entries = next;
+        }
 
-        if (!first) printf(",\n");
-        first = 0;
-        total++;
-        printf("    {\"dir\":\"%s\",\"target\":\"%s\",\"has_main\":%s}",
-               de->d_name,
-               has_target ? target : "",
-               has_main ? "true" : "false");
+        CapabilityEntry *e = &entries[len++];
+        memset(e, 0, sizeof(*e));
+        snprintf(e->dir, sizeof(e->dir), "%s", de->d_name);
+        e->has_target = parse_target_from_makefile(makefile, e->target, sizeof(e->target));
+        e->has_main = access(main_c, F_OK) == 0;
     }
     closedir(root);
 
-    printf("\n  ],\n  \"total\":%d\n}\n", total);
+    qsort(entries, len, sizeof(CapabilityEntry), cmp_capability_entry);
+
+    printf("{\n  \"generator\":\"bonfyre-runtime capabilities\",\n");
+    printf("  \"cmd_root\":\"%s\",\n", cmd_root);
+    printf("  \"commands\":[\n");
+
+    for (size_t i = 0; i < len; i++) {
+        if (i > 0) printf(",\n");
+        printf("    {\"dir\":\"%s\",\"target\":\"%s\",\"has_target\":%s,\"has_main\":%s}",
+               entries[i].dir,
+               entries[i].has_target ? entries[i].target : "",
+               entries[i].has_target ? "true" : "false",
+               entries[i].has_main ? "true" : "false");
+    }
+
+    printf("\n  ],\n  \"total\":%zu\n}\n", len);
+    free(entries);
+    return 0;
+}
+
+static int cmd_doctor(int as_json, int preflight_on, int preflight_is_strict, const BinarySpec *bins, size_t bins_len) {
+    size_t ready = 0;
+
+    if (as_json) {
+        printf("{\n");
+        printf("  \"preflight\":{\"enabled\":%s,\"strict\":%s},\n",
+               preflight_on ? "true" : "false",
+               preflight_is_strict ? "true" : "false");
+        printf("  \"binaries\":[\n");
+    } else {
+        printf("bonfyre-runtime doctor\n");
+        printf("preflight: enabled=%s strict=%s\n",
+               preflight_on ? "true" : "false",
+               preflight_is_strict ? "true" : "false");
+        printf("binaries:\n");
+    }
+
+    for (size_t i = 0; i < bins_len; i++) {
+        char resolved[PATH_MAX] = "";
+        int ok = resolve_in_path(bins[i].path, resolved, sizeof(resolved));
+        if (ok) ready++;
+
+        if (as_json) {
+            if (i > 0) printf(",\n");
+            printf("    {\"name\":\"%s\",\"configured\":\"%s\",\"resolved\":\"%s\",\"ok\":%s}",
+                   bins[i].name,
+                   bins[i].path ? bins[i].path : "",
+                   ok ? resolved : "",
+                   ok ? "true" : "false");
+        } else {
+            printf("  %-12s %s\n",
+                   bins[i].name,
+                   ok ? resolved : "MISSING");
+        }
+    }
+
+    if (as_json) {
+        printf("\n  ],\n  \"summary\":{\"ready\":%zu,\"total\":%zu}\n}\n", ready, bins_len);
+    } else {
+        printf("summary: %zu/%zu binaries resolvable\n", ready, bins_len);
+        if (ready != bins_len) {
+            printf("hint: install missing binaries or set BONFYRE_*_BINARY overrides\n");
+            return 2;
+        }
+    }
     return 0;
 }
 
@@ -264,6 +385,8 @@ static void print_usage(void) {
             "  bonfyre-runtime service <proxy|moq|swarm-worker> [args...]\n"
             "  bonfyre-runtime capabilities\n"
             "      print machine-readable cmd capability index (JSON)\n"
+            "  bonfyre-runtime doctor [--json]\n"
+            "      validate runtime dependency binaries and preflight toggles\n"
             "  bonfyre-runtime conference [video-relay args...]\n"
             "  bonfyre-runtime autowire <input> --intent <text> --out <dir> [--mode local|swarm] [--nodes N]\n"
             "\n"
@@ -325,9 +448,36 @@ int main(int argc, char **argv) {
     const char *orchestrate_bin = default_binary("BONFYRE_ORCHESTRATE_BINARY", argv[0], orchestrate_resolved, sizeof(orchestrate_resolved), "BonfyreOrchestrate", "bonfyre-orchestrate", "../BonfyreOrchestrate/bonfyre-orchestrate");
     const char *project_bin = default_binary("BONFYRE_PROJECT_BINARY", argv[0], project_resolved, sizeof(project_resolved), "BonfyreProject", "bonfyre-project", "../BonfyreProject/bonfyre-project");
     const char *flow_bin = default_binary("BONFYRE_FLOW_BINARY", argv[0], flow_resolved, sizeof(flow_resolved), "BonfyreFlow", "bonfyre-flow", "../BonfyreFlow/bonfyre-flow");
+    const BinarySpec runtime_bins[] = {
+        {"queue", queue_bin},
+        {"pipeline", pipeline_bin},
+        {"ledger", ledger_bin},
+        {"gen", gen_bin},
+        {"swarm", swarm_bin},
+        {"control", control_bin},
+        {"moq", moq_bin},
+        {"run", run_bin},
+        {"recipe", recipe_bin},
+        {"model", model_bin},
+        {"stitch", stitch_bin},
+        {"proxy", proxy_bin},
+        {"sli", sli_bin},
+        {"orchestrate", orchestrate_bin},
+        {"project", project_bin},
+        {"flow", flow_bin}
+    };
 
     if (strcmp(argv[1], "capabilities") == 0) {
         return cmd_capabilities(argv[0]);
+    }
+
+    if (strcmp(argv[1], "doctor") == 0) {
+        int as_json = (argc >= 3 && strcmp(argv[2], "--json") == 0);
+        return cmd_doctor(as_json,
+                          preflight_enabled(),
+                          preflight_strict(),
+                          runtime_bins,
+                          sizeof(runtime_bins) / sizeof(runtime_bins[0]));
     }
 
     if (strcmp(argv[1], "gen") == 0) {

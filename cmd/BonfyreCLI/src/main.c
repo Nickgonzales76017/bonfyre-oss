@@ -82,6 +82,7 @@ static const Route routes[] = {
     {"service",    "bonfyre-runtime",    "BonfyreRuntime", "Service launcher (proxy/moq/swarm-worker)"},
     {"conference", "bonfyre-runtime",    "BonfyreRuntime", "MoQ conference/video relay gateway"},
     {"capabilities","bonfyre-runtime",   "BonfyreRuntime", "Machine-readable cmd capability index"},
+    {"doctor",     "bonfyre-runtime",    "BonfyreRuntime", "Runtime dependency and preflight diagnostics"},
     {"flow",       "bonfyre-runtime",    "BonfyreRuntime", "Flow command via runtime gateway"},
     {"orchestrate", "bonfyre-runtime",   "BonfyreRuntime", "Machine-only orchestration planner"},
     {"project",    "bonfyre-runtime",    "BonfyreRuntime", "Content graph projection engine gateway"},
@@ -187,13 +188,22 @@ int main(int argc, char *argv[]) {
     /* Look up the route */
     for (const Route *r = routes; r->cmd; r++) {
         if (strcmp(cmd, r->cmd) == 0) {
-            /* Build argv for the target binary: [binary, arg2, arg3, ..., NULL] */
-            char **new_argv = malloc(sizeof(char *) * (size_t)(argc + 1));
+            int via_runtime_gateway =
+                (strcmp(r->binary, "bonfyre-runtime") == 0 && strcmp(r->cmd, "runtime") != 0);
+
+            /* Build argv for the target binary.
+             * For runtime-gateway commands, preserve the selected command token:
+             *   bonfyre <cmd> ... -> bonfyre-runtime <cmd> ...
+             */
+            char **new_argv = malloc(sizeof(char *) * (size_t)(argc + 2));
             if (!new_argv) { perror("malloc"); return 1; }
-            new_argv[0] = (char *)r->binary;
+            int j = 0;
+            new_argv[j++] = (char *)r->binary;
+            if (via_runtime_gateway)
+                new_argv[j++] = (char *)r->cmd;
             for (int i = 2; i < argc; i++)
-                new_argv[i - 1] = argv[i];
-            new_argv[argc - 1] = NULL;
+                new_argv[j++] = argv[i];
+            new_argv[j] = NULL;
 
             try_exec(r->binary, r->sibling_dir, new_argv);
             fprintf(stderr, "bonfyre: cannot execute '%s': not found\n", r->binary);
