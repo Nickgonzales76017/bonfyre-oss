@@ -9,7 +9,6 @@
 #include <sys/wait.h>
 #include <time.h>
 #include <unistd.h>
-
 static void path_join(char *buffer, size_t size, const char *left, const char *right) {
     snprintf(buffer, size, "%s/%s", left, right);
 }
@@ -82,16 +81,21 @@ static void print_usage(void) {
             "  bonfyre-runtime ledger <ledger args...>\n"
             "  bonfyre-runtime loop <N> <binary> [args...]\n"
             "  bonfyre-runtime parallel [-- cmd args...]...\n"
+            "  bonfyre-runtime pipeline [-- cmd args...]...\n"
             "\n"
             "  loop:     runs <binary> N times; passes previous artifact.json as --in\n"
             "            to each subsequent iteration.\n"
             "  parallel: forks all '-- cmd args...' groups concurrently; waits for\n"
             "            all to finish; returns 0 only if every child exited 0.\n"
-            "            Separate independent pipeline stages with '--'.\n");
-}
+            "            Separate independent pipeline stages with '--'.\n"
+            "  pipeline: chains '-- cmd args...' groups via OS pipes: stdout of\n"
+            "            stage N is streamed directly into stdin of stage N+1.\n"
+            "            Eliminates bonfyre-space round-trip I/O for intermediate data.\n"
+            "            All stages run concurrently; waits for the final stage.\n");}
 
 static void print_usage(void);
 static int  cmd_parallel(int argc, char **argv);
+static int  cmd_pipeline(int argc, char **argv);
 
 int main(int argc, char **argv) {
     if (argc < 2) {
@@ -274,6 +278,10 @@ int main(int argc, char **argv) {
         return cmd_parallel(argc - 2, argv + 2);
     }
 
+    if (strcmp(argv[1], "pipeline") == 0) {
+        return cmd_pipeline(argc - 2, argv + 2);
+    }
+
     print_usage();
     return 1;
 }
@@ -369,6 +377,128 @@ static int cmd_parallel(int argc, char **argv) {
         if (code != 0) {
             fprintf(stderr, "bonfyre-runtime parallel: group %d exited %d\n", g, code);
             overall = code;
+        }
+    }
+    return overall;
+}
+
+/* ================================================================
+ * pipeline subcommand — cross-binary stdout→stdin chaining
+ *
+ * bonfyre-runtime pipeline [-- binary arg...] [-- binary arg...] ...
+ *
+ * Each group is connected to the next via an OS pipe:
+ *   stdout(stage 0) → stdin(stage 1) → stdin(stage 2) → ... → stdout(last) → terminal
+ *
+ * This eliminates bonfyre-space I/O for intermediate data — the output of
+ * one binary flows directly into the next binary's stdin as a byte stream,
+ * reducing latency by the cost of writing + reading intermediate files.
+ *
+ * All stages are forked simultaneously (like parallel) but with their
+ * stdio connected in a chain.  The parent waits for all children; if any
+ * stage fails, the downstream stages receive EOF and terminate naturally.
+ *
+ * Max stages: PAR_MAX_GROUPS (64).
+ *
+ * Example (Ingest → Transcribe → Clean as a single low-latency stream):
+ *   bonfyre-runtime pipeline \
+ *     -- bonfyre-ingest  --input audio.mp3 \
+ *     -- bonfyre-transcribe --model whisper-medium \
+ *     -- bonfyre-clean   --out /artifacts/job-001/
+ * ================================================================ */
+static int cmd_pipeline(int argc, char **argv) {
+    /* Parse groups (same logic as cmd_parallel) */
+    int group_starts[PAR_MAX_GROUPS];
+    int group_count = 0;
+    int i = 0;
+    while (i < argc) {
+        if (strcmp(argv[i], "--") == 0) {
+            i++;
+            if (i < argc && group_count < PAR_MAX_GROUPS)
+                group_starts[group_count++] = i;
+            continue;
+        }
+        if (group_count == 0 && group_count < PAR_MAX_GROUPS)
+            group_starts[group_count++] = i;
+        i++;
+    }
+    if (group_count == 0) {
+        fprintf(stderr, "bonfyre-runtime pipeline: no stages given\n");
+        return 1;
+    }
+
+    /* Create N-1 pipes connecting adjacent stages */
+    int pipes[PAR_MAX_GROUPS][2];
+    for (int g = 0; g < group_count - 1; g++) {
+        if (pipe(pipes[g]) != 0) {
+            perror("pipe");
+            return 1;
+        }
+    }
+
+    pid_t pids[PAR_MAX_GROUPS];
+
+    for (int g = 0; g < group_count; g++) {
+        /* Determine argv extent for this group */
+        int start = group_starts[g];
+        int end   = argc;
+        for (int j = start; j < argc; j++) {
+            if (strcmp(argv[j], "--") == 0) { end = j; break; }
+        }
+        int len = end - start;
+        if (len <= 0) { pids[g] = -1; continue; }
+
+        char **cargv = calloc((size_t)(len + 1), sizeof(char *));
+        if (!cargv) { perror("calloc"); return 1; }
+        for (int j = 0; j < len; j++) cargv[j] = argv[start + j];
+        cargv[len] = NULL;
+
+        pid_t pid = fork();
+        if (pid < 0) { perror("fork"); free(cargv); return 1; }
+
+        if (pid == 0) {
+            /* Child: wire stdin from previous pipe, stdout to next pipe */
+
+            /* stdin: read end of pipe from previous stage */
+            if (g > 0) {
+                if (dup2(pipes[g-1][0], STDIN_FILENO) < 0) _exit(127);
+            }
+            /* stdout: write end of pipe to next stage */
+            if (g < group_count - 1) {
+                if (dup2(pipes[g][1], STDOUT_FILENO) < 0) _exit(127);
+            }
+
+            /* Close all pipe ends in child — only the dup'd ones matter */
+            for (int k = 0; k < group_count - 1; k++) {
+                close(pipes[k][0]);
+                close(pipes[k][1]);
+            }
+
+            execv(cargv[0], cargv);
+            perror(cargv[0]);
+            _exit(127);
+        }
+
+        free(cargv);
+        pids[g] = pid;
+    }
+
+    /* Parent: close all pipe ends (children have their own copies) */
+    for (int g = 0; g < group_count - 1; g++) {
+        close(pipes[g][0]);
+        close(pipes[g][1]);
+    }
+
+    /* Wait for all children */
+    int overall = 0;
+    for (int g = 0; g < group_count; g++) {
+        if (pids[g] <= 0) continue;
+        int st = 0;
+        waitpid(pids[g], &st, 0);
+        int code = WIFEXITED(st) ? WEXITSTATUS(st) : 1;
+        if (code != 0) {
+            fprintf(stderr, "bonfyre-runtime pipeline: stage %d exited %d\n", g, code);
+            if (overall == 0) overall = code;
         }
     }
     return overall;

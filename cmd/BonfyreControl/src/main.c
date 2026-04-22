@@ -303,6 +303,94 @@ static void cmd_policy_add(sqlite3 *db, const char *file) {
 }
 
 /*
+ * cmd_entropy_check — fast (<10ms) Shannon entropy pre-flight
+ *
+ * Reads the artifact file, computes word-frequency Shannon entropy,
+ * and compares it against the LOW_ENTROPY threshold (default: 3.5 bits).
+ *
+ *   < threshold → "FAIL P1" — low entropy signals repetition / hallucination
+ *   ≥ threshold → "PASS"    — proceed to full HE-SLI scoring
+ *
+ * On FAIL: logs a 'probe/entropy' decision in the decisions table so that
+ * bonfyre-control route can immediately escalate to a P1 (Proof) check.
+ * Exit code: 0 = PASS, 2 = FAIL (below threshold), 1 = error.
+ *
+ * The check runs in the "Instant" tier (<10ms) because:
+ *   - It reads at most 64KB of the file (fast_limit below)
+ *   - It uses the same djb2-hash word map as the Shannon computation
+ *   - No DB access until a FAIL decision needs to be logged
+ */
+#define BF_ENTROPY_LOW_DEFAULT   3.5  /* bits; below this → P1 escalation */
+#define BF_ENTROPY_FAST_CAP      65536 /* bytes read for fast-path check    */
+
+static void cmd_entropy_check(sqlite3 *db, const char *artifact, double threshold) {
+    if (threshold <= 0.0) threshold = BF_ENTROPY_LOW_DEFAULT;
+
+    /* Partial read: cap at FAST_CAP bytes for <10ms guarantee */
+    FILE *f = fopen(artifact, "r");
+    if (!f) { fprintf(stderr, "entropy-check: cannot open %s\n", artifact); exit(1); }
+
+    uint32_t hashes[WMAP_SIZE]; uint32_t counts[WMAP_SIZE];
+    memset(hashes, 0, sizeof(hashes)); memset(counts, 0, sizeof(counts));
+    long total = 0; long bytes_read = 0;
+    char word[64]; int wi = 0; int c;
+
+    while ((c = fgetc(f)) != EOF && bytes_read < BF_ENTROPY_FAST_CAP) {
+        bytes_read++;
+        if ((c >= 'a' && c <= 'z') || (c >= '0' && c <= '9')) {
+            if (wi < 63) word[wi++] = (char)c;
+        } else if (c >= 'A' && c <= 'Z') {
+            if (wi < 63) word[wi++] = (char)(c + 32);
+        } else if (wi > 0) {
+            word[wi] = '\0';
+            uint32_t h = 5381;
+            for (int i = 0; word[i]; i++) h = h * 33u + (uint8_t)word[i];
+            if (!h) h = 1;
+            uint32_t slot = h & (WMAP_SIZE - 1u);
+            while (hashes[slot] && hashes[slot] != h)
+                slot = (slot + 1u) & (WMAP_SIZE - 1u);
+            hashes[slot] = h; counts[slot]++; total++; wi = 0;
+        }
+    }
+    fclose(f);
+
+    double H = 0.0;
+    if (total > 0) {
+        for (unsigned s = 0; s < WMAP_SIZE; s++) {
+            if (counts[s] > 0) {
+                double p = (double)counts[s] / (double)total;
+                H -= p * log2(p);
+            }
+        }
+    }
+
+    int pass = (H >= threshold);
+    printf("entropy-check: %s\n", artifact);
+    printf("  entropy    : %.4f bits\n", H);
+    printf("  threshold  : %.4f bits\n", threshold);
+    printf("  capped_at  : %ld bytes\n", bytes_read);
+    printf("  result     : %s\n", pass ? "PASS" : "FAIL — escalate to P1 (Proof)");
+
+    if (!pass) {
+        /* Log low-entropy decision for routing layer */
+        time_t now = time(NULL);
+        sqlite3_stmt *st = NULL;
+        sqlite3_prepare_v2(db,
+            "INSERT INTO decisions(recipe,stage,decision,reason,score,ts)"
+            " VALUES(?,?,?,?,?,?)",
+            -1, &st, NULL);
+        sqlite3_bind_text(st, 1, artifact,        -1, SQLITE_STATIC);
+        sqlite3_bind_text(st, 2, "probe/entropy", -1, SQLITE_STATIC);
+        sqlite3_bind_text(st, 3, "escalate-P1",  -1, SQLITE_STATIC);
+        sqlite3_bind_text(st, 4, "low-entropy",  -1, SQLITE_STATIC);
+        sqlite3_bind_double(st, 5, H);
+        sqlite3_bind_int64(st, 6, (sqlite3_int64)now);
+        sqlite3_step(st); sqlite3_finalize(st);
+        exit(2);  /* non-zero: caller knows to trigger P1 proof */
+    }
+}
+
+/*
  * Shannon entropy of the word-frequency distribution in a text file.
  * H = -sum_i p_i * log2(p_i)  over unique word types.
  * Uses a 2048-slot open-addressing hash table keyed by djb2 hash.
@@ -751,6 +839,7 @@ static void cmd_help(void) {
 "  route <recipe> <input>      resolve winning execution path under active policies\n"
 "  compete <recipe> <input>    run A/B competition, score both, promote winner\n"
 "  evict <model-id>            FIFO-evict model from cache (calls bonfyre-model rm --purge)\n"
+"  entropy-check <artifact> [threshold]  fast entropy pre-flight (<10ms); exits 2 if low\n"
 "  agp export <artifact> [out] export AGP-formatted signed decision log\n"
 "  inspect <run-id>            show full control trace for a pipeline run\n"
 "  history                     last 20 control decisions\n"
@@ -802,6 +891,12 @@ int main(int argc, char **argv) {
     } else if (strcmp(cmd,"watch")==0) {
         if (argc < 3) { fprintf(stderr,"usage: bonfyre-control watch <recipe>\n"); rc=1; }
         else cmd_watch(db, argv[2]);
+    } else if (strcmp(cmd,"entropy-check")==0) {
+        if (argc < 3) { fprintf(stderr,"usage: bonfyre-control entropy-check <artifact> [threshold]\n"); rc=1; }
+        else {
+            double thr = argc >= 4 ? atof(argv[3]) : 0.0;
+            cmd_entropy_check(db, argv[2], thr);
+        }
     } else if (strcmp(cmd,"agp")==0) {
         if (argc < 3 || strcmp(argv[2],"export")!=0) {
             fprintf(stderr,"usage: bonfyre-control agp export <artifact> [out-path]\n"); rc=1;
