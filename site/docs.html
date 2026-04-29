@@ -104,6 +104,44 @@
         </div>
       </section>
 
+      <section class="section">
+        <div class="shell-container">
+          <div class="section-header">
+            <div>
+              <span class="section-kicker">Latest upgrades</span>
+              <h2 class="section-title">What moved since the last public push.</h2>
+              <p class="section-copy">The repo is not just carrying deeper internals. It also has a stronger public operator surface around wire capture, registries, CLI health, and speech investigation.</p>
+            </div>
+          </div>
+          <div class="feature-grid">
+            <article class="feature-card">
+              <span class="card-meta">Wire</span>
+              <h3>Capture → artifact → recipe</h3>
+              <p>BonfyreWire now includes deep probe, artifact materialization, recipe generation, and shared-space export on top of flow analysis and reporting.</p>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">CLI</span>
+              <h3>Health-aware command surface</h3>
+              <p>`bonfyre list --health`, repo/install drift checks, and subcommand sync helpers make the runtime surface more operationally inspectable after code updates.</p>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">Registry</span>
+              <h3>Catalog / workflow / layer sync</h3>
+              <p>Workflow, recipe, family, and layer registry surfaces are now part of the public operator story, and the docs now record the repopulation commands.</p>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">Speech</span>
+              <h3>Investigation stack docs</h3>
+              <p>Architecture, integration, quickstart, adversarial competition, and discovery documents now sit beside the runtime instead of living as disconnected notes.</p>
+            </article>
+          </div>
+          <div class="install-box" style="margin-top:1.5rem">
+            <span class="label">Operator refresh commands</span>
+            <code>make && ./cmd/BonfyreCLI/bonfyre doctor sync-subcommands && ./cmd/BonfyreIndex/bonfyre-index layers --root layeros/state && ./cmd/BonfyreCLI/bonfyre list --health && ./cmd/BonfyreWorkflow/bonfyre-workflow list && ./cmd/BonfyreRecipe/bonfyre-recipe list && ./cmd/BonfyreLayer/bonfyre-layer registry --root layeros/state</code>
+          </div>
+        </div>
+      </section>
+
       <!-- Key limits -->
       <section class="section" id="limits">
         <div class="shell-container">

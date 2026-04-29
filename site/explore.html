@@ -129,6 +129,44 @@
         </div>
       </section>
 
+      <section class="section">
+        <div class="shell-container">
+          <div class="section-header">
+            <div>
+              <span class="section-kicker">Since the last public push</span>
+              <h2 class="section-title">The product shape changed, not just the binary count.</h2>
+              <p class="section-copy">Bonfyre now tells a more operational story: captures become artifacts, artifacts become recipes, and the CLI exposes more of the health and registry state needed to work with that system confidently.</p>
+            </div>
+          </div>
+          <div class="feature-grid">
+            <article class="feature-card">
+              <span class="card-meta">Network observation</span>
+              <h3>Capture → recipe</h3>
+              <p>BonfyreWire now fingerprints devices, emits canonical artifacts, and generates stitch-compatible recipes from owned or authorized captures. It is not just packet accounting anymore.</p>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">Operator truth</span>
+              <h3>Health-aware CLI</h3>
+              <p>`bonfyre list --health`, `bonfyre doctor sync-subcommands`, workflow listing, recipe browsing, and layer registry inspection make the runtime easier to inspect and trust after updates.</p>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">Speech system</span>
+              <h3>Investigation stack</h3>
+              <p>The repo now carries a deeper speech investigation story: architecture, production integration, quickstart, hypothesis engine, and discovery pipeline work, not just a standalone transcription binary.</p>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">Repo alignment</span>
+              <h3>Pages and runtime converge</h3>
+              <p>The public docs, Pages workflows, and runtime packaging are now being aligned around `bonfyre-oss` so the repo, the site, and the automation describe the same product.</p>
+            </article>
+          </div>
+          <div class="install-box" style="margin-top:1.5rem">
+            <span class="label">Example operator flow</span>
+            <code>bonfyre wire ingest-pcap capture.pcap --dumb-device --root layeros/state && bonfyre wire probe &lt;capture_id&gt; --root layeros/state && bonfyre wire artifacts &lt;capture_id&gt; --root layeros/state && bonfyre wire recipe &lt;capture_id&gt; --root layeros/state &gt; recipe.json</code>
+          </div>
+        </div>
+      </section>
+
             <!-- What it replaces -->
       <section class="section">
         <div class="shell-container">

@@ -119,7 +119,7 @@
             </div>
             <div class="install-box">
               <span class="label">Quick install</span>
-              <code>curl -fsSL https://raw.githubusercontent.com/Nickgonzales76017/bonfyre/main/install.sh | sh</code>
+              <code>curl -fsSL https://raw.githubusercontent.com/Nickgonzales76017/bonfyre-oss/main/install.sh | sh</code>
             </div>
             <div class="install-box" style="margin-top:0.75rem">
               <span class="label">Then run any pipeline</span>
@@ -307,9 +307,25 @@
             <div>
               <span class="section-kicker">Recent additions</span>
               <h2 class="section-title">What got added this cycle.</h2>
+              <p class="section-copy">Alongside the lower-level runtime work, the public operator story now includes stronger wire, registry, CLI health, and speech-investigation surfaces.</p>
             </div>
           </div>
           <div class="feature-grid">
+            <article class="feature-card">
+              <span class="card-meta">New front door</span>
+              <h3>Wire → artifact → recipe</h3>
+              <p>BonfyreWire now goes beyond flow reports. It can fingerprint devices, materialize canonical artifacts, generate stitch-compatible recipes, and export authorized capture state into Bonfyre's shared-space substrate.</p>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">Operator visibility</span>
+              <h3>CLI health and registry truth</h3>
+              <p>`bonfyre list --health`, `bonfyre doctor sync-subcommands`, workflow listing, recipe browsing, and layer registry inspection make the runtime easier to inspect and trust after updates.</p>
+            </article>
+            <article class="feature-card">
+              <span class="card-meta">Speech system</span>
+              <h3>Investigation stack, not just a binary</h3>
+              <p>The repo now carries architecture, production integration, discovery, and adversarial investigation docs around speech and transcript intelligence instead of treating transcription as an isolated feature.</p>
+            </article>
             <article class="feature-card">
               <span class="card-meta">Cycle 8 — current</span>
               <h3>Ghost-Thread Orchestration · CAS Dedup · BPF-Flux · entropy-check · pipeline</h3>
@@ -328,6 +344,10 @@
               <p>System-wide hot-path optimisations: lt_core.c’s JSON codec replaced ~90 malloc/realloc call sites with a 64 KB inline arena allocator and O(1) bulk free. <code>find_char_simd</code> doubled throughput on NEON ARM via 32-byte dual-load batching. bonfyre-runtime gained a <code>parallel</code> subcommand for concurrent command groups. <code>bf_mmap_prefetch</code> issues batched <code>MADV_WILLNEED</code> hints ahead of artifact reads. fpqx_algebra shipped with a LoRA compressed-domain example.</p>
               <div class="cta-row"><a class="secondary-btn" href="changelog.html">Read the full changelog →</a></div>
             </article>
+          </div>
+          <div class="install-box" style="margin-top:1.5rem">
+            <span class="label">Try the newer operator surface</span>
+            <code>bonfyre wire --help · bonfyre list --health · bonfyre workflow list · bonfyre recipe list · bonfyre layer registry --root layeros/state</code>
           </div>
         </div>
       </section>
