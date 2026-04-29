@@ -40,6 +40,16 @@ static void db_path(char *buf,size_t len){
     snprintf(buf,len,"%s%s",h,DB_SUBPATH);
 }
 static void ensure_dir(const char *p) { bf_ensure_dir(p); }
+static void ensure_parent_dir(const char *path) {
+    char tmp[4096];
+    char *slash;
+    if (!path || !path[0]) return;
+    snprintf(tmp, sizeof(tmp), "%s", path);
+    slash = strrchr(tmp, '/');
+    if (!slash) return;
+    *slash = '\0';
+    if (tmp[0]) ensure_dir(tmp);
+}
 
 static const char *SCHEMA=
     "PRAGMA journal_mode=WAL;"
@@ -67,9 +77,13 @@ static const char *SCHEMA=
     "CREATE INDEX IF NOT EXISTS idx_entries_space ON entries(space);";
 
 static sqlite3 *open_db(void){
-    char path[4096];db_path(path,sizeof(path));ensure_dir(path);
+    char path[4096];db_path(path,sizeof(path));ensure_parent_dir(path);
     sqlite3 *db=NULL;
-    if(bf_sqlite3_open(path,&db)!=SQLITE_OK){fprintf(stderr,"db error\n");exit(1);}
+    if(bf_sqlite3_open(path,&db)!=SQLITE_OK){
+        fprintf(stderr,"db error: %s (%s)\n", path, db ? sqlite3_errmsg(db) : "open failed");
+        if (db) sqlite3_close(db);
+        exit(1);
+    }
     char *err=NULL;sqlite3_exec(db,SCHEMA,NULL,NULL,&err);
     if(err){fprintf(stderr,"%s\n",err);sqlite3_free(err);exit(1);}
     return db;

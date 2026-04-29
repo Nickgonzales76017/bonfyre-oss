@@ -26,8 +26,10 @@
 #include <sys/select.h>
 #include <sys/socket.h>
 #include <sys/types.h>
+#include <sys/wait.h>
 #include <time.h>
 #include <unistd.h>
+#include <bonfyre.h>
 
 #define VERSION "1.0.0"
 #define MAX_CLIENTS 128
@@ -264,6 +266,8 @@ static void cmd_help(void) {
 "  video-relay [--ingest PORT] [--subscribe PORT]\n"
 "      start video frame relay with 30-frame ring buffer\n"
 "      default ingest=9450, subscribe=9451\n"
+"  layer <artifact_id> [--root DIR]\n"
+"      show metadata-first streaming plan for a layer artifact\n"
 "  help\n"
 "      show this message\n\n"
 "PRODUCER PROTOCOL\n"
@@ -278,6 +282,18 @@ static void cmd_help(void) {
 int main(int argc, char **argv) {
     if (argc < 2 || strcmp(argv[1], "help") == 0 || strcmp(argv[1], "--help") == 0) {
         cmd_help();
+        return 0;
+    }
+
+    if (strcmp(argv[1], "layer") == 0 && argc >= 3) {
+        const char *root = NULL;
+        char *json = NULL, *out = NULL;
+        for (int i = 1; i < argc - 1; i++) if (strcmp(argv[i], "--root") == 0) { root = argv[i+1]; break; }
+        if (bf_layer_load_json(root, argv[2], &json) != 0) return 1;
+        if (bf_layer_moq_json(json, &out) != 0) { free(json); return 1; }
+        puts(out);
+        free(out);
+        free(json);
         return 0;
     }
 

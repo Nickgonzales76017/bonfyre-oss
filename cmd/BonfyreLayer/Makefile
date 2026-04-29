@@ -1,8 +1,8 @@
 CC ?= cc
 CFLAGS ?= -O2 -Wall -Wextra -std=c11
 LOCAL_CFLAGS = -I../../lib/libbonfyre/include
-LDFLAGS = -L../../lib/libbonfyre -lbonfyre
-TARGET = bonfyre-layer-c
+LDFLAGS = -L../../lib/libbonfyre -lbonfyre -lsqlite3
+TARGET = bonfyre-layer
 SRC = src/main.c
 
 all: $(TARGET)

@@ -26,6 +26,8 @@
 #include <string.h>
 #include <time.h>
 #include <sys/stat.h>
+#include <sys/wait.h>
+#include <unistd.h>
 #include <sqlite3.h>
 #include <bonfyre.h>
 
@@ -271,6 +273,7 @@ static void cmd_help(void){
 "  record <recipe> <stage> <ms>  log observed latency\n"
 "  violations [recipe]           show SLA violations\n"
 "  history [recipe]              recent latency records\n"
+"  layer <artifact_id>           recommended layer tier\n"
 "  help                          this message\n\n"
 "BUILT-IN TIERS\n"
 "  instant  <10ms    in-memory, cache, metadata ops\n"
@@ -288,6 +291,17 @@ static void cmd_help(void){
 
 int main(int argc,char **argv){
     if(argc<2||strcmp(argv[1],"help")==0||strcmp(argv[1],"--help")==0){cmd_help();return 0;}
+    if(strcmp(argv[1],"layer")==0 && argc>=3){
+        const char *root = NULL;
+        char *json = NULL, *out = NULL;
+        for(int i=1;i<argc-1;i++) if(strcmp(argv[i],"--root")==0){ root=argv[i+1]; break; }
+        if (bf_layer_load_json(root, argv[2], &json) != 0) return 1;
+        if (bf_layer_tier_json(json, &out) != 0) { free(json); return 1; }
+        puts(out);
+        free(out);
+        free(json);
+        return 0;
+    }
     sqlite3 *db=open_db();
     int rc=0;const char *cmd=argv[1];
     if(strcmp(cmd,"status")==0) cmd_status(db);

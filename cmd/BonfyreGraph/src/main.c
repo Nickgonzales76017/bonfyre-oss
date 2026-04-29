@@ -27,6 +27,7 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <time.h>
+#include <unistd.h>
 #include <sqlite3.h>
 #include <bonfyre.h>
 
@@ -35,9 +36,93 @@
 #define MAX_LINE  65536
 #define FILE_CHUNK 65536
 
+/* ── SHA-256 (FIPS 180-4, self-contained) ─────────────────────────────── */
 
+static const unsigned sha256_k[64] = {
+    0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,
+    0xd807aa98,0x12835b01,0x243185be,0x550c7dc3,0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174,
+    0xe49b69c1,0xefbe4786,0x0fc19dc6,0x240ca1cc,0x2de92c6f,0x4a7484aa,0x5cb0a9dc,0x76f988da,
+    0x983e5152,0xa831c66d,0xb00327c8,0xbf597fc7,0xc6e00bf3,0xd5a79147,0x06ca6351,0x14292967,
+    0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13,0x650a7354,0x766a0abb,0x81c2c92e,0x92722c85,
+    0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3,0xd192e819,0xd6990624,0xf40e3585,0x106aa070,
+    0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3,
+    0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2,
+};
 
+#define RR(x,n) (((x)>>(n))|((x)<<(32-(n))))
+#define CH(x,y,z) (((x)&(y))^((~(x))&(z)))
+#define MAJ(x,y,z) (((x)&(y))^((x)&(z))^((y)&(z)))
+#define EP0(x) (RR(x,2)^RR(x,13)^RR(x,22))
+#define EP1(x) (RR(x,6)^RR(x,11)^RR(x,25))
+#define SIG0(x) (RR(x,7)^RR(x,18)^((x)>>3))
+#define SIG1(x) (RR(x,17)^RR(x,19)^((x)>>10))
 
+typedef struct {
+    unsigned state[8];
+    unsigned char buf[64];
+    unsigned long long bitlen;
+    unsigned buflen;
+} Sha256;
+
+static void sha256_init(Sha256 *ctx) {
+    ctx->state[0]=0x6a09e667; ctx->state[1]=0xbb67ae85;
+    ctx->state[2]=0x3c6ef372; ctx->state[3]=0xa54ff53a;
+    ctx->state[4]=0x510e527f; ctx->state[5]=0x9b05688c;
+    ctx->state[6]=0x1f83d9ab; ctx->state[7]=0x5be0cd19;
+    ctx->bitlen=0; ctx->buflen=0;
+}
+
+static void sha256_transform(Sha256 *ctx, const unsigned char *data) {
+    unsigned w[64], a,b,c,d,e,f,g,h,t1,t2;
+    for (int i=0;i<16;i++)
+        w[i]=(unsigned)data[i*4]<<24|(unsigned)data[i*4+1]<<16|
+             (unsigned)data[i*4+2]<<8|(unsigned)data[i*4+3];
+    for (int i=16;i<64;i++)
+        w[i]=SIG1(w[i-2])+w[i-7]+SIG0(w[i-15])+w[i-16];
+    a=ctx->state[0];b=ctx->state[1];c=ctx->state[2];d=ctx->state[3];
+    e=ctx->state[4];f=ctx->state[5];g=ctx->state[6];h=ctx->state[7];
+    for (int i=0;i<64;i++){
+        t1=h+EP1(e)+CH(e,f,g)+sha256_k[i]+w[i];
+        t2=EP0(a)+MAJ(a,b,c);
+        h=g;g=f;f=e;e=d+t1;d=c;c=b;b=a;a=t1+t2;
+    }
+    ctx->state[0]+=a;ctx->state[1]+=b;ctx->state[2]+=c;ctx->state[3]+=d;
+    ctx->state[4]+=e;ctx->state[5]+=f;ctx->state[6]+=g;ctx->state[7]+=h;
+}
+
+static void sha256_update(Sha256 *ctx, const unsigned char *data, size_t len) {
+    for (size_t i=0;i<len;i++){
+        ctx->buf[ctx->buflen++]=data[i];
+        if (ctx->buflen==64){ sha256_transform(ctx,ctx->buf); ctx->bitlen+=512; ctx->buflen=0; }
+    }
+}
+
+static void sha256_final(Sha256 *ctx, unsigned char hash[32]) {
+    unsigned i=ctx->buflen;
+    ctx->buf[i++]=0x80;
+    if (i>56){ while(i<64) ctx->buf[i++]=0; sha256_transform(ctx,ctx->buf); i=0; }
+    while(i<56) ctx->buf[i++]=0;
+    ctx->bitlen+=ctx->buflen*8;
+    for (int j=7;j>=0;j--) ctx->buf[56+(7-j)]=(unsigned char)(ctx->bitlen>>(j*8));
+    sha256_transform(ctx,ctx->buf);
+    for (int j=0;j<8;j++){
+        hash[j*4]=(ctx->state[j]>>24)&0xff; hash[j*4+1]=(ctx->state[j]>>16)&0xff;
+        hash[j*4+2]=(ctx->state[j]>>8)&0xff; hash[j*4+3]=ctx->state[j]&0xff;
+    }
+}
+
+static const char g_hex_lut[16] = "0123456789abcdef";
+
+static void sha256_hex(const unsigned char *data, size_t len, char out[65]) {
+    Sha256 ctx; sha256_init(&ctx);
+    sha256_update(&ctx, data, len);
+    unsigned char hash[32]; sha256_final(&ctx, hash);
+    for (int i=0;i<32;i++){
+        out[i*2]  =g_hex_lut[hash[i]>>4];
+        out[i*2+1]=g_hex_lut[hash[i]&0x0f];
+    }
+    out[64]='\0';
+}
 
 /* ── Canonical JSON (deterministic, sorted keys) ──────────────────────── */
 
@@ -47,12 +132,16 @@
 /* ── Utility ──────────────────────────────────────────────────────────── */
 
 static char *read_file_full(const char *path) {
-    size_t len;
-    return bf_read_file(path, &len);
+    FILE *fp=fopen(path,"rb");
+    if (!fp) return NULL;
+    fseek(fp,0,SEEK_END); long sz=ftell(fp); fseek(fp,0,SEEK_SET);
+    if (sz<0){ fclose(fp); return NULL; }
+    char *buf=malloc((size_t)sz+1);
+    if (!buf){ fclose(fp); return NULL; }
+    fread(buf,1,(size_t)sz,fp); buf[sz]='\0';
+    fclose(fp); return buf;
 }
 
-static void iso_timestamp(char *buf, size_t sz) { bf_iso_timestamp(buf, sz); }
-static int ensure_dir(const char *path) { return bf_ensure_dir(path); }
 /* ── Tiny JSON parser (read-only, no deps) ────────────────────────────── */
 
 static const char *skip_ws(const char *p) {
@@ -81,7 +170,23 @@ static const char *skip_value(const char *p) {
 
 /* Extract a string value for key from a JSON object. Returns 0 if not found. */
 static int json_get_str(const char *json, const char *key, char *out, size_t outsz) {
-    return bf_json_scan_str(json, strlen(json), key, out, outsz);
+    char needle[256];
+    snprintf(needle,sizeof(needle),"\"%s\"",key);
+    const char *pos=strstr(json,needle);
+    if (!pos) return 0;
+    pos+=strlen(needle);
+    pos=skip_ws(pos);
+    if (*pos!=':') return 0;
+    pos=skip_ws(pos+1);
+    if (*pos!='"') return 0;
+    pos++;
+    size_t i=0;
+    while (*pos && *pos!='"' && i<outsz-1) {
+        if (*pos=='\\' && *(pos+1)) { pos++; }
+        out[i++]=*pos++;
+    }
+    out[i]='\0';
+    return 1;
 }
 
 /* Find start of array for a key. Returns pointer to '[' or NULL. */
@@ -138,31 +243,6 @@ static int json_array_count(const char *arr) {
 
 /* Extract array of strings from JSON array "inputs":["a","b"] into id_buf.
  * Returns count. */
-static int json_get_str_array(const char *json, const char *key,
-                              char ids[][256], int max_ids) {
-    const char *arr=json_get_array(json,key);
-    if (!arr) return 0;
-    const char *p=skip_ws(arr+1);
-    int count=0;
-    while (*p && *p!=']' && count<max_ids) {
-        p=skip_ws(p);
-        if (*p=='"') {
-            p++;
-            size_t i=0;
-            while (*p && *p!='"' && i<255) {
-                if (*p=='\\' && *(p+1)) p++;
-                ids[count][i++]=*p++;
-            }
-            ids[count][i]='\0';
-            if (*p=='"') p++;
-            count++;
-        }
-        p=skip_ws(p);
-        if (*p==',') p++;
-    }
-    return count;
-}
-
 /* ── SQLite schema ────────────────────────────────────────────────────── */
 
 static const char *SCHEMA_SQL =
@@ -234,14 +314,14 @@ static void compute_node_hash(const char *op, const char *params,
     #undef CPLIT
     *p='\0';
 
-    bf_sha256_hex((const uint8_t *)canonical,(size_t)(p-canonical),out);
+    sha256_hex((const unsigned char *)canonical,(size_t)(p-canonical),out);
 }
 
 /* ── Commands ─────────────────────────────────────────────────────────── */
 
 static int cmd_init(const char *db_path) {
     sqlite3 *db;
-    if (bf_sqlite3_open(db_path,&db)!=SQLITE_OK){
+    if (sqlite3_open(db_path,&db)!=SQLITE_OK){
         fprintf(stderr,"Cannot open %s: %s\n",db_path,sqlite3_errmsg(db));
         return 1;
     }
@@ -259,7 +339,7 @@ static int cmd_init(const char *db_path) {
 static int cmd_add_atom(const char *db_path, const char *id,
                         const char *hash, const char *type, const char *path) {
     sqlite3 *db;
-    if (bf_sqlite3_open(db_path,&db)!=SQLITE_OK){
+    if (sqlite3_open(db_path,&db)!=SQLITE_OK){
         fprintf(stderr,"Cannot open %s\n",db_path); return 1;
     }
     sqlite3_stmt *st;
@@ -280,7 +360,7 @@ static int cmd_add_op(const char *db_path, const char *id, const char *op,
                       const char *inputs_csv, const char *output,
                       const char *params, const char *version) {
     sqlite3 *db;
-    if (bf_sqlite3_open(db_path,&db)!=SQLITE_OK){
+    if (sqlite3_open(db_path,&db)!=SQLITE_OK){
         fprintf(stderr,"Cannot open %s\n",db_path); return 1;
     }
     if (!version) version="1.0.0";
@@ -361,7 +441,7 @@ static int cmd_add_op(const char *db_path, const char *id, const char *op,
 
 static int cmd_lineage(const char *db_path, const char *node_id) {
     sqlite3 *db;
-    if (bf_sqlite3_open(db_path,&db)!=SQLITE_OK){
+    if (sqlite3_open(db_path,&db)!=SQLITE_OK){
         fprintf(stderr,"Cannot open %s\n",db_path); return 1;
     }
 
@@ -433,7 +513,7 @@ static int cmd_lineage(const char *db_path, const char *node_id) {
 
 static int cmd_export(const char *db_path, const char *out_path) {
     sqlite3 *db;
-    if (bf_sqlite3_open(db_path,&db)!=SQLITE_OK){
+    if (sqlite3_open(db_path,&db)!=SQLITE_OK){
         fprintf(stderr,"Cannot open %s\n",db_path); return 1;
     }
     FILE *fp=fopen(out_path,"w");
@@ -760,7 +840,7 @@ static int cmd_merkle(const char *manifest_path) {
     }
     ri_off+=snprintf(root_input+ri_off,sizeof(root_input)-ri_off,"]");
     char root_hash[65];
-    if (ncomp>0) bf_sha256_hex((const uint8_t*)root_input,(size_t)ri_off,root_hash);
+    if (ncomp>0) sha256_hex((const unsigned char*)root_input,(size_t)ri_off,root_hash);
     else root_hash[0]='\0';
 
     printf("Merkle root: %s\n",root_hash[0]?root_hash:"(none)");
@@ -778,7 +858,7 @@ static int cmd_merkle(const char *manifest_path) {
 
 static int cmd_status(const char *db_path) {
     sqlite3 *db;
-    if (bf_sqlite3_open(db_path,&db)!=SQLITE_OK){
+    if (sqlite3_open(db_path,&db)!=SQLITE_OK){
         fprintf(stderr,"Cannot open %s\n",db_path); return 1;
     }
     sqlite3_stmt *st;
@@ -805,6 +885,11 @@ static void usage(void) {
     fprintf(stderr,
         "BonfyreGraph — Merkle-DAG artifact graph engine\n\n"
         "Usage:\n"
+        "  bonfyre-graph sync-layers [--root DIR]\n"
+        "  bonfyre-graph plan <plan.json> [--root DIR]\n"
+        "  bonfyre-graph layer <artifact_id> [--root DIR]\n"
+        "  bonfyre-graph lineage-layer <artifact_id> [--root DIR]\n"
+        "  bonfyre-graph layer-neighbors <artifact_id> [--root DIR]\n"
         "  bonfyre-graph init <db>\n"
         "  bonfyre-graph add-atom <db> --id ID --hash HASH --type TYPE [--path PATH]\n"
         "  bonfyre-graph add-op <db> --id ID --op OP --inputs A,B --output OUT [--params '{}'] [--version V]\n"
@@ -825,6 +910,60 @@ static const char *arg_get(int argc, char **argv, const char *flag) {
 int main(int argc, char **argv) {
     if (argc<2){ usage(); return 1; }
     const char *cmd=argv[1];
+    const char *root = arg_get(argc, argv, "--root");
+
+    if (strcmp(cmd,"sync-layers")==0) {
+        if (bf_layer_rebuild_graph(root) != 0) {
+            fprintf(stderr, "bonfyre-graph: failed to sync layer graph\n");
+            return 1;
+        }
+        printf("{\"graph\":\"synced\",\"root\":\"%s\"}\n", root ? root : "");
+        return 0;
+    }
+    if (strcmp(cmd,"plan")==0) {
+        char *json = NULL;
+        if (argc < 3) { usage(); return 1; }
+        if (bf_layer_graph_plan_json(root, argv[2], &json) != 0) {
+            fprintf(stderr, "bonfyre-graph: failed to graph stitch plan\n");
+            return 1;
+        }
+        puts(json);
+        free(json);
+        return 0;
+    }
+    if (strcmp(cmd,"layer")==0) {
+        char *json = NULL;
+        if (argc < 3) { usage(); return 1; }
+        if (bf_layer_graph_edges_json(root, argv[2], &json) != 0) {
+            fprintf(stderr, "bonfyre-graph: failed to load layer edges\n");
+            return 1;
+        }
+        puts(json);
+        free(json);
+        return 0;
+    }
+    if (strcmp(cmd,"lineage-layer")==0) {
+        char *json = NULL;
+        if (argc < 3) { usage(); return 1; }
+        if (bf_layer_graph_edges_json(root, argv[2], &json) != 0) {
+            fprintf(stderr, "bonfyre-graph: failed to load lineage\n");
+            return 1;
+        }
+        puts(json);
+        free(json);
+        return 0;
+    }
+    if (strcmp(cmd,"layer-neighbors")==0) {
+        char *json = NULL;
+        if (argc < 3) { usage(); return 1; }
+        if (bf_layer_graph_edges_json(root, argv[2], &json) != 0) {
+            fprintf(stderr, "bonfyre-graph: failed to load neighbors\n");
+            return 1;
+        }
+        puts(json);
+        free(json);
+        return 0;
+    }
 
     if (strcmp(cmd,"init")==0) {
         if (argc<3){ fprintf(stderr,"Usage: bonfyre-graph init <db>\n"); return 1; }

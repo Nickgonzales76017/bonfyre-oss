@@ -25,6 +25,7 @@
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
+#include <sys/wait.h>
 #include <sys/stat.h>
 #include <sqlite3.h>
 #include <bonfyre.h>
@@ -32,6 +33,57 @@
 #define VERSION    "1.0.0"
 #define DB_ENV     "BONFYRE_TIME_DB"
 #define DB_SUBPATH "/.local/share/bonfyre/time.db"
+
+static const char *layeros_binary(void) {
+    return "layeros/bin/bonfyre-layeros";
+}
+
+static int run_execvp(char *const argv[]) {
+    pid_t pid = fork();
+    if (pid < 0) {
+        perror("fork");
+        return 1;
+    }
+    if (pid == 0) {
+        execvp(argv[0], argv);
+        perror("execvp");
+        _exit(127);
+    }
+    int status = 0;
+    if (waitpid(pid, &status, 0) < 0) {
+        perror("waitpid");
+        return 1;
+    }
+    return WIFEXITED(status) ? WEXITSTATUS(status) : 1;
+}
+
+static int delegate_layeros_time(int argc, char **argv, const char *subcmd) {
+    char *exec_argv[24];
+    int n = 0;
+    exec_argv[n++] = (char *)layeros_binary();
+    const char *root = NULL;
+    for (int i = 1; i < argc - 1; i++) {
+        if (strcmp(argv[i], "--root") == 0) {
+            root = argv[i + 1];
+            break;
+        }
+    }
+    if (root) {
+        exec_argv[n++] = "--root";
+        exec_argv[n++] = (char *)root;
+    }
+    exec_argv[n++] = "time";
+    exec_argv[n++] = (char *)subcmd;
+    for (int i = 2; i < argc; i++) {
+        if ((strcmp(argv[i], "--root") == 0 && i + 1 < argc)) {
+            i++;
+            continue;
+        }
+        exec_argv[n++] = argv[i];
+    }
+    exec_argv[n] = NULL;
+    return run_execvp(exec_argv);
+}
 
 static void db_path(char *buf, size_t len) {
     const char *e = getenv(DB_ENV);
@@ -282,6 +334,18 @@ static void cmd_help(void) {
 }
 
 int main(int argc, char **argv) {
+    if (argc >= 2) {
+        if (strcmp(argv[1], "layer") == 0) {
+            return delegate_layeros_time(argc, argv, "layer");
+        }
+        if (strcmp(argv[1], "stale-layers") == 0) {
+            return delegate_layeros_time(argc, argv, "stale-layers");
+        }
+        if (strcmp(argv[1], "schedule-layer-verify") == 0) {
+            return delegate_layeros_time(argc, argv, "schedule-layer-verify");
+        }
+    }
+
     if (argc < 2 || strcmp(argv[1],"help")==0 || strcmp(argv[1],"--help")==0) {
         cmd_help(); return 0;
     }

@@ -25,9 +25,20 @@
 #include <unistd.h>
 #include <sqlite3.h>
 #include <bonfyre.h>
+
 #define MAX_LINE 65536
 
-static void iso_timestamp(char *buf, size_t sz) { bf_iso_timestamp(buf, sz); }
+static void iso_timestamp(char *buf, size_t sz) {
+    time_t now = time(NULL); struct tm t; gmtime_r(&now, &t);
+    strftime(buf, sz, "%Y-%m-%dT%H:%M:%SZ", &t);
+}
+
+static const char *arg_get(int argc, char **argv, const char *flag) {
+    for (int i = 1; i < argc - 1; i++) {
+        if (strcmp(argv[i], flag) == 0) return argv[i + 1];
+    }
+    return NULL;
+}
 
 static long long monotonic_ns(void) {
     struct timespec ts;
@@ -753,10 +764,16 @@ static long long query_single_int64(sqlite3 *db, const char *sql) {
 static int cmd_build(const char *dir, const char *db_path) {
     long long started = monotonic_ns();
     sqlite3 *db;
-    if (bf_sqlite3_open(db_path, &db) != SQLITE_OK) {
+    if (sqlite3_open(db_path, &db) != SQLITE_OK) {
         fprintf(stderr, "Cannot open db: %s\n", sqlite3_errmsg(db));
         return 1;
     }
+
+    sqlite3_exec(db,
+        "PRAGMA temp_store=FILE;"
+        "PRAGMA cache_size=-256;"
+        "PRAGMA mmap_size=0;",
+        NULL, NULL, NULL);
 
     char *err = NULL;
     sqlite3_exec(db,
@@ -888,7 +905,7 @@ static int cmd_build(const char *dir, const char *db_path) {
 
 static int cmd_search(const char *query, const char *db_path, const char *type, int limit) {
     sqlite3 *db;
-    if (bf_sqlite3_open_ro(db_path, &db) != SQLITE_OK) {
+    if (sqlite3_open_v2(db_path, &db, SQLITE_OPEN_READONLY, NULL) != SQLITE_OK) {
         fprintf(stderr, "Cannot open db: %s\n", db_path);
         return 1;
     }
@@ -942,7 +959,7 @@ static int cmd_search(const char *query, const char *db_path, const char *type, 
 
 static int cmd_reuse(const char *db_path) {
     sqlite3 *db;
-    if (bf_sqlite3_open_ro(db_path, &db) != SQLITE_OK) return 1;
+    if (sqlite3_open_v2(db_path, &db, SQLITE_OPEN_READONLY, NULL) != SQLITE_OK) return 1;
 
     int first;
     printf("=== Shared Atoms (same content, multiple families) ===\n");
@@ -964,7 +981,7 @@ static int cmd_reuse(const char *db_path) {
 
 static int cmd_equivalence(const char *db_path, int limit, int json_mode) {
     sqlite3 *db;
-    if (bf_sqlite3_open_ro(db_path, &db) != SQLITE_OK) return 1;
+    if (sqlite3_open_v2(db_path, &db, SQLITE_OPEN_READONLY, NULL) != SQLITE_OK) return 1;
 
     sqlite3_stmt *stmt = NULL;
     const char *sql =
@@ -1014,7 +1031,7 @@ static int cmd_equivalence(const char *db_path, int limit, int json_mode) {
 
 static int cmd_collapse_preview(const char *db_path, int limit, int json_mode) {
     sqlite3 *db;
-    if (bf_sqlite3_open_ro(db_path, &db) != SQLITE_OK) return 1;
+    if (sqlite3_open_v2(db_path, &db, SQLITE_OPEN_READONLY, NULL) != SQLITE_OK) return 1;
 
     sqlite3_stmt *stmt = NULL;
     const char *sql =
@@ -1084,7 +1101,7 @@ static int cmd_collapse_preview(const char *db_path, int limit, int json_mode) {
 
 static int cmd_confidence_preview(const char *db_path, int limit, int json_mode) {
     sqlite3 *db;
-    if (bf_sqlite3_open_ro(db_path, &db) != SQLITE_OK) return 1;
+    if (sqlite3_open_v2(db_path, &db, SQLITE_OPEN_READONLY, NULL) != SQLITE_OK) return 1;
 
     sqlite3_stmt *stmt = NULL;
     const char *sql =
@@ -1156,7 +1173,7 @@ static int cmd_confidence_preview(const char *db_path, int limit, int json_mode)
 
 static int cmd_collapse_plan(const char *db_path, int limit, int json_mode) {
     sqlite3 *db;
-    if (bf_sqlite3_open_ro(db_path, &db) != SQLITE_OK) return 1;
+    if (sqlite3_open_v2(db_path, &db, SQLITE_OPEN_READONLY, NULL) != SQLITE_OK) return 1;
 
     sqlite3_stmt *stmt = NULL;
     const char *sql =
@@ -1265,7 +1282,7 @@ static int cmd_collapse_plan(const char *db_path, int limit, int json_mode) {
 
 static int cmd_collapse_ledger(const char *db_path, const char *out_path, int limit) {
     sqlite3 *db;
-    if (bf_sqlite3_open_ro(db_path, &db) != SQLITE_OK) return 1;
+    if (sqlite3_open_v2(db_path, &db, SQLITE_OPEN_READONLY, NULL) != SQLITE_OK) return 1;
 
     sqlite3_stmt *stmt = NULL;
     const char *sql =
@@ -1366,7 +1383,7 @@ static int cmd_collapse_ledger(const char *db_path, const char *out_path, int li
 
 static int cmd_merge_manifest(const char *db_path, const char *out_path, int limit) {
     sqlite3 *db;
-    if (bf_sqlite3_open_ro(db_path, &db) != SQLITE_OK) return 1;
+    if (sqlite3_open_v2(db_path, &db, SQLITE_OPEN_READONLY, NULL) != SQLITE_OK) return 1;
 
     sqlite3_stmt *stmt = NULL;
     const char *sql =
@@ -2027,7 +2044,7 @@ static int cmd_bundle_diff(const char *bundle_layout_path, const char *out_path)
 
 static int cmd_stats(const char *db_path) {
     sqlite3 *db;
-    if (bf_sqlite3_open_ro(db_path, &db) != SQLITE_OK) {
+    if (sqlite3_open_v2(db_path, &db, SQLITE_OPEN_READONLY, NULL) != SQLITE_OK) {
         fprintf(stderr, "Cannot open db: %s\n", db_path);
         return 1;
     }
@@ -2064,6 +2081,7 @@ static int cmd_stats(const char *db_path) {
 int main(int argc, char *argv[]) {
     const char *db = "bonfyre-index.db";
     int json_mode = 0;
+    const char *root = arg_get(argc, argv, "--root");
 
     /* parse --db */
     for (int i = 1; i < argc - 1; i++) {
@@ -2152,9 +2170,19 @@ int main(int argc, char *argv[]) {
     if (argc >= 2 && strcmp(argv[1], "stats") == 0)
         return cmd_stats(db);
 
+    if (argc >= 2 && strcmp(argv[1], "layers") == 0) {
+        if (bf_layer_rebuild_index(root) != 0) {
+            fprintf(stderr, "bonfyre-index: failed to rebuild layer index\n");
+            return 1;
+        }
+        printf("{\"indexed\":\"layers\",\"root\":\"%s\"}\n", root ? root : "");
+        return 0;
+    }
+
     fprintf(stderr,
         "BonfyreIndex — artifact family index & search\n\n"
         "Usage:\n"
+        "  bonfyre-index layers [--root DIR]       Rebuild LayerArtifact index projection\n"
         "  bonfyre-index build <dir> [--db F]      Crawl & index artifact.json files\n"
         "  bonfyre-index search <q> [--type T]      Search families\n"
         "  bonfyre-index reuse [--db F]             Find shared atoms/operators\n"

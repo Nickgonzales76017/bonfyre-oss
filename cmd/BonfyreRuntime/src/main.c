@@ -1,15 +1,34 @@
 #include <dirent.h>
+#include <ctype.h>
 #include <errno.h>
 #include <limits.h>
 #include <signal.h>
+#include <sqlite3.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <strings.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <time.h>
 #include <unistd.h>
+#include <bonfyre.h>
+
+#define MAX_RUNTIME_TOKEN 64
+
+typedef struct {
+    char token[MAX_RUNTIME_TOKEN];
+} RuntimeToken;
+
+typedef struct {
+    char id[128];
+    char kind[32];
+    char name[256];
+    char summary[1024];
+    char json[4096];
+    double score;
+} CatalogMatch;
 static void path_join(char *buffer, size_t size, const char *left, const char *right) {
     snprintf(buffer, size, "%s/%s", left, right);
 }
@@ -219,6 +238,184 @@ static int is_safe_cmd_token(const char *s) {
     return 1;
 }
 
+static int open_catalog(sqlite3 **db_out, char *path, size_t path_sz) {
+    bf_catalog_default_db_path(path, path_sz);
+    if (bf_catalog_sync_default(path) != 0) return 0;
+    if (bf_sqlite3_open_ro(path, db_out) != SQLITE_OK) {
+        sqlite3_close(*db_out);
+        *db_out = NULL;
+        return 0;
+    }
+    return 1;
+}
+
+static void default_state_path(const char *env_name, const char *subpath, char *buf, size_t sz) {
+    const char *env = getenv(env_name);
+    const char *home = getenv("HOME");
+    if (env && env[0]) {
+        snprintf(buf, sz, "%s", env);
+        return;
+    }
+    if (!home) home = "/tmp";
+    snprintf(buf, sz, "%s%s", home, subpath);
+}
+
+static int path_ready_or_parent_writable(const char *path) {
+    if (!path || !path[0]) return 0;
+    if (access(path, R_OK | W_OK) == 0) return 1;
+    char parent[PATH_MAX];
+    snprintf(parent, sizeof(parent), "%s", path);
+    char *slash = strrchr(parent, '/');
+    if (!slash) return access(".", W_OK) == 0;
+    if (slash == parent) slash[1] = '\0';
+    else *slash = '\0';
+    return access(parent, W_OK) == 0;
+}
+
+static int contains_ci(const char *haystack, const char *needle) {
+    if (!needle || !needle[0]) return 1;
+    if (!haystack || !haystack[0]) return 0;
+    size_t needle_len = strlen(needle);
+    for (size_t i = 0; haystack[i]; i++) {
+        size_t j = 0;
+        while (needle[j] && haystack[i + j] &&
+               tolower((unsigned char)haystack[i + j]) == tolower((unsigned char)needle[j])) {
+            j++;
+        }
+        if (j == needle_len) return 1;
+    }
+    return 0;
+}
+
+static int tokenize_intent(const char *text, RuntimeToken *tokens, int cap) {
+    int count = 0;
+    char buf[MAX_RUNTIME_TOKEN];
+    int len = 0;
+    if (!text) return 0;
+    for (const char *p = text; ; p++) {
+        unsigned char c = (unsigned char)*p;
+        if (isalnum(c) || c == '-' || c == '_') {
+            if (len + 1 < (int)sizeof(buf)) buf[len++] = (char)tolower(c);
+        } else {
+            if (len >= 3 && count < cap) {
+                buf[len] = '\0';
+                int dup = 0;
+                for (int i = 0; i < count; i++) {
+                    if (strcmp(tokens[i].token, buf) == 0) { dup = 1; break; }
+                }
+                if (!dup) {
+                    snprintf(tokens[count].token, sizeof(tokens[count].token), "%s", buf);
+                    count++;
+                }
+            }
+            len = 0;
+            if (c == '\0') break;
+        }
+    }
+    return count;
+}
+
+static double score_text_match(const RuntimeToken *tokens, int ntokens,
+                               const char *a, const char *b, const char *c, const char *d) {
+    double score = 0.0;
+    if (ntokens <= 0) return 0.0;
+    for (int i = 0; i < ntokens; i++) {
+        int hits = 0;
+        if (contains_ci(a, tokens[i].token)) hits += 4;
+        if (contains_ci(b, tokens[i].token)) hits += 3;
+        if (contains_ci(c, tokens[i].token)) hits += 2;
+        if (contains_ci(d, tokens[i].token)) hits += 1;
+        score += (double)hits;
+    }
+    return score;
+}
+
+static int fetch_best_catalog_match(sqlite3 *db, const char *kind, const char *intent,
+                                    CatalogMatch *out_match) {
+    sqlite3_stmt *st = NULL;
+    RuntimeToken tokens[32];
+    int ntokens = tokenize_intent(intent, tokens, 32);
+    double best = -1.0;
+    memset(out_match, 0, sizeof(*out_match));
+
+    if (sqlite3_prepare_v2(db,
+        "SELECT external_id,name,summary,json_data FROM catalog_nodes WHERE kind=?",
+        -1, &st, NULL) != SQLITE_OK) {
+        return 0;
+    }
+    sqlite3_bind_text(st, 1, kind, -1, SQLITE_STATIC);
+    while (sqlite3_step(st) == SQLITE_ROW) {
+        const char *id = (const char *)sqlite3_column_text(st, 0);
+        const char *name = (const char *)sqlite3_column_text(st, 1);
+        const char *summary = (const char *)sqlite3_column_text(st, 2);
+        const char *json = (const char *)sqlite3_column_text(st, 3);
+        double score = score_text_match(tokens, ntokens, id, name, summary, json);
+        if (intent && id && strcasecmp(intent, id) == 0) score += 1000.0;
+        if (intent) {
+            if (strcmp(kind, "workflow") == 0) {
+                if (contains_ci(intent, "workflow")) score += 12.0;
+                if (contains_ci(intent, "pipeline")) score += 12.0;
+                if (contains_ci(intent, "investigation")) score += 10.0;
+                if (contains_ci(intent, "suite")) score += 8.0;
+            } else if (strcmp(kind, "recipe") == 0) {
+                if (contains_ci(intent, "recipe")) score += 10.0;
+                if (contains_ci(intent, "run")) score += 4.0;
+                if (contains_ci(intent, "calibration")) score += 4.0;
+                if (contains_ci(intent, "collapse")) score += 4.0;
+            } else if (strcmp(kind, "capability") == 0) {
+                if (contains_ci(intent, "capability")) score += 8.0;
+            }
+        }
+        if (score > best) {
+            best = score;
+            snprintf(out_match->id, sizeof(out_match->id), "%s", id ? id : "");
+            snprintf(out_match->kind, sizeof(out_match->kind), "%s", kind);
+            snprintf(out_match->name, sizeof(out_match->name), "%s", name ? name : "");
+            snprintf(out_match->summary, sizeof(out_match->summary), "%s", summary ? summary : "");
+            snprintf(out_match->json, sizeof(out_match->json), "%s", json ? json : "");
+            out_match->score = score;
+        }
+    }
+    sqlite3_finalize(st);
+    return best > 0.0;
+}
+
+static int intent_prefers_workflow(const char *intent) {
+    if (!intent) return 0;
+    return contains_ci(intent, "workflow") ||
+           contains_ci(intent, "pipeline") ||
+           contains_ci(intent, "investigation") ||
+           contains_ci(intent, "suite");
+}
+
+static int write_text_file(const char *path, const char *text) {
+    FILE *fp = fopen(path, "w");
+    if (!fp) return 0;
+    fputs(text ? text : "", fp);
+    fclose(fp);
+    return 1;
+}
+
+static int write_autowire_resolution(const char *path,
+                                     const char *intent,
+                                     const CatalogMatch *recipe,
+                                     const CatalogMatch *workflow,
+                                     const CatalogMatch *capability) {
+    FILE *fp = fopen(path, "w");
+    if (!fp) return 0;
+    fprintf(fp, "{\n");
+    fprintf(fp, "  \"intent\": \"%s\",\n", intent ? intent : "");
+    if (recipe && recipe->id[0]) fprintf(fp, "  \"recipe\": \"%s\",\n", recipe->id);
+    else fprintf(fp, "  \"recipe\": null,\n");
+    if (workflow && workflow->id[0]) fprintf(fp, "  \"workflow\": \"%s\",\n", workflow->id);
+    else fprintf(fp, "  \"workflow\": null,\n");
+    if (capability && capability->id[0]) fprintf(fp, "  \"capability\": \"%s\"\n", capability->id);
+    else fprintf(fp, "  \"capability\": null\n");
+    fprintf(fp, "}\n");
+    fclose(fp);
+    return 1;
+}
+
 static int find_binary_in_cmd_tree(const char *argv0, const char *binary, char *out, size_t out_sz) {
     DIR *root = NULL;
     char cmd_root[PATH_MAX];
@@ -314,6 +511,62 @@ static int resolve_in_path(const char *name, char *out, size_t out_sz) {
 }
 
 static int cmd_capabilities(const char *argv0) {
+    (void)argv0;
+    sqlite3 *db = NULL;
+    sqlite3_stmt *st = NULL;
+    char path[PATH_MAX];
+    if (open_catalog(&db, path, sizeof(path))) {
+        printf("{\n");
+        printf("  \"generator\":\"bonfyre-runtime capabilities\",\n");
+        printf("  \"catalog\":\"%s\",\n", path);
+
+        printf("  \"surfaces\":[\n");
+        if (sqlite3_prepare_v2(db,
+            "SELECT kind, COUNT(*) FROM catalog_nodes "
+            "WHERE kind IN ('workflow','family','capability','model','layer','recipe','run_manifest') "
+            "GROUP BY kind ORDER BY kind",
+            -1, &st, NULL) == SQLITE_OK) {
+            int first = 1;
+            while (sqlite3_step(st) == SQLITE_ROW) {
+                if (!first) printf(",\n");
+                first = 0;
+                printf("    {\"kind\":\"%s\",\"count\":%d}",
+                       sqlite3_column_text(st, 0) ? (const char *)sqlite3_column_text(st, 0) : "",
+                       sqlite3_column_int(st, 1));
+            }
+            sqlite3_finalize(st);
+        }
+        printf("\n  ],\n");
+
+        printf("  \"capabilities\":[\n");
+        if (sqlite3_prepare_v2(db,
+            "SELECT external_id, name, category, json_data FROM catalog_nodes "
+            "WHERE kind='capability' ORDER BY external_id",
+            -1, &st, NULL) == SQLITE_OK) {
+            int first = 1;
+            while (sqlite3_step(st) == SQLITE_ROW) {
+                const char *json = (const char *)sqlite3_column_text(st, 3);
+                char binary[128] = "", command[64] = "", artifact[128] = "";
+                if (json) {
+                    bf_json_str(json, "binary", binary, sizeof(binary));
+                    bf_json_str(json, "command", command, sizeof(command));
+                    bf_json_str(json, "artifact_out", artifact, sizeof(artifact));
+                }
+                if (!first) printf(",\n");
+                first = 0;
+                printf("    {\"id\":\"%s\",\"name\":\"%s\",\"stage\":\"%s\",\"binary\":\"%s\",\"command\":\"%s\",\"artifact\":\"%s\"}",
+                       sqlite3_column_text(st, 0) ? (const char *)sqlite3_column_text(st, 0) : "",
+                       sqlite3_column_text(st, 1) ? (const char *)sqlite3_column_text(st, 1) : "",
+                       sqlite3_column_text(st, 2) ? (const char *)sqlite3_column_text(st, 2) : "",
+                       binary, command, artifact);
+            }
+            sqlite3_finalize(st);
+        }
+        printf("\n  ]\n}\n");
+        sqlite3_close(db);
+        return 0;
+    }
+
     DIR *root = NULL;
     char cmd_root[PATH_MAX];
     if (!open_cmd_root(argv0, &root, cmd_root, sizeof(cmd_root))) {
@@ -381,18 +634,64 @@ static int cmd_capabilities(const char *argv0) {
 
 static int cmd_doctor(int as_json, int preflight_on, int preflight_is_strict, const BinarySpec *bins, size_t bins_len) {
     size_t ready = 0;
+    sqlite3 *catalog = NULL;
+    sqlite3_stmt *st = NULL;
+    char catalog_path[PATH_MAX];
+    int catalog_ok = open_catalog(&catalog, catalog_path, sizeof(catalog_path));
+    int workflow_count = 0, family_count = 0, capability_count = 0, model_count = 0, layer_count = 0, recipe_count = 0;
+    char capability_db[PATH_MAX], model_db[PATH_MAX], layer_db[PATH_MAX];
+    default_state_path("BONFYRE_CAPABILITY_DB", "/.local/share/bonfyre/capability.db", capability_db, sizeof(capability_db));
+    default_state_path("BONFYRE_MODEL_DB", "/.local/share/bonfyre/models.db", model_db, sizeof(model_db));
+    default_state_path("BONFYRE_LAYER_DB", "/.local/share/bonfyre/layers.db", layer_db, sizeof(layer_db));
+
+    if (catalog_ok && sqlite3_prepare_v2(catalog,
+        "SELECT kind, COUNT(*) FROM catalog_nodes "
+        "WHERE kind IN ('workflow','family','capability','model','layer','recipe') "
+        "GROUP BY kind",
+        -1, &st, NULL) == SQLITE_OK) {
+        while (sqlite3_step(st) == SQLITE_ROW) {
+            const char *kind = (const char *)sqlite3_column_text(st, 0);
+            int count = sqlite3_column_int(st, 1);
+            if (kind && strcmp(kind, "workflow") == 0) workflow_count = count;
+            else if (kind && strcmp(kind, "family") == 0) family_count = count;
+            else if (kind && strcmp(kind, "capability") == 0) capability_count = count;
+            else if (kind && strcmp(kind, "model") == 0) model_count = count;
+            else if (kind && strcmp(kind, "layer") == 0) layer_count = count;
+            else if (kind && strcmp(kind, "recipe") == 0) recipe_count = count;
+        }
+        sqlite3_finalize(st);
+    }
 
     if (as_json) {
         printf("{\n");
         printf("  \"preflight\":{\"enabled\":%s,\"strict\":%s},\n",
                preflight_on ? "true" : "false",
                preflight_is_strict ? "true" : "false");
+        printf("  \"catalog\":{\"ok\":%s,\"path\":\"%s\",\"workflow\":%d,\"family\":%d,\"capability\":%d,\"model\":%d,\"layer\":%d,\"recipe\":%d},\n",
+               catalog_ok ? "true" : "false",
+               catalog_ok ? catalog_path : "",
+               workflow_count, family_count, capability_count, model_count, layer_count, recipe_count);
+        printf("  \"registries\":{\"capability\":{\"path\":\"%s\",\"ready\":%s},\"model\":{\"path\":\"%s\",\"ready\":%s},\"layer\":{\"path\":\"%s\",\"ready\":%s}},\n",
+               capability_db, path_ready_or_parent_writable(capability_db) ? "true" : "false",
+               model_db, path_ready_or_parent_writable(model_db) ? "true" : "false",
+               layer_db, path_ready_or_parent_writable(layer_db) ? "true" : "false");
         printf("  \"binaries\":[\n");
     } else {
         printf("bonfyre-runtime doctor\n");
         printf("preflight: enabled=%s strict=%s\n",
                preflight_on ? "true" : "false",
                preflight_is_strict ? "true" : "false");
+        printf("catalog:   %s%s\n",
+               catalog_ok ? "OK  " : "FAIL",
+               catalog_ok ? catalog_path : "");
+        if (catalog_ok) {
+            printf("surfaces:  workflow=%d family=%d capability=%d model=%d layer=%d recipe=%d\n",
+                   workflow_count, family_count, capability_count, model_count, layer_count, recipe_count);
+        }
+        printf("registries:\n");
+        printf("  capability  %s  %s\n", path_ready_or_parent_writable(capability_db) ? "READY" : "MISSING", capability_db);
+        printf("  model       %s  %s\n", path_ready_or_parent_writable(model_db) ? "READY" : "MISSING", model_db);
+        printf("  layer       %s  %s\n", path_ready_or_parent_writable(layer_db) ? "READY" : "MISSING", layer_db);
         printf("binaries:\n");
     }
 
@@ -419,11 +718,13 @@ static int cmd_doctor(int as_json, int preflight_on, int preflight_is_strict, co
         printf("\n  ],\n  \"summary\":{\"ready\":%zu,\"total\":%zu}\n}\n", ready, bins_len);
     } else {
         printf("summary: %zu/%zu binaries resolvable\n", ready, bins_len);
-        if (ready != bins_len) {
+        if (!catalog_ok || ready != bins_len) {
             printf("hint: install missing binaries or set BONFYRE_*_BINARY overrides\n");
+            if (catalog) sqlite3_close(catalog);
             return 2;
         }
     }
+    if (catalog) sqlite3_close(catalog);
     return 0;
 }
 
@@ -483,8 +784,8 @@ static void print_usage(void) {
             "            runtime can orchestrate broad cmd-tree capabilities from one entry point.\n"
             "  run-recipe: canonical bridge to bonfyre-run recipe execution semantics.\n"
             "  service: standard launcher for long-running infra (proxy, moq relay, swarm worker).\n"
-            "  autowire: generates a recipe from natural language (bonfyre-gen), then runs\n"
-            "            it locally or dispatches to swarm, and finally runs control ops.\n");}
+            "  autowire: resolves existing recipe / workflow / capability matches from the\n"
+            "            shared catalog first; optional generator fallback is disabled by default.\n");}
 
 static void print_usage(void);
 static int  cmd_parallel(int argc, char **argv);
@@ -700,12 +1001,23 @@ int main(int argc, char **argv) {
             if (prc != 0) return prc;
         }
 
-        char **child = calloc((size_t)argc + 1, sizeof(char *));
+        int has_input_flag = 0;
+        for (int i = 4; i < argc; i++) {
+            if (strcmp(argv[i], "--input") == 0) {
+                has_input_flag = 1;
+                break;
+            }
+        }
+
+        char **child = calloc((size_t)argc + 3, sizeof(char *));
         if (!child) return 1;
         int c = 0;
         child[c++] = (char *)run_bin;
         child[c++] = argv[2];
-        child[c++] = argv[3];
+        if (!has_input_flag) {
+            child[c++] = "--input";
+            child[c++] = argv[3];
+        }
         for (int i = 4; i < argc; i++) child[c++] = argv[i];
         child[c] = NULL;
         int rc = run_command(child);
@@ -805,6 +1117,80 @@ int main(int argc, char **argv) {
         }
 
         mkdir_p(out_dir);
+
+        {
+            sqlite3 *catalog = NULL;
+            char catalog_path[PATH_MAX];
+            CatalogMatch recipe_match;
+            CatalogMatch workflow_match;
+            CatalogMatch capability_match;
+            memset(&recipe_match, 0, sizeof(recipe_match));
+            memset(&workflow_match, 0, sizeof(workflow_match));
+            memset(&capability_match, 0, sizeof(capability_match));
+
+            if (open_catalog(&catalog, catalog_path, sizeof(catalog_path))) {
+                int have_recipe = fetch_best_catalog_match(catalog, "recipe", intent, &recipe_match);
+                int have_workflow = fetch_best_catalog_match(catalog, "workflow", intent, &workflow_match);
+                int have_capability = fetch_best_catalog_match(catalog, "capability", intent, &capability_match);
+                sqlite3_close(catalog);
+
+                char resolution_path[PATH_MAX];
+                path_join(resolution_path, sizeof(resolution_path), out_dir, "autowire-resolution.json");
+                write_autowire_resolution(resolution_path, intent,
+                                          have_recipe ? &recipe_match : NULL,
+                                          have_workflow ? &workflow_match : NULL,
+                                          have_capability ? &capability_match : NULL);
+
+                if (have_workflow &&
+                    (!have_recipe ||
+                     workflow_match.score >= recipe_match.score ||
+                     (intent_prefers_workflow(intent) && workflow_match.score > 0.0))) {
+                    char workflow_path[PATH_MAX];
+                    path_join(workflow_path, sizeof(workflow_path), out_dir, "workflow.resolved.json");
+                    write_text_file(workflow_path, workflow_match.json);
+                    fprintf(stderr,
+                            "autowire: resolved workflow %s from catalog\n  input:  %s\n  workflow: %s\n  resolution: %s\n",
+                            workflow_match.id, input, workflow_path, resolution_path);
+                    return 0;
+                }
+
+                if (have_recipe) {
+                    if (strcmp(mode, "swarm") == 0) {
+                        fprintf(stderr,
+                                "autowire: resolved recipe %s from catalog; local execution remains canonical in this pass, running locally\n",
+                                recipe_match.id);
+                    }
+                    char *run_argv[] = {
+                        (char *)run_bin,
+                        recipe_match.id,
+                        "--input", (char *)input,
+                        "--out", (char *)out_dir,
+                        NULL
+                    };
+                    int rc = run_command(run_argv);
+                    if (rc != 0) {
+                        fprintf(stderr, "autowire: catalog recipe run failed (rc=%d)\n", rc);
+                        return rc;
+                    }
+                    fprintf(stderr,
+                            "autowire: complete\n  input:  %s\n  recipe: %s\n  mode:   local\n  resolution: %s\n",
+                            input, recipe_match.id, resolution_path);
+                    return 0;
+                }
+
+                if (have_capability) {
+                    fprintf(stderr,
+                            "autowire: resolved capability %s from catalog\n  input:  %s\n  resolution: %s\n",
+                            capability_match.id, input, resolution_path);
+                    return 0;
+                }
+            }
+        }
+
+        if (!env_truthy("BONFYRE_RUNTIME_AUTOWIRE_GEN_FALLBACK", 0)) {
+            fprintf(stderr, "autowire: no catalog-backed recipe/workflow/capability match and generator fallback is disabled\n");
+            return 1;
+        }
 
         char recipe_path[PATH_MAX];
         char artifact_path[PATH_MAX];

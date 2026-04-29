@@ -9,7 +9,7 @@
  * Cache:   ~/.cache/bonfyre/models/           (override: $BONFYRE_MODEL_CACHE)
  *
  * Commands:
- *   bonfyre-model list                    — list all registered models
+ *   bonfyre-model list                    — list registered models
  *   bonfyre-model show <id>               — print full model record
  *   bonfyre-model pull <id>               — ensure model is present in cache
  *   bonfyre-model pull --recipe <code>    — pull all models required by a recipe
@@ -40,6 +40,7 @@
  */
 
 #include <errno.h>
+#include <dirent.h>
 #include <limits.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -171,6 +172,86 @@ static sqlite3 *db_open(const char *path) {
     sqlite3_exec(db, "ALTER TABLE models ADD COLUMN layer_frag_spec     TEXT;",   NULL, NULL, NULL);
     sqlite3_exec(db, "ALTER TABLE models ADD COLUMN mean_f1             REAL;",   NULL, NULL, NULL);
     return db;
+}
+
+static int open_catalog(sqlite3 **out_db, char *path, size_t path_sz) {
+    bf_catalog_default_db_path(path, path_sz);
+    if (bf_catalog_sync_default(path) != 0) return 0;
+    if (bf_sqlite3_open_ro(path, out_db) != SQLITE_OK) {
+        sqlite3_close(*out_db);
+        *out_db = NULL;
+        return 0;
+    }
+    return 1;
+}
+
+static const char *scheme_label(const char *url);
+
+static void sync_catalog_after_model_change(void) {
+    char catalog_path[PATH_MAX];
+    bf_catalog_default_db_path(catalog_path, sizeof(catalog_path));
+    bf_catalog_sync_default(catalog_path);
+}
+
+static int catalog_model_sources(sqlite3 *catalog, const char *model_id) {
+    sqlite3_stmt *st = NULL;
+    char model_node_id[192];
+    int count = 0;
+
+    snprintf(model_node_id, sizeof(model_node_id), "model:%s", model_id);
+    if (sqlite3_prepare_v2(catalog,
+        "SELECT s.name, s.json_data "
+        "FROM catalog_edges e "
+        "JOIN catalog_nodes s ON s.node_id = e.dst_node_id "
+        "WHERE e.src_node_id=? AND e.rel='has_source' AND s.kind='model_source' "
+        "ORDER BY s.external_id",
+        -1, &st, NULL) != SQLITE_OK) {
+        printf("  \"sources\": []");
+        return 0;
+    }
+
+    sqlite3_bind_text(st, 1, model_node_id, -1, SQLITE_STATIC);
+    printf("  \"sources\": [\n");
+    while (sqlite3_step(st) == SQLITE_ROW) {
+        const char *url = (const char *)sqlite3_column_text(st, 0);
+        const char *json = (const char *)sqlite3_column_text(st, 1);
+        int priority = 0;
+        if (json) bf_json_int(json, "priority", &priority);
+        if (count > 0) printf(",\n");
+        printf("    { \"url\": ");
+        char eurl[1024];
+        json_escape(url ? url : "", eurl, sizeof(eurl));
+        printf("\"%s\", \"scheme\": \"%s\", \"priority\": %d }",
+               eurl, scheme_label(url ? url : ""), priority);
+        count++;
+    }
+    printf("\n  ]");
+    sqlite3_finalize(st);
+    return count;
+}
+
+static void catalog_print_string_array(sqlite3 *catalog,
+                                       const char *sql,
+                                       const char *node_id,
+                                       const char *label) {
+    sqlite3_stmt *st = NULL;
+    int first = 1;
+    if (sqlite3_prepare_v2(catalog, sql, -1, &st, NULL) != SQLITE_OK) {
+        printf("  \"%s\": []", label);
+        return;
+    }
+    sqlite3_bind_text(st, 1, node_id, -1, SQLITE_STATIC);
+    printf("  \"%s\": [", label);
+    while (sqlite3_step(st) == SQLITE_ROW) {
+        const char *value = (const char *)sqlite3_column_text(st, 0);
+        char escaped[512];
+        json_escape(value ? value : "", escaped, sizeof(escaped));
+        if (!first) printf(", ");
+        printf("\"%s\"", escaped);
+        first = 0;
+    }
+    printf("]");
+    sqlite3_finalize(st);
 }
 
 /* ====================================================================
@@ -581,7 +662,7 @@ static void cmd_help(void) {
     printf(
         "bonfyre-model %s — AI model dependency manager\n\n"
         "COMMANDS\n"
-        "  list                       list all registered models\n"
+        "  list                       list registered models\n"
         "  show <id>                  print full model record\n"
         "  pull <id>                  ensure model is in local cache\n"
         "  pull --recipe <code>       pull all models required by a recipe\n"
@@ -721,6 +802,7 @@ static int cmd_push(sqlite3 *db, const char *model_id, const char *repo) {
     sqlite3_bind_text(st, 1, model_id, -1, SQLITE_STATIC);
     sqlite3_bind_text(st, 2, hf_url,   -1, SQLITE_STATIC);
     sqlite3_step(st); sqlite3_finalize(st);
+    sync_catalog_after_model_change();
 
     printf("Pushed: hf://%s/model.fpq\n", repo);
     printf("  source registered — pull later with: bonfyre-model pull %s\n", model_id);
@@ -728,6 +810,47 @@ static int cmd_push(sqlite3 *db, const char *model_id, const char *repo) {
 }
 
 static int cmd_list(sqlite3 *db) {
+    sqlite3 *catalog = NULL;
+    sqlite3_stmt *cst = NULL;
+    char catalog_path[PATH_MAX];
+    if (open_catalog(&catalog, catalog_path, sizeof(catalog_path))) {
+        if (sqlite3_prepare_v2(catalog,
+            "SELECT external_id, json_data, "
+            "(SELECT COUNT(*) FROM catalog_edges e WHERE e.dst_node_id = n.node_id AND e.rel='uses_model') "
+            "FROM catalog_nodes n WHERE kind='model' ORDER BY external_id",
+            -1, &cst, NULL) == SQLITE_OK) {
+            char cache_dir[PATH_MAX]; get_cache_dir(cache_dir, sizeof(cache_dir));
+            printf("%-32s  %-8s  %-8s  %-7s  %s\n",
+                   "ID", "FORMAT", "SIZE", "RECIPES", "CACHED");
+            printf("%-32s  %-8s  %-8s  %-7s  %s\n",
+                   "--------------------------------", "--------", "--------", "-------", "------");
+            int count = 0;
+            while (sqlite3_step(cst) == SQLITE_ROW) {
+                const char *id = (const char *)sqlite3_column_text(cst, 0);
+                const char *json = (const char *)sqlite3_column_text(cst, 1);
+                char fmt[64] = "";
+                double sz = 0.0;
+                int nrec = sqlite3_column_int(cst, 2);
+                if (json) {
+                    bf_json_str(json, "format", fmt, sizeof(fmt));
+                    bf_json_double(json, "size_mb", &sz);
+                }
+                char szs[16];
+                fmt_size(sz, szs, sizeof(szs));
+                int cached = cache_hit(id, NULL, cache_dir, NULL, 0);
+                printf("%-32s  %-8s  %-8s  %-7d  %s\n",
+                       id ? id : "", fmt[0] ? fmt : "-", szs, nrec, cached ? "yes" : "-");
+                count++;
+            }
+            sqlite3_finalize(cst);
+            sqlite3_close(catalog);
+            printf("\n%d model(s) indexed.\n", count);
+            return 0;
+        }
+        if (cst) sqlite3_finalize(cst);
+        sqlite3_close(catalog);
+    }
+
     sqlite3_stmt *st;
     sqlite3_prepare_v2(db,
         "SELECT m.id, m.name, m.format, m.size_mb, "
@@ -762,9 +885,94 @@ static int cmd_list(sqlite3 *db) {
 }
 
 static int cmd_show(sqlite3 *db, const char *id) {
+    sqlite3 *catalog = NULL;
+    sqlite3_stmt *cst = NULL;
+    char catalog_path[PATH_MAX];
+    if (open_catalog(&catalog, catalog_path, sizeof(catalog_path))) {
+        if (sqlite3_prepare_v2(catalog,
+            "SELECT name, summary, json_data FROM catalog_nodes WHERE kind='model' AND external_id=?",
+            -1, &cst, NULL) == SQLITE_OK) {
+            sqlite3_bind_text(cst, 1, id, -1, SQLITE_STATIC);
+            if (sqlite3_step(cst) == SQLITE_ROW) {
+                const char *name = (const char *)sqlite3_column_text(cst, 0);
+                const char *summary = (const char *)sqlite3_column_text(cst, 1);
+                const char *json = (const char *)sqlite3_column_text(cst, 2);
+                char format[64] = "", family[64] = "", geometry[64] = "", cond[256] = "", layer_frag[512] = "";
+                char sha[128] = "", fpq_sha[128] = "";
+                double mean_f1 = 0.0, size_mb = 0.0, fpq_size_mb = 0.0;
+                if (json) {
+                    bf_json_str(json, "format", format, sizeof(format));
+                    bf_json_str(json, "sha256", sha, sizeof(sha));
+                    bf_json_double(json, "size_mb", &size_mb);
+                    bf_json_str(json, "fpq_sha256", fpq_sha, sizeof(fpq_sha));
+                    bf_json_double(json, "fpq_size_mb", &fpq_size_mb);
+                    bf_json_str(json, "transform_family", family, sizeof(family));
+                    bf_json_str(json, "geometry", geometry, sizeof(geometry));
+                    bf_json_str(json, "geometry_condition", cond, sizeof(cond));
+                    bf_json_str(json, "layer_frag_spec", layer_frag, sizeof(layer_frag));
+                    bf_json_double(json, "mean_f1", &mean_f1);
+                }
+                char model_node_id[192];
+                snprintf(model_node_id, sizeof(model_node_id), "model:%s", id);
+                printf("{\n");
+                printf("  \"id\": \"%s\",\n", id);
+                printf("  \"name\": \"%s\",\n", name ? name : "");
+                char edesc[1024]; json_escape(summary ? summary : "", edesc, sizeof(edesc));
+                printf("  \"description\": \"%s\",\n", edesc);
+                printf("  \"format\": \"%s\",\n", format[0] ? format : "-");
+                printf("  \"sha256\": \"%s\",\n", sha[0] ? sha : "pending");
+                printf("  \"size_mb\": %.3f,\n", size_mb);
+                printf("  \"fpq_sha256\": \"%s\",\n", fpq_sha[0] ? fpq_sha : "-");
+                printf("  \"fpq_size_mb\": %.3f,\n", fpq_size_mb);
+                printf("  \"transform_family\": \"%s\",\n", family[0] ? family : "-");
+                printf("  \"geometry\": \"%s\",\n", geometry[0] ? geometry : "-");
+                printf("  \"geometry_condition\": \"%s\",\n", cond[0] ? cond : "-");
+                printf("  \"layer_frag_spec\": \"%s\",\n", layer_frag[0] ? layer_frag : "-");
+                printf("  \"mean_f1\": %.3f,\n", mean_f1);
+                catalog_model_sources(catalog, id);
+                printf(",\n");
+                catalog_print_string_array(
+                    catalog,
+                    "SELECT n.external_id || '(' || n.kind || ':' || COALESCE(NULLIF(e.meta,''), 'model') || ')' "
+                    "FROM catalog_edges e JOIN catalog_nodes n ON n.node_id = e.src_node_id "
+                    "WHERE e.dst_node_id=? AND e.rel='uses_model' AND (n.kind='recipe' OR n.kind='workflow') "
+                    "ORDER BY n.kind, n.external_id",
+                    model_node_id,
+                    "used_by");
+                printf(",\n");
+                catalog_print_string_array(
+                    catalog,
+                    "SELECT n.external_id FROM catalog_edges e "
+                    "JOIN catalog_nodes n ON n.node_id = e.src_node_id "
+                    "WHERE e.dst_node_id=? AND e.rel='powers_capability' AND n.kind='capability' "
+                    "ORDER BY n.external_id",
+                    model_node_id,
+                    "powers_capabilities");
+                printf(",\n");
+                catalog_print_string_array(
+                    catalog,
+                    "SELECT n.external_id FROM catalog_edges e "
+                    "JOIN catalog_nodes n ON n.node_id = e.dst_node_id "
+                    "WHERE e.src_node_id=? AND e.rel='has_layer_artifact' AND n.kind='layer' "
+                    "ORDER BY n.external_id",
+                    model_node_id,
+                    "layers");
+                printf(",\n");
+                printf("  \"catalog\": \"%s\"\n", catalog_path);
+                printf("}\n");
+                sqlite3_finalize(cst);
+                sqlite3_close(catalog);
+                return 0;
+            }
+        }
+        if (cst) sqlite3_finalize(cst);
+        sqlite3_close(catalog);
+    }
+
     sqlite3_stmt *st;
     sqlite3_prepare_v2(db,
-        "SELECT id,name,description,format,sha256,size_mb,fpq_sha256,fpq_size_mb,added_at"
+        "SELECT id,name,description,format,sha256,size_mb,fpq_sha256,fpq_size_mb,"
+        "transform_family,geometry,geometry_condition,layer_frag_spec,mean_f1,added_at"
         " FROM models WHERE id=?", -1, &st, NULL);
     sqlite3_bind_text(st,1,id,-1,SQLITE_STATIC);
     if(sqlite3_step(st) != SQLITE_ROW) {
@@ -960,11 +1168,46 @@ static int cmd_rm(sqlite3 *db, const char *model_id, int purge) {
     int changed = sqlite3_changes(db);
     (void)err; (void)sql;
     if(changed==0) { fprintf(stderr,"model '%s' not found\n",model_id); return 1; }
+    sync_catalog_after_model_change();
     printf("  removed: %s%s\n", model_id, purge?" (cache purged)":"");
     return 0;
 }
 
 static int cmd_search(sqlite3 *db, const char *query) {
+    sqlite3 *catalog = NULL;
+    sqlite3_stmt *cst = NULL;
+    char catalog_path[PATH_MAX];
+    if (open_catalog(&catalog, catalog_path, sizeof(catalog_path))) {
+        if (sqlite3_prepare_v2(catalog,
+            "SELECT n.external_id, n.name, n.json_data "
+            "FROM catalog_fts f JOIN catalog_nodes n ON n.rowid = f.rowid "
+            "WHERE f.catalog_fts MATCH ? AND n.kind='model' ORDER BY n.external_id",
+            -1, &cst, NULL) == SQLITE_OK) {
+            sqlite3_bind_text(cst, 1, query, -1, SQLITE_STATIC);
+            int count = 0;
+            while (sqlite3_step(cst) == SQLITE_ROW) {
+                const char *id  = (const char*)sqlite3_column_text(cst,0);
+                const char *nm  = (const char*)sqlite3_column_text(cst,1);
+                const char *json = (const char*)sqlite3_column_text(cst,2);
+                char fmt[64] = "";
+                double sz = 0.0;
+                if (json) {
+                    bf_json_str(json, "format", fmt, sizeof(fmt));
+                    bf_json_double(json, "size_mb", &sz);
+                }
+                char szs[16]; fmt_size(sz,szs,sizeof(szs));
+                printf("%-32s  %-8s  %-8s  %s\n", id ? id : "", fmt[0] ? fmt : "-", szs, nm ? nm : "");
+                count++;
+            }
+            sqlite3_finalize(cst);
+            sqlite3_close(catalog);
+            if(count==0) printf("no results for '%s'\n", query);
+            return 0;
+        }
+        if (cst) sqlite3_finalize(cst);
+        sqlite3_close(catalog);
+    }
+
     sqlite3_stmt *st;
     sqlite3_prepare_v2(db,
         "SELECT m.id, m.name, m.format, m.size_mb FROM models m "
@@ -988,6 +1231,39 @@ static int cmd_search(sqlite3 *db, const char *query) {
 }
 
 static int cmd_sources(sqlite3 *db, const char *model_id) {
+    sqlite3 *catalog = NULL;
+    sqlite3_stmt *cst = NULL;
+    char catalog_path[PATH_MAX];
+    if (open_catalog(&catalog, catalog_path, sizeof(catalog_path))) {
+        char model_node_id[192];
+        int count=0;
+        snprintf(model_node_id, sizeof(model_node_id), "model:%s", model_id);
+        if (sqlite3_prepare_v2(catalog,
+            "SELECT s.name, s.json_data FROM catalog_edges e "
+            "JOIN catalog_nodes s ON s.node_id = e.dst_node_id "
+            "WHERE e.src_node_id=? AND e.rel='has_source' AND s.kind='model_source' "
+            "ORDER BY s.external_id",
+            -1, &cst, NULL) == SQLITE_OK) {
+            sqlite3_bind_text(cst,1,model_node_id,-1,SQLITE_STATIC);
+            printf("Sources for '%s' (priority order, catalog-backed):\n", model_id);
+            while(sqlite3_step(cst)==SQLITE_ROW) {
+                const char *url = (const char*)sqlite3_column_text(cst,0);
+                const char *json = (const char*)sqlite3_column_text(cst,1);
+                int pri = 0;
+                if (json) bf_json_int(json, "priority", &pri);
+                printf("  [%d] [%-11s] %s\n",
+                       pri, scheme_label(url ? url : ""), url ? url : "");
+                count++;
+            }
+            sqlite3_finalize(cst);
+            sqlite3_close(catalog);
+            if(count==0) printf("  (no sources registered)\n");
+            return 0;
+        }
+        if (cst) sqlite3_finalize(cst);
+        sqlite3_close(catalog);
+    }
+
     sqlite3_stmt *st;
     sqlite3_prepare_v2(db,
         "SELECT url, priority FROM sources WHERE model_id=? ORDER BY priority",
@@ -1025,6 +1301,7 @@ static int cmd_source_add(sqlite3 *db, const char *model_id, const char *url) {
     sqlite3_bind_text(st,2,url,-1,SQLITE_STATIC);
     sqlite3_bind_int(st,3,pri);
     sqlite3_step(st); sqlite3_finalize(st);
+    sync_catalog_after_model_change();
     printf("  added [%s] %s\n", scheme_label(url), url);
     return 0;
 }
@@ -1038,6 +1315,7 @@ static int cmd_source_rm(sqlite3 *db, const char *model_id, const char *url) {
     sqlite3_step(st); sqlite3_finalize(st);
     int changed = sqlite3_changes(db);
     if(changed==0) { fprintf(stderr,"source not found\n"); return 1; }
+    sync_catalog_after_model_change();
     printf("  removed: %s\n", url);
     return 0;
 }
@@ -1112,7 +1390,7 @@ static int cmd_add(sqlite3 *db, const char *json_path) {
     sqlite3_bind_double(st,6,size_mb);
     sqlite3_bind_text(st,7,fpq_sha[0]?fpq_sha:NULL,-1,SQLITE_STATIC);
     fpq_size>0 ? sqlite3_bind_double(st,8,fpq_size) : sqlite3_bind_null(st,8);
-    sqlite3_bind_text(st,9,  tf[0]        ? tf        : NULL, -1, SQLITE_STATIC);
+    sqlite3_bind_text(st,9, tf[0]        ? tf        : NULL, -1, SQLITE_STATIC);
     sqlite3_bind_text(st,10, geom[0]      ? geom      : NULL, -1, SQLITE_STATIC);
     sqlite3_bind_text(st,11, geom_cond[0] ? geom_cond : NULL, -1, SQLITE_STATIC);
     sqlite3_bind_text(st,12, lf_spec[0]   ? lf_spec   : NULL, -1, SQLITE_STATIC);
@@ -1161,6 +1439,7 @@ static int cmd_add(sqlite3 *db, const char *json_path) {
         -1, &st, NULL);
     sqlite3_bind_text(st,1,id,-1,SQLITE_STATIC);
     sqlite3_step(st); sqlite3_finalize(st);
+    sync_catalog_after_model_change();
 
     printf("  registered: %s  (%s)\n", id, name);
     return 0;
@@ -1181,6 +1460,53 @@ static int cmd_ls_cache(void) {
  * cmd_family — list all models belonging to a transform family
  * ==================================================================== */
 static int cmd_family(sqlite3 *db, const char *family) {
+    sqlite3 *catalog = NULL;
+    sqlite3_stmt *cst = NULL;
+    char catalog_path[PATH_MAX];
+    if (open_catalog(&catalog, catalog_path, sizeof(catalog_path))) {
+        const char *sql = family
+            ? "SELECT external_id, category, json_data "
+              "FROM catalog_nodes WHERE kind='model' AND category=? ORDER BY external_id"
+            : "SELECT external_id, category, json_data "
+              "FROM catalog_nodes WHERE kind='model' AND category != 'model' ORDER BY category, external_id";
+        if (sqlite3_prepare_v2(catalog, sql, -1, &cst, NULL) == SQLITE_OK) {
+            if (family) sqlite3_bind_text(cst, 1, family, -1, SQLITE_STATIC);
+            int count = 0;
+            printf("%-36s  %-10s  %-12s  %-28s  %s\n",
+                   "id","family","geometry","condition","mean_f1");
+            printf("%s\n","--------------------------------------------------------------------------------------------------");
+            while (sqlite3_step(cst) == SQLITE_ROW) {
+                const char *id = (const char *)sqlite3_column_text(cst, 0);
+                const char *fam = (const char *)sqlite3_column_text(cst, 1);
+                const char *json = (const char *)sqlite3_column_text(cst, 2);
+                char geom[64] = "";
+                char cond[256] = "";
+                double f1 = 0.0;
+                if (json) {
+                    bf_json_str(json, "geometry", geom, sizeof(geom));
+                    bf_json_str(json, "geometry_condition", cond, sizeof(cond));
+                    bf_json_double(json, "mean_f1", &f1);
+                }
+                printf("%-36s  %-10s  %-12s  %-28s  %.3f\n",
+                       id ? id : "",
+                       fam ? fam : (family ? family : ""),
+                       geom[0] ? geom : "—",
+                       cond[0] ? cond : "—",
+                       f1);
+                count++;
+            }
+            sqlite3_finalize(cst);
+            sqlite3_close(catalog);
+            if (count == 0) {
+                if (family) printf("no models found for family '%s'\n", family);
+                else printf("no transform families indexed\n");
+            }
+            return 0;
+        }
+        if (cst) sqlite3_finalize(cst);
+        sqlite3_close(catalog);
+    }
+
     sqlite3_stmt *st;
     int rc;
     if(family) {
@@ -1249,7 +1575,7 @@ static int eval_condition(const char *cond, const char *stats_json) {
     char field[64]; char op[4]; double threshold;
     if(sscanf(cond, "%63s %3s %lf", field, op, &threshold) != 3) return 1;
     double val = parse_stat(stats_json, field);
-    if(val < 0) return 1; /* stat not present → pass (can't disqualify) */
+    if(val < 0) return 0; /* condition has a concrete stat; missing stat is not eligible */
     if(strcmp(op,">")==0)  return val > threshold;
     if(strcmp(op,">=")==0) return val >= threshold;
     if(strcmp(op,"<")==0)  return val < threshold;
@@ -1304,6 +1630,244 @@ static double frontier_cosine(const char *json, const char *fa, const char *fb) 
         }
     }
     return -1.0;
+}
+
+typedef struct {
+    char id[128];
+    char family[64];
+    char geometry[64];
+    char condition[256];
+    double mean_f1;
+} RouteCandidate;
+
+static int has_suffix(const char *s, const char *suffix) {
+    if (!s || !suffix) return 0;
+    size_t slen = strlen(s);
+    size_t xlen = strlen(suffix);
+    return slen >= xlen && strcmp(s + slen - xlen, suffix) == 0;
+}
+
+static char *read_small_text_file(const char *path) {
+    FILE *f = fopen(path, "r");
+    if (!f) return NULL;
+    if (fseek(f, 0, SEEK_END) != 0) { fclose(f); return NULL; }
+    long sz = ftell(f);
+    if (sz < 0 || sz > MAX_JSON) { fclose(f); return NULL; }
+    if (fseek(f, 0, SEEK_SET) != 0) { fclose(f); return NULL; }
+    char *buf = malloc((size_t)sz + 1);
+    if (!buf) { fclose(f); return NULL; }
+    size_t n = fread(buf, 1, (size_t)sz, f);
+    fclose(f);
+    buf[n] = '\0';
+    return buf;
+}
+
+static int json_extract_text_field(const char *json, const char *key,
+                                   char *out, size_t out_sz) {
+    if (!json || !key || !out || out_sz == 0) return 0;
+    out[0] = '\0';
+
+    char pat[128];
+    snprintf(pat, sizeof(pat), "\"%s\"", key);
+    const char *p = strstr(json, pat);
+    if (!p) return 0;
+
+    p = strchr(p, ':');
+    if (!p) return 0;
+    p++;
+    while (*p == ' ' || *p == '\t' || *p == '\n' || *p == '\r') p++;
+    if (*p != '"') return 0;
+    p++;
+
+    size_t i = 0;
+    while (*p && i + 1 < out_sz) {
+        if (*p == '\\' && p[1]) {
+            p++;
+            out[i++] = *p++;
+            continue;
+        }
+        if (*p == '"') break;
+        out[i++] = *p++;
+    }
+    out[i] = '\0';
+    return out[0] != '\0';
+}
+
+static double json_extract_number_field(const char *json, const char *key,
+                                        double fallback) {
+    if (!json || !key) return fallback;
+
+    char pat[128];
+    snprintf(pat, sizeof(pat), "\"%s\"", key);
+    const char *p = strstr(json, pat);
+    if (!p) return fallback;
+
+    p = strchr(p, ':');
+    if (!p) return fallback;
+    p++;
+    while (*p == ' ' || *p == '\t' || *p == '\n' || *p == '\r') p++;
+
+    char num[64];
+    size_t i = 0;
+    if (*p == '"') {
+        p++;
+        while (*p && *p != '"' && i + 1 < sizeof(num)) num[i++] = *p++;
+    } else {
+        while (*p && *p != ',' && *p != '}' && *p != ']' &&
+               *p != '\n' && *p != '\r' && i + 1 < sizeof(num)) {
+            num[i++] = *p++;
+        }
+    }
+    num[i] = '\0';
+    return i > 0 ? atof(num) : fallback;
+}
+
+static int load_route_candidates_from_dir(const char *dir,
+                                          RouteCandidate *out,
+                                          int max_candidates) {
+    DIR *d = opendir(dir);
+    if (!d) return 0;
+
+    int count = 0;
+    struct dirent *de;
+    while ((de = readdir(d)) != NULL && count < max_candidates) {
+        if (de->d_name[0] != 'T' || !has_suffix(de->d_name, ".json")) continue;
+
+        char path[PATH_MAX];
+        snprintf(path, sizeof(path), "%s/%s", dir, de->d_name);
+        char *json = read_small_text_file(path);
+        if (!json) continue;
+
+        RouteCandidate c;
+        memset(&c, 0, sizeof(c));
+        json_extract_text_field(json, "transform_family", c.family, sizeof(c.family));
+        if (!c.family[0]) {
+            free(json);
+            continue;
+        }
+
+        c.mean_f1 = json_extract_number_field(json, "mean_f1", 0.0);
+        if (c.mean_f1 <= 0.0) {
+            free(json);
+            continue;
+        }
+
+        if (!json_extract_text_field(json, "code", c.id, sizeof(c.id))) {
+            if (!json_extract_text_field(json, "recipe_id", c.id, sizeof(c.id))) {
+                snprintf(c.id, sizeof(c.id), "%s", c.family);
+            }
+        }
+        json_extract_text_field(json, "geometry", c.geometry, sizeof(c.geometry));
+        json_extract_text_field(json, "geometry_condition", c.condition, sizeof(c.condition));
+
+        out[count++] = c;
+        free(json);
+    }
+
+    closedir(d);
+    return count;
+}
+
+static int load_route_candidates(RouteCandidate *out, int max_candidates) {
+    static const char *dirs[] = { "recipes", "../recipes", "../../recipes", NULL };
+    int count = 0;
+    for (int i = 0; dirs[i] && count < max_candidates; i++) {
+        count += load_route_candidates_from_dir(dirs[i], out + count, max_candidates - count);
+        if (count > 0) break;
+    }
+    return count;
+}
+
+static void consider_route_candidate(const char *id, const char *fam,
+                                     const char *geom, const char *cond,
+                                     double f1, const char *stats_json,
+                                     int use_frontier,
+                                     const char *frontier_json,
+                                     const char *from_family,
+                                     double frontier_weight,
+                                     char *best_id, size_t best_id_sz,
+                                     char *best_family, size_t best_family_sz,
+                                     char *best_geometry, size_t best_geometry_sz,
+                                     double *best_score,
+                                     double *best_f1,
+                                     double *best_cos) {
+    if (!fam || !fam[0]) return;
+    if (!eval_condition(cond, stats_json)) return;
+
+    double cos_val = -1.0;
+    double score = f1;
+    if (use_frontier) {
+        cos_val = frontier_cosine(frontier_json, from_family, fam);
+        if (cos_val >= 0.0)
+            score = (1.0 - frontier_weight) * f1 + frontier_weight * cos_val;
+    }
+
+    if (score > *best_score) {
+        *best_score = score;
+        *best_f1 = f1;
+        *best_cos = cos_val;
+        snprintf(best_id, best_id_sz, "%s", id ? id : "");
+        snprintf(best_family, best_family_sz, "%s", fam);
+        snprintf(best_geometry, best_geometry_sz, "%s", geom ? geom : "");
+    }
+}
+
+static int consider_catalog_route_candidates(const char *stats_json,
+                                             int use_frontier,
+                                             const char *frontier_json,
+                                             const char *from_family,
+                                             double frontier_weight,
+                                             char *best_id, size_t best_id_sz,
+                                             char *best_family, size_t best_family_sz,
+                                             char *best_geometry, size_t best_geometry_sz,
+                                             double *best_score,
+                                             double *best_f1,
+                                             double *best_cos) {
+    sqlite3 *catalog = NULL;
+    sqlite3_stmt *st = NULL;
+    char catalog_path[PATH_MAX];
+
+    if (!open_catalog(&catalog, catalog_path, sizeof(catalog_path))) return 0;
+    if (sqlite3_prepare_v2(catalog,
+        "SELECT external_id, category, json_data "
+        "FROM catalog_nodes WHERE kind='model' ORDER BY external_id",
+        -1, &st, NULL) != SQLITE_OK) {
+        sqlite3_close(catalog);
+        return 0;
+    }
+
+    while (sqlite3_step(st) == SQLITE_ROW) {
+        const char *id = (const char *)sqlite3_column_text(st, 0);
+        const char *family = (const char *)sqlite3_column_text(st, 1);
+        const char *json = (const char *)sqlite3_column_text(st, 2);
+        char geometry[64] = "";
+        char condition[256] = "";
+        double f1 = 0.0;
+        if (!json) continue;
+        bf_json_str(json, "geometry", geometry, sizeof(geometry));
+        bf_json_str(json, "geometry_condition", condition, sizeof(condition));
+        bf_json_double(json, "mean_f1", &f1);
+        consider_route_candidate(id,
+                                 family,
+                                 geometry,
+                                 condition,
+                                 f1,
+                                 stats_json,
+                                 use_frontier,
+                                 frontier_json,
+                                 from_family,
+                                 frontier_weight,
+                                 best_id, best_id_sz,
+                                 best_family, best_family_sz,
+                                 best_geometry, best_geometry_sz,
+                                 best_score,
+                                 best_f1,
+                                 best_cos);
+    }
+
+    sqlite3_finalize(st);
+    sqlite3_close(catalog);
+    return 1;
 }
 
 static int cmd_route(sqlite3 *db, const char *stats_path,
@@ -1362,42 +1926,67 @@ static int cmd_route(sqlite3 *db, const char *stats_path,
         }
     }
 
-    /* query all transform families; score each candidate */
-    sqlite3_stmt *st;
-    sqlite3_prepare_v2(db,
-        "SELECT id, transform_family, geometry, geometry_condition, mean_f1 "
-        "FROM models WHERE transform_family IS NOT NULL "
-        "ORDER BY mean_f1 DESC",
-        -1, &st, NULL);
-
     char bid[256]={0}, bfam[64]={0}, bgeom[64]={0};
     double best_score = -1.0, best_f1 = -1.0, best_cos = -1.0;
 
-    while(sqlite3_step(st)==SQLITE_ROW) {
-        const char *id   = (const char*)sqlite3_column_text(st,0);
-        const char *fam  = (const char*)sqlite3_column_text(st,1);
-        const char *geom = (const char*)sqlite3_column_text(st,2);
-        const char *cond = (const char*)sqlite3_column_text(st,3);
-        double f1        = sqlite3_column_double(st,4);
-        if (!eval_condition(cond, stats_json)) continue;
+    if (!consider_catalog_route_candidates(stats_json,
+                                           use_frontier,
+                                           frontier_json,
+                                           from_family,
+                                           FRONTIER_W,
+                                           bid, sizeof(bid),
+                                           bfam, sizeof(bfam),
+                                           bgeom, sizeof(bgeom),
+                                           &best_score,
+                                           &best_f1,
+                                           &best_cos)) {
+        sqlite3_stmt *st;
+        sqlite3_prepare_v2(db,
+            "SELECT id, transform_family, geometry, geometry_condition, mean_f1 "
+            "FROM models WHERE transform_family IS NOT NULL "
+            "ORDER BY mean_f1 DESC",
+            -1, &st, NULL);
 
-        double cos_val = -1.0;
-        double score   = f1;
-        if (use_frontier && fam) {
-            cos_val = frontier_cosine(frontier_json, from_family, fam);
-            if (cos_val >= 0.0)
-                score = (1.0 - FRONTIER_W) * f1 + FRONTIER_W * cos_val;
+        while(sqlite3_step(st)==SQLITE_ROW) {
+            const char *id   = (const char*)sqlite3_column_text(st,0);
+            const char *fam  = (const char*)sqlite3_column_text(st,1);
+            const char *geom = (const char*)sqlite3_column_text(st,2);
+            const char *cond = (const char*)sqlite3_column_text(st,3);
+            double f1        = sqlite3_column_double(st,4);
+            consider_route_candidate(id, fam, geom, cond, f1, stats_json,
+                                     use_frontier, frontier_json, from_family,
+                                     FRONTIER_W, bid, sizeof(bid), bfam,
+                                     sizeof(bfam), bgeom, sizeof(bgeom),
+                                     &best_score, &best_f1, &best_cos);
         }
-        if (score > best_score) {
-            best_score = score;
-            best_f1    = f1;
-            best_cos   = cos_val;
-            snprintf(bid,   sizeof(bid),   "%s", id   ? id   : "");
-            snprintf(bfam,  sizeof(bfam),  "%s", fam  ? fam  : "");
-            snprintf(bgeom, sizeof(bgeom), "%s", geom ? geom : "");
+        sqlite3_finalize(st);
+    }
+
+    if (!bid[0]) {
+        RouteCandidate candidates[128];
+        int n_candidates = load_route_candidates(candidates, 128);
+        for (int i = 0; i < n_candidates; i++) {
+            char rid[160];
+            snprintf(rid, sizeof(rid), "recipe:%s", candidates[i].id);
+            consider_route_candidate(rid,
+                                     candidates[i].family,
+                                     candidates[i].geometry,
+                                     candidates[i].condition,
+                                     candidates[i].mean_f1,
+                                     stats_json,
+                                     use_frontier,
+                                     frontier_json,
+                                     from_family,
+                                     FRONTIER_W,
+                                     bid, sizeof(bid),
+                                     bfam, sizeof(bfam),
+                                     bgeom, sizeof(bgeom),
+                                     &best_score,
+                                     &best_f1,
+                                     &best_cos);
         }
     }
-    sqlite3_finalize(st);
+
     free(stats_json);
     free(frontier_json);
 
@@ -1417,6 +2006,9 @@ static int cmd_route(sqlite3 *db, const char *stats_path,
 static int cmd_status(sqlite3 *db) {
     char db_path[PATH_MAX]; get_db_path(db_path, sizeof(db_path));
     char cache_dir[PATH_MAX]; get_cache_dir(cache_dir, sizeof(cache_dir));
+    sqlite3 *catalog = NULL;
+    sqlite3_stmt *cst = NULL;
+    char catalog_path[PATH_MAX];
 
     sqlite3_stmt *st;
     sqlite3_prepare_v2(db,"SELECT COUNT(*) FROM models",-1,&st,NULL);
@@ -1447,6 +2039,14 @@ static int cmd_status(sqlite3 *db) {
     printf("  Recipe links:  %d\n", nrec);
     printf("  Cached:        %d / %d  (%s on disk)\n",
            ncached, nmodel, total_s);
+
+    if (open_catalog(&catalog, catalog_path, sizeof(catalog_path))) {
+        sqlite3_prepare_v2(catalog, "SELECT COUNT(*) FROM catalog_nodes WHERE kind='model'", -1, &cst, NULL);
+        if (sqlite3_step(cst) == SQLITE_ROW)
+            printf("  Catalog:       %s (%d indexed)\n", catalog_path, sqlite3_column_int(cst, 0));
+        sqlite3_finalize(cst);
+        sqlite3_close(catalog);
+    }
     return 0;
 }
 

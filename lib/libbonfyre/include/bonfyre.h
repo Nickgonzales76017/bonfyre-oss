@@ -385,6 +385,55 @@ int bf_sqlite3_open(const char *path, sqlite3 **db);
  * Drop-in replacement for sqlite3_open_v2(...SQLITE_OPEN_READONLY...). */
 int bf_sqlite3_open_ro(const char *path, sqlite3 **db);
 
+/* Shared LayerArtifact runtime */
+int bf_layer_resolve_root(const char *root, char *buf, size_t sz, char *attempted, size_t attempted_sz);
+int bf_layer_state_db_path(const char *root, const char *db_name, char *buf, size_t sz);
+int bf_layer_load_json(const char *root, const char *artifact_id, char **json_out);
+int bf_layer_report_md(const char *artifact_json, char **out_md);
+int bf_layer_auth_source_json(const char *artifact_json, char **out_json);
+int bf_layer_gate_json(const char *artifact_json, const char *operation, char **out_json);
+int bf_layer_tier_json(const char *artifact_json, char **out_json);
+double bf_layer_estimated_cost(const char *operation);
+int bf_layer_economy_json(const char *artifact_json, const char *operation, char **out_json);
+int bf_layer_finance_json(const char *root, const char *artifact_id, char **out_json);
+int bf_layer_pay_json(const char *artifact_id, const char *operation, char **out_json);
+int bf_layer_moq_json(const char *artifact_json, char **out_json);
+int bf_layer_rebuild_index(const char *root);
+int bf_layer_query_json(const char *root,
+                        const char *family,
+                        const char *workflow,
+                        const char *source,
+                        const char *status,
+                        const char *kind,
+                        int bridge_required,
+                        char **out_json);
+int bf_layer_rebuild_graph(const char *root);
+int bf_layer_graph_edges_json(const char *root, const char *artifact_id, char **out_json);
+int bf_layer_graph_plan_json(const char *root, const char *plan_path, char **out_json);
+int bf_layer_bridge_query_json(const char *root, const char *bridge_family, char **out_json);
+int bf_layer_family_relations_json(const char *family_filter, char **out_json);
+int bf_layer_compat_json(const char *root, const char *layer_a, const char *layer_b, char **out_json);
+int bf_layer_compose_json(const char *root, const char *layer_a, const char *layer_b, int dry_run, char **out_json);
+int bf_layer_queue_job_json(const char *root, const char *queue_cmd, const char *artifact_id, int priority, char **out_json);
+int bf_layer_queue_plan_json(const char *root, const char *queue_cmd, const char *plan_path, int priority, char **out_json);
+int bf_layer_queue_bridge_plan_json(const char *root, const char *queue_cmd, const char *plan_path, int priority, char **out_json);
+int bf_layer_stitch_plan_json(const char *root, const char *layer_a, const char *layer_b, char **out_json);
+int bf_layer_stitch_validate_json(const char *plan_json, char **out_json);
+int bf_layer_stitch_validate_file(const char *plan_path, char **out_json);
+int bf_layer_stitch_resolve_bridges_json(const char *root, const char *plan_path, char **out_json);
+int bf_layer_stitch_composite_json(const char *virtual_composite_id, const char *out_dir, char **out_json);
+
+/* Shared metadata catalog for first-class command surfaces. */
+void bf_catalog_default_db_path(char *buf, size_t sz);
+int bf_catalog_find_repo_root(char *buf, size_t sz);
+int bf_catalog_sync_repo(const char *db_path, const char *repo_root);
+int bf_catalog_sync_default(const char *db_path);
+int bf_catalog_record_run_manifest(const char *db_path, const char *manifest_path);
+int bf_catalog_projection_rules_json(char **out_json);
+int bf_catalog_capability_tagging_rules_json(const char *filter, char **out_json);
+
+#include "bonfyre/bf_discipl.h"
+
 #ifdef __cplusplus
 }
 #endif
