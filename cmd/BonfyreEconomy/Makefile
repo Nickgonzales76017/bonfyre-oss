@@ -1,7 +1,7 @@
 CC      = cc
 CFLAGS  = -std=c11 -O2 -Wall -Wextra -Wpedantic
 LOCAL_CFLAGS = -I../../lib/libbonfyre/include
-LDFLAGS = -L../../lib/libbonfyre -lbonfyre -lsqlite3
+LDFLAGS = ../../lib/libbonfyre/libbonfyre.a -lsqlite3
 TARGET  = bonfyre-economy
 SRC     = src/main.c
 
