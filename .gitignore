@@ -5,11 +5,14 @@ cmd/*/bonfyre-*
 10-Code/BonfyreFPQ/bonfyre-fpq
 10-Code/BonfyreFPQ/bonfyre-fpqx
 10-Code/BonfyreFPQ/build/
+cmd/*/build/
+cmd/*/obj/
 lib/liblambda-tensors/*.a
 lib/liblambda-tensors/*.so
 lib/liblambda-tensors/*.o
 lib/liblambda-tensors/src/*.o
 lib/liblambda-tensors/test_lambda_tensors
+lib/*/obj/
 
 # Build artifacts
 *.o
@@ -38,6 +41,10 @@ Thumbs.db
 # Runtime data
 uploads/
 --out/
+wire_raw/
+raw-captures/
+*.pcap
+*.pcapng
 
 # Node
 node_modules/
