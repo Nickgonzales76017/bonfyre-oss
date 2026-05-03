@@ -13,6 +13,11 @@
 #include <bonfyre.h>
 #endif
 
+#ifdef BF_HAS_QUIC
+#include <bf_quic.h>
+#include <bonfyre.h>
+#endif
+
 extern char **environ;
 
 #define MAX_TEXT 65536

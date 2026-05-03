@@ -1,10 +1,6 @@
 # Compiled binaries
 cmd/*/bonfyre-*
-!cmd/BonfyreLayer/bonfyre-layer
 !cmd/*/src/
-10-Code/BonfyreFPQ/bonfyre-fpq
-10-Code/BonfyreFPQ/bonfyre-fpqx
-10-Code/BonfyreFPQ/build/
 cmd/*/build/
 cmd/*/obj/
 lib/liblambda-tensors/*.a

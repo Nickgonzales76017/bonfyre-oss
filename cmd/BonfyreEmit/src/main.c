@@ -31,6 +31,10 @@ static const char *layeros_binary(void) {
     return "layeros/bin/bonfyre-layeros";
 }
 
+static const char *layeros_binary(void) {
+    return "layeros/bin/bonfyre-layeros";
+}
+
 static int run_cmd(const char *const argv[]) {
     pid_t pid = fork();
     if (pid < 0) return -1;

@@ -95,6 +95,62 @@ static int delegate_layeros_meter(int argc, char *argv[]) {
     return run_execvp(exec_argv);
 }
 
+static const char *layeros_binary(void) {
+    return "layeros/bin/bonfyre-layeros";
+}
+
+static int run_execvp(char *const argv[]) {
+    pid_t pid = fork();
+    if (pid < 0) {
+        perror("fork");
+        return 1;
+    }
+    if (pid == 0) {
+        execvp(argv[0], argv);
+        perror("execvp");
+        _exit(127);
+    }
+    int status = 0;
+    if (waitpid(pid, &status, 0) < 0) {
+        perror("waitpid");
+        return 1;
+    }
+    return WIFEXITED(status) ? WEXITSTATUS(status) : 1;
+}
+
+static int delegate_layeros_meter(int argc, char *argv[]) {
+    char *exec_argv[24];
+    int n = 0;
+    exec_argv[n++] = (char *)layeros_binary();
+    const char *root = NULL;
+    for (int i = 1; i < argc - 1; i++) {
+        if (strcmp(argv[i], "--root") == 0) {
+            root = argv[i + 1];
+            break;
+        }
+    }
+    if (root) {
+        exec_argv[n++] = "--root";
+        exec_argv[n++] = (char *)root;
+    }
+    exec_argv[n++] = "meter";
+    exec_argv[n++] = argv[2];
+    for (int i = 3; i < argc; i++) {
+        if ((strcmp(argv[i], "--root") == 0 && i + 1 < argc) ||
+            (strcmp(argv[i], "--db") == 0 && i + 1 < argc)) {
+            i++;
+            continue;
+        }
+        if (strcmp(argv[i], "--op") == 0) {
+            exec_argv[n++] = "--operation";
+            continue;
+        }
+        exec_argv[n++] = argv[i];
+    }
+    exec_argv[n] = NULL;
+    return run_execvp(exec_argv);
+}
+
 /* ---------- SQLite direct (no fork) ---------- */
 
 static int print_row_cb(void *data, int ncols, char **vals, char **names) {
