@@ -1,156 +1,190 @@
 {
-  "$schema": "bonfyre-layer-schema-v1",
-  "title": "Bonfyre Layer-Aware Artifact and Recipe Target Schema",
-  "version": "1.0.0",
-  "description": "Defines sub-model artifact types and recipe target extensions for layer-aware Bonfyre transforms. This is Phase 1 of the layer-aware infrastructure — inspect + pull + pack. Phase 2 adds pull execution; Phase 3 adds composition routing.",
-
-  "artifact_types": {
-
-    "layer_fragment": {
-      "description": "A contiguous range of ONNX nodes extracted from a parent model.",
-      "fields": {
-        "type":          { "const": "layer_fragment" },
-        "version":       { "type": "string" },
-        "source_model":  { "type": "string", "description": "Path or bonfyre model ID of parent model" },
-        "layer_spec": {
-          "type": "object",
-          "properties": {
-            "type":  { "enum": ["layer_range", "head", "slice", "fragment"] },
-            "range": { "type": "string", "description": "e.g. '0:3' for nodes 0–2", "when": "type=layer_range" },
-            "name":  { "type": "string", "description": "node name prefix", "when": "type=head" },
-            "spec":  { "type": "string", "description": "comma-separated spec e.g. 'encoder.0-3,proj.out'", "when": "type=slice" }
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "bonfyre/layer_artifact.v1",
+  "title": "LayerArtifact",
+  "description": "Canonical Bonfyre LayerArtifact schema. layers.db is canonical; graph/index/query/catalog are projections.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "artifact_id",
+    "artifact_kind",
+    "families",
+    "capabilities",
+    "workflow_steps",
+    "input_signature",
+    "output_signature",
+    "tensor_bindings",
+    "shape_constraints",
+    "dtype_constraints",
+    "runtime_requirements",
+    "materialization_status",
+    "verification_status",
+    "compatibility_tags"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "layer_artifact.v1"
+    },
+    "artifact_id": {
+      "type": "string"
+    },
+    "artifact_kind": {
+      "type": "string",
+      "enum": [
+        "onnx_slice",
+        "hf_tensor_surface",
+        "hf_tensor_pack",
+        "adapter_bridge",
+        "virtual_composite"
+      ]
+    },
+    "families": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "capabilities": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "workflow_steps": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "input_signature": {
+      "type": "object"
+    },
+    "output_signature": {
+      "type": "object"
+    },
+    "tensor_bindings": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "shape_constraints": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "dtype_constraints": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "runtime_requirements": {
+      "type": "object"
+    },
+    "materialization_status": {
+      "type": "string",
+      "enum": [
+        "virtual",
+        "indexed",
+        "verified",
+        "materialized"
+      ]
+    },
+    "verification_status": {
+      "type": "string",
+      "enum": [
+        "unverified",
+        "partially_verified",
+        "verified"
+      ]
+    },
+    "compatibility_tags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "source_recipe": {
+      "type": "string"
+    },
+    "source_model": {
+      "type": "string"
+    },
+    "source_collection": {
+      "type": "string"
+    },
+    "source_file": {
+      "type": "string"
+    },
+    "generated_by": {
+      "type": "string"
+    },
+    "created_at": {
+      "type": "string"
+    },
+    "verified_at": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "compatibility_result": {
+      "type": "object",
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": [
+            "compatible",
+            "compatible_with_bridge",
+            "incompatible",
+            "unknown"
+          ]
+        },
+        "confidence": {
+          "type": "number"
+        },
+        "matching_families": {
+          "type": "array",
+          "items": {
+            "type": "string"
           }
         },
-        "node_range":    { "type": "array", "items": { "type": "integer" }, "description": "[start, end] inclusive" },
-        "onnx_nodes":    { "type": "array", "items": { "type": "string" }, "description": "Node names in extracted subgraph" },
-        "input_shapes":  { "type": "array", "description": "Input tensor name+shape pairs" },
-        "output_shapes": { "type": "array", "description": "Output tensor name+shape pairs" },
-        "n_params":      { "type": "integer" },
-        "sha256":        { "type": "string", "description": "SHA-256 of the .onnx file" },
-        "fpq_sha256":    { "type": ["string", "null"], "description": "SHA-256 of the .fpq compressed file; filled by finalize_artifact.py" },
-        "format":        { "const": "onnx" }
+        "mismatched_constraints": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "required_bridges": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "reasons": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
       }
     },
-
-    "transform_fragment": {
-      "description": "A packed transform composed of multiple layer fragments. Output of bonfyre-layer pack-transform.",
-      "fields": {
-        "type":          { "const": "transform_fragment" },
-        "version":       { "type": "string" },
-        "name":          { "type": "string", "description": "Human-readable transform name" },
-        "source_parts":  { "type": "array", "items": { "type": "string" }, "description": "Source .onnx paths used as input to pack" },
-        "n_parts":       { "type": "integer" },
-        "input_shapes":  { "type": "array" },
-        "output_shapes": { "type": "array" },
-        "n_params":      { "type": "integer" },
-        "sha256":        { "type": "string" },
-        "fpq_sha256":    { "type": ["string", "null"] },
-        "format":        { "const": "onnx" }
-      }
-    }
-  },
-
-  "recipe_target_schema": {
-    "description": "Extension to bonfyre-run recipe stage args. Stages that reference sub-model artifacts use a 'target' block alongside 'model'.",
-
-    "variants": {
-
-      "full_model": {
-        "description": "Standard full-model reference. Existing behavior; no changes needed.",
-        "example": {
-          "id": "train",
-          "bin": "python3",
-          "args": ["scripts/collapse_train.py", "--model", "hf://org/repo/model.onnx"]
-        }
-      },
-
-      "layer_range": {
-        "description": "Pull and use nodes START:END of a model as input to a stage.",
-        "target_spec": {
-          "type":   "layer_range",
-          "range":  "0:3",
-          "format": "onnx"
-        },
-        "example": {
-          "id": "pull-encoder",
-          "bin": "python3",
-          "args": [
-            "cmd/BonfyreLayer/bonfyre-layer", "pull-layer",
-            "~/.cache/bonfyre/models/<sha256>.onnx",
-            "--range", "0:3",
-            "--out", "{out}/encoder-fragment"
-          ]
-        }
-      },
-
-      "head": {
-        "description": "Pull nodes matching a name prefix (classifier head, projection, etc.)",
-        "target_spec": {
-          "type":   "head",
-          "name":   "classifier",
-          "format": "onnx"
-        },
-        "example": {
-          "id": "pull-classifier",
-          "bin": "python3",
-          "args": [
-            "cmd/BonfyreLayer/bonfyre-layer", "pull-head",
-            "~/.cache/bonfyre/models/<sha256>.onnx",
-            "--name", "classifier",
-            "--out", "{out}/classifier-head"
-          ]
-        }
-      },
-
-      "packed_transform": {
-        "description": "Use a pre-packed transform fragment (output of bonfyre-layer pack-transform). Suitable for composed multi-family artifacts.",
-        "target_spec": {
-          "type": "fragment"
-        },
-        "example_recipe_stage": {
-          "id": "load-transform",
-          "bin": "python3",
-          "args": [
-            "cmd/BonfyreLayer/bonfyre-layer", "inspect",
-            "{out}/transform-fragment/transform.onnx"
-          ]
-        }
-      }
-    }
-  },
-
-  "roadmap": {
-    "phase_1": {
-      "status": "implemented",
-      "scope": [
-        "bonfyre-layer inspect",
-        "bonfyre-layer layers",
-        "bonfyre-layer pull-layer",
-        "bonfyre-layer pull-head",
-        "bonfyre-layer pack-transform",
-        "bonfyre-layer schema",
-        "layer_fragment + transform_fragment artifact schema (this file)",
-        "recipe target schema documentation"
-      ]
+    "onnx_slice": {
+      "type": "object"
     },
-    "phase_2": {
-      "status": "planned",
-      "scope": [
-        "bonfyre-model register layer_fragment artifacts (fpq_sha256, pull, verify)",
-        "bonfyre-run stage: pull-layer inside DAG (auto-pull from hf:// source)",
-        "FPQ compression for layer fragments (bonfyre-compress pack on .onnx fragment)",
-        "bonfyre-hash merkle for multi-fragment transforms"
-      ]
+    "hf_tensor_surface": {
+      "type": "object"
     },
-    "phase_3": {
-      "status": "future",
-      "scope": [
-        "bonfyre-layer compose: route between transform fragments based on data geometry",
-        "geometry-aware routing: T04+T15 global, T16 long-form — encoded in recipe target",
-        "FPQx: alignment layer across model families for mixed-layer composition",
-        "SLI: execution over composed compressed layer graphs",
-        "E8: stability geometry for mixed-layer composition"
-      ]
+    "hf_tensor_pack": {
+      "type": "object"
+    },
+    "adapter_bridge": {
+      "type": "object"
+    },
+    "virtual_composite": {
+      "type": "object"
     }
   }
 }

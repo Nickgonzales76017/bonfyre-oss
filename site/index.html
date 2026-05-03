@@ -1,514 +1,128 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#ff6b35">
-  <meta name="description" content="Bonfyre is a complete local backend platform. Tiny C binaries, compressed models, local proxy and orchestration, communications edge, relay, swarm delivery, live proof apps, and technical docs in one place.">
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔥</text></svg>">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link href="https://api.fontshare.com/v2/css?f[]=cabinet-grotesk@400,500,700,800,900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="assets/site.css">
-  <title>Bonfyre | 63 C Binaries. Local AI. No Cloud Bill.</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bonfyre — bonfyre-oss runtime, docs, and pages</title>
+<meta name="description" content="Bonfyre is a C11 runtime and operator stack published through bonfyre-oss: wire capture, artifacts, recipes, stitching, local AI, pages, proxy, orchestration, and shared runtime modules. MIT licensed.">
+<meta name="theme-color" content="#0d1117">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔥</text></svg>">
+<style>
+:root{--bg:#0d1117;--surface:#161b22;--border:#30363d;--text:#e6edf3;--text-dim:#8b949e;--accent:#f97316;--green:#3fb950;--blue:#58a6ff;--font:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:var(--font);background:var(--bg);color:var(--text);line-height:1.6;-webkit-font-smoothing:antialiased;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center}
+a{color:var(--blue);text-decoration:none}a:hover{text-decoration:underline}
+.landing{max-width:880px;padding:0 24px;text-align:center}
+.landing h1{font-size:3.4rem;font-weight:800;letter-spacing:-0.03em;margin-bottom:12px}
+.landing h1 span{color:var(--accent)}
+.tagline{font-size:1.2rem;color:var(--text-dim);max-width:620px;margin:0 auto 48px;line-height:1.7}
+.path-cards{display:grid;grid-template-columns:1fr 1fr;gap:28px;margin-bottom:48px}
+.path-card{background:var(--surface);border-radius:16px;padding:40px 32px;text-align:left;text-decoration:none;transition:transform .2s,border-color .2s;display:flex;flex-direction:column}
+.path-card:hover{transform:translateY(-4px);text-decoration:none}
+.path-card .emoji{font-size:2.4rem;margin-bottom:16px}
+.path-card h2{font-size:1.4rem;font-weight:700;margin-bottom:8px}
+.path-card .desc{font-size:.95rem;color:var(--text-dim);line-height:1.6;margin-bottom:20px;flex:1}
+.path-card .includes{font-size:.82rem;color:var(--text-dim);line-height:1.8}
+.path-card .includes strong{color:var(--text);font-size:.72rem;text-transform:uppercase;letter-spacing:.04em}
+.path-card .cta{display:inline-block;margin-top:20px;padding:10px 24px;border-radius:6px;font-weight:600;font-size:.95rem;text-decoration:none;transition:opacity .15s}
+.path-card .cta:hover{opacity:.85;text-decoration:none}
+.card-explore{border:2px solid var(--accent)}.card-explore h2{color:var(--accent)}.card-explore .cta{background:var(--accent);color:#fff}
+.card-docs{border:2px solid var(--green)}.card-docs h2{color:var(--green)}.card-docs .cta{background:var(--green);color:#000}
+.stats-row{display:flex;justify-content:center;gap:40px;flex-wrap:wrap;margin-bottom:40px}
+.stat{text-align:center}.stat .num{font-size:1.8rem;font-weight:700;display:block}.stat .label{font-size:.8rem;color:var(--text-dim);text-transform:uppercase;letter-spacing:.04em}
+.links-row{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-bottom:24px}
+.links-row a{display:inline-flex;align-items:center;padding:8px 18px;border:1px solid var(--border);border-radius:6px;font-size:.85rem;color:var(--text);text-decoration:none;transition:border-color .15s}
+.links-row a:hover{border-color:var(--accent);text-decoration:none}
+footer{margin-top:40px;font-size:.82rem;color:var(--text-dim)}footer a{color:var(--text-dim)}footer a:hover{color:var(--text)}
+@media(max-width:640px){.landing h1{font-size:2.4rem}.path-cards{grid-template-columns:1fr}.stats-row{gap:24px}.stat .num{font-size:1.4rem}}
+</style>
 </head>
 <body>
-  <div class="site-shell">
-    <header class="site-header">
-      <div class="shell-container site-header-row">
-        <a class="brand" href="index.html"><span class="brand-mark">🔥</span><span>Bonfyre</span></a>
-        <nav class="site-nav" aria-label="Primary">
-          <a class="current" href="index.html">Overview</a>
-          <a href="explore.html">Explore</a>
-          <a href="recipe-run.html">Pipelines</a>
-          <a href="docs.html">Technical Docs</a>
-          <a href="apps.html">Live Apps</a>
-          <a href="control-layer.html">Control Layer</a>
-        </nav>
-        <div class="header-actions">
-          <a class="header-btn" href="https://github.com/Nickgonzales76017/bonfyre-oss" target="_blank" rel="noreferrer">View Source</a>
-        </div>
-      </div>
-      <div class="ticker-bar">
-        <div class="ticker-row" aria-hidden="true">
-          <span class="ticker-item"><span class="num">63</span><span>C11 binaries</span></span>
-          <span class="ticker-item"><span class="dot">•</span></span>
-          <span class="ticker-item"><span class="num">10</span><span>pipeline recipes</span></span>
-          <span class="ticker-item"><span class="dot">•</span></span>
-          <span class="ticker-item"><span>runs on your machine</span></span>
-          <span class="ticker-item"><span class="dot">•</span></span>
-          <span class="ticker-item"><span class="num">~2.1 MB</span><span>total stack</span></span>
-          <span class="ticker-item"><span class="dot">•</span></span>
-          <span class="ticker-item"><span class="num">20</span><span>live apps</span></span>
-          <span class="ticker-item"><span class="dot">•</span></span>
-          <span class="ticker-item"><span class="num">$0/month</span><span>cloud bill</span></span>
-          <span class="ticker-item"><span class="dot">•</span></span>
-          <span class="ticker-item"><span class="num">4×</span><span>model compression</span></span>
-          <span class="ticker-item"><span class="dot">•</span></span>
-          <span class="ticker-item"><span>no API key required</span></span>
-          <span class="ticker-item"><span class="dot">•</span></span>
-          <span class="ticker-item"><span class="num">63</span><span>C11 binaries</span></span>
-          <span class="ticker-item"><span class="dot">•</span></span>
-          <span class="ticker-item"><span class="num">10</span><span>pipeline recipes</span></span>
-          <span class="ticker-item"><span class="dot">•</span></span>
-          <span class="ticker-item"><span>geometry routing · transform families</span></span>
-          <span class="ticker-item"><span class="dot">•</span></span>
-          <span class="ticker-item"><span class="num">~2.1 MB</span><span>total stack</span></span>
-          <span class="ticker-item"><span class="dot">•</span></span>
-          <span class="ticker-item"><span class="num">20</span><span>live apps</span></span>
-          <span class="ticker-item"><span class="dot">•</span></span>
-          <span class="ticker-item"><span class="num">$0/month</span><span>cloud bill</span></span>
-          <span class="ticker-item"><span class="dot">•</span></span>
-          <span class="ticker-item"><span class="num">4×</span><span>model compression</span></span>
-          <span class="ticker-item"><span class="dot">•</span></span>
-          <span class="ticker-item"><span>Cycle 8: io_uring_spawn · CAS dedup · BPF-Flux · entropy-check</span></span>
-          <span class="ticker-item"><span class="dot">•</span></span>
-          <span class="ticker-item"><span>Cycle 7: LibSQL WAL · Relaxed E8 · Kestra 2.0 · SIMD lattice</span></span>
-          <span class="ticker-item"><span class="dot">•</span></span>
-          <span class="ticker-item"><span class="num">63</span><span>C11 binaries</span></span>
-          <span class="ticker-item"><span class="dot">•</span></span>
-          <span class="ticker-item"><span class="num">10</span><span>pipeline recipes</span></span>
-          <span class="ticker-item"><span class="dot">•</span></span>
-          <span class="ticker-item"><span>geometry routing · transform families</span></span>
-          <span class="ticker-item"><span class="dot">•</span></span>
-          <span class="ticker-item"><span class="num">~2.1 MB</span><span>total stack</span></span>
-          <span class="ticker-item"><span class="dot">•</span></span>
-          <span class="ticker-item"><span class="num">20</span><span>live apps</span></span>
-          <span class="ticker-item"><span class="dot">•</span></span>
-          <span class="ticker-item"><span class="num">$0/month</span><span>cloud bill</span></span>
-          <span class="ticker-item"><span class="dot">•</span></span>
-          <span class="ticker-item"><span class="num">4×</span><span>model compression</span></span>
-          <span class="ticker-item"><span class="dot">•</span></span>
-          <span class="ticker-item"><span>Cycle 8: io_uring_spawn · CAS dedup · BPF-Flux · entropy-check</span></span>
-          <span class="ticker-item"><span class="dot">•</span></span>
-          <span class="ticker-item"><span>Cycle 7: LibSQL WAL · Relaxed E8 · Kestra 2.0 · SIMD lattice</span></span>
-          <span class="ticker-item"><span class="dot">•</span></span>
-          <span class="ticker-item"><span class="num">63</span><span>C11 binaries</span></span>
-          <span class="ticker-item"><span class="dot">•</span></span>
-          <span class="ticker-item"><span class="num">10</span><span>pipeline recipes</span></span>
-          <span class="ticker-item"><span class="dot">•</span></span>
-          <span class="ticker-item"><span>geometry routing · transform families</span></span>
-          <span class="ticker-item"><span class="dot">•</span></span>
-          <span class="ticker-item"><span class="num">~2.1 MB</span><span>total stack</span></span>
-          <span class="ticker-item"><span class="dot">•</span></span>
-          <span class="ticker-item"><span class="num">20</span><span>live apps</span></span>
-          <span class="ticker-item"><span class="dot">•</span></span>
-          <span class="ticker-item"><span class="num">$0/month</span><span>cloud bill</span></span>
-          <span class="ticker-item"><span class="dot">•</span></span>
-          <span class="ticker-item"><span class="num">4×</span><span>model compression</span></span>
-          <span class="ticker-item"><span class="dot">•</span></span>
-          <span class="ticker-item"><span>Cycle 8: io_uring_spawn · CAS dedup · BPF-Flux · entropy-check</span></span>
-          <span class="ticker-item"><span class="dot">•</span></span>
-          <span class="ticker-item"><span>Cycle 7: LibSQL WAL · Relaxed E8 · Kestra 2.0 · SIMD lattice</span></span>
-        </div>
-      </div>
-    </header>
+<div class="landing">
+  <h1>🔥 <span>Bonfyre</span></h1>
+  <p class="tagline">bonfyre-oss is the current public source of truth for the Bonfyre runtime, CLI, docs, and Pages surfaces: wire capture, artifacts, recipes, stitching, proxy, orchestration, and local AI in C11.</p>
 
-    <main>
-      <section class="page-hero">
-        <div class="shell-container hero-grid">
-          <div class="hero-copy">
-            <span class="hero-kicker">Bonfyre platform</span>
-            <h1 class="hero-title">AI That Runs <span class="accent">On Your Machine</span></h1>
-            <p>63 C binaries. 10 pipeline recipes. Local inference. Local APIs. Local distribution. Type <code>bonfyre-run A1 recording.wav</code> and the whole pipeline runs — transcribe, clean, brief, proof — no scripting, no cloud, no config. Geometry-routing transform families, cross-family alignment, and structured layer inference now in the same stack as proxy, orchestration, and realtime relay.</p>
-            <div class="hero-actions">
-              <a class="primary-btn" href="explore.html">Explore what it does</a>
-              <a class="secondary-btn" href="recipe-run.html">Run a pipeline</a>
-              <a class="secondary-btn" href="docs.html">Technical docs</a>
-            </div>
-            <div class="install-box">
-              <span class="label">Quick install</span>
-              <code>curl -fsSL https://raw.githubusercontent.com/Nickgonzales76017/bonfyre-oss/main/install.sh | sh</code>
-            </div>
-            <div class="install-box" style="margin-top:0.75rem">
-              <span class="label">Then run any pipeline</span>
-              <code>bonfyre-run A1 recording.wav</code>
-            </div>
-          </div>
-          <div class="stats-grid" aria-label="Bonfyre metrics">
-            <article class="metric-card">
-              <span class="metric-value orange">4×</span>
-              <span class="metric-label">Compression ratio</span>
-            </article>
-            <article class="metric-card">
-              <span class="metric-value blue">99.97%</span>
-              <span class="metric-label">Inference cosine</span>
-            </article>
-            <article class="metric-card">
-              <span class="metric-value">63</span>
-              <span class="metric-label">C11 binaries</span>
-            </article>
-            <article class="metric-card">
-              <span class="metric-value" data-status-key="total_binaries">63</span>
-              <span class="metric-label">Stack binaries</span>
-            </article>
-            <article class="metric-card wide">
-              <span class="metric-value">~2.1 MB</span>
-              <span class="metric-label">Complete stack on disk</span>
-            </article>
-          </div>
-        </div>
-      </section>
-
-      <!-- Plain English explainers -->
-      <section class="section">
-        <div class="shell-container">
-          <div class="section-header">
-            <div>
-              <span class="section-kicker">Plain English</span>
-              <h2 class="section-title">What the dense terms actually mean.</h2>
-              <p class="section-copy">If you read "56 binaries, 26-module runtime, 4× FPQ compression, transform families, geometry routing" and your eyes glazed over — this is for you.</p>
-            </div>
-          </div>
-          <div class="feature-grid">
-            <article class="feature-card">
-              <span class="card-meta">63 binaries</span>
-              <h3>There's no monolith to rebuild.</h3>
-              <p>A "binary" is just a self-contained program that does one specific job — transcribe audio, generate a brief, hash a file, serve an HTTP endpoint. Bonfyre is 63 of them. You never run all 56 at once. You pick the ones you need and chain them together with your own pipeline. If you only need to transcribe recordings and make them searchable, you use BonfyreTranscribe, BonfyreEmbed, BonfyreVec, and BonfyreQuery — four small programs — and you're done. Nothing else lurks in the background. Nothing else consumes memory or creates attack surface.</p>
-            </article>
-            <article class="feature-card">
-              <span class="card-meta">Transform families · geometry routing</span>
-              <h3>The model learns what shape your data is.</h3>
-              <p>A "transform family" is a quantised model fragment trained to collapse a specific kind of structure — topic maps, keyword clusters, or paragraph boundaries — into a compact representation. Each family has a <em>geometry</em>: global (works on any corpus) or conditional (activates only when the corpus meets a threshold, like average document length exceeding 500 characters). <code>bonfyre-model route corpus_stats.json</code> reads your corpus statistics, evaluates each family's geometry conditions, and returns the one with the highest verified F1 that fits your data. T16 handles long-form; T04/T15 handle general content. No manual selection, no guessing.</p>
-            </article>
-            <article class="feature-card">
-              <span class="card-meta">FPQ — what it does to a model</span>
-              <h3>It's how a 70B model fits on your laptop.</h3>
-              <p>Large AI models are heavy because each weight — a number in a matrix — is stored as a 32-bit float. FPQ converts those weights to 8-bit integers and stores polynomial correction coefficients alongside them. When the model runs inference, SIMD instructions expand the weights back to full precision on the fly. The math lands at 99.97% of the original quality. The model file shrinks 4×. A model that required a $10,000 cloud GPU — Llama-3-70B — now fits in 6 GB of VRAM. This cycle added the full end-to-end BQFP pipeline: <code>bonfyre-quant compress model.onnx model.bqfp</code> compresses any ONNX file; <code>bonfyre-sli run</code> decodes the BQFP weights and runs inference in C with no Python and no GPU; <code>bonfyre-fpqx align</code> computes the rotation matrix needed to chain two quantised families without representation drift. Fifteen compressed models are already on HuggingFace.</p>
-            </article>
-            <article class="feature-card">
-              <span class="card-meta">Content-addressed artifacts</span>
-              <h3>Every output is its own receipt.</h3>
-              <p>When a Bonfyre binary produces a file — a transcript, a brief, an audio clip — it runs BLAKE2b over it and stores the hash before handing it to the next stage. If you run the same pipeline twice with the same input, you get the same hash. That means: (1) duplicate work is automatically skipped because the downstream stage checks the hash before doing anything; (2) you can prove which source file produced which summary by tracing the hash chain; (3) BonfyreProof can bundle a hash + Ed25519 signature into a tamper-evident receipt that a third party can verify without trusting you. This is what "verifiable provenance" means in practice — not a trust policy, a math proof.</p>
-            </article>
-            <article class="feature-card">
-              <span class="card-meta">The reactor</span>
-              <h3>Why 53 binaries don't need nginx in front of them.</h3>
-              <p>bf_reactor is a per-core event loop — a tight C loop that uses the operating system's fastest I/O mechanism (io_uring on Linux, kqueue on macOS) to handle thousands of network connections at once without spawning a thread per connection. Every Bonfyre binary that speaks HTTP embeds the same reactor. BonfyreCMS, BonfyreAPI, BonfyreProxy, BonfyreGate — all of them handle 4,096 concurrent connections per core, parse HTTP/1.1 requests with zero allocation overhead, and push SSE updates directly to clients. The reason BonfyreCMS is 287 KB isn't just tight code — it's that the I/O layer costs almost nothing.</p>
-            </article>
-          </div>
-        </div>
-      </section>
-
-
-      <!-- Pipeline codes -->
-      <section class="section" style="background:var(--surface-1,#111);border-top:1px solid var(--border,#222);border-bottom:1px solid var(--border,#222)">
-        <div class="shell-container">
-          <div class="section-header">
-            <div>
-              <span class="section-kicker">bonfyre-recipe · bonfyre-run · bonfyre-model</span>
-              <h2 class="section-title">One command runs the whole pipeline. Models included.</h2>
-              <p class="section-copy">Every common pipeline is a registered recipe with a three-character code. The executor resolves the recipe, validates the binaries, runs stages in parallel where safe, and writes a <code>run-manifest.json</code> receipt. <code>bonfyre-model</code> ensures every AI model the pipeline needs is present and hash-verified before the first stage fires. No shell scripts. No manual model staging.</p>
-            </div>
-          </div>
-          <div class="feature-grid">
-            <article class="feature-card">
-              <span class="card-meta" style="font-family:'IBM Plex Mono',monospace;color:var(--accent,#ff6b35)">A1 · A2 · A3</span>
-              <h3>Audio pipelines</h3>
-              <p><strong>A1</strong>: raw audio → clean brief (4 stages). &nbsp;<strong>A2</strong>: A1 + embed + LMDB search index. &nbsp;<strong>A3</strong>: complete 23-stage production pipeline with level-parallel branches — tag, tone, and paragraph all run concurrently after clean.</p>
-              <div style="margin-top:0.75rem;font-family:'IBM Plex Mono',monospace;font-size:0.78rem;color:var(--accent,#ff6b35);background:rgba(255,107,53,0.08);border:1px solid rgba(255,107,53,0.2);border-radius:5px;padding:0.6rem 0.9rem">bonfyre-run A3 episode.wav --tier pro</div>
-            </article>
-            <article class="feature-card">
-              <span class="card-meta" style="font-family:'IBM Plex Mono',monospace;color:var(--accent,#ff6b35)">M1 · V1 · R1</span>
-              <h3>Media, verified briefs, repos</h3>
-              <p><strong>M1</strong>: podcast production — ingest through repurpose + offer + emit + distribute. &nbsp;<strong>V1</strong>: audio brief with Ed25519-signed proof bundle. &nbsp;<strong>R1</strong>: repo to onboarding guide.</p>
-              <div style="margin-top:0.75rem;font-family:'IBM Plex Mono',monospace;font-size:0.78rem;color:var(--accent,#ff6b35);background:rgba(255,107,53,0.08);border:1px solid rgba(255,107,53,0.2);border-radius:5px;padding:0.6rem 0.9rem">bonfyre-run M1 interview.wav</div>
-            </article>
-            <article class="feature-card">
-              <span class="card-meta" style="font-family:'IBM Plex Mono',monospace;color:var(--accent,#ff6b35)">P1 · P2 · L1 · G1</span>
-              <h3>Proof, publish, revenue, ops</h3>
-              <p><strong>P1</strong>: BLAKE2b hash + Ed25519 sign + pack + ledger. &nbsp;<strong>P2</strong>: P1 + multi-format emit + sync. &nbsp;<strong>L1</strong>: revenue event → meter → ledger → finance. &nbsp;<strong>G1</strong>: API gateway validation harness.</p>
-              <div style="margin-top:0.75rem;font-family:'IBM Plex Mono',monospace;font-size:0.78rem;color:var(--accent,#ff6b35);background:rgba(255,107,53,0.08);border:1px solid rgba(255,107,53,0.2);border-radius:5px;padding:0.6rem 0.9rem">bonfyre-run P2 deliverable/</div>
-            </article>
-            <article class="feature-card">
-              <span class="card-meta">bonfyre-model</span>
-              <h3>Models solved, not assumed</h3>
-              <p>10 model records pre-mapped to recipe codes. <code>bonfyre-model pull --recipe A3</code> fetches exactly what A3 needs. Source chain: local peers → <code>file://</code> → <code>s3://</code> → HuggingFace (plain HTTPS, no SDK) → any mirror. SHA-256 verified. No vendor lock-in.</p>
-              <div style="margin-top:0.75rem;font-family:'IBM Plex Mono',monospace;font-size:0.78rem;color:var(--accent,#ff6b35);background:rgba(255,107,53,0.08);border:1px solid rgba(255,107,53,0.2);border-radius:5px;padding:0.6rem 0.9rem">bonfyre-model pull --recipe A3</div>
-            </article>
-          </div>
-          <div class="cta-row" style="margin-top:2rem">
-            <a class="primary-btn" href="recipe-run.html">Full pipeline reference →</a>
-            <a class="secondary-btn" href="industry-recipes.html">Match a recipe to your use case →</a>
-          </div>
-        </div>
-      </section>
-
-      <!-- What Bonfyre is -->
-      <section class="section">
-        <div class="shell-container">
-          <div class="section-header">
-            <div>
-              <span class="section-kicker">What Expanded</span>
-              <h2 class="section-title">The stack now covers more than compression and pages.</h2>
-              <p class="section-copy">Recent work pushed Bonfyre deeper into serving, transport, zero-copy reads, in-process pipeline execution, and the product surfaces that sit on top of them.</p>
-            </div>
-          </div>
-          <div class="feature-grid">
-            <article class="feature-card">
-              <span class="card-meta">Ingest &amp; signal</span>
-              <h3>BonfyreIngest · MediaPrep · MFADict · SpeechLoop · Segment</h3>
-              <p>Audio and media in. Codec normalization, sample-rate conversion, silence trimming, forced-alignment MFA dictionary prep, and speaker segmentation before anything touches a model.</p>
-            </article>
-            <article class="feature-card">
-              <span class="card-meta">Pipeline runtime</span>
-              <h3>Hot-load and coroutine flow</h3>
-              <p>Swap stages, route A/B traffic, and run coroutine paths in process instead of rebuilding the whole pipeline around every change.</p>
-            </article>
-            <article class="feature-card">
-              <span class="card-meta">Knowledge &amp; memory</span>
-              <h3>BonfyreEmbed · Vec · Index · WeaviateIndex · Query · Graph · TranscriptFamily · Tag · Canon</h3>
-              <p>Sentence embeddings, NEON SIMD cosine similarity, BM25 hybrid ranking, LMDB zero-copy storage, graph relationships, Weaviate integration, canonical de-duplication, and tag extraction — all local.</p>
-            </article>
-            <article class="feature-card">
-              <span class="card-meta">Production &amp; publishing</span>
-              <h3>BonfyreBrief · Repurpose · Render · Emit · Pack · Proof · Project · Paragraph</h3>
-              <p>Structured brief generation, multi-format repurposing, static HTML rendering, multi-format emission (PDF, EPUB, JSON), artifact packaging, content-addressed proof bundles with BLAKE2b hashes, and project management.</p>
-            </article>
-            <article class="feature-card">
-              <span class="card-meta">Revenue &amp; ops</span>
-              <h3>BonfyreOffer · Finance · Pay · Meter · Outreach · Ledger · Hash · Gate · Sync</h3>
-              <p>Dynamic pricing, financial calculations, payment processing, usage metering, outreach sequencing, ledger management, cryptographic hashing for provenance, access gating, and cross-node sync.</p>
-            </article>
-            <article class="feature-card">
-              <span class="card-meta">Newer surfaces</span>
-              <h3>Proxy, orchestration, tel, and verified audio</h3>
-              <p>bonfyre-proxy, bonfyre-orchestrate, bonfyre-tel, bonfyre-moq, bonfyre-swarm, and bonfyre-narrate extend the stack into local AI access, planning, communications, relay, delivery, and finished output.</p>
-            </article>
-          </div>
-        </div>
-      </section>
-
-      <!-- Runtime internals -->
-      <section class="section">
-        <div class="shell-container">
-          <div class="section-header">
-            <div>
-              <span class="section-kicker">30-module shared runtime</span>
-              <h2 class="section-title">What every binary links against.</h2>
-            </div>
-          </div>
-          <div class="feature-grid">
-            <article class="feature-card">
-              <span class="card-meta">30 modules · ~210 KB total</span>
-              <h3>I/O · Storage · Encoding · Security · Networking · Config</h3>
-              <p>The entire C runtime is ~210 KB. One security patch in bf_crypto propagates to all 63 binaries at the next build. Zero external dependencies beyond libc. Covers what a default Express.js install needs 50 MB of node_modules to provide.</p>
-              <div class="cta-row"><a class="secondary-btn" href="runtime.html">Full runtime reference →</a></div>
-            </article>
-          </div>
-        </div>
-      </section>
-
-      <!-- Recent work -->
-      <section class="section">
-        <div class="shell-container">
-          <div class="section-header">
-            <div>
-              <span class="section-kicker">Recent additions</span>
-              <h2 class="section-title">What got added this cycle.</h2>
-              <p class="section-copy">Alongside the lower-level runtime work, the public operator story now includes stronger wire, registry, CLI health, and speech-investigation surfaces.</p>
-            </div>
-          </div>
-          <div class="feature-grid">
-            <article class="feature-card">
-              <span class="card-meta">New front door</span>
-              <h3>Wire → artifact → recipe</h3>
-              <p>BonfyreWire now goes beyond flow reports. It can fingerprint devices, materialize canonical artifacts, generate stitch-compatible recipes, and export authorized capture state into Bonfyre's shared-space substrate.</p>
-            </article>
-            <article class="feature-card">
-              <span class="card-meta">Operator visibility</span>
-              <h3>CLI health and registry truth</h3>
-              <p>`bonfyre list --health`, `bonfyre doctor sync-subcommands`, workflow listing, recipe browsing, and layer registry inspection make the runtime easier to inspect and trust after updates.</p>
-            </article>
-            <article class="feature-card">
-              <span class="card-meta">Speech system</span>
-              <h3>Investigation stack, not just a binary</h3>
-              <p>The repo now carries architecture, production integration, discovery, and adversarial investigation docs around speech and transcript intelligence instead of treating transcription as an isolated feature.</p>
-            </article>
-            <article class="feature-card">
-              <span class="card-meta">Cycle 8 — current</span>
-              <h3>Ghost-Thread Orchestration · CAS Dedup · BPF-Flux · entropy-check · pipeline</h3>
-              <p>Five system-level additions: <strong>bf_uring_spawn</strong> submits entire binary waves as a single io_uring kernel syscall (20–30% spawn latency reduction on Linux 6.12+, posix_spawn fallback for macOS). <strong>bf_cas</strong> gives every recipe a SHA-256 Merkle hash so reruns skip computation entirely via a symlink into <code>~/.local/share/bonfyre/cas/</code>. <strong>bf_bpf_flux</strong> wraps each binary in a cgroup-v2 envelope with 3 resource tiers before execution. <code>bonfyre-control entropy-check</code> exits 2 in under 10 ms if an artifact’s Shannon entropy is below threshold — P1 escalation before any downstream work starts. The new <code>bonfyre-runtime pipeline</code> subcommand chains binaries through OS pipes with zero intermediate I/O.</p>
-              <div class="cta-row"><a class="secondary-btn" href="changelog.html">Full Cycle 8 details →</a></div>
-            </article>
-            <article class="feature-card">
-              <span class="card-meta">Cycle 7</span>
-              <h3>LibSQL WAL · Relaxed E8 · Kestra 2.0 · AGP export · SIMD lattice</h3>
-              <p>BonfyreSync gained a wire-format WAL replication protocol (<code>lswal_serve</code> / <code>lswal_replicate</code>, port 7832). The E8 quantizer added a relaxed variant and Hadamard pre-rotation (<code>BFQ_E8_VARIANT=strict|relax|relax-h</code>). A production Kestra 2.0 YAML flow wraps the full A1 pipeline with webhook and nightly triggers. <code>bonfyre-control agp export</code> emits a djb2-signed JSON governance audit log. bf_lattice_accel adds NEON 4-group/iter and AVX2 8-group/iter backends with a frustrated-boundary heuristic — 7B model quantization drops from 4 min to ~55 s on M2.</p>
-              <div class="cta-row"><a class="secondary-btn" href="changelog.html">Full Cycle 7 details →</a></div>
-            </article>
-            <article class="feature-card">
-              <span class="card-meta">Cycle 6</span>
-              <h3>LtArena · 32-byte NEON · bonfyre-runtime parallel · bf_mmap_prefetch · fpqx_algebra</h3>
-              <p>System-wide hot-path optimisations: lt_core.c’s JSON codec replaced ~90 malloc/realloc call sites with a 64 KB inline arena allocator and O(1) bulk free. <code>find_char_simd</code> doubled throughput on NEON ARM via 32-byte dual-load batching. bonfyre-runtime gained a <code>parallel</code> subcommand for concurrent command groups. <code>bf_mmap_prefetch</code> issues batched <code>MADV_WILLNEED</code> hints ahead of artifact reads. fpqx_algebra shipped with a LoRA compressed-domain example.</p>
-              <div class="cta-row"><a class="secondary-btn" href="changelog.html">Read the full changelog →</a></div>
-            </article>
-          </div>
-          <div class="install-box" style="margin-top:1.5rem">
-            <span class="label">Try the newer operator surface</span>
-            <code>bonfyre wire --help · bonfyre list --health · bonfyre workflow list · bonfyre recipe list · bonfyre layer registry --root layeros/state</code>
-          </div>
-        </div>
-      </section>
-
-      <!-- Nav cards -->
-      <section class="section">
-        <div class="shell-container">
-          <div class="section-header">
-            <div>
-              <span class="section-kicker">Start here</span>
-              <h2 class="section-title">Four ways into the stack.</h2>
-            </div>
-          </div>
-          <div class="path-grid">
-            <article class="story-card">
-              <span class="card-meta">Pipelines</span>
-              <h3>Run any pipeline in one command</h3>
-              <p>Ten shortcodes. A DAG executor. Level-parallel execution, dry-run, batch mode, and a run-manifest receipt on every run. The fastest way to start using the stack.</p>
-              <div class="pill-row">
-                <span class="pill">10 recipe codes</span>
-                <span class="pill">DAG executor</span>
-                <span class="pill">run-manifest.json</span>
-                <span class="pill">Batch mode</span>
-              </div>
-              <div class="cta-row"><a class="primary-btn" href="recipe-run.html">Open Pipelines</a></div>
-            </article>
-            <article class="story-card">
-              <span class="card-meta">Explore</span>
-              <h3>Use cases and recipes</h3>
-              <p>What it replaces, who it is for, and how local AI, search, proxy, phone edge, relay, and delivery fit into one usable product story.</p>
-              <div class="pill-row">
-                <span class="pill">Replacement costs</span>
-                <span class="pill">Industry recipes</span>
-                <span class="pill">Pipeline flows</span>
-                <span class="pill">Live proof</span>
-              </div>
-              <div class="cta-row"><a class="primary-btn" href="explore.html">Open Explore</a></div>
-            </article>
-            <article class="story-card">
-              <span class="card-meta">Technical docs</span>
-              <h3>Benchmarks and internals</h3>
-              <p>FPQ results, hardware fit, transport work, runtime modules, proxy and orchestration surfaces, and the binary inventory behind the claims.</p>
-              <div class="pill-row">
-                <span class="pill">FPQ benchmarks</span>
-                <span class="pill">53 binary reference</span>
-                <span class="pill">Hardware fit</span>
-                <span class="pill">MoQ relay</span>
-              </div>
-              <div class="cta-row"><a class="secondary-btn" href="docs.html">Open Docs</a></div>
-            </article>
-            <article class="story-card">
-              <span class="card-meta">Live apps</span>
-              <h3>Working page apps</h3>
-              <p>Twenty live apps and ten recipe patterns showing what the stack looks like when it ships as a usable surface instead of staying trapped in backend demos.</p>
-              <div class="pill-row">
-                <span class="pill">20 live apps</span>
-                <span class="pill">10 recipe patterns</span>
-                <span class="pill">Click and verify</span>
-              </div>
-              <div class="cta-row"><a class="secondary-btn" href="apps.html">Open Live Apps</a></div>
-            </article>
-          </div>
-        </div>
-      </section>
-
-      <!-- Proof -->
-      <section class="section">
-        <div class="shell-container">
-          <div class="section-header">
-            <div>
-              <span class="section-kicker">Coverage</span>
-              <h2 class="section-title">What Bonfyre covers.</h2>
-            </div>
-          </div>
-          <div class="feature-grid">
-            <article class="feature-card">
-              <span class="card-meta">Core flow</span>
-              <h3>Ingest to publish</h3>
-              <p>Intake, cleanup, briefs, proof, pricing, packaging, and output in one stack.</p>
-            </article>
-            <article class="feature-card">
-              <span class="card-meta">Product base</span>
-              <h3>CMS, auth, API, proxy</h3>
-              <p>CMS, gateway, auth, orchestration, and an OpenAI-compatible proxy that lets existing tools keep working locally.</p>
-            </article>
-            <article class="feature-card">
-              <span class="card-meta">Search and memory</span>
-              <h3>Searchable local knowledge</h3>
-              <p>Embeddings, search, indexing, and transcript families for local archives you can actually use.</p>
-            </article>
-            <article class="feature-card">
-              <span class="card-meta">Revenue</span>
-              <h3>Offers, pricing, billing</h3>
-              <p>Offers, pricing, metering, billing, outreach, and packaging.</p>
-            </article>
-            <article class="feature-card">
-              <span class="card-meta">Realtime</span>
-              <h3>MoQ relay and communications edge</h3>
-              <p>Live media, private fan-out, telephony, and transport-aware event flow inside the same stack.</p>
-            </article>
-            <article class="feature-card">
-              <span class="card-meta">Output surfaces</span>
-              <h3>Pages, audio, and delivery</h3>
-              <p>Pages, narrated outputs, packs, distribution, and proof surfaces keep the backend story attached to something people can actually use.</p>
-            </article>
-          </div>
-        </div>
-      </section>
-
-      <section class="section">
-        <div class="shell-container">
-          <div class="section-header">
-            <div>
-              <span class="section-kicker">Proof Surfaces</span>
-              <h2 class="section-title">Live proof, not mockups.</h2>
-              <p class="section-copy">The same stack powers handoffs, archives, podcasts, storefronts, legal binders, and internal tools.</p>
-            </div>
-          </div>
-          <div class="proof-grid">
-            <article class="proof-callout">
-              <span class="card-meta">Business ops</span>
-              <h3>Shift Handoff · Customer Voice · Sales Distiller · Procurement Memory</h3>
-              <p>Calls and handoffs become searchable summaries, evidence packs, follow-up packages, and traceable procurement records.</p>
-            </article>
-            <article class="proof-callout">
-              <span class="card-meta">Media and publishing</span>
-              <h3>Podcast Plant · Release Radio · Museum Exhibit · Async Standup</h3>
-              <p>Audio and changelogs become RSS-fed sites, audio narration pages, interactive exhibit builders, and daily team newspapers.</p>
-            </article>
-            <article class="proof-callout">
-              <span class="card-meta">Trust and archives</span>
-              <h3>Memory Atlas · Family History · Legal Prep · Grant Evidence</h3>
-              <p>Traceable transcripts and summaries become timelines, oral history museums, legal binders, and grant-ready evidence packs.</p>
-            </article>
-            <article class="proof-callout">
-              <span class="card-meta">Developer and org</span>
-              <h3>Explain This Repo · OSS Cockpit · Postmortem Atlas · Competitive Intel</h3>
-              <p>Repos, incidents, and market data become onboarding guides, maintainer dashboards, searchable post-mortems, and structured intel archives.</p>
-            </article>
-          </div>
-          <div class="cta-row">
-            <a class="primary-btn" href="apps.html">Browse all 20 apps</a>
-            <a class="secondary-btn" href="https://nickgonzales76017.github.io/pages-shift-handoff/" target="_blank" rel="noreferrer">Open Shift Handoff live</a>
-          </div>
-        </div>
-      </section>
-    </main>
-
-    <footer class="footer">
-      <div class="shell-container footer-row">
-        <div>Bonfyre — 56 C11 binaries, 26-module runtime, 4× model compression. T04/T15/T16 transform families. MIT licensed. Runs offline.</div>
-        <div class="footer-links">
-          <a href="explore.html">Explore</a>
-          <a href="docs.html">Technical Docs</a>
-          <a href="apps.html">Live Apps</a>
-          <a href="https://github.com/Nickgonzales76017/bonfyre-oss" target="_blank" rel="noreferrer">GitHub</a>
-          <a href="https://huggingface.co/NICKO" target="_blank" rel="noreferrer">HuggingFace</a>
-        </div>
-      </div>
-    </footer>
+  <div class="stats-row">
+    <div class="stat"><span class="num" style="color:var(--green)">4×</span><span class="label">Model compression</span></div>
+    <div class="stat"><span class="num" style="color:var(--green)">0.997</span><span class="label">Inference cosine</span></div>
+    <div class="stat"><span class="num" style="color:var(--accent)">53</span><span class="label">Stack binaries</span></div>
+    <div class="stat"><span class="num">26</span><span class="label">Library modules</span></div>
+    <div class="stat"><span class="num">15</span><span class="label"><a href="https://huggingface.co/NICKO" style="color:inherit">Models on HF</a></span></div>
+    <div class="stat"><span class="num">20</span><span class="label">Live apps</span></div>
+    <div class="stat"><span class="num">~2.1 MB</span><span class="label">Total disk</span></div>
   </div>
-  <script src="assets/site.js"></script>
+
+  <div class="path-cards">
+    <a href="explore.html" class="path-card card-explore">
+      <div class="emoji">🚀</div>
+      <h2>What Can Bonfyre Do For Me?</h2>
+      <div class="desc">See what Bonfyre does, who it's for, and how the newer stack pieces fit together in practice — local AI, search, pages, proxy, phone edge, relay, and proof surfaces. No technical jargon required.</div>
+      <div class="includes"><strong>Includes:</strong><br>What it replaces · Industry recipes · Live apps · WordPress · Pipelines · Proxy + relay · Under-the-hood overview</div>
+      <span class="cta">Explore Bonfyre →</span>
+    </a>
+    <a href="docs.html" class="path-card card-docs">
+      <div class="emoji">🔧</div>
+      <h2>Technical Docs &amp; Benchmarks</h2>
+      <div class="desc">FPQ compression deep-dive, FPQ-X operators, KV cache, runtime architecture, proxy/orchestration/relay surfaces, and reproduction commands.</div>
+      <div class="includes"><strong>Includes:</strong><br>FPQ · FPQ-X · KV cache · Benchmarks · Hardware fits · Architecture · Runtime modules · Proxy · Orchestration · Install</div>
+      <span class="cta">Open Technical Docs →</span>
+    </a>
+  </div>
+
+  <div class="links-row">
+    <a href="https://github.com/Nickgonzales76017/bonfyre-oss">⭐ bonfyre-oss</a>
+    <a href="https://github.com/Nickgonzales76017/bonfyre">archive / legacy repo</a>
+    <a href="https://huggingface.co/NICKO">🤗 HuggingFace</a>
+    <a href="https://github.com/Nickgonzales76017/hcp-whisper">🎤 HCP Speech</a>
+    <a href="https://nickgonzales76017.github.io/pages-shift-handoff/">📋 Live Proof</a>
+  </div>
+
+  <!-- Recent additions (content-only) -->
+  <section id="recent-additions" style="padding:40px 0">
+    <div class="container">
+      <h2>Recent additions</h2>
+      <p class="subtitle">A compact look at the newer runtime pieces and product-facing surfaces now inside the stack since the last public push.</p>
+      <div class="killer-grid" style="margin-top:16px">
+        <div class="killer-card">
+          <div class="vs">Runtime layer</div>
+          <div class="detail">Shared-nothing reactor, hot-load pipeline stages, coroutine pipeline flow, zero-copy LMDB + FlatBuffers, SIMD JSON + UTF-8, MessagePack events, DNS, logging, mmap, LZ4, Bloom dedup, and fountain-coded swarm delivery.</div>
+        </div>
+        <div class="killer-card">
+          <div class="vs">Newer surfaces</div>
+          <div class="detail">bonfyre-proxy for OpenAI-compatible local APIs, bonfyre-orchestrate for machine-only planning, bonfyre-tel for the communications edge, bonfyre-swarm for metered distribution, bonfyre-narrate for verified audio output, and bonfyre-moq for private realtime media.</div>
+        </div>
+        <div class="killer-card">
+          <div class="vs">Wire -> artifact -> recipe</div>
+          <div class="detail">BonfyreWire now goes beyond flow reports. It can fingerprint devices, materialize canonical artifacts, and generate stitch-compatible recipes from owned or authorized captures.</div>
+        </div>
+        <div class="killer-card">
+          <div class="vs">Registry + CLI health</div>
+          <div class="detail">The command surface is richer too: health-aware `bonfyre list`, repo/install drift checks, subcommand syncing, workflow listing, recipe browsing, and layer registry inspection.</div>
+        </div>
+        <div class="killer-card">
+          <div class="vs">Speech investigation stack</div>
+          <div class="detail">The repo now includes a fuller speech investigation story: architecture, production integration, quickstart, adversarial hypothesis engine, and discovery pipeline documentation.</div>
+        </div>
+      </div>
+
+      <div style="margin-top:24px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px 22px;text-align:left">
+        <div style="font-size:.72rem;text-transform:uppercase;letter-spacing:.06em;color:var(--accent);font-weight:700;margin-bottom:10px">Try The New Surface</div>
+        <div style="font-family:var(--mono);font-size:.82rem;color:var(--text-dim);line-height:1.9;overflow:auto">
+          bonfyre wire --help<br>
+          bonfyre list --health<br>
+          bonfyre workflow list<br>
+          bonfyre recipe list<br>
+          bonfyre layer registry --root layeros/state
+        </div>
+        <div style="margin-top:12px;font-size:.84rem;color:var(--text-dim)">These are the quickest commands for seeing the newer operator model: health-aware CLI surfaces, registry-backed discovery, and the wire-to-artifact path.</div>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    Made by <a href="https://nickgonzales76017.github.io">Nick Gonzales</a> ·
+    <a href="https://github.com/Nickgonzales76017/bonfyre-oss/blob/main/LICENSE">MIT License</a>
+  </footer>
+</div>
 </body>
 </html>
