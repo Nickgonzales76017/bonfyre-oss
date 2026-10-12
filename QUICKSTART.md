@@ -1,126 +1,37 @@
-# Bonfyre Quickstart
+# Bonfÿre OSS — historical source quickstart
 
-This is the fastest real path to see Bonfyre working today.
+This repository preserves an earlier Bonfÿre command-line and GitHub Pages
+source snapshot. It is no longer the canonical home for current Bonfÿre
+development.
 
-The current front door is:
+**Start with the current products:** [Aurekai work samples](https://aurekai-work-samples.pages.dev/),
+[public guides](https://docs.aurekai.work/), or the
+[current Bonfÿre engineering repository](https://github.com/Nickgonzales76017/bonfyre).
 
-```text
-capture -> probe -> artifacts -> recipe -> stitch
-```
+## Inspect this original source snapshot
 
-## 1. Build Bonfyre
-
-```bash
+```sh
 git clone https://github.com/Nickgonzales76017/bonfyre-oss.git
 cd bonfyre-oss
-make
 ```
 
-If you want the unified CLI on your path:
+The original native commands and build configurations remain under
+[`cmd/`](cmd/), [`lib/`](lib/) and the [`Makefile`](Makefile).
+Any example here was written for its original command ABI and dependencies.
+Read the exact component requirements before building or running it.
 
-```bash
-make install
-```
+The numbered idea/project/research folders and duplicated early `10-Code`
+vault sources have been moved **without changing their content** to
+[`evidence/origins/notebook-era/`](evidence/origins/notebook-era/).
+They remain available through Git history, but are not an alternative
+production source of truth.
 
-## 2. Populate The Command And Registry Surfaces
+## Current developer entry points
 
-Run this once after a fresh clone, and again whenever `cmd/`, `lib/`, or registry-related code changes land.
+- [Bonfÿre quickstart](https://github.com/Nickgonzales76017/bonfyre/blob/main/QUICKSTART.md)
+- [Standalone Statement Import (native C)](https://github.com/Nickgonzales76017/bonfyre-statement-import)
+- [Standalone Agent Trace Verifier](https://github.com/Nickgonzales76017/bonfyre-agent-trace-verifier)
+- [Client integration and delivery portfolio](https://github.com/Nickgonzales76017/bonfyre/blob/main/docs/client-operations-portfolio.md)
 
-```bash
-./cmd/BonfyreCLI/bonfyre doctor sync-subcommands
-./cmd/BonfyreIndex/bonfyre-index layers --root layeros/state
-./cmd/BonfyreCLI/bonfyre list --health
-./cmd/BonfyreWorkflow/bonfyre-workflow list
-./cmd/BonfyreRecipe/bonfyre-recipe list
-./cmd/BonfyreLayer/bonfyre-layer registry --root layeros/state
-```
-
-What that does:
-
-- syncs repo-built subcommands into the CLI surface
-- refreshes the layer index projection
-- confirms command health labels
-- confirms workflow, recipe, and layer registries are populated
-
-## 3. Inspect BonfyreWire
-
-Start by looking at the current operator surface:
-
-```bash
-./cmd/BonfyreWire/bonfyre-wire --help
-./cmd/BonfyreCLI/bonfyre wire doctor
-```
-
-`BonfyreWire` can ingest PCAPs or synthetic captures, fingerprint devices, materialize canonical artifacts, and generate stitch-ready recipes.
-
-## 4. Run The Discovery Pipeline
-
-Using a capture file:
-
-```bash
-./cmd/BonfyreWire/bonfyre-wire ingest-pcap capture.pcap --dumb-device --root layeros/state
-./cmd/BonfyreWire/bonfyre-wire probe <capture_id> --root layeros/state
-./cmd/BonfyreWire/bonfyre-wire artifacts <capture_id> --root layeros/state
-./cmd/BonfyreWire/bonfyre-wire recipe <capture_id> --root layeros/state > recipe.json
-./cmd/BonfyreStitch/bonfyre-stitch plan recipe.json
-```
-
-Using the unified CLI:
-
-```bash
-bonfyre wire ingest-pcap capture.pcap --dumb-device --root layeros/state
-bonfyre wire probe <capture_id> --root layeros/state
-bonfyre wire artifacts <capture_id> --root layeros/state
-bonfyre wire recipe <capture_id> --root layeros/state > recipe.json
-bonfyre stitch plan recipe.json
-```
-
-What you get:
-
-- `probe`: device fingerprinting and chain suggestions
-- `artifacts`: canonical `BfArtifact` JSON files under `layeros/state/wire/artifacts/<capture_id>/`
-- `recipe`: a stitch-compatible recipe you can inspect, save, and replay
-
-## 5. Useful Truth Checks
-
-Check the command surface:
-
-```bash
-bonfyre list --health
-```
-
-Check registry density:
-
-```bash
-bonfyre status registries --root layeros/state
-```
-
-Check workflows:
-
-```bash
-bonfyre workflow list
-```
-
-Check recipes:
-
-```bash
-bonfyre recipe list
-```
-
-## 6. State You Should Expect
-
-Bonfyre uses two important state surfaces:
-
-- `layeros/state`
-  - LayerArtifact, graph, queue, and wire operating state
-- `~/.local/share/bonfyre/catalog.db`
-  - smaller catalog used by workflow, recipe, family, and model browsing surfaces
-
-If the CLI looks stale after updating code, rerun the registry population commands from step 2.
-
-## 7. Next Docs
-
-- [README.md](README.md)
-- [docs/bonfyre_wire.md](docs/bonfyre_wire.md)
-- [docs/bonfyre_status_and_drift.md](docs/bonfyre_status_and_drift.md)
-- [docs/architecture.md](docs/architecture.md)
+The license accompanying this historical repository still applies to its
+own published versions; current Bonfÿre source has [separate terms](https://github.com/Nickgonzales76017/bonfyre/blob/main/LICENSE).
